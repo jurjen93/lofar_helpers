@@ -345,7 +345,6 @@ class SetBoxes(Imaging):
         if perc_outliers_cutout > 0.014 or perc_gaussian_cutout > 0:
             return True
         else:
-            print(perc_outliers_cutout, perc_gaussian_cutout, self.image_number)
             return False
 
 
@@ -364,6 +363,7 @@ if __name__ == '__main__':
     sources_in_other_images = []
     print(f'We found {len(image.df_peaks)} interesting sources.\n')
 
+    m=0
     for n, p in tqdm(enumerate(image.df_peaks.to_dict(orient="records"))):
 
         # skip sources that are already displayed in other boxes
@@ -401,5 +401,7 @@ if __name__ == '__main__':
         axs[0].set_title(f'Initial image')
         axs[1].set_title('Repositioned')
 
-        fig.savefig(f'box_images/box_{n}')
-        image.save_box(box_name=f'box_{n}.reg')
+        m+=1
+        fig.savefig(f'box_images/box_{m}')
+        image.save_box(box_name=f'box_{m}.reg')
+    print(f'Made succesfully {m} boxes.')
