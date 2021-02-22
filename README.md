@@ -5,7 +5,7 @@ Note that this script is just a part of the LOFAR pipeline, which is still in de
 
 #### Usage
 
-Clone this repo.
+Clone with: ```https://github.com/jurjen93/lofar_boxes.git```\
 Use ```make_boxes.py``` as a standalone script by running on the command line:\
 ```python make_boxes.py -f <fits_file>``` \
 The script returns the following:
