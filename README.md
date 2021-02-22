@@ -1,12 +1,12 @@
 ### Make boxes for LOFAR self-calibration
 
-With this script it is possible to make boxes around sources that have to be extracted and self-calibrated.
+With this script it is possible to make boxes around sources that can be extracted and self-calibrated.
 Note that this script is just a part of the LOFAR pipeline, which is still in development.
 
 #### Usage
 
 Clone this repo.
-Use ```make_boxes.py``` as standalone script by running on the command line:\
+Use ```make_boxes.py``` as a standalone script by running on the command line:\
 ```python make_boxes.py -f <fits_file>``` \
 The script returns the following:
 * directory with .reg region boxes.
