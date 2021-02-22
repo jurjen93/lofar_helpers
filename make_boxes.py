@@ -345,6 +345,7 @@ class SetBoxes(Imaging):
         if perc_outliers_cutout > 0.014 or perc_gaussian_cutout > 0:
             return True
         else:
+            print(perc_outliers_cutout, perc_gaussian_cutout, self.image_number)
             return False
 
 
@@ -397,7 +398,7 @@ if __name__ == '__main__':
                       cmap='CMRmap')
         axs[0].axis('off')
         axs[1].axis('off')
-        axs[0].set_title(f'Before, interesting source: {image.interesting_source}')
+        axs[0].set_title(f'Initial image')
         axs[1].set_title('Repositioned')
 
         fig.savefig(f'box_images/box_{n}')
