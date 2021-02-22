@@ -1,0 +1,16 @@
+# csv files
+*.csv
+# notebooks
+*.ipynb
+.ipynb_checkpoints
+# fit files
+*.fits
+#idea file
+.idea
+#pycache
+__pycache__
+#boxes
+/box_images
+/boxes
+*.reg
+*.png
