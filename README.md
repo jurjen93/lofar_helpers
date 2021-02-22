@@ -23,5 +23,5 @@ The following steps are taken in the algorithm:
 * Now we save the image of the box and the .reg.
 
 #### Contact
-Let me know if you are using this script and have any issues.
+Let me know if you are using this script and have any issues or suggestions for improvements.
 You can contact me on: jurjendejong(AT)strw.leidenuniv.nl
