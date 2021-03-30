@@ -1,11 +1,15 @@
+## LOFAR helper scripts
+
+Note that these scripts are a part of the LOFAR pipeline, which is still in development.
+
+Clone this repo with: ```git clone https://github.com/jurjen93/lofar_boxes.git```
+
 ### Make boxes for LOFAR self-calibration
 
-With this script it is possible to make boxes around sources that can be extracted and self-calibrated.
-Note that this script is just a part of the LOFAR pipeline, which is still in development.
+With ```make_boxes.py``` it is possible to make boxes around sources that can be extracted and self-calibrated.
 
 #### Usage
 
-Clone with: ```git clone https://github.com/jurjen93/lofar_boxes.git```\
 Use ```make_boxes.py``` as a standalone script by running on the command line:\
 ```python make_boxes.py -f <fits_file>``` \
 The script returns the following:
@@ -21,6 +25,15 @@ The following steps are taken in the algorithm:
 * If the flux is >0.07 and <0.1 we accept the box only if there are other sources with flux >0.07.
 * If there are multiple peak fluxes (sources) we flag these as done from our list.
 * Now we save the image of the box and the .reg.
+
+### Merge solutions
+
+With ```h5_merger.py``` it is possible to merge h5 solutions, which are a result from self-calibrating the different directions that are extracted with the boxes.
+
+#### Usage
+
+Just import the most important function with:
+```from h5_merger import merge_h5```
 
 #### Contact
 Let me know if you are using this script and have any issues or suggestions for improvements.
