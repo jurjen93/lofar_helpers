@@ -220,10 +220,12 @@ class MergeH5:
                 h5_to_merge = h5parm(h5_name_to_merge)
 
                 if solset not in h5_to_merge.getSolsetNames():
+                    h5_to_merge.close()
                     continue  # use other h5 file with solset
                 else:
                     ss = h5_to_merge.getSolset(solset)
                 if soltab not in ss.getSoltabNames():
+                    h5_to_merge.close()
                     continue  # use other h5 file with soltab
                 else:
                     st = ss.getSoltab(soltab)
@@ -249,11 +251,13 @@ class MergeH5:
 
             h5 = h5parm(h5_name)
             if solset not in h5.getSolsetNames():
+                h5.close()
                 continue
 
             ss = h5.getSolset(solset)
 
             if soltab not in ss.getSoltabNames():
+                h5.close()
                 continue
 
             st = ss.getSoltab(soltab)
@@ -546,10 +550,3 @@ if __name__ == '__main__':
     # if test:
     # from runwscleanLBauto import applycal, makeimage
     # applycal(glob('box_3.dysco.sub.shift.avg.weights.ms.archive0.goodtimes.avg')[0], ['merged_solutions.h5'])
-
-    # makeimage(glob('*dysco.sub.shift.avg.weights.ms.archive0.goodtimes'), 'new_test_image', \
-# str(1000), '1000', '6', str(np.int(15000)), '-0.5', \
-# uvtaper=False, multiscale=True, idg=True, fitsmask=None, \
-# deepmultiscale=True, uvminim=80, fitspectralpol=True, \
-# imager='WSCLEAN', restoringbeam=6, automask=2.5, \
-# removenegativecc=True)
