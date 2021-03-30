@@ -2,7 +2,7 @@
 
 Note that these scripts are a part of the LOFAR pipeline, which is still in development.
 
-Clone this repo with: ```git clone https://github.com/jurjen93/lofar_boxes.git```
+Clone this repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git```
 
 ### Make boxes for LOFAR self-calibration
 
