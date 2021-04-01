@@ -13,7 +13,7 @@ merge_h5(h5_out='test.h5',
 """
 
 import os
-import casacore.tables as ct
+from casacore import tables as ct
 from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
@@ -79,20 +79,27 @@ class MergeH5:
         time_axes = st.getAxisValues('time')
         freq_axes = st.getAxisValues('freq')
 
-        if self.ax_time[0] > time_axes[0] or self.ax_time[-1] < time_axes[-1]:
-            print("Time axes between h5 and ms are not overlapping, so we reduce time_axis")
-        if self.ax_freq[0] > freq_axes[0] or self.ax_freq[-1] < freq_axes[-1]:
-            print("Frequency axes between h5 and ms are not overlapping, so we reduce frequency axis")
+        print('Value shape before --> {values}'.format(values=st.getValues()[0].shape))
+
+        if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1] :
+            print("WARNING: Time axes of h5 and MS are not overlapping.")
+        #elif self.ax_time[0] > time_axes[0] or self.ax_time[-1] < time_axes[-1]:
+            #print("Time axes of h5 and has values outside of the time axis of MS.")
+        if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1]:
+            print("WARNING: Frequency axes of h5 and MS are not overlapping.")
+        #elif self.ax_freq[0] > freq_axes[0] or self.ax_freq[-1] < freq_axes[-1]:
+            #print("Frequency axes of h5 and has values outside of the time axis of MS.")
         if float(soltab[-3:]) > 0:
-            print("Error: {soltab} does not end on 000".format(soltab=soltab))
+            print("WARNING: {soltab} does not end on 000".format(soltab=soltab))
         for av in self.axes_new:
             if av in st.getAxesNames() and st.getAxisLen(av) == 0:
                 print("No {av} in {solset}/{soltab}".format(av=av, solset=solset, soltab=soltab))
-        time_axes_new = [list(time_axes).index(t) for t in time_axes if t < self.ax_time[-1] and t > self.ax_time[0]]
-        freq_axes_new = [list(freq_axes).index(f) for f in freq_axes if f < self.ax_freq[-1] and f > self.ax_freq[0]]
-        print('Value shape before reduction {values}'.format(values=st.getValues()[0].shape))
-        values = reorderAxes(st.getValues()[0], st.getAxesNames(), self.axes_current)[...,
-                 freq_axes_new[0]:freq_axes_new[-1] + 1, time_axes_new[0]:time_axes_new[-1] + 1]
+        #time_axes_new = [list(time_axes).index(t) for t in time_axes if t < self.ax_time[-1] and t > self.ax_time[0]]
+        #freq_axes_new = [list(freq_axes).index(f) for f in freq_axes if f < self.ax_freq[-1] and f > self.ax_freq[0]]
+        values = reorderAxes(st.getValues()[0], st.getAxesNames(), self.axes_current)
+        #values = reorderAxes(st.getValues()[0], st.getAxesNames(), self.axes_current)[...,
+                 #freq_axes_new[0]:freq_axes_new[-1] + 1, time_axes_new[0]:time_axes_new[-1] + 1]
+
         if len(values.shape) == 5:
             time_axes = values[0, 0, 0, 0, :]
             freq_axes = values[0, 0, 0, :, 0]
@@ -267,7 +274,7 @@ class MergeH5:
             values, time_axes, freq_axes = self.get_values(ss, st, solset, soltab)
 
             d = ss.getSou()
-            source_coords = d[d.keys()[0]]
+            source_coords = d[list(d.keys())[0]]
             d = 'Dir{:02d}'.format(self.n)
 
             if any([np.array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
@@ -289,7 +296,7 @@ class MergeH5:
                         values = valtmp
                         # -1 assumes the expected shape along the frequency axis.
                         if self.axes_new[-2] != 'freq':
-                            print('Frequency axis is not on right position')
+                            print('WARNING: Frequency axis is not on right position')
                         freqs = self.ax_freq.reshape(1, 1, 1, -1, 1)
                         tecphase = self.tecphase_conver(values, freqs)
                         tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
@@ -305,7 +312,7 @@ class MergeH5:
                         tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
                                                     self.axes_current.index('time'))
                     else:
-                        print('ERROR: something went wrong with reshaping')
+                        print('WARNING: something went wrong with reshaping')
 
                     # Now add the phases to the total phase correction for this direction.
                     if len(self.phases.shape) == 4:
@@ -336,7 +343,7 @@ class MergeH5:
                 if 'pol' in self.axes_current:
                     if st.getAxisLen('pol') == 4:
                         print("Add fulljones type with 4 polarizations")
-                        print("Please check if this is correct")
+                        print("WARNING: this part hasn't been tested yet. Please check if this is correct")
                         if self.phases.shape[0] == 2:
                             phasetmp = np.zeros((4,) + self.phases.shape[1:])
                             phasetmp[0, ...] = self.phases[0, ...]
@@ -349,12 +356,14 @@ class MergeH5:
                             self.phases = phasetmp
                     elif st.getAxisLen('pol') == 2 and self.phases.shape[0] == 4:
                         print("Add to fulljones type with 4 polarizations")
+                        print("WARNING: this part hasn't been tested yet. Please check if this is correct")
                         phasetmp = np.zeros((4,) + values.shape[1:])
                         phasetmp[0, ...] = values[0, ...]
                         phasetmp[-1, ...] = values[1, ...]
                         values = phasetmp
                 elif self.phases.shape[0] == 4 and len(self.phases.shape) == 5:
                     print("Add to fulljones type with 4 polarizations")
+                    print("WARNING: this part hasn't been tested yet. Please check if this is correct")
                     phasetmp = np.zeros((4,) + values.shape)
                     phasetmp[0, ...] = values
                     phasetmp[-1, ...] = values
@@ -387,7 +396,7 @@ class MergeH5:
                 if 'pol' in self.axes_current:
                     if st.getAxisLen('pol') == 4:
                         print("Add fulljones type with 4 polarizations")
-                        print("Please check if this is correct")
+                        print("WARNING: this part hasn't been tested yet. Please check if this is correct")
                         if self.gains.shape[0] == 2:
                             gaintmp = np.zeros((4,) + self.gains.shape[1:])
                             gaintmp[0, ...] = self.gains[0, ...]
@@ -400,16 +409,18 @@ class MergeH5:
                             self.gains = gaintmp
                     elif st.getAxisLen('pol') == 2 and self.gains.shape[0] == 4:
                         print("Add to fulljones type with 4 polarizations")
+                        print("WARNING: this part hasn't been tested yet. Please check if this is correct")
                         gaintmp = np.zeros((4,) + values.shape[1:])
                         gaintmp[0, ...] = values[0, ...]
                         gaintmp[-1, ...] = values[1, ...]
                         values = gaintmp
                 elif self.gains.shape[0] == 4 and len(self.gains.shape) == 5:
                     print("Add to fulljones type with 4 polarizations")
+                    print("WARNING: this part hasn't been tested yet. Please check if this is correct")
                     gaintmp = np.zeros((4,) + values.shape)
                     gaintmp[0, ...] = values
                     gaintmp[-1, ...] = values
-                    gaintmp = values
+                    values = gaintmp
 
                 idxnan = np.where((~np.isfinite(values)))
                 values[idxnan] = 1.0
@@ -467,10 +478,10 @@ class MergeH5:
             solsetout = self.h5_out.getSolset(solset)
         else:
             solsetout = self.h5_out.makeSolset(solset)
-        sources = np.array(self.directions.items(), dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+        sources = list({i: (np.round(j[0],4), np.round(j[1],4)) for i,j in self.directions.items()}.items())
         solsetout.obj.source.append(sources)
 
-        axes_vals = {'dir': self.directions.keys(), 'ant': self.antennas, 'freq': self.ax_freq, 'time': self.ax_time}
+        axes_vals = {'dir': list(self.directions.keys()), 'ant': self.antennas, 'freq': self.ax_freq, 'time': self.ax_time}
         DPPP_axes = self.DPPP_style(soltab)
 
         if 'pol' in self.axes_new:
@@ -487,12 +498,12 @@ class MergeH5:
 
         if 'phase' in soltab:
             weights = np.ones(self.phases.shape)
-            print('Value shape after processing {values}'.format(values=weights.shape))
+            print('Value shape after --> {values}'.format(values=weights.shape))
             solsetout.makeSoltab('phase', axesNames=self.axes_new, axesVals=axes_vals, vals=self.phases,
                                  weights=weights)
         if 'amplitude' in soltab:
             weights = np.ones(self.gains.shape)
-            print('Value shape after processing {values}'.format(values=weights.shape))
+            print('Value shape after --> {values}'.format(values=weights.shape))
             solsetout.makeSoltab('amplitude', axesNames=self.axes_new, axesVals=axes_vals, vals=self.gains,
                                  weights=weights)
         if 'tec' in soltab:
@@ -503,12 +514,12 @@ class MergeH5:
             else:
                 self.phases = self.phases[:, :, 0, :]
             weights = np.ones(self.phases.shape)
-            print('Value shape after processing {values}'.format(values=weights.shape))
+            print('Value shape after --> {values}'.format(values=weights.shape))
             solsetout.makeSoltab('tec', axesNames=['dir', 'ant', 'time'],
-                                 axesVals=[self.ax_time, self.antennas, self.directions.keys()],
+                                 axesVals=[self.ax_time, self.antennas, list(self.directions.keys())],
                                  vals=self.phases, weights=weights)
 
-        print('{solset}/{soltab} DONE'.format(solset=solset, soltab=soltab))
+        print('DONE: {solset}/{soltab}'.format(solset=solset, soltab=soltab))
         self.h5_out.close()
         return self
 
@@ -546,7 +557,7 @@ if __name__ == '__main__':
     merge_h5('merged_solutions.h5', h5_files='*ms.archive0*.avgsolsgrid*_9.h5', convert_tec=True,
              ms_files='*dysco.sub.shift.avg.weights.ms.archive0.goodtimes')
 
-    # test=True
-    # if test:
-    # from runwscleanLBauto import applycal, makeimage
-    # applycal(glob('box_3.dysco.sub.shift.avg.weights.ms.archive0.goodtimes.avg')[0], ['merged_solutions.h5'])
+    #test=True
+    #if test:
+        #from runwscleanLBauto import applycal
+        #applycal(glob('box_4.dysco.sub.shift.avg.weights.ms.archive0.goodtimes.avg')[0], ['merged_solutions.h5'])
