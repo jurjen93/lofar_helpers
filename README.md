@@ -11,7 +11,12 @@ With ```make_boxes.py``` it is possible to make boxes around sources that can be
 #### Usage
 
 Use ```make_boxes.py``` as a standalone script by running on the command line:\
-```python make_boxes.py -f <fits_file>``` \
+```python make_boxes.py <FLAGS>``` \
+You can use the following flags: \
+* ```-f``` --> followed by the fits file name (and path)
+* ```-i``` --> followed by the boolean, indicating if the script should return images of the directions or not
+* ```-l``` --> followed by the location (path) to store the data \
+
 The script returns the following:
 * directory with .reg region boxes.
 * directory with box images, to check the quality of the boxes.
@@ -34,6 +39,12 @@ With ```h5_merger.py``` it is possible to merge h5 solutions, which are a result
 
 Just import the most important function with:
 ```from h5_merger import merge_h5```
+
+The function has the following parameters:
+* ```h5_out``` --> output file name
+* ```h5_files``` --> h5 files to merge in list form or string (with/without wildcard)
+* ```ms_files``` --> ms files to use in list form or string (with/without wildcard)
+* ```convert_tec``` --> convert tec to phase (boolean)
 
 #### Contact
 Let me know if you are using this script and have any issues or suggestions for improvements.

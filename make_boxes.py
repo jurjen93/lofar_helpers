@@ -1,30 +1,60 @@
+"""
+Use this script to return region files of directions that need a selfcal.
+"""
+
 import numpy as np
 import os
-import matplotlib.pyplot as plt
-from matplotlib.colors import SymLogNorm
 from astropy.wcs import WCS
 from astropy.io import fits
 from astropy.nddata import Cutout2D
 from scipy.ndimage import gaussian_filter
-import argparse
+from argparse import ArgumentParser
 import warnings
 from pandas import DataFrame
 
+__author__ = "Jurjen de Jong"
+__all__ = ['SetBoxes']
+
 warnings.filterwarnings("ignore")
 
-parser = argparse.ArgumentParser()
+parser = ArgumentParser()
 parser.add_argument('-f', '--file', type=str, help='fitsfile name')
+parser.add_argument('-l', '--location', type=str, help='data location folder name')
+parser.add_argument('-i', '--images', type=bool, default=False, help='return images of boxes')
 args = parser.parse_args()
 
+if args.location:
+    folder = args.location
+    if folder[-1]=='/':
+        folder=folder[0:-1]
+else:
+    folder = ''
+#check if folder exists and create if not
+folders = folder.split('/')
+for i, f in enumerate(folders):
+    subpath = '/'.join(folder.split('/')[0:i+1])
+    if not os.path.isdir(subpath):
+        print(f'Create directory: {subpath}')
+        os.system(f'mkdir {subpath}')
+
+if args.images:
+    import matplotlib.pyplot as plt
+    from matplotlib.colors import SymLogNorm
+
+
 class Imaging:
-    def __init__(self, fits_file: str = None, vmin: float = -2.5e-05, vmax: float = 6.520e-03):
+    def __init__(self, fits_file: str = None, vmin: float = None, vmax: float = None):
         self.hdu = fits.open(fits_file)[0]
         self.image_data = self.hdu.data
         while len(self.image_data.shape) != 2:
             self.image_data = self.image_data[0]
         self.wcs = WCS(self.hdu.header, naxis=2)
-        self.vmin = vmin
-        self.vmax = vmax
+        if vmin is None:
+            self.vmin = np.nanstd(self.image_data)
+        else:
+            self.vmin = vmin
+        if vmax is None:
+            self.vmax = np.nanstd(self.image_data)*25
 
     def imaging(self, image_data=None, cmap: str = 'CMRmap'):
         """
@@ -37,7 +67,7 @@ class Imaging:
             image_data = self.image_data
         plt.figure(figsize=(10, 10))
         plt.subplot(projection=self.wcs)
-        plt.imshow(image_data, norm=SymLogNorm(linthresh=1e-6, vmin=7e-5, vmax=6.520e-03), origin='lower', cmap=cmap)
+        plt.imshow(image_data, norm=SymLogNorm(linthresh=self.vmin/20, vmin=self.vmin/50, vmax=self.vmax), origin='lower', cmap=cmap)
         plt.xlabel('Galactic Longitude')
         plt.ylabel('Galactic Latitude')
         plt.show()
@@ -50,13 +80,15 @@ class Imaging:
         pos (tuple) -> position in pixels
         size (tuple) -> size of your image in pixel size, default=(1000,1000)
         """
-        return Cutout2D(
+        out = Cutout2D(
             data=self.image_data,
             position=pos,
             size=size,
             wcs=self.wcs,
             mode='partial'
-        ).data
+        )
+
+        return out.data, out.wcs
 
 
 class SetBoxes(Imaging):
@@ -65,6 +97,8 @@ class SetBoxes(Imaging):
         self.image_number = None
         self.initial_box_size = initial_box_size
         super().__init__(fits_file=fits_file)
+        self.wcs_cut = self.wcs
+
 
         # get the positions of the flux peaks from full image
         self.peak_flux = peak_flux
@@ -129,32 +163,32 @@ class SetBoxes(Imaging):
                 and n < 100 and im_size > self.before.shape[0] * 3 / 4:  # image cannot be smaller than 0.3 arcsec
             if lower_p > threshold_p and lower_p > upper_p and self.pix_y - int(im_size / 2) > 0:
                 self.pix_y -= int(self.after.shape[0] / 200)  # size shifted down
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 n += 1
             elif upper_p > threshold_p and int(im_size / 2) + self.pix_y < self.image_data.shape[0]:
                 self.pix_y += int(self.after.shape[0] / 200)  # size shifted above
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 n += 1
             if left_p > threshold_p and left_p > right_p and int(im_size / 2) + self.pix_x < self.image_data.shape[0]:
                 self.pix_x -= int(self.after.shape[0] / 200)  # size shifted to the left
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 n += 1
             elif right_p > threshold_p and self.pix_x - int(im_size / 2) > 0:
                 self.pix_x += int(self.after.shape[0] / 200)  # size shifted to the right
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 n += 1
             if n > 5:
                 im_size_new = im_size - int(min(max(left_p, lower_p, right_p, upper_p) / threshold_p * 10,
                                                 self.after.shape[0] / 200))  # size reduced image
-                new_image = self.make_cutout((self.pix_x, self.pix_y), (im_size_new, im_size_new))  # new image
+                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size_new, im_size_new))  # new image
                 if np.mean(boundary_perc(new_image)) \
                         < np.mean([left_p, lower_p, right_p, upper_p]):
                     im_size = im_size_new  # accept new image size
-                    self.after = new_image  # accept image
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size_new, im_size_new))  # accept image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
 
         # Don't accept if image is worse
@@ -166,7 +200,7 @@ class SetBoxes(Imaging):
         while (left_p < threshold_p and lower_p < threshold_p and right_p < threshold_p and upper_p < threshold_p) \
                 and im_size > self.before.shape[0] * 1 / 2 and n < 200:
             im_size -= int(self.after.shape[0] / 200)  # size reduced image
-            self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+            self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
             left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
             n += 1
 
@@ -177,27 +211,27 @@ class SetBoxes(Imaging):
                 peak_x < 0.25)) and n < 100:
             if np.sum(peak_y > 0.75) and not np.sum(peak_y < 0.25):
                 self.pix_y += int(self.after.shape[0] / 200)
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
             elif np.sum(peak_y < 0.25) and not np.sum(peak_y > 0.75):
                 self.pix_y -= int(self.after.shape[0] / 200)
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
             elif np.sum(peak_y > 0.75) and np.sum(peak_y < 0.25) and im_size * step_size < self.initial_box_size * 1.1:
                 im_size += int(self.after.shape[0]) / 200  # size increase
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
             if np.sum(peak_x > 0.75) and not np.sum(peak_x < 0.25):
                 self.pix_x += int(self.after.shape[0] / 200)
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
             elif np.sum(peak_x < 0.25) and not np.sum(peak_x > 0.75):
                 self.pix_x -= int(self.after.shape[0] / 200)
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 peak_y, peak_x = np.argwhere(self.after > 0.07).T / im_size
             elif np.sum(peak_x < 0.25) and np.sum(peak_x > 0.75) and im_size * step_size < self.initial_box_size * 1.1:
                 im_size += int(self.after.shape[0]) / 200  # size increase
-                self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                 peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
             n += 1
 
@@ -209,9 +243,9 @@ class SetBoxes(Imaging):
             t1 = 0
             if upper_p > threshold_p and int(im_size / 2) + self.pix_y < self.image_data.shape[0]:
                 self.pix_y += int(self.after.shape[0] / 300)  # size shifted above
-                new_image = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
+                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
                 if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
-                    self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 else:  # correct back
                     self.pix_y -= int(self.after.shape[0] / 300)
@@ -219,9 +253,9 @@ class SetBoxes(Imaging):
                 n += 1
             elif lower_p > threshold_p and self.pix_y - int(im_size / 2) > 0:
                 self.pix_y -= int(self.after.shape[0] / 300)  # size shifted down
-                new_image = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
+                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
                 if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
-                    self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 else:  # correct back
                     self.pix_y += int(self.after.shape[0] / 300)
@@ -229,9 +263,9 @@ class SetBoxes(Imaging):
                 n += 1
             if right_p > threshold_p and self.pix_x - int(im_size / 2) > 0:
                 self.pix_x += int(self.after.shape[0] / 300)  # size shifted to the right
-                new_image = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
+                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
                 if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
-                    self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 else:  # correct back
                     self.pix_x -= int(self.after.shape[0] / 300)
@@ -239,9 +273,9 @@ class SetBoxes(Imaging):
                 n += 1
             elif left_p > threshold_p and left_p > right_p and int(im_size / 2) + self.pix_x < self.image_data.shape[0]:
                 self.pix_x -= int(self.after.shape[0] / 300)  # size shifted to the left
-                new_image = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
+                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
                 if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
-                    self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 else:  # correct back
                     self.pix_x += int(self.after.shape[0] / 300)
@@ -251,9 +285,9 @@ class SetBoxes(Imaging):
         # STEP 5: Last resize step because we prefer smaller images (not smaller than half of the initial size)
         while (
                 left_p * 2 < threshold_p and lower_p * 2 < threshold_p and right_p * 2 < threshold_p and upper_p * 2 < threshold_p) \
-                and im_size > self.before.shape[0] * 1 / 2 and n < 200:
+                and im_size > self.before.shape[0] * 2 / 3 and n < 200:
             im_size -= int(self.after.shape[0] / 400)  # size reduced image
-            self.after = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+            self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
             left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
             n += 1
 
@@ -262,21 +296,19 @@ class SetBoxes(Imaging):
     def save_box(self, box_name: str = 'box.reg'):
         """
         save the box as an .reg file
-        image_data -> image data to be used
-        box
         """
         position_h = [v.replace('h', ':').replace('m', ':').replace('s', '').replace('d', ':') for v in
                       self.wcs.pixel_to_world(self.pix_x, self.pix_y).to_string('hmsdms').split()]
         arcsec_size = round(np.max(self.wcs.pixel_scale_matrix) * self.after.shape[0] * 3600, 3)
-        f = open(f"boxes/{box_name}", "a")
-        f.write(f'box({position_h[0]},{position_h[1]},{str(arcsec_size)}\",{str(arcsec_size)}\")')
+        f = open(f"{folder}/boxes/{box_name}", "a")
+        f.write(f'box({position_h[0]},{position_h[1]},{str(arcsec_size)}\",{str(arcsec_size)}\",0)')
         f.close()
 
         return self
 
     def source_to_csv(self):
         """Write source to a csv file"""
-        with open('source_file.csv', 'a+') as source_file:
+        with open(f'{folder}/source_file.csv', 'a+') as source_file:
             source_file.write(f'{self.image_number},{self.pix_x},{self.pix_y},{self.flux},{self.after.shape}\n')
         return self
 
@@ -306,6 +338,14 @@ class SetBoxes(Imaging):
         other_sources_in_image = list(
             self.df_peaks[(self.df_peaks.same_image == 2) & (self.df_peaks.index != self.image_number)].index)
 
+        #TODO: add split boxes if too many high fluxes together
+
+        # print(other_sources_in_image)
+        # sources_in_images = self.df_peaks[self.df_peaks.index.isin(other_sources_in_image)].reset_index(keep=False)
+        # source_positions = sources_in_images[['pix_y', 'pix_x']].to_numpy()
+        # for pos in source_positions:
+        #     print([p>100 for p in self.ed_array(pos, source_positions)])
+
         return other_sources_in_image
 
     @staticmethod
@@ -321,7 +361,7 @@ class SetBoxes(Imaging):
         im_size = int(self.initial_box_size / np.max(self.wcs.pixel_scale_matrix))
 
         self.initial_pos = (self.pix_x, self.pix_y)
-        self.before = self.make_cutout(pos=self.initial_pos,
+        self.before, self.wcs_cut = self.make_cutout(pos=self.initial_pos,
                                        size=(im_size,
                                              im_size))  # image data after repositioning
 
@@ -349,25 +389,25 @@ class SetBoxes(Imaging):
 
 
 if __name__ == '__main__':
-    from tqdm import tqdm
 
-    # image = imageReposition(args.file)
-    image = SetBoxes(fits_file='image_full_ampphase_di_m.NS.app.restored.fits', initial_box_size=0.4)
+    image = SetBoxes(fits_file=args.file, initial_box_size=0.4)
 
-    os.system('rm -rf box_images; mkdir box_images')  # make folder with box images
-    os.system('rm -rf boxes; mkdir boxes')  # make folder with the .reg files
+    if args.images:
+        os.system(f'rm -rf {folder}/box_images; mkdir {folder}/box_images')  # make folder with box images
+    os.system(f'rm -rf {folder}/boxes; mkdir {folder}/boxes')  # make folder with the .reg files
 
-    with open('source_file.csv', 'w') as source_file:
+    with open(f'{folder}/source_file.csv', 'w') as source_file:
         source_file.write('id,pix_x,pix_y,flux,size\n')
 
-    sources_in_other_images = []
-    print(f'We found {len(image.df_peaks)} interesting sources.\n')
+    sources_done = []
+    print(f'We found {len(image.df_peaks)} interesting directions.\n')
 
-    m=0
-    for n, p in tqdm(enumerate(image.df_peaks.to_dict(orient="records"))):
+    m, r = 0, 0
+    for n, p in enumerate(image.df_peaks.to_dict(orient="records")):
 
         # skip sources that are already displayed in other boxes
-        if n in sources_in_other_images:
+        if n in sources_done:
+            print(f'Direction {n} already included in box.')
             continue
 
         # set values for source of interest
@@ -375,33 +415,51 @@ if __name__ == '__main__':
 
         # skip source if not interesting to calibrate
         if not image.interesting_source:
-            continue
+            r += 1
+            print(f'Direction {n} removed.')
+            if args.images:
+                fig = plt.figure(figsize=(10, 10))
+                plt.subplot(1, 1, 1, projection=image.wcs)
+                plt.title(f'REMOVED')
+                plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin / 10, vmin=image.vmin / 20, vmax=image.vmax),
+                           origin='lower',
+                           cmap='CMRmap')
+                fig.savefig(f'{folder}/box_images/removed_{r}.png')
+                continue
+        else:
+            print(f'Direction {n} in box {m+1}.')
 
         # reposition box
         image.reposition()
 
         # we now check if there are in our box sources from our list of peak sources, which we can skip later on
         other_sources = image.other_sources_in_image
-        if len(
-                other_sources) == 0 and image.flux < 0.07:  # if flux <0.07 it needs to have other sources in the image, otherwise skip
+        if len(other_sources) == 0 and image.flux < 0.07:  # if flux <0.07 it needs to have other sources in the image, otherwise skip
             continue
         else:
-            sources_in_other_images += other_sources
+            sources_done += other_sources
 
         image.source_to_csv()
 
         # make image with before and after repositioning of our box
-        fig, axs = plt.subplots(1, 2, figsize=(10, 10))
-        axs[0].imshow(image.before, norm=SymLogNorm(linthresh=1e-6, vmin=7e-5, vmax=6.520e-03), origin='lower',
-                      cmap='CMRmap')
-        axs[1].imshow(image.after, norm=SymLogNorm(linthresh=1e-6, vmin=7e-5, vmax=6.520e-03), origin='lower',
-                      cmap='CMRmap')
-        axs[0].axis('off')
-        axs[1].axis('off')
-        axs[0].set_title(f'Initial image')
-        axs[1].set_title('Repositioned')
+        m += 1
 
-        m+=1
-        fig.savefig(f'box_images/box_{m}')
+        if args.images:
+            fig = plt.figure(figsize=(10, 10))
+            plt.subplot(1, 2, 1, projection = image.wcs_cut)
+            plt.title(f'Initial image')
+            plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/10, vmax=image.vmax/2), origin='lower',
+                          cmap='CMRmap')
+            plt.subplot(1, 2, 2, projection = image.wcs_cut)
+            plt.title('Repositioned')
+            plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
+                          cmap='CMRmap')
+            fig.savefig(f'{folder}/box_images/box_{m}.png')
+
         image.save_box(box_name=f'box_{m}.reg')
+
+    print('-------------------------------------------------')
     print(f'Made succesfully {m} boxes.')
+    if args.images:
+        print(f'See {folder}/box_images for the images of the directions.')
+    print(f'See {folder}/boxes for the region files of the boxes that are made.')
