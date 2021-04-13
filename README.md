@@ -37,14 +37,18 @@ With ```h5_merger.py``` it is possible to merge h5 solutions, which are a result
 
 #### Usage
 
-Just import the most important function with:
+There are two ways to use this script. To use it within your script, you can
+just import the most important function with:
 ```from h5_merger import merge_h5```
 
-The function has the following parameters:
+And use the following parameters:
 * ```h5_out``` --> output file name
 * ```h5_files``` --> h5 files to merge in list form or string (with/without wildcard)
 * ```ms_files``` --> ms files to use in list form or string (with/without wildcard)
 * ```convert_tec``` --> convert tec to phase (boolean)
+
+Or you can run the script on the command line with
+```python h5_merger.py -out <output_name> -in <input_files> -ms <ms_files> -ct <convert_tec>```
 
 #### Contact
 Let me know if you are using this script and have any issues or suggestions for improvements.
