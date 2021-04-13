@@ -678,4 +678,11 @@ def merge_h5(h5_out=None, h5_files=None, ms_files=None, convert_tec=True):
     print('END: h5 solution file(s) merged')
 
 if __name__ == '__main__':
-    print("Don't call this script directly")
+    from argparse import ArgumentParser
+    parser = ArgumentParser()
+    parser.add_argument('-out', '--h5_out', type=str, help='h5 file name for output')
+    parser.add_argument('-in', '--h5_files', type=str, help='h5 files to merge')
+    parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
+    parser.add_argument('-ct', '--convert_tec', type=bool, default=True, help='convert tec to phase')
+    args = parser.parse_args()
+    merge_h5(h5_out=args.h5_out, h5_files=args.h5_files, ms_files=args.ms_files, convert_tec=args.convert_tec)
