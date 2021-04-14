@@ -8,7 +8,8 @@ SOURCE=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts
 
-SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
+#SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
+SING_IMAGE=/project/lofarvwf/Software/lofar_sksp_fedora27_ddf_slurmfix.sif
 SING_BIND=/project/lofarvwf/Share/jdejong
 
 #start box number
