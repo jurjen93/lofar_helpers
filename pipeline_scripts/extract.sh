@@ -29,7 +29,7 @@ cp ~/scripts/lofar_helpers/h5_merger.py ~/scripts
 
 #CREATE BOXES
 echo "Create boxes..."
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python3 ${SCRIPT_FOLDER}/lofar_helpers/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO} -i false
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python3 ${SCRIPT_FOLDER}/lofar_helpers/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO}
 echo "Succesfully created boxes..."
 
 END_N=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
