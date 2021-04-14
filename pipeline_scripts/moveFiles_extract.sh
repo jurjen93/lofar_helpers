@@ -1,5 +1,6 @@
 #!/bin/bash
 
+#THIS SCRIPT IS WRITTEN FOR STRW SERVERS
 echo "---START----" 
 
 FROM=$1 #/disks/paradata/shimwell/LoTSS-DR2/archive_other/L626678
