@@ -47,7 +47,7 @@ class MergeH5:
         elif type(ms_files) == str:
             ms = glob(ms_files)
         else:
-            ms = glob('*dysco.sub.shift.avg.weights.ms.archive0.goodtimes')
+            ms = []
 
         if type(h5_files) == list:
             self.h5_files = h5_files
