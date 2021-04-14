@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH -c 10
 
-echo "----------START----------" 
+#THIS SCRIPT IS WRITTEN FOR SLURM ON SURFSARA
+echo "----------START----------"
 
 SOURCE=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
@@ -16,10 +17,9 @@ START_N=1
 #SELFCAL
 mkdir ${TO}/selfcal
 
-echo "There are ${END_N} boxes"
 END_N=$(ls -dq ${TO}/extract/*.dysco.sub.shift.avg.weights.ms.archive* | wc -l)
-END_N=1
 echo "There are ${END_N} boxes ready for selfcal"
+END_N=1
 
 echo "-----STARTED SELFCAL-----"
 cd ${TO}/selfcal/

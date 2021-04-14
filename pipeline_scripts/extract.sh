@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH -c 32
 
-echo "----------START----------" 
+#THIS SCRIPT IS WRITTEN FOR SLURM ON SURFSARA
+echo "----------START----------"
 
 SOURCE=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
@@ -32,6 +33,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} python3 ${SCRIPT_FOLDER}/lofar_he
 echo "Succesfully created boxes..."
 
 END_N=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
+echo "There are ${END_N} boxes"
 END_N=1
 
 #EXTRACT
