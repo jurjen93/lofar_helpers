@@ -16,15 +16,6 @@ START_N=1
 #REORGANIZE FILES
 cp ~/scripts/lofar_helpers/h5_merger.py ~/scripts
 
-#MAKE DIRECTORIES
-if test -f "${TO}"; then
-  echo "${TO} exists"
-else
-  mkdir ${TO}
-  echo "Created ${TO}"
-mkdir ${TO}/extract
-echo "Created ${TO}/extract"
-
 #MOVE NEEDED FILES
 echo "Moving files to ${FOLDER}/extract and untar..."
 cp -r /project/lofarvwf/Share/jdejong/data/${SOURCE}/data_archive.tar.gz ${TO}/extract
@@ -38,7 +29,7 @@ echo"Untarred succesfuly..."
 
 #CREATE BOXES
 echo "Create boxes..."
-python3 ${SCRIPT_FOLDER}/lofar_helpers/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO} -i false
+sinularity exec -B ${SING_BIND} ${SING_IMAGE} python3 ${SCRIPT_FOLDER}/lofar_helpers/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO} -i false
 echo "Succesfully created boxes..."
 
 END_N=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
