@@ -29,7 +29,7 @@ echo"Untarred succesfuly..."
 
 #CREATE BOXES
 echo "Create boxes..."
-sinularity exec -B ${SING_BIND} ${SING_IMAGE} python3 ${SCRIPT_FOLDER}/lofar_helpers/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO} -i false
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python3 ${SCRIPT_FOLDER}/lofar_helpers/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO} -i false
 echo "Succesfully created boxes..."
 
 END_N=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
@@ -38,7 +38,7 @@ END_N=1
 #EXTRACT
 echo "-----STARTED EXTRACT-----"
 for ((i=${START_N};i<=${END_N};i++)); do 
-sinularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${i}.reg --overwriteoutput -p box_${i} 
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${i}.reg --overwriteoutput -p box_${i} 
 echo "Extracted box_${i}"
 done
 echo "-----FINISHED EXTRACT-----"
