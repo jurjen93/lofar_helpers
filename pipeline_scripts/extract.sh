@@ -17,15 +17,14 @@ START_N=1
 cp ~/scripts/lofar_helpers/h5_merger.py ~/scripts
 
 #MOVE NEEDED FILES
-echo "Moving files to ${FOLDER}/extract and untar..."
-cp -r /project/lofarvwf/Share/jdejong/data/${SOURCE}/data_archive.tar.gz ${TO}/extract
-rm -r /project/lofarvwf/Share/jdejong/data/${SOURCE}/data_archive.tar.gz
+#echo "Moving files to ${TO}/extract and untar..."
+#cp -r /project/lofarvwf/Share/jdejong/data/${SOURCE}/data_archive.tar.gz ${TO}/extract
+#rm -r /project/lofarvwf/Share/jdejong/data/${SOURCE}/data_archive.tar.gz
+#echo "Succesfully finished moving files..."
 
-echo "Succesfully finished moving files..."
-
-cd ${TO}/extract
-tar -zxvf data_archive.tar.gz
-echo"Untarred succesfuly..."
+#cd ${TO}/extract
+#tar -zxvf data_archive.tar.gz
+#echo"Untarred succesfuly..."
 
 #CREATE BOXES
 echo "Create boxes..."
@@ -37,6 +36,7 @@ END_N=1
 
 #EXTRACT
 echo "-----STARTED EXTRACT-----"
+cd ${TO}/extract
 for ((i=${START_N};i<=${END_N};i++)); do 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${i}.reg --overwriteoutput -p box_${i} 
 echo "Extracted box_${i}"
