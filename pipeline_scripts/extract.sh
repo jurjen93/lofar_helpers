@@ -8,8 +8,8 @@ SOURCE=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts
 
-#SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
-SING_IMAGE=/project/lofarvwf/Software/lofar_sksp_fedora27_ddf_slurmfix.sif
+SING_IMAGE_1=/home/lofarvwf-jdejong/singularities/pill-latest.simg
+SING_IMAGE_2=/project/lofarvwf/Software/lofar_sksp_fedora27_ddf_slurmfix.sif
 SING_BIND=/project/lofarvwf/Share/jdejong
 
 #start box number
@@ -30,7 +30,7 @@ cp ~/scripts/lofar_helpers/h5_merger.py ~/scripts
 
 #CREATE BOXES
 echo "Create boxes..."
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python3 ${SCRIPT_FOLDER}/lofar_helpers/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO}
+singularity exec -B ${SING_BIND} ${SING_IMAGE_1} python3 ${SCRIPT_FOLDER}/lofar_helpers/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO}
 echo "Succesfully created boxes..."
 
 END_N=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
@@ -41,7 +41,7 @@ END_N=1
 echo "-----STARTED EXTRACT-----"
 cd ${TO}/extract
 for ((i=${START_N};i<=${END_N};i++)); do 
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${i}.reg --overwriteoutput -p box_${i} 
+singularity exec -B ${SING_BIND} ${SING_IMAGE_2} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${i}.reg --overwriteoutput -p box_${i}
 echo "Extracted box_${i}"
 done
 echo "-----FINISHED EXTRACT-----"
