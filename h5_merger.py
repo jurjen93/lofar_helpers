@@ -57,7 +57,6 @@ class MergeH5:
             max_num_h5 = sorted(glob('*ms.archive0*.avgsolsgrid*.h5'))[-1].split('.')[-2].split('_')[-1]
             self.h5_files = glob('*ms.archive0*.avgsolsgrid_%s.h5' % max_num_h5)
         if len(ms)>0:# check if there is a valid ms file
-            print('No MS file given, will use h5 file for frequency and time axis')
             t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + ms[0] + '::SPECTRAL_WINDOW')
             self.ax_freq = t.getcol('CHAN_FREQ')[0]
             t.close()
@@ -66,6 +65,7 @@ class MergeH5:
             self.ax_time = sorted(np.unique(t.getcol('TIME')))
             t.close()
         else:# if we dont have ms files, we use the time and frequency axis of the longest h5 file
+            print('No MS file given, will use h5 file for frequency and time axis')
             self.ax_time = []
             self.ax_freq = []
             for h5_name in self.h5_files:
@@ -174,7 +174,6 @@ class MergeH5:
         :param soltab: solution table name
         :param st: solution table itself
         """
-
         if 'pol' in st.getAxesNames():
             self.polarizations = st.getAxisValues('pol')
         else:
@@ -405,7 +404,7 @@ class MergeH5:
                         self.phases[idx, :, :] += tp
 
             elif st.getType() == 'phase' or st.getType() == 'rotation':
-                if 'pol' in self.axes_current:
+                if 'pol' in self.axes_current and 'pol' in st.getAxesNames():
                     if st.getAxisLen('pol') == 4:
                         print("Add fulljones type with 4 polarizations")
                         print("WARNING: this part hasn't been tested yet. Please check if this is correct")
@@ -426,10 +425,8 @@ class MergeH5:
                         phasetmp[0, ...] = values[0, ...]
                         phasetmp[-1, ...] = values[1, ...]
                         values = phasetmp
-                elif self.phases.shape[0] == 4 and len(self.phases.shape) == 5:
-                    print("Add to fulljones type with 4 polarizations")
-                    print("WARNING: this part hasn't been tested yet. Please check if this is correct")
-                    phasetmp = np.zeros((4,) + values.shape)
+                elif 'pol' in self.axes_current and 'pol' not in st.getAxesNames() and len(self.phases.shape)==5:
+                    phasetmp = np.zeros((self.phases.shape[0],) + values.shape)
                     phasetmp[0, ...] = values
                     phasetmp[-1, ...] = values
                     values = phasetmp
@@ -478,8 +475,7 @@ class MergeH5:
                     self.phases[-1, idx,...] += tp
 
             elif st.getType() == 'amplitude':
-
-                if 'pol' in self.axes_current:
+                if 'pol' in self.axes_current and 'pol' in st.getAxesNames():
                     if st.getAxisLen('pol') == 4:
                         print("Add fulljones type with 4 polarizations")
                         print("WARNING: this part hasn't been tested yet. Please check if this is correct")
@@ -500,13 +496,11 @@ class MergeH5:
                         gaintmp[0, ...] = values[0, ...]
                         gaintmp[-1, ...] = values[1, ...]
                         values = gaintmp
-                elif self.gains.shape[0] == 4 and len(self.gains.shape) == 5:
-                    print("Add to fulljones type with 4 polarizations")
-                    print("WARNING: this part hasn't been tested yet. Please check if this is correct")
-                    gaintmp = np.zeros((4,) + values.shape)
-                    gaintmp[0, ...] = values
-                    gaintmp[-1, ...] = values
-                    values = gaintmp
+                elif 'pol' in self.axes_current and 'pol' not in st.getAxesNames() and len(self.gains.shape)==5:
+                    phasetmp = np.zeros((self.gains.shape[0],) + values.shape)
+                    phasetmp[0, ...] = values
+                    phasetmp[-1, ...] = values
+                    values = phasetmp
 
                 idxnan = np.where((~np.isfinite(values)))
                 values[idxnan] = 1.0
@@ -592,7 +586,7 @@ class MergeH5:
         solsetout.obj.source.append(sources)
 
         axes_vals = {'dir': list(self.directions.keys()), 'ant': self.antennas,
-		     'freq': self.ax_freq, 'time': self.ax_time}
+                     'freq': self.ax_freq, 'time': self.ax_time}
 
         DPPP_axes = self.DPPP_style(soltab)#reorder the axis to DPPP style
 
