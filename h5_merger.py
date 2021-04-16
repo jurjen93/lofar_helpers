@@ -174,6 +174,7 @@ class MergeH5:
         :param soltab: solution table name
         :param st: solution table itself
         """
+
         if 'pol' in st.getAxesNames():
             self.polarizations = st.getAxisValues('pol')
         else:
@@ -288,16 +289,20 @@ class MergeH5:
 
             st = ss.getSoltab(soltab)
 
+            #current axes for reordering of axes
             self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
 
             #get values, time, and freq axis
             values, time_axes, freq_axes = self.get_values(ss, st, solset, soltab)
-
-            if len(self.axes_current)==4 and len(self.phases.shape)==5:
+            
+            #update current and new axes if missing pol axes
+            if len(self.axes_current)==4 and ((len(self.phases.shape)==5 
+               and (st.getType() in ['phase', 'rotation'] or (st.getType()=='tec' and self.convert_tec)))
+               or st.getType()=='amplitude' and len(self.gains.shape)==5):
                self.axes_current = ['pol'] + self.axes_current
                if len(self.axes_new)==4:
                   self.axes_new = ['pol'] + self.axes_new
-
+                  
             #get source coordinates
             d = ss.getSou()
             source_coords = d[list(d.keys())[0]]
@@ -525,7 +530,7 @@ class MergeH5:
                     self.gains[:, idx, ...] *= tp[:, 0, ...]
                 elif len(self.gains.shape)==4 and len(tp.shape)==4:
                     self.gains[idx, ...] *= tp[0, ...]
-                    gaintmp = np.zeros((2,) + self.gains.shape[1:])
+                    gaintmp = np.zeros((2,) + self.gains.shape)
                     gaintmp[0,...]=self.gains
                     gaintmp[-1,...]=self.gains
                     self.gains = gaintmp
@@ -535,7 +540,7 @@ class MergeH5:
                     self.gains[0, idx, ...] *= tp[0,...]
                     self.gains[-1, idx, ...] *= tp[0,...]
                 elif len(self.gains.shape)==4 and len(tp.shape)==5:
-                    gaintmp = np.zeros((2,) + self.gains.shape[1:])
+                    gaintmp = np.zeros((2,) + self.gains.shape)
                     gaintmp[0,...] = self.gains
                     gaintmp[-1,...] = self.gains
                     self.gains = gaintmp
