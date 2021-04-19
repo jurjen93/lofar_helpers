@@ -13,7 +13,6 @@ SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
 
 #SELFCAL
-mkdir ${TO}/selfcal
 
 echo "There are ${END_N} boxes ready for selfcal"
 
