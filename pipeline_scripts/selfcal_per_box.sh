@@ -14,8 +14,6 @@ SING_BIND=/project/lofarvwf/Share/jdejong
 
 #SELFCAL
 
-echo "There are ${END_N} boxes ready for selfcal"
-
 echo "-----STARTED SELFCAL-----"
 cd ${TO}/selfcal/
 mkdir ${TO}/selfcal/box_${i}
