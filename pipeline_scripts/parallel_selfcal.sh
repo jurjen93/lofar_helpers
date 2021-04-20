@@ -11,6 +11,6 @@ END_N=$(ls -dq ${TO}/extract/*.dysco.sub.shift.avg.weights.ms.archive* | wc -l)
 
 #PARAMETER SWEEP
 for i in 5 6 7; do
-  sh SCRIPT_FOLDER/selfcal_per_box.sh ${SOURCE} ${i} &
+  sh ${SCRIPT_FOLDER}/selfcal_per_box.sh ${SOURCE} ${i} &
 done
 wait
