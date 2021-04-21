@@ -13,6 +13,8 @@ END_N=$(ls -dq ${TO}/extract/*.dysco.sub.shift.avg.weights.ms.archive* | wc -l)
 START_N=2
 END_N=5
 
+#TODO: FIX PARALLEL. How to do best?
+
 #PARAMETER SWEEP
 for ((i=${START_N};i<=${END_N};i++)); do
   srun sh ${SCRIPT_FOLDER}/selfcal_per_box.sh ${SOURCE} ${i} &

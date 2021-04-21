@@ -1,0 +1,13 @@
+How to run the pipeline:
+
+CURRENTLY:
+- Run strw/extract_serie.sh                     -> copies necessary files, makes boxes, extracts in series
+- Run strw/move_result_extract_strw-surf.sh     -> moves .reg files and .ms.archive0 files to surf
+- Run surf/selfcal_parallal.sh                  -> runs selfcals in parallel mode
+- Run surf/merge_all_solutions.sh               -> merges all solutions
+- Run surf/move_result_selfcal_surf-strw.sh     -> moves end solution file back to strw
+
+FUTURE:
+- Automate full process
+- Run extract also parallel
+- Fix password problem
