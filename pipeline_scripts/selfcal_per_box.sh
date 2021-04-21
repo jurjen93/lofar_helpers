@@ -1,4 +1,5 @@
 #!/bin/bash
+#SBATCH -c 30
 
 #THIS SCRIPT IS WRITTEN FOR SLURM ON SURFSARA
 echo "----------START----------"
