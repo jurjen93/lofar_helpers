@@ -15,6 +15,6 @@ END_N=5
 
 #PARAMETER SWEEP
 for ((i=${START_N};i<=${END_N};i++)); do
-  srun -c 30 sh ${SCRIPT_FOLDER}/selfcal_per_box.sh ${SOURCE} ${i} &
+  srun sh ${SCRIPT_FOLDER}/selfcal_per_box.sh ${SOURCE} ${i} &
 done
 wait
