@@ -12,8 +12,6 @@ N=$2 #box number
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
 
-#SELFCAL
-
 echo "-----STARTED SELFCAL-----"
 echo "Started selfcal for box_${N}"
 cd ${TO}/selfcal/
