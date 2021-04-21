@@ -1,5 +1,4 @@
 #!/bin/bash
-#SBATCH -c 30
 
 SOURCE=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
