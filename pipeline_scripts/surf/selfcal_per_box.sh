@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -c 10
+#SBATCH -c 30
 
 #THIS SCRIPT IS WRITTEN FOR SLURM ON SURFSARA
 echo "----------START----------"
@@ -11,8 +11,6 @@ N=$2 #box number
 
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
-
-#SELFCAL
 
 echo "-----STARTED SELFCAL-----"
 echo "Started selfcal for box_${N}"

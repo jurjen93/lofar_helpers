@@ -1,6 +1,7 @@
 #!/bin/bash
 
 #THIS SCRIPT IS WRITTEN FOR STRW SERVERS
+#With this script you can transfer the files to extract from strw to surf
 echo "---START----" 
 
 FROM=$1 #/disks/paradata/shimwell/LoTSS-DR2/archive_other/L626678
