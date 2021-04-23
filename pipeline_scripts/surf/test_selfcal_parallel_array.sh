@@ -12,6 +12,7 @@ TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
 
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers/pipeline_scripts/surf
 
-echo "Task number ${SLURM_ARRAY_TAKS_ID}"
+echo "Task number ${SLURM_ARRAY_TASK_ID}"
+echo $SLURM_ARRAY_TASK_ID
 sleep 60
 srun /home/lofarvwf-jdejong/scripts/monitor.sh
