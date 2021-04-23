@@ -12,5 +12,5 @@ TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
 
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers/pipeline_scripts/surf
 
-srun ${SCRIPT_FOLDER}/selfcal_per_box.sh ${SOURCE} ${SLURM_ARRAY_TAKS_ID}
+srun ${SCRIPT_FOLDER}/selfcal_per_box.sh ${SOURCE} ${SLURM_ARRAY_TASK_ID}
 sleep 1
