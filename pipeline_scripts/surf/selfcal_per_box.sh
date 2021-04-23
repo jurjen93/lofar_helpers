@@ -11,7 +11,8 @@ TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts
 N=$2 #box number
 
-SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
+#SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
+SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
 SING_BIND=/project/lofarvwf/Share/jdejong
 
 echo "-----STARTED SELFCAL-----"
@@ -25,7 +26,8 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/runwsclea
 echo "Finished selfcal for box_${N}"
 echo "-----FINISHED SELFCAL-----"
 
-#merge selfcals
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/lofar_helpers/merge_selfcals.py -d ${TO}/selfcal
+#merge selfcals --> DONE IN SEPARATE SCRIPT NOW
+#SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/lofar_helpers/merge_selfcals.py -d ${TO}/selfcal
 
 echo "----------END----------"
