@@ -13,8 +13,6 @@ SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers/pipeline_scripts/surf
 START_N=2
 END_N=4
 
-#TODO: FIX PARALLEL. How to do best?
-
 #PARAMETER SWEEP
 for ((i=${START_N};i<=${END_N};i++)); do
     sbatch ${SCRIPT_FOLDER}/selfcal_per_box.sh ${SOURCE} ${i}
