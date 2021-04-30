@@ -13,7 +13,7 @@ N=$2 #box number
 
 #SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
-SING_BIND=/project/lofarvwf/Share/jdejong
+SING_BIND=/project/lofarvwf/Share/jdejong/${SOURCE},/home/lofarvwf-jdejong/scripts
 
 echo "-----STARTED SELFCAL-----"
 echo "Started selfcal for box_${N}"
