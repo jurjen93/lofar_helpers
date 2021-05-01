@@ -13,7 +13,7 @@ N=$2 #box number
 
 #SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
-SING_BIND=/project/lofarvwf/Share/jdejong/${SOURCE},/home/lofarvwf-jdejong/scripts
+SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 
 echo "-----STARTED SELFCAL-----"
 echo "Started selfcal for box_${N}"
@@ -22,7 +22,7 @@ mkdir ${TO}/selfcal/box_${N}
 cp -r ${TO}/extract/*box_${N}.dysco.sub.shift.avg.weights.ms.archive0 ${TO}/selfcal/
 singularity exec -B ${SING_BIND} ${SING_IMAGE} DPPP msin=${TO}/selfcal/Abell399-401_box_${N}.dysco.sub.shift.avg.weights.ms.archive0 msout.storagemanager=dysco msout=${TO}/selfcal/box_${N}/box_${N}.dysco.sub.shift.avg.weights.ms.archive0.goodtimes msin.ntimes=1500 steps=[]
 cd ${TO}/selfcal/box_${N}
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/runwscleanLBautoR.py -b ${TO}/boxes/box_${N}.reg --auto --imager=DDFACET box_${N}.dysco.sub.shift.avg.weights.ms.archive0.goodtimes
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/runwscleanLBautoR.py -b ${TO}/boxes/box_${N}.reg --auto --imager=DDFACET --avgfreqstep=2 --avgtimestep=2 box_${N}.dysco.sub.shift.avg.weights.ms.archive0.goodtimes
 echo "Finished selfcal for box_${N}"
 echo "-----FINISHED SELFCAL-----"
 
