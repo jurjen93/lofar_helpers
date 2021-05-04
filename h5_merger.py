@@ -44,6 +44,7 @@ class MergeH5:
 
         if type(ms_files) == list:
             ms = ms_files
+            print("WARNING: MS list given, while only one MS used.")
         elif type(ms_files) == str:
             ms = glob(ms_files)
         else:
@@ -587,7 +588,9 @@ class MergeH5:
             solsetout = self.h5_out.getSolset(solset)
         else:
             solsetout = self.h5_out.makeSolset(solset)
+
         sources = list({i: (np.round(j[0],4), np.round(j[1],4)) for i,j in self.directions.items()}.items())
+        #validate if new source directions are not already existing
         current_sources = [source[0] for source in solsetout.obj.source[:]]
         new_sources = [source for source in sources if source[0] not in current_sources]
         if len(new_sources)>0:
