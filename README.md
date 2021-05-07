@@ -48,7 +48,7 @@ And use the following parameters:
 * ```convert_tec``` --> convert tec to phase (boolean)
 
 Or you can run the script on the command line with
-```python h5_merger.py <FLAGS>```\
+```python h5_merger.py <FLAGS>```
 * ```-out``` --> output file name
 * ```-in``` --> h5 files to merge in list form or string (with/without wildcard)
 * ```-ms``` --> ms files to use in list form or string (with/without wildcard)
