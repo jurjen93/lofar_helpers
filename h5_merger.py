@@ -1,4 +1,6 @@
 """
+LAST UPDATE: 7-5-2021
+
 After one has created solution files from self calling on the extracted boxes,
 one can use this script to merge solution files
 Do this by importing the function merge_h5 from this script:
