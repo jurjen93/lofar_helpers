@@ -591,7 +591,7 @@ class MergeH5:
 
         sources = list({i: (np.round(j[0],4), np.round(j[1],4)) for i,j in self.directions.items()}.items())
         #validate if new source directions are not already existing
-        current_sources = [source[0] for source in solsetout.obj.source[:]]
+        current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
         new_sources = [source for source in sources if source[0] not in current_sources]
         if len(new_sources)>0:
             solsetout.obj.source.append(new_sources)
@@ -663,13 +663,13 @@ def merge_h5(h5_out=None, h5_files=None, ms_files=None, convert_tec=True):
                     merge.create_new_dataset(ss, 'phase')
                 else:
                     merge.create_new_dataset(ss, st)
-        try:#add amplitude and phase if not available in h5 file
-            if 'amplitude000' not in [item for sublist in merge.all_soltabs for item in sublist]:
-                merge.gains = np.ones((2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
-                merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
-                merge.polarizations = ['XX', 'YY']
-                merge.gains = reorderAxes(merge.gains, merge.solaxnames, merge.axes_new)
-                merge.create_new_dataset(ss, 'amplitude')
+        #try:#add amplitude and phase if not available in h5 file
+        if 'amplitude000' not in [item for sublist in merge.all_soltabs for item in sublist]:
+            merge.gains = np.ones((2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
+            merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
+            merge.polarizations = ['XX', 'YY']
+            merge.gains = reorderAxes(merge.gains, merge.solaxnames, merge.axes_new)
+            merge.create_new_dataset(ss, 'amplitude')
             #if 'phase000' not in [item for sublist in merge.all_soltabs for item in sublist] and \
                #'tec000' not in [item for sublist in merge.all_soltabs for item in sublist]:
                 #merge.phases = np.zeros((2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
@@ -677,8 +677,8 @@ def merge_h5(h5_out=None, h5_files=None, ms_files=None, convert_tec=True):
                 #merge.polarizations = ['XX', 'YY']
                 #merge.phases = reorderAxes(merge.phases, merge.solaxnames, merge.axes_new)
                 #merge.create_new_dataset(ss, 'phase')
-        except:#add try to except to be sure that adding extra phase and amplitude is not going to break the code
-            pass
+        #except:#add try to except to be sure that adding extra phase and amplitude is not going to break the code
+            #pass
     print('END: h5 solution file(s) merged')
 
 if __name__ == '__main__':
