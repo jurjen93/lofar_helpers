@@ -18,6 +18,7 @@ if __name__ == '__main__':
 
     for box in boxes:
         images = glob('{box_path}/image_*.png'.format(box_path=box))
+        images.sort()
         first_image, last_image = images[0], images[-1]
         fig, axs = plt.subplots(1, 2, figsize=(18,6))
         im_0 = mpimg.imread(first_image)
