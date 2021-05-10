@@ -19,13 +19,13 @@ if __name__ == '__main__':
     for box in boxes:
         images = glob('{box_path}/image_*.png'.format(box_path=box))
         first_image, last_image = images[0], images[-1]
-        fig, axs = plt.subplots(1, 2)
+        fig, axs = plt.subplots(1, 2, figsize=(18,6))
         im_0 = mpimg.imread(first_image)
         axs[0].imshow(im_0)
-        axs[0].title.set_text(first_image)
+        axs[0].title.set_text(first_image.split('/')[-1])
         im_1 = mpimg.imread(last_image)
         axs[1].imshow(im_1)
-        axs[1].title.set_text(last_image)
+        axs[1].title.set_text(last_image.split('/')[-1])
         fig.suptitle(box.split('/')[-1])
         [axi.set_axis_off() for axi in axs.ravel()]
         plt.savefig('{path}/results/{box}.png'.format(path=path, box=box.split('/')[-1]))
