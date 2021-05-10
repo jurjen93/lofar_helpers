@@ -4,7 +4,6 @@ from argparse import ArgumentParser
 import os
 from glob import glob
 
-
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-p', '--path', type=str, help='h5 file name for output')
@@ -30,3 +29,4 @@ if __name__ == '__main__':
         fig.suptitle(box.split('/')[-1])
         [axi.set_axis_off() for axi in axs.ravel()]
         fig.savefig('{path}/results/{box}.png'.format(path=path, box=box.split('/')[-1]))
+        fig.close()
