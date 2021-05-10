@@ -28,5 +28,5 @@ if __name__ == '__main__':
         axs[1].title.set_text(last_image)
         fig.suptitle(box.split('/')[-1])
         [axi.set_axis_off() for axi in axs.ravel()]
-        fig.savefig('{path}/results/{box}.png'.format(path=path, box=box.split('/')[-1]))
-        fig.close()
+        plt.savefig('{path}/results/{box}.png'.format(path=path, box=box.split('/')[-1]))
+        plt.close()
