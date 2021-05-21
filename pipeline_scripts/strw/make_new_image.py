@@ -23,7 +23,6 @@ print('Made '+LOCATION)
 #MOVE FILES
 print('Moving files to '+LOCATION)
 # os.system('scp -r lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/L626678/selfcal/all_directions.h5 '+LOCATION)
-os.system('~/scripts/lofar_helpers/pipeline_scripts/strw/move_original_files.sh '+FROM+' '+LOCATION)
 os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+LOCATION)
 os.system('cp -r '+FROM+'/image_full_ampphase_di_m_masked.DicoModel '+LOCATION)
 os.system('cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+LOCATION)
