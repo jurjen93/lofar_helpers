@@ -13,17 +13,18 @@ if type(excluded_boxes)==str:
     excluded_boxes = excluded_boxes.split(',')
 
 excluded_boxes = ['box_'+n for n in excluded_boxes]
+print('Boxes to be excluded: '+' '.join(excluded_boxes))
 
-h5_files = []
-for box in glob('{directory}/box_*'.format(directory=args.directory)):
-    try:
-        last_merged = sorted(glob('{box}/merged_selfcalcyle*_*.ms.*h5'.format(box=box)))[-1]
-        if any(last_merged in box for box in excluded_boxes):
-            print('Exclude '+last_merged)
-        else:
-            h5_files.append(last_merged)
-    except:
-        print("No merged_selfcal* in {box}".format(box=box.split('/')[-1]))
-
-merge_h5(h5_out='all_directions.h5',
-         h5_files=h5_files)
+# h5_files = []
+# for box in glob('{directory}/box_*'.format(directory=args.directory)):
+#     try:
+#         last_merged = sorted(glob('{box}/merged_selfcalcyle*_*.ms.*h5'.format(box=box)))[-1]
+#         if any(last_merged in box for box in excluded_boxes):
+#             print('Exclude '+last_merged)
+#         else:
+#             h5_files.append(last_merged)
+#     except:
+#         print("No merged_selfcal* in {box}".format(box=box.split('/')[-1]))
+#
+# merge_h5(h5_out='all_directions.h5',
+#          h5_files=h5_files)
