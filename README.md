@@ -6,7 +6,8 @@ Clone this repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git
 
 ### Make boxes for LOFAR self-calibration
 
-With ```make_boxes.py``` it is possible to make boxes around sources that can be extracted and self-calibrated.
+With ```make_boxes.py``` it is possible to make boxes around sources that can be extracted and self-calibrated.\
+Note that this script only works with Python 3.
 
 #### Usage
 
@@ -33,7 +34,8 @@ The following steps are taken in the algorithm:
 
 ### Merge solutions
 
-With ```h5_merger.py``` it is possible to merge h5 solutions, which are a result from self-calibrating the different directions that are extracted with the boxes.
+With ```h5_merger.py``` it is possible to merge h5 solutions, which are a result from self-calibrating the different directions that are extracted with the boxes.\
+This script is compatible with both Python 2 and Python 3.
 
 #### Usage
 
