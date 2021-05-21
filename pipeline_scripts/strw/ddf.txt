@@ -20,8 +20,6 @@ DDF.py
 --Output-RestoringBeam=6.0
 --Output-Also=onNeds
 --Output-Images=DdPAMRIikz
---Output-alphathreshold=7
---Output-alphamaskthreshold=15
 --Output-StokesResidues=I
 --Image-NPix=20000
 --Image-Cell=1.5
