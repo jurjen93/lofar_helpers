@@ -45,5 +45,6 @@ with open('/home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/ddf.tx
 
 #RUN DDF COMMAND
 print('Running DDF COMMAND')
+os.system('cd '+LOCATION)
 os.system(' '.join([SINGULARITY] + lines))
 print('Finished making new image')

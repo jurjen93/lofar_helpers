@@ -75,7 +75,7 @@ DDF.py
 --Freq-DegridBandMHz=0.0
 --Freq-NBand=2
 --Freq-NDegridBand=1
---DDESolutions-DDSols=all_solutions.h5:sol000/amplitude000+phase000
+--DDESolutions-DDSols=all_directions.h5:sol000/amplitude000+phase000
 --DDESolutions-GlobalNorm=None
 --DDESolutions-JonesNormList=AP
 --DDESolutions-JonesMode=Full
