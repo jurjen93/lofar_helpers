@@ -168,6 +168,3 @@ DDF.py
 --Debug-MemoryGreedy=1
 --Debug-APPVerbose=0
 --Debug-Pdb=never
---Misc-RandomSeed=None
---Misc-ParsetVersion=0.2
---Misc-ConserveMemory=0
