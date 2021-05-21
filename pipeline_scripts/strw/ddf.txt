@@ -5,7 +5,7 @@ DDF.py
 --Data-Sort=1
 --Predict-MaskSquare=None
 --Predict-FromImage=None
---Predict-InitDicoModel=image_full_ampphase_di_m_masked.DicoModel
+--Predict-InitDicoModel=image_full_ampphase_di_m.NS.DicoModel
 --Predict-Overwrite=1
 --Selection-Field=0
 --Selection-DDID=0
