@@ -37,14 +37,17 @@ for MS in glob('*_uv.pre-cal_*.pre-cal.ms.archive'):
     os.system('mv '+MS+' '+LOCATION_BACKUP)
     print('Made '+MS+'.goodtimes')
 
+#MAKE LIST WITH MEASUREMENT SETS
 os.system('ls -1d *.goodtimes > big-mslist.txt')
 
 with open('ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
 
+#MAKE DDF COMMAND READY TO RUN
 RUN += lines
-
 DDF_COMMAND = ' '.join(RUN)
+
+#RUN DDF COMMAND
 print('Running '+DDF_COMMAND)
 os.system(DDF_COMMAND)
 print('Finished making new image')
