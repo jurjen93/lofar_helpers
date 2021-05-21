@@ -102,7 +102,7 @@ DDF.py
 --Deconv-NumRMSSamples=10000
 --Deconv-ApproximatePSF=0
 --Deconv-PSFBox=auto
---Mask-External=image_full_ampphase_di_m.mask01.fits
+--Mask-External=image_full_ampphase_di_m.NS.mask01.fits
 --Mask-Auto=1
 --Mask-SigTh=5.0
 --Mask-FluxImageType=ModelConv
