@@ -39,7 +39,7 @@ for MS in glob('*_uv.pre-cal_*.pre-cal.ms.archive'):
 #MAKE LIST WITH MEASUREMENT SETS
 os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
 
-with open('~/scripts/lofar_helpers/pipeline_scripts/strw/ddf.txt') as f:
+with open('/home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
 
 #MAKE DDF COMMAND READY TO RUN
