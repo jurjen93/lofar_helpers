@@ -29,11 +29,11 @@ print('Finished moving files')
 
 #CUT TIME FOR MESSY END PART (ONLY FOR THIS CASE APPLICABLE)
 print('Making goodtimes')
-# os.system('cd '+LOCATION)
-# for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
-#     os.system(SINGULARITY+' DPPP msin='+MS+' msout.storagemanager=dysco msout='+MS+'.goodtimes msin.ntimes=1500 steps=[]')
-#     os.system('mv '+MS+' '+LOCATION_BACKUP)
-#     print('Made '+MS+'.goodtimes')
+os.system('cd '+LOCATION)
+for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
+    os.system(SINGULARITY+' DPPP msin='+MS+' msout.storagemanager=dysco msout='+MS+'.goodtimes msin.ntimes=1500 steps=[]')
+    os.system('mv '+MS+' '+LOCATION_BACKUP)
+    print('Made '+MS+'.goodtimes')
 
 #MAKE LIST WITH MEASUREMENT SETS
 # os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
