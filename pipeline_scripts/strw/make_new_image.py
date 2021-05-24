@@ -19,26 +19,26 @@ os.system('{SINGULARITY} CleanSHM.py'.format(SINGULARITY=SINGULARITY))
 #MAKE RESULT FOLDER
 # os.system('mkdir '+LOCATION)
 # os.system('mkdir '+LOCATION_BACKUP)
-# print('Made '+LOCATION)
+print('Made '+LOCATION)
 
 #MOVE FILES
 print('Moving files to '+LOCATION)
 # os.system('scp -r lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/L626678/selfcal/all_directions.h5 '+LOCATION)
-# os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+LOCATION)
-# os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+LOCATION)
-# os.system('cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+LOCATION)
+os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+LOCATION)
+os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+LOCATION)
+os.system('cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+LOCATION)
 print('Finished moving files')
 
 #CUT TIME FOR MESSY END PART (ONLY FOR THIS CASE APPLICABLE)
 print('Making goodtimes')
 os.system('cd '+LOCATION)
-# for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
-#     os.system(SINGULARITY+' DPPP msin='+MS+' msout.storagemanager=dysco msout='+MS+'.goodtimes msin.ntimes=1500 steps=[]')
-#     os.system('mv '+MS+' '+LOCATION_BACKUP)
-#     print('Made '+MS+'.goodtimes')
+for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
+    os.system(SINGULARITY+' DPPP msin='+MS+' msout.storagemanager=dysco msout='+MS+'.goodtimes msin.ntimes=1500 steps=[]')
+    os.system('mv '+MS+' '+LOCATION_BACKUP)
+    print('Made '+MS+'.goodtimes')
 
 #MAKE LIST WITH MEASUREMENT SETS
-# os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
+os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
 
 with open('/home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
