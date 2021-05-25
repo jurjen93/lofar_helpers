@@ -26,5 +26,5 @@ for box in glob('{directory}/box_*'.format(directory=args.directory)):
     except:
         print("No merged_selfcal* in {box}".format(box=box.split('/')[-1]))
 
-# merge_h5(h5_out='all_directions.h5',
-#          h5_files=h5_files)
+merge_h5(h5_out='all_directions.h5',
+         h5_files=h5_files)
