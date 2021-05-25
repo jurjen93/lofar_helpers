@@ -22,7 +22,7 @@ DDF.py
 --Parallel-NCPU=50
 --Cache-Reset=1
 --Cache-Dirty=auto
---Cache-Dir=.
+--Cache-Dir=.d
 --Beam-Model=LOFAR
 --Beam-LOFARBeamMode=A
 --Beam-NBand=1
