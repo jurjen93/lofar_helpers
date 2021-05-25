@@ -47,3 +47,4 @@ DDF.py
 --GAClean-MinSizeInit=10
 --Output-Cubes=all
 --Selection-UVRange=[0.1,2000.]
+--ResetWisdom=True
