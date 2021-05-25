@@ -43,7 +43,7 @@ with open('/home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/ddf.tx
     lines = [l.replace('\n','') for l in f.readlines()]
 
 #RUN DDF COMMAND
-print('Running DDF COMMAND')
-os.system('cd '+LOCATION)
-os.system(' '.join([SINGULARITY] + lines))
-print('Finished making new image')
+# print('Running DDF COMMAND')
+# os.system('cd '+LOCATION)
+# os.system(' '.join([SINGULARITY] + lines))
+# print('Finished making new image')
