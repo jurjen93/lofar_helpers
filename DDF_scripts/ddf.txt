@@ -13,7 +13,7 @@ DDF.py
 --Facets-NFacets=15
 --Facets-DiamMax=1.5
 --Facets-DiamMin=0.1
---Weight-ColName=WEIGHT_SPECTRUM
+--Weight-ColName=IMAGING_WEIGHT
 --Weight-Robust=-0.5
 --RIME-ForwardMode=BDA-degrid
 --CF-Nw=100
