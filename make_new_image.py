@@ -1,11 +1,12 @@
 import os
 from argparse import ArgumentParser
 from glob import glob
-# import pyrap.tables as pt
+
 
 parser = ArgumentParser()
 parser.add_argument('-from', '--from_where', type=str, help='data from where')
 parser.add_argument('-to', '--to_where', type=str, help='to where')
+parser.add_argument('-tf', '--time_flag', type=list, help='flag time for corrupt time in list form: [start_time, end_time]')
 args = parser.parse_args()
 
 LOCATION=args.to_where+'/result'#/net/tussenrijn/data2/jurjendejong/L626678
@@ -31,17 +32,20 @@ os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+LOCATION)
 print('Finished moving files')
 
 #CUT TIME FOR MESSY END PART (ONLY FOR THIS CASE APPLICABLE)
-print('Making goodtimes')
-# for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
-#     os.system(SINGULARITY+' DPPP msin={MS} msout.storagemanager=dysco msout={MS}.goodtimes msin.ntimes=1500 steps=[]'.format(LOCATION=LOCATION, MS=MS))
-#     os.system('mv {MS} {LOCATION_BACKUP}'.format(LOCATION=LOCATION, MS=MS, LOCATION_BACKUP=LOCATION_BACKUP))
-#     print('Made '+MS+'.goodtimes')
+if args.time_flag:
+    print('Making goodtimes')
+    for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
+        import pyrap.tables as pt
+        pt.taql('SELECT FROM {MS} WHERE TIME IN (SELECT DISTINCT TIME FROM {MS} OFFSET {time[0]} LIMIT {time[1]}) GIVING {MS}.goodtimes AS PLAIN'.format(MS=MS, time=args.time_flag))
+        # os.system(SINGULARITY+' DPPP msin={MS} msout.storagemanager=dysco msout={MS}.goodtimes msin.ntimes=1500 steps=[]'.format(LOCATION=LOCATION, MS=MS))
+        os.system('mv {MS} {LOCATION_BACKUP}'.format(LOCATION=LOCATION, MS=MS, LOCATION_BACKUP=LOCATION_BACKUP))
+        print('Made '+MS+'.goodtimes')
 
 #MAKE LIST WITH MEASUREMENT SETS
-os.system('ls -1d {LOCATION}/out.ms > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
-# os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
+# os.system('ls -1d {LOCATION}/out.ms > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
+os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
 
-with open('/home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/ddf.txt') as f:
+with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
 
 #RUN DDF COMMAND
