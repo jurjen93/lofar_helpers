@@ -13,7 +13,7 @@ DDF.py \
 --Facets-NFacets=15 \
 --Facets-DiamMax=1.5 \
 --Facets-DiamMin=0.1 \
---Weight-ColName=WEIGHT_SPECTRUM \
+--Weight-ColName=IMAGING_WEIGHT \
 --Weight-Robust=-0.5 \
 --RIME-ForwardMode=BDA-degrid \
 --CF-Nw=100 \
@@ -22,7 +22,7 @@ DDF.py \
 --Parallel-NCPU=50 \
 --Cache-Reset=1 \
 --Cache-Dirty=auto \
---Cache-Dir=.d \
+--Cache-Dir=. \
 --Beam-Model=LOFAR \
 --Beam-LOFARBeamMode=A \
 --Beam-NBand=1 \

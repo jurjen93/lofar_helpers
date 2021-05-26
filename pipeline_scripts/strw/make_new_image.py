@@ -1,6 +1,7 @@
 import os
 from argparse import ArgumentParser
 from glob import glob
+# import pyrap.tables as pt
 
 parser = ArgumentParser()
 parser.add_argument('-from', '--from_where', type=str, help='data from where')
@@ -24,9 +25,9 @@ print('Made '+LOCATION)
 #MOVE FILES
 print('Moving files to '+LOCATION)
 # os.system('scp -r lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/L626678/selfcal/all_directions.h5 '+LOCATION)
-# os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+LOCATION)
-# os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+LOCATION)
-# os.system('cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+LOCATION)
+os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+LOCATION)
+os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+LOCATION)
+os.system('cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+LOCATION)
 print('Finished moving files')
 
 #CUT TIME FOR MESSY END PART (ONLY FOR THIS CASE APPLICABLE)
@@ -37,7 +38,8 @@ print('Making goodtimes')
 #     print('Made '+MS+'.goodtimes')
 
 #MAKE LIST WITH MEASUREMENT SETS
-os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
+os.system('ls -1d {LOCATION}/out.ms > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
+# os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
 
 with open('/home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
