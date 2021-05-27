@@ -15,7 +15,7 @@ if type(excluded_boxes)==str:
 excluded_boxes = ['box_'+n for n in excluded_boxes]
 
 h5_files = []
-for box in glob('{directory}/box_*'.format(directory=args.directory)):
+for box in sorted(glob('{directory}/box_*'.format(directory=args.directory))):
     try:
         last_merged = sorted(glob('{box}/merged_selfcalcyle*_*.ms.*h5'.format(box=box)))[-1]
         print(last_merged)
