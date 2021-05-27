@@ -36,7 +36,7 @@ print('Finished moving files')
 if args.time_flag:
     print('Making goodtimes')
     for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
-        os.system('{SINGULARITY} python supporting_scripts/flag_time.py -tf {time} -ms {MS}'.format(SINGULARITY=SINGULARITY, MS=MS, time=' '.join(args.flag_time)))
+        os.system('{SINGULARITY} python supporting_scripts/flag_time.py -tf {time} -ms {MS}'.format(SINGULARITY=SINGULARITY, MS=MS, time=' '.join(args.time_flag)))
 
 #MAKE LIST WITH MEASUREMENT SETS
 os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
