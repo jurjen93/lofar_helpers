@@ -317,6 +317,7 @@ class MergeH5:
                 print('Adding new direction {:f},{:f}'.format(*source_coords))
                 idx = self.n
                 self.directions.update({d: source_coords})
+                print(self.directions)
                 self.n += 1
                 if self.n>1:# for n==0 we dont have to do anything
                     if st.getType() in ['tec','phase','rotation']:
@@ -597,8 +598,7 @@ class MergeH5:
         new_sources = [source for source in sources if source[0] not in current_sources]
         if len(new_sources)>0:
             solsetout.obj.source.append(new_sources)
-        print(new_sources)
-        print(list(self.directions.keys()))
+
         axes_vals = {'dir': list(self.directions.keys()),
                      'ant': self.antennas,
                      'freq': self.ax_freq,
