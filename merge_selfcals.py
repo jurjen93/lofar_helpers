@@ -2,13 +2,13 @@ from h5_merger import merge_h5
 from glob import glob
 from argparse import ArgumentParser
 
-def get_digits(x):
-    return int(''.join([d for d in x if d.isdigit()]))
-
 parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
 parser.add_argument('-del', '--exclude_boxes', help='Exclude the following boxes (numbers only)')
 args = parser.parse_args()
+
+def get_digits(x):
+    return int(''.join([d for d in x if d.isdigit()]))
 
 if args.exclude_boxes:
     excluded_boxes=args.exclude_boxes
@@ -20,7 +20,9 @@ else:
     excluded_boxes = []
 
 h5_files = []
-for box in glob('{directory}/box_*'.format(directory=args.directory)).sort(key=lambda x: get_digits(x)):
+boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
+boxes_h5_list.sort(key=lambda x: get_digits(x))
+for box in boxes_h5_list:
     try:
         last_merged = sorted(glob('{box}/merged_selfcalcyle*_*.ms.*h5'.format(box=box)))[-1]
         print(last_merged)
