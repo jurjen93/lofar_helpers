@@ -447,7 +447,7 @@ class MergeH5:
 
                 if tp.shape[-2] == 1:
                     tptmp = tp
-                    for ff in self.ax_freq[:-1]:
+                    for _ in self.ax_freq[:-1]:
                         tp = np.append(tp, tptmp, axis=-2)
                 else:
                     tp = self.interp_along_axis(tp, freq_axes, self.ax_freq,
@@ -517,7 +517,7 @@ class MergeH5:
 
                 if tp.shape[-2] == 1:
                     tptmp = tp
-                    for ff in self.ax_freq[:-1]:
+                    for _ in self.ax_freq[:-1]:
                         tp = np.append(tp, tptmp, axis=-2)
                 else:
                     tp = self.interp_along_axis(tp, freq_axes, self.ax_freq,
@@ -597,8 +597,12 @@ class MergeH5:
         new_sources = [source for source in sources if source[0] not in current_sources]
         if len(new_sources)>0:
             solsetout.obj.source.append(new_sources)
-        axes_vals = {'dir': list(self.directions.keys()), 'ant': self.antennas,
-                     'freq': self.ax_freq, 'time': self.ax_time}
+        print(new_sources)
+        print(list(self.directions.keys()))
+        axes_vals = {'dir': list(self.directions.keys()),
+                     'ant': self.antennas,
+                     'freq': self.ax_freq,
+                     'time': self.ax_time}
 
         DPPP_axes = self.DPPP_style(soltab)#reorder the axis to DPPP style
 
