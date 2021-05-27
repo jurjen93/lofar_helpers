@@ -7,12 +7,14 @@ parser.add_argument('-d', '--directory', type=str, help='directory path')
 parser.add_argument('-del', '--exclude_boxes', help='Exclude the following boxes (numbers only)')
 args = parser.parse_args()
 
+if args.exclude_boxes:
+    excluded_boxes=args.exclude_boxes
+    if type(excluded_boxes)==str:
+        excluded_boxes = excluded_boxes.split(',')
 
-excluded_boxes=args.exclude_boxes
-if type(excluded_boxes)==str:
-    excluded_boxes = excluded_boxes.split(',')
-
-excluded_boxes = ['box_'+n for n in excluded_boxes]
+    excluded_boxes = ['box_'+n for n in excluded_boxes]
+else:
+    excluded_boxes = []
 
 h5_files = []
 for box in sorted(glob('{directory}/box_*'.format(directory=args.directory))):
