@@ -4,9 +4,7 @@ LAST UPDATE: 7-6-2021
 Use this script to return region files of directions that need a selfcal.
 
 TODO:
-- Check missing boxes
 - Sources in same figure check flux with sqrt(a**2+b**2)
-- SPLIT SOURCES
 - The brighter, the less distance between sources in same image
 """
 
