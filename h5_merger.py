@@ -12,6 +12,10 @@ merge_h5(h5_out='test.h5',
         h5_files='*.h5',
         ms_files='*.ms',
         convert_tec=True)
+
+TODO:
+- bug fix python 2 with opening tables
+- -in needs to accept lists as well
 """
 
 import os
