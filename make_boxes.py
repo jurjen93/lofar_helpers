@@ -134,7 +134,7 @@ class SetBoxes(Imaging):
 
         resampled_df_peaks = DataFrame([{'pix_y': c[0]*resample_scale_x, 'pix_x': c[1]*resample_scale_y,
                                               'flux': resampled[c[0], c[1]], 'resampled':True}
-                                   for c in np.argwhere(resampled > 30)])
+                                   for c in np.argwhere(resampled > 15)])
 
         self.df_peaks = concat([df_peaks, resampled_df_peaks], axis=0).\
             drop_duplicates(subset=['pix_y', 'pix_x']). \
@@ -188,7 +188,7 @@ class SetBoxes(Imaging):
 
             return left_p, lower_p, right_p, upper_p
 
-        def boundary_sources(image_data, threshold=0.02):
+        def boundary_sources(image_data, threshold=0.01):
             """Sources within the boundaries of the box"""
             other_source = (image_data > threshold).astype(int)
             boundary_size = int(image_data.shape[0] / 10)
@@ -209,35 +209,47 @@ class SetBoxes(Imaging):
             # STEP 1: Reposition for higher flux around the borders
             n = 0
             left_p, lower_p, right_p, upper_p = boundary_perc(self.after)  # get boundary percentages
-            while (left_p > threshold_p or lower_p > threshold_p or right_p > threshold_p or upper_p > threshold_p) \
-                    and n < 100 and im_size > self.before.shape[0] * 3 / 4:  # image cannot be smaller than 0.3 arcsec
+            while (left_p > threshold_p or lower_p > threshold_p or right_p > threshold_p or upper_p > threshold_p or
+                boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))[0], threshold=0.01)) \
+                    and n < 100 and self.before.shape[0] * 2 > im_size > self.before.shape[0] * 1 / 2:  # image cannot be smaller than 0.3 arcsec
                 if lower_p > threshold_p and lower_p > upper_p and self.pix_y - int(im_size / 2) > 0 \
-                        and not boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y-int(im_size/5)), (im_size, im_size))[0], threshold=0.07):
+                        and not boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y-int(im_size/5)), (im_size, im_size))[0], threshold=0.01):
                     self.pix_y -= int(self.after.shape[0] / 200)  # size shifted down
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 elif upper_p > threshold_p and int(im_size / 2) + self.pix_y < self.image_data.shape[0] \
-                        and not boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y+int(im_size/5)), (im_size, im_size))[0], threshold=0.07):
+                        and not boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y+int(im_size/5)), (im_size, im_size))[0], threshold=0.01):
                     self.pix_y += int(self.after.shape[0] / 200)  # size shifted above
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                elif boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y+int(im_size/5)), (im_size, im_size))[0], threshold=0.01):
+                    im_size -= int(self.after.shape[0]) / 200  # size increase
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y),
+                                                                (im_size, im_size))  # new image
+                    left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 n += 1
                 if left_p > threshold_p and left_p > right_p and int(im_size / 2) + self.pix_x < self.image_data.shape[0] \
-                        and not boundary_sources(image_data=self.make_cutout((self.pix_x-int(im_size/5), self.pix_y), (im_size, im_size))[0], threshold=0.07):
+                        and not boundary_sources(image_data=self.make_cutout((self.pix_x-int(im_size/5), self.pix_y), (im_size, im_size))[0], threshold=0.01):
                     self.pix_x -= int(self.after.shape[0] / 200)  # size shifted to the left
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 elif right_p > threshold_p and self.pix_x - int(im_size / 2) > 0 and not \
-                        boundary_sources(image_data=self.make_cutout((self.pix_x+int(im_size/5), self.pix_y), (im_size, im_size))[0], threshold=0.07):
+                        boundary_sources(image_data=self.make_cutout((self.pix_x+int(im_size/5), self.pix_y), (im_size, im_size))[0], threshold=0.01):
                     self.pix_x += int(self.after.shape[0] / 200)  # size shifted to the right
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                elif boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y+int(im_size/5)), (im_size, im_size))[0], threshold=0.01):
+                    im_size -= int(self.after.shape[0]) / 200  # size increase
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y),
+                                                                (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 n += 1
 
             # STEP 2: Resizing
-            while (left_p < threshold_p*7 and lower_p < threshold_p*7 and right_p < threshold_p*7 and upper_p < threshold_p*7) \
-                    and im_size > self.before.shape[0]*1/2 \
-                    and im_size < self.before.shape[0]*2 \
+            while ((left_p < threshold_p*7 and lower_p < threshold_p*7 and right_p < threshold_p*7 and upper_p < threshold_p*7) or
+                   boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))[0],
+                       threshold=0.01)) \
+                    and self.before.shape[0] * 1 / 2 < im_size < self.before.shape[0] * 2 \
                     and n<100:
                 if im_size<=3*self.before.shape[0]/2:
                     im_size += int(self.after.shape[0] / 200)  # size reduced image
@@ -253,43 +265,42 @@ class SetBoxes(Imaging):
             peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
             n = 0
             while (np.sum(peak_y > 0.75) or np.sum(peak_y < 0.25) or np.sum(peak_x > 0.75) or np.sum(
-                    peak_x < 0.25)) and n < 100:
+                    peak_x < 0.25)) and n < 100 and self.before.shape[0] * 2 > im_size > self.before.shape[0] * 1 / 2:
                 if np.sum(peak_y > 0.75) and not np.sum(peak_y < 0.25) and not \
-                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y+int(im_size/8)), (im_size, im_size))[0], threshold=0.07):
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))[0], threshold=0.02):
                     self.pix_y += int(self.after.shape[0] / 200)
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
                 elif np.sum(peak_y < 0.25) and not np.sum(peak_y > 0.75) and not \
-                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y-int(im_size/8)), (im_size, im_size))[0], threshold=0.07):
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y-int(im_size/8)), (im_size, im_size))[0], threshold=0.02):
                     self.pix_y -= int(self.after.shape[0] / 200)
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
                 elif np.sum(peak_y > 0.75) and np.sum(peak_y < 0.25) and im_size < self.before.shape[0] * 2 and not \
-                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size-int(im_size/8), im_size-int(im_size/8)))[0], threshold=0.07):
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size-int(im_size/8), im_size-int(im_size/8)))[0], threshold=0.02):
                     im_size += int(self.after.shape[0]) / 200  # size increase
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
                 if np.sum(peak_x > 0.75) and not np.sum(peak_x < 0.25) and not \
-                        boundary_sources(image_data=self.make_cutout((self.pix_x+int(im_size/8), self.pix_y), (im_size, im_size))[0], threshold=0.07):
+                        boundary_sources(image_data=self.make_cutout((self.pix_x+int(im_size/8), self.pix_y), (im_size, im_size))[0], threshold=0.02):
                     self.pix_x += int(self.after.shape[0] / 200)
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
                 elif np.sum(peak_x < 0.25) and not np.sum(peak_x > 0.75) and not \
-                        boundary_sources(image_data=self.make_cutout((self.pix_x-int(im_size/8), self.pix_y), (im_size, im_size))[0], threshold=0.07):
+                        boundary_sources(image_data=self.make_cutout((self.pix_x-int(im_size/8), self.pix_y), (im_size, im_size))[0], threshold=0.02):
                     self.pix_x -= int(self.after.shape[0] / 200)
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     peak_y, peak_x = np.argwhere(self.after > 0.07).T / im_size
                 elif np.sum(peak_x < 0.25) and np.sum(peak_x > 0.75) and im_size < self.before.shape[0] * 2 and not \
-                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size-int(im_size/8), im_size-int(im_size/8)))[0], threshold=0.07):
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size-int(im_size/8), im_size-int(im_size/8)))[0], threshold=0.02):
                     im_size += int(self.after.shape[0]) / 200  # size increase
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
                 n += 1
 
             # STEP 4: Resizing based on flux on boundary
-            while (
-                    left_p * 2 < threshold_p and lower_p * 2 < threshold_p and right_p * 2 < threshold_p and upper_p * 2 < threshold_p) \
-                    and im_size < self.before.shape[0] * 2 and n < 200:
+            while (left_p * 2 < threshold_p and lower_p * 2 < threshold_p and right_p * 2 < threshold_p and upper_p * 2 < threshold_p) \
+                    and self.before.shape[0] * 2 > im_size > self.before.shape[0] * 1 / 2 and n < 200:
                 if im_size<=3*self.before.shape[0]/2:
                     im_size += int(self.after.shape[0] / 400)  # size reduced image
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
@@ -300,11 +311,21 @@ class SetBoxes(Imaging):
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
                 n+=1
 
-            # Step 5: Reposition
+            # STEP 5: Resizing based on flux outside of image
+            while boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size-int(im_size/5), im_size-int(im_size/5)))[0], threshold=0.01) \
+                and n < 400 and self.before.shape[0] * 2 > im_size > self.before.shape[0] * 1 / 2:
+                im_size -= int(self.after.shape[0]) / 400  # size increase
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y),
+                                                            (im_size, im_size))
+                n+=1
+
+            # Step 6: Reposition
             n, t2 = 0, 0
             left_p, lower_p, right_p, upper_p = boundary_perc(self.after)  # get boundary percentages
-            while (left_p > threshold_p or lower_p > threshold_p or right_p > threshold_p or upper_p > threshold_p) \
-                    and n < 200 and im_size > self.before.shape[0] * 3 / 4 and im_size > self.before.shape[0] * 1 / 2:
+            while (left_p > threshold_p or lower_p > threshold_p or right_p > threshold_p or upper_p > threshold_p or
+                   boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))[0],
+                       threshold=0.01))\
+                    and n < 200 and self.before.shape[0] * 2 > im_size > self.before.shape[0] * 1 / 2:
                 t1 = 0
                 if upper_p > threshold_p and int(im_size / 2) + self.pix_y < self.image_data.shape[0] and not \
                         boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y+int(im_size/8)), (im_size, im_size))[0], threshold=0.04):
@@ -349,12 +370,16 @@ class SetBoxes(Imaging):
                         t1 += 1
                 n += 1
 
-            # STEP 6: Resizing based on flux within
-            n=0
-            while n<200 and im_size<self.before.shape[0]*2 and n<100 and np.sum(self.after>np.max(self.after)/10)/self.after.size*self.before.size>100:
-                im_size += int(self.after.shape[0] / 200)  # size reduced image
+            # STEP 7: Resizing based on flux within and on the borders
+            while im_size<self.before.shape[0]*2 and np.sum(self.after>np.max(self.after)/10)/self.after.size*self.before.size>100:
+                im_size += int(self.after.shape[0] / 100)  # size reduced image
                 self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                n+=1
+
+            while boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size+int(im_size/25), im_size+int(im_size/25)))[0], threshold=0.01) \
+                and im_size>self.before.shape[0]:
+                im_size -= int(self.after.shape[0]) / 100  # size increase
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y),
+                                                            (im_size, im_size))
 
         return self
 
