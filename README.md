@@ -28,7 +28,7 @@ The following steps are taken in the algorithm:
 * Loop through all peak fluxes (sources) and check if these are already included in other images. If so, we stop here.
 * Check if the source is 'interesting' by comparing the outlier fluxes in the images with the outliers in a gaussian filtered version. If not, we stop here.
 * Reposition the image by taking into account the borders where we don't want to have high flux peaks or other sources. This is done by moving the center of the image and resizing.
-* If the flux is >0.07 and <0.1 we accept the box only if there are other sources with flux >0.07.
+* We also look for islands of flux, which we find by binning 100x100 pixels and summing over these pixels. When the flux exceeds 30, we extract a box from this position.
 * If there are multiple peak fluxes (sources) we flag these as done from our list.
 * Now we save the image of the box and the .reg.
 

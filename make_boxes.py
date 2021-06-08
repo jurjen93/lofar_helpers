@@ -1,5 +1,13 @@
 """
+LAST UPDATE: 7-6-2021
+
 Use this script to return region files of directions that need a selfcal.
+
+TODO:
+- Check missing boxes
+- Sources in same figure check flux with sqrt(a**2+b**2)
+- SPLIT SOURCES
+- The brighter, the less distance between sources in same image
 """
 
 import numpy as np
@@ -7,20 +15,19 @@ import os
 from astropy.wcs import WCS
 from astropy.io import fits
 from astropy.nddata import Cutout2D
-from scipy.ndimage import gaussian_filter
 from argparse import ArgumentParser
 import warnings
-from pandas import DataFrame
+from pandas import DataFrame, concat, read_csv
 
 __author__ = "Jurjen de Jong"
-__all__ = ['SetBoxes']
+__all__ = ['']
 
 warnings.filterwarnings("ignore")
 
 parser = ArgumentParser()
 parser.add_argument('-f', '--file', type=str, help='fitsfile name')
 parser.add_argument('-l', '--location', type=str, help='data location folder name')
-parser.add_argument('-i', '--images', type=bool, default=False, help='return images of boxes')
+parser.add_argument('-i', '--images', type=bool, default=True, help='return images of boxes')
 args = parser.parse_args()
 
 if args.location:
@@ -29,6 +36,7 @@ if args.location:
         folder=folder[0:-1]
 else:
     folder = ''
+
 #check if folder exists and create if not
 folders = folder.split('/')
 for i, f in enumerate(folders):
@@ -40,6 +48,14 @@ for i, f in enumerate(folders):
 if args.images:
     import matplotlib.pyplot as plt
     from matplotlib.colors import SymLogNorm
+
+def resample_pixels(image_data, rows, cols):
+    """Resample image by summing pixels together"""
+    while image_data.shape[0]%rows!=0:
+        rows-=1
+    while image_data.shape[0]%cols!=0:
+        cols-=1
+    return image_data.reshape(int(rows), image_data.shape[0]//rows, int(cols), image_data.shape[1]//cols).sum(axis=1).sum(axis=2)
 
 
 class Imaging:
@@ -90,9 +106,10 @@ class Imaging:
 
         return out.data, out.wcs
 
-
 class SetBoxes(Imaging):
-    def __init__(self, fits_file: str = None, initial_box_size: float = 0.35, peak_flux=0.07):
+    def __init__(self, fits_file: str = None, initial_box_size: float = 0.2, peak_flux=0.07):
+        self.pix_y = None
+        self.pix_x = None
         self.flux = None
         self.image_number = None
         self.initial_box_size = initial_box_size
@@ -102,29 +119,52 @@ class SetBoxes(Imaging):
 
         # get the positions of the flux peaks from full image
         self.peak_flux = peak_flux
-        self.df_peaks = DataFrame([{'pix_x': c[0], 'pix_y': c[1], 'flux': self.image_data[c[0], c[1]]} for c in
-                                   np.argwhere(self.image_data > peak_flux)]). \
-            sort_values('flux', ascending=False)
 
-        peaks = self.df_peaks[['pix_x', 'pix_y']].to_numpy()
+        df_peaks = DataFrame([{'pix_y': c[0], 'pix_x': c[1], 'flux': self.image_data[c[0], c[1]], 'resampled':False}
+                                   for c in np.argwhere(self.image_data > peak_flux)])
 
-        # peaks sources close to each other are considered from the same sources, so these can be removed
-        for i in range(len(peaks)):
-            if i > len(peaks) - 1:
-                break
-            # points that are too close to each other have to be removed
-            peaks = peaks[(self.ed_array(peaks[i], peaks) == 0) |
-                          (self.ed_array(peaks[i], peaks) >
-                           int(self.initial_box_size / np.max(self.wcs.pixel_scale_matrix)) / 100)]
+        # find from resampled data more sources, which are bright sources over bigger area
+        resampled = resample_pixels(self.image_data,
+                                    rows=int(self.image_data.shape[0] / 100),
+                                    cols=int(self.image_data.shape[1] / 100))
+        # plt.imshow(resampled, norm=SymLogNorm(linthresh=np.nanstd(resampled)/20, vmin=np.nanstd(resampled)/50, vmax=np.nanstd(resampled)*25), origin='lower')
+        # plt.show()
+        resample_x, resample_y = resampled.shape
+        original_x, original_y = self.image_data.shape
+        resample_scale_x = original_x//resample_x
+        resample_scale_y = original_y//resample_y
 
-        self.df_peaks = DataFrame([{'pix_y': c[0], 'pix_x': c[1], 'flux': self.image_data[c[0], c[1]]} for c in peaks]). \
-            sort_values('flux', ascending=False)
+        resampled_df_peaks = DataFrame([{'pix_y': c[0]*resample_scale_x, 'pix_x': c[1]*resample_scale_y,
+                                              'flux': resampled[c[0], c[1]], 'resampled':True}
+                                   for c in np.argwhere(resampled > 30)])
+
+        self.df_peaks = concat([df_peaks, resampled_df_peaks], axis=0).\
+            drop_duplicates(subset=['pix_y', 'pix_x']). \
+            sort_values('flux', ascending=False).reset_index(drop=True)
 
     # euclidean distance
     @staticmethod
     def ed_array(pos=None, lst=None):
         """Euclidean distance between position and list"""
         return np.sqrt(np.sum(np.square(pos - lst), axis=1))
+
+    def reposition_new(self):
+        #TODO: Make new strategy
+
+        """
+        - start small ~0.2 arcsec boxes
+        - increase slowly and check if sources from the list are added to the box
+        - move slightly the box
+
+        STEP 1: set box
+        STEP 2: check if other source inside box
+        STEP 3: check if box is OK
+        if not OK:
+            STEP 4: increase box
+            STEP 5: check if other source inside box
+            STEP 6: check if box is OK
+            STEP 7: if not OK ---> repeat!
+        """
 
     def reposition(self):
         """Reposition image by looking at the data points near the boundaries."""
@@ -150,146 +190,173 @@ class SetBoxes(Imaging):
 
             return left_p, lower_p, right_p, upper_p
 
+        def boundary_sources(image_data, threshold=0.02):
+            """Sources within the boundaries of the box"""
+            other_source = (image_data > threshold).astype(int)
+            boundary_size = int(image_data.shape[0] / 10)
+            left = other_source.T[0:boundary_size]  # left boundary
+            lower = other_source[0:boundary_size]  # lower boundary
+            right = other_source.T[len(other_source) - boundary_size:len(other_source)]  # right boundary
+            upper = other_source[len(other_source) - boundary_size:len(other_source)]  # upper boundary
+            total = np.sum(left)+np.sum(right)+np.sum(upper)+np.sum(lower)
+            return total>0
+
         self.after = self.before.copy()  # image data before data after repositioning
 
         step_size = np.max(self.wcs.pixel_scale_matrix)  # step size in degrees per pixel
         im_size = int(self.initial_box_size / step_size)  # start with square boxes with a size of 0.4 degrees
-        threshold_p = 0.0005  # max percentage of boundary elements
+        threshold_p = 0.00004  # max percentage of boundary elements
 
-        # STEP 1: Reposition for higher flux around the borders
-        n = 0
-        left_p, lower_p, right_p, upper_p = boundary_perc(self.after)  # get boundary percentages
-        while (left_p > threshold_p or lower_p > threshold_p or right_p > threshold_p or upper_p > threshold_p) \
-                and n < 100 and im_size > self.before.shape[0] * 3 / 4:  # image cannot be smaller than 0.3 arcsec
-            if lower_p > threshold_p and lower_p > upper_p and self.pix_y - int(im_size / 2) > 0:
-                self.pix_y -= int(self.after.shape[0] / 200)  # size shifted down
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-                n += 1
-            elif upper_p > threshold_p and int(im_size / 2) + self.pix_y < self.image_data.shape[0]:
-                self.pix_y += int(self.after.shape[0] / 200)  # size shifted above
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-                n += 1
-            if left_p > threshold_p and left_p > right_p and int(im_size / 2) + self.pix_x < self.image_data.shape[0]:
-                self.pix_x -= int(self.after.shape[0] / 200)  # size shifted to the left
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-                n += 1
-            elif right_p > threshold_p and self.pix_x - int(im_size / 2) > 0:
-                self.pix_x += int(self.after.shape[0] / 200)  # size shifted to the right
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-                n += 1
-            if n > 5:
-                im_size_new = im_size - int(min(max(left_p, lower_p, right_p, upper_p) / threshold_p * 10,
-                                                self.after.shape[0] / 200))  # size reduced image
-                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size_new, im_size_new))  # new image
-                if np.mean(boundary_perc(new_image)) \
-                        < np.mean([left_p, lower_p, right_p, upper_p]):
-                    im_size = im_size_new  # accept new image size
-                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size_new, im_size_new))  # accept image
-                    left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-
-        # Don't accept if image is worse
-        if np.mean(boundary_perc(self.after)) > np.mean(boundary_perc(self.before)):  # accept image if better
-            self.after = self.before.copy()
-            self.pix_x, self.pix_y = self.initial_pos
-
-        # STEP 2: Extra resize step because we prefer smaller images (not smaller than 0.2 degrees)
-        while (left_p < threshold_p and lower_p < threshold_p and right_p < threshold_p and upper_p < threshold_p) \
-                and im_size > self.before.shape[0] * 1 / 2 and n < 200:
-            im_size -= int(self.after.shape[0] / 200)  # size reduced image
-            self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-            left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-            n += 1
-
-        # STEP 3: Reposition for high flux near the borders. These are bright sources that we want to have more in the center
-        peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
-        n = 0
-        while (np.sum(peak_y > 0.75) or np.sum(peak_y < 0.25) or np.sum(peak_x > 0.75) or np.sum(
-                peak_x < 0.25)) and n < 100:
-            if np.sum(peak_y > 0.75) and not np.sum(peak_y < 0.25):
-                self.pix_y += int(self.after.shape[0] / 200)
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
-            elif np.sum(peak_y < 0.25) and not np.sum(peak_y > 0.75):
-                self.pix_y -= int(self.after.shape[0] / 200)
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
-            elif np.sum(peak_y > 0.75) and np.sum(peak_y < 0.25) and im_size * step_size < self.initial_box_size * 1.1:
-                im_size += int(self.after.shape[0]) / 200  # size increase
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
-            if np.sum(peak_x > 0.75) and not np.sum(peak_x < 0.25):
-                self.pix_x += int(self.after.shape[0] / 200)
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
-            elif np.sum(peak_x < 0.25) and not np.sum(peak_x > 0.75):
-                self.pix_x -= int(self.after.shape[0] / 200)
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                peak_y, peak_x = np.argwhere(self.after > 0.07).T / im_size
-            elif np.sum(peak_x < 0.25) and np.sum(peak_x > 0.75) and im_size * step_size < self.initial_box_size * 1.1:
-                im_size += int(self.after.shape[0]) / 200  # size increase
-                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-                peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
-            n += 1
-
-        # Step 4: Last border check with resizing
-        n, t2 = 0, 0
-        left_p, lower_p, right_p, upper_p = boundary_perc(self.after)  # get boundary percentages
-        while (left_p > threshold_p or lower_p > threshold_p or right_p > threshold_p or upper_p > threshold_p) \
-                and n < 200 and im_size > self.before.shape[0] * 3 / 4 and im_size > self.before.shape[0] * 1 / 2:
-            t1 = 0
-            if upper_p > threshold_p and int(im_size / 2) + self.pix_y < self.image_data.shape[0]:
-                self.pix_y += int(self.after.shape[0] / 300)  # size shifted above
-                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
-                if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
+        for N in range(3):#looping multiple times
+            # STEP 1: Reposition for higher flux around the borders
+            n = 0
+            left_p, lower_p, right_p, upper_p = boundary_perc(self.after)  # get boundary percentages
+            while (left_p > threshold_p or lower_p > threshold_p or right_p > threshold_p or upper_p > threshold_p) \
+                    and n < 100 and im_size > self.before.shape[0] * 3 / 4:  # image cannot be smaller than 0.3 arcsec
+                if lower_p > threshold_p and lower_p > upper_p and self.pix_y - int(im_size / 2) > 0 \
+                        and not boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y-int(im_size/5)), (im_size, im_size))[0], threshold=0.07):
+                    self.pix_y -= int(self.after.shape[0] / 200)  # size shifted down
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-                else:  # correct back
-                    self.pix_y -= int(self.after.shape[0] / 300)
-                    t1 += 1
-                n += 1
-            elif lower_p > threshold_p and self.pix_y - int(im_size / 2) > 0:
-                self.pix_y -= int(self.after.shape[0] / 300)  # size shifted down
-                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
-                if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
+                elif upper_p > threshold_p and int(im_size / 2) + self.pix_y < self.image_data.shape[0] \
+                        and not boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y+int(im_size/5)), (im_size, im_size))[0], threshold=0.07):
+                    self.pix_y += int(self.after.shape[0] / 200)  # size shifted above
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-                else:  # correct back
-                    self.pix_y += int(self.after.shape[0] / 300)
-                    t1 += 1
                 n += 1
-            if right_p > threshold_p and self.pix_x - int(im_size / 2) > 0:
-                self.pix_x += int(self.after.shape[0] / 300)  # size shifted to the right
-                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
-                if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
+                if left_p > threshold_p and left_p > right_p and int(im_size / 2) + self.pix_x < self.image_data.shape[0] \
+                        and not boundary_sources(image_data=self.make_cutout((self.pix_x-int(im_size/5), self.pix_y), (im_size, im_size))[0], threshold=0.07):
+                    self.pix_x -= int(self.after.shape[0] / 200)  # size shifted to the left
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-                else:  # correct back
-                    self.pix_x -= int(self.after.shape[0] / 300)
-                    t1 += 1
-                n += 1
-            elif left_p > threshold_p and left_p > right_p and int(im_size / 2) + self.pix_x < self.image_data.shape[0]:
-                self.pix_x -= int(self.after.shape[0] / 300)  # size shifted to the left
-                new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
-                if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
+                elif right_p > threshold_p and self.pix_x - int(im_size / 2) > 0 and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x+int(im_size/5), self.pix_y), (im_size, im_size))[0], threshold=0.07):
+                    self.pix_x += int(self.after.shape[0] / 200)  # size shifted to the right
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
                     left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-                else:  # correct back
-                    self.pix_x += int(self.after.shape[0] / 300)
-                    t1 += 1
                 n += 1
 
-        # STEP 5: Last resize step because we prefer smaller images (not smaller than half of the initial size)
-        while (
-                left_p * 2 < threshold_p and lower_p * 2 < threshold_p and right_p * 2 < threshold_p and upper_p * 2 < threshold_p) \
-                and im_size > self.before.shape[0] * 2 / 3 and n < 200:
-            im_size -= int(self.after.shape[0] / 400)  # size reduced image
-            self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
-            left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
-            n += 1
+            # STEP 2: Resizing
+            while (left_p < threshold_p*7 and lower_p < threshold_p*7 and right_p < threshold_p*7 and upper_p < threshold_p*7) \
+                    and im_size > self.before.shape[0]*1/2 \
+                    and im_size < self.before.shape[0]*2 \
+                    and n<100:
+                if im_size<=3*self.before.shape[0]/2:
+                    im_size += int(self.after.shape[0] / 200)  # size reduced image
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                else:
+                    im_size -= int(self.after.shape[0] / 200)  # size reduced image
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                n += 1
+
+            # STEP 3: Reposition for high flux near the borders. These are bright sources that we want to have more in the center
+            peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
+            n = 0
+            while (np.sum(peak_y > 0.75) or np.sum(peak_y < 0.25) or np.sum(peak_x > 0.75) or np.sum(
+                    peak_x < 0.25)) and n < 100:
+                if np.sum(peak_y > 0.75) and not np.sum(peak_y < 0.25) and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y+int(im_size/8)), (im_size, im_size))[0], threshold=0.07):
+                    self.pix_y += int(self.after.shape[0] / 200)
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
+                elif np.sum(peak_y < 0.25) and not np.sum(peak_y > 0.75) and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y-int(im_size/8)), (im_size, im_size))[0], threshold=0.07):
+                    self.pix_y -= int(self.after.shape[0] / 200)
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
+                elif np.sum(peak_y > 0.75) and np.sum(peak_y < 0.25) and im_size < self.before.shape[0] * 2 and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size-int(im_size/8), im_size-int(im_size/8)))[0], threshold=0.07):
+                    im_size += int(self.after.shape[0]) / 200  # size increase
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
+                if np.sum(peak_x > 0.75) and not np.sum(peak_x < 0.25) and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x+int(im_size/8), self.pix_y), (im_size, im_size))[0], threshold=0.07):
+                    self.pix_x += int(self.after.shape[0] / 200)
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
+                elif np.sum(peak_x < 0.25) and not np.sum(peak_x > 0.75) and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x-int(im_size/8), self.pix_y), (im_size, im_size))[0], threshold=0.07):
+                    self.pix_x -= int(self.after.shape[0] / 200)
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    peak_y, peak_x = np.argwhere(self.after > 0.07).T / im_size
+                elif np.sum(peak_x < 0.25) and np.sum(peak_x > 0.75) and im_size < self.before.shape[0] * 2 and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size-int(im_size/8), im_size-int(im_size/8)))[0], threshold=0.07):
+                    im_size += int(self.after.shape[0]) / 200  # size increase
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    peak_y, peak_x = np.argwhere(self.after > self.peak_flux / 2).T / im_size
+                n += 1
+
+            # STEP 4: Resizing based on flux on boundary
+            while (
+                    left_p * 2 < threshold_p and lower_p * 2 < threshold_p and right_p * 2 < threshold_p and upper_p * 2 < threshold_p) \
+                    and im_size < self.before.shape[0] * 2 and n < 200:
+                if im_size<=3*self.before.shape[0]/2:
+                    im_size += int(self.after.shape[0] / 400)  # size reduced image
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                else:
+                    im_size -= int(self.after.shape[0] / 400)  # size reduced image
+                    self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                    left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                n+=1
+
+            # Step 5: Reposition
+            n, t2 = 0, 0
+            left_p, lower_p, right_p, upper_p = boundary_perc(self.after)  # get boundary percentages
+            while (left_p > threshold_p or lower_p > threshold_p or right_p > threshold_p or upper_p > threshold_p) \
+                    and n < 200 and im_size > self.before.shape[0] * 3 / 4 and im_size > self.before.shape[0] * 1 / 2:
+                t1 = 0
+                if upper_p > threshold_p and int(im_size / 2) + self.pix_y < self.image_data.shape[0] and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y+int(im_size/8)), (im_size, im_size))[0], threshold=0.04):
+                    self.pix_y += int(self.after.shape[0] / 300)  # size shifted above
+                    new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
+                    if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
+                        self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                        left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                    else:  # correct back
+                        self.pix_y -= int(self.after.shape[0] / 300)
+                        t1 += 1
+                elif lower_p > threshold_p and self.pix_y - int(im_size / 2) > 0 and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y-int(im_size/8)), (im_size, im_size))[0], threshold=0.04):
+                    self.pix_y -= int(self.after.shape[0] / 300)  # size shifted down
+                    new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
+                    if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
+                        self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                        left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                    else:  # correct back
+                        self.pix_y += int(self.after.shape[0] / 300)
+                        t1 += 1
+                n += 1
+                if right_p > threshold_p and self.pix_x - int(im_size / 2) > 0 and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x+int(im_size/8), self.pix_y), (im_size, im_size))[0], threshold=0.04):
+                    self.pix_x += int(self.after.shape[0] / 300)  # size shifted to the right
+                    new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
+                    if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
+                        self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                        left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                    else:  # correct back
+                        self.pix_x -= int(self.after.shape[0] / 300)
+                        t1 += 1
+                elif left_p > threshold_p and left_p > right_p and int(im_size / 2) + self.pix_x < self.image_data.shape[0] and not \
+                        boundary_sources(image_data=self.make_cutout((self.pix_x-int(im_size/8), self.pix_y), (im_size, im_size))[0], threshold=0.04):
+                    self.pix_x -= int(self.after.shape[0] / 300)  # size shifted to the left
+                    new_image, _ = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))
+                    if np.sum(boundary_perc(new_image)) < np.sum(boundary_perc(self.after)):  # check if improvement
+                        self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                        left_p, lower_p, right_p, upper_p = boundary_perc(self.after)
+                    else:  # correct back
+                        self.pix_x += int(self.after.shape[0] / 300)
+                        t1 += 1
+                n += 1
+
+            # STEP 6: Resizing based on flux within
+            n=0
+            while n<200 and im_size<self.before.shape[0]*2 and n<100 and np.sum(self.after>np.max(self.after)/10)/self.after.size*self.before.size>100:
+                im_size += int(self.after.shape[0] / 200)  # size reduced image
+                self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
+                n+=1
 
         return self
 
@@ -300,16 +367,16 @@ class SetBoxes(Imaging):
         position_h = [v.replace('h', ':').replace('m', ':').replace('s', '').replace('d', ':') for v in
                       self.wcs.pixel_to_world(self.pix_x, self.pix_y).to_string('hmsdms').split()]
         arcsec_size = round(np.max(self.wcs.pixel_scale_matrix) * self.after.shape[0] * 3600, 3)
-        f = open(f"{folder}/boxes/{box_name}", "a")
-        f.write(f'box({position_h[0]},{position_h[1]},{str(arcsec_size)}\",{str(arcsec_size)}\",0)')
+        f = open(box_name, "a")
+        f.write(f'box({position_h[0]},{position_h[1]},{str(arcsec_size)}\",{str(arcsec_size)}\",0) # text={{{box_name.split("/")[-1].split(".reg")[0]}}}')
         f.close()
 
         return self
 
-    def source_to_csv(self):
+    def source_to_csv(self, sources):
         """Write source to a csv file"""
         with open(f'{folder}/source_file.csv', 'a+') as source_file:
-            source_file.write(f'{self.image_number},{self.pix_x},{self.pix_y},{self.flux},{self.after.shape}\n')
+            source_file.write(f'{self.image_number},{self.pix_x},{self.pix_y},{self.flux},{str(self.after.shape).replace(",", ";")},{str(sources).replace(",", ";")}\n')
         return self
 
     @staticmethod
@@ -330,23 +397,20 @@ class SetBoxes(Imaging):
 
     @property
     def other_sources_in_image(self):
-        """Check if there are other sources in your image."""
-        self.df_peaks['same_image'] = (abs(self.pix_x - self.df_peaks.pix_x) <= abs(self.after.shape[0]) / 2).astype(
-            int) + \
-                                      (abs(self.pix_y - self.df_peaks.pix_y) <= abs(self.after.shape[0]) / 2).astype(
-                                          int)
-        other_sources_in_image = list(
-            self.df_peaks[(self.df_peaks.same_image == 2) & (self.df_peaks.index != self.image_number)].index)
+        """Check if there are other sources in your image.
+        Score of 4 means that it is in the same image
+        Score of 2 means that it is nearby (near boundary)"""
+        self.df_peaks['nearby'] = (abs(self.pix_x - self.df_peaks.pix_x) <= abs(self.after.shape[0]) / 2).astype(int) + \
+                                    (abs(self.pix_y - self.df_peaks.pix_y) <= abs(self.after.shape[0]) / 2).astype(int) + \
+                                      (abs(self.pix_x - self.df_peaks.pix_x) <= abs(self.after.shape[0])).astype(int) + \
+                                      (abs(self.pix_y - self.df_peaks.pix_y) <= abs(self.after.shape[0])).astype(int)
 
-        #TODO: add split boxes if too many high fluxes together
+        other_sources_in_image = self.df_peaks[(self.df_peaks.nearby == 4) & (self.df_peaks.index != self.image_number)]
+        sources_nearby = self.df_peaks[(self.df_peaks.nearby == 2) & (self.df_peaks.index != self.image_number)]
 
-        # print(other_sources_in_image)
-        # sources_in_images = self.df_peaks[self.df_peaks.index.isin(other_sources_in_image)].reset_index(keep=False)
-        # source_positions = sources_in_images[['pix_y', 'pix_x']].to_numpy()
-        # for pos in source_positions:
-        #     print([p>100 for p in self.ed_array(pos, source_positions)])
+        self.number_of_sources(list(other_sources_in_image.index))
 
-        return other_sources_in_image
+        return list(other_sources_in_image.index), list(sources_nearby.index)
 
     @staticmethod
     def center_cutout(image_data):
@@ -354,95 +418,90 @@ class SetBoxes(Imaging):
                         position=(int(image_data.shape[0] / 2), int(image_data.shape[0] / 2)),
                         size=(int(image_data.shape[0] / 8), int(image_data.shape[0] / 8))).data
 
-    @property
-    def interesting_source(self):
+    def make_initial_box(self):
         """Check if source is interesting for selfcal."""
 
         im_size = int(self.initial_box_size / np.max(self.wcs.pixel_scale_matrix))
 
         self.initial_pos = (self.pix_x, self.pix_y)
         self.before, self.wcs_cut = self.make_cutout(pos=self.initial_pos,
-                                       size=(im_size,
-                                             im_size))  # image data after repositioning
+                                       size=(im_size, im_size))  # image data after repositioning
 
-        def central_cutout(imdat):
-            return Cutout2D(data=imdat,
-                            position=(int(imdat.shape[0] / 2), int(imdat.shape[0] / 2)),
-                            size=(int(imdat.shape[0] / 8), int(imdat.shape[0] / 8))).data
+        return self
 
-        outliers = self.before > np.std(self.before)
-        outlier_cutout = central_cutout(outliers.astype(int))
-        gaussian_image = gaussian_filter(self.before, sigma=3)
-        gaussian_outliers = gaussian_image > np.std(gaussian_image)
-        gaussian_outliers_cutout = central_cutout(gaussian_outliers.astype(int))
-        res_gauss = outlier_cutout - gaussian_outliers_cutout
-        res_gauss = np.where(res_gauss < 0, 0, res_gauss)
-
-        perc_outliers_cutout = np.sum(outlier_cutout) / len(outlier_cutout.flatten())
-        perc_gaussian_cutout = np.sum(res_gauss) / len(res_gauss.flatten())
-
-        # these threshold values are based on tests
-        if perc_outliers_cutout > 0.014 or perc_gaussian_cutout > 0:
-            return True
-        else:
-            return False
+    def number_of_sources(self, sources):
+        """Count number of sources on a distance from each other, to see if split is possible"""
+        peaks_in_image = self.df_peaks.iloc[sources]
+        positions = peaks_in_image[['pix_x', 'pix_y']].to_numpy()
+        n=0
+        #count number of sources in image
+        while len(positions)>n+1:
+            peaks_in_image['distance'] = self.ed_array(positions[n], positions)
+            peaks_in_image = peaks_in_image[peaks_in_image['distance']>200]
+            positions = peaks_in_image[['pix_x', 'pix_y']].to_numpy()
+            n+=1
+        if n>1:
+            print(f'There are {n} sources, where box splitting is possible.')
+        return self
 
 
 if __name__ == '__main__':
 
-    image = SetBoxes(fits_file=args.file, initial_box_size=0.4)
+    image = SetBoxes(fits_file=args.file, initial_box_size=0.2)
 
     if args.images:
         os.system(f'rm -rf {folder}/box_images; mkdir {folder}/box_images')  # make folder with box images
     os.system(f'rm -rf {folder}/boxes; mkdir {folder}/boxes')  # make folder with the .reg files
+    os.system(f'rm source_file.csv') # clean up
 
     with open(f'{folder}/source_file.csv', 'w') as source_file:
-        source_file.write('id,pix_x,pix_y,flux,size\n')
+        source_file.write('id,pix_x,pix_y,flux,size,sources\n')
 
     sources_done = []
-    print(f'We found {len(image.df_peaks)} interesting directions.\n')
+    print(f'We found {len(image.df_peaks)} high flux peaks.\n')
 
     m, r = 0, 0
     for n, p in enumerate(image.df_peaks.to_dict(orient="records")):
 
+        replace=False
+
         # skip sources that are already displayed in other boxes
         if n in sources_done:
-            print(f'Direction {n} already included in box.')
             continue
 
         # set values for source of interest
         image.pix_x, image.pix_y, image.flux, image.image_number = p['pix_x'], p['pix_y'], p['flux'], n
 
-        # skip source if not interesting to calibrate
-        if not image.interesting_source:
-            r += 1
-            print(f'Direction {n} removed.')
-            if args.images:
-                fig = plt.figure(figsize=(10, 10))
-                plt.subplot(1, 1, 1, projection=image.wcs)
-                plt.title(f'REMOVED')
-                plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin / 10, vmin=image.vmin / 20, vmax=image.vmax),
-                           origin='lower',
-                           cmap='CMRmap')
-                fig.savefig(f'{folder}/box_images/removed_{r}.png')
-                continue
-        else:
-            print(f'Direction {n} in box {m+1}.')
+        image.make_initial_box()
 
         # reposition box
         image.reposition()
 
         # we now check if there are in our box sources from our list of peak sources, which we can skip later on
-        other_sources = image.other_sources_in_image
-        if len(other_sources) == 0 and image.flux < 0.07:  # if flux <0.07 it needs to have other sources in the image, otherwise skip
-            continue
-        else:
-            sources_done += other_sources
+        other_sources, _ = image.other_sources_in_image
 
-        image.source_to_csv()
+        # check if boxes contain multiple times the same source. If so, we replace this box with a better new one.
+        found=False
+        for source in other_sources:
+            if source in sources_done:
+                sources = read_csv('source_file.csv')['sources']
+                for M, source_list in enumerate(sources):
+                    if len(source_list.replace('[','').replace(']',''))>0:
+                        source_list = [int(s) for s in source_list.replace('[','').replace(']','').replace(' ','').split(';')]
+                        if bool(set(other_sources) & set(source_list)):
+                            os.system(f'rm {folder}/box_images/box_{M+1}.png')
+                            os.system(f'rm {folder}/boxes/box_{M+1}.reg')
+                            replace, found = True, True
+                            break
+            if found:
+                break
+
+        sources_done += other_sources
+        image.source_to_csv(other_sources)
 
         # make image with before and after repositioning of our box
-        m += 1
+        if not replace:
+            m += 1
 
         if args.images:
             fig = plt.figure(figsize=(10, 10))
@@ -454,12 +513,20 @@ if __name__ == '__main__':
             plt.title('Repositioned')
             plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
                           cmap='CMRmap')
-            fig.savefig(f'{folder}/box_images/box_{m}.png')
+            if replace:
+                fig.savefig(f'{folder}/box_images/box_{M+1}.png')
+            else:
+                fig.savefig(f'{folder}/box_images/box_{m}.png')
 
-        image.save_box(box_name=f'box_{m}.reg')
+        if replace:
+            print(f'Replace box {M+1}.')
+            image.save_box(box_name=f'{folder}/boxes/box_{M+1}.reg')
+        else:
+            print(f'Create box {m}.')
+            image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
 
     print('-------------------------------------------------')
     print(f'Made succesfully {m} boxes.')
     if args.images:
-        print(f'See {folder}/box_images for the images of the directions.')
-    print(f'See {folder}/boxes for the region files of the boxes that are made.')
+        print(f'Images of boxes are in {folder}/box_images.')
+    print(f'Region files are in {folder}/boxes.')
