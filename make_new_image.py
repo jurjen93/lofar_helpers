@@ -26,21 +26,21 @@ SINGULARITY=' '.join(['singularity exec -B', SING_BIND, SING_IMAGE])
 os.system('{SINGULARITY} CleanSHM.py'.format(SINGULARITY=SINGULARITY))
 
 #MOVE FILES
-print('Moving files to '+LOCATION)
-# os.system("scp -r lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/L626678/selfcal/all_directions.h5 "+LOCATION)
-os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+LOCATION)
-os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+LOCATION)
-os.system('cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+LOCATION)
-print('Finished moving files')
+# print('Moving files to '+LOCATION)
+# # os.system("scp -r lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/L626678/selfcal/all_directions.h5 "+LOCATION)
+# os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+LOCATION)
+# os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+LOCATION)
+# os.system('cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+LOCATION)
+# print('Finished moving files')
 
 #FLAG TIME
-if args.time_flag:
-    print('Making goodtimes')
-    for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
-        os.system('{SINGULARITY} python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf {time} -ms {MS}'.format(SINGULARITY=SINGULARITY, MS=MS, time=' '.join(args.time_flag)))
+# if args.time_flag:
+#     print('Making goodtimes')
+#     for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
+#         os.system('{SINGULARITY} python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf {time} -ms {MS}'.format(SINGULARITY=SINGULARITY, MS=MS, time=' '.join(args.time_flag)))
 
 #MAKE LIST WITH MEASUREMENT SETS
-os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
+# os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
 
 with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
