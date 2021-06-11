@@ -6,6 +6,7 @@ Use this script to return region files of directions that need a selfcal.
 TODO:
 - Sources in same figure check flux with sqrt(a**2+b**2)
 - The brighter, the less distance between sources in same image
+- Initial size depending on brightness of source.
 """
 
 import numpy as np
