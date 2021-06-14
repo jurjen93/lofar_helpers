@@ -5,6 +5,7 @@ from argparse import ArgumentParser
 parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
 parser.add_argument('-del', '--exclude_boxes', help='Exclude the following boxes (numbers only)')
+parser.add_argument('-nd', '--make_new_direction', type=bool, default=True, help='make new directions')
 args = parser.parse_args()
 
 def get_digits(x):
@@ -34,4 +35,5 @@ for box in boxes_h5_list:
         print("No merged_selfcal* in {box}".format(box=box.split('/')[-1]))
 
 merge_h5(h5_out='all_directions.h5',
-         h5_files=h5_files)
+         h5_files=h5_files,
+         make_new_direction=args.make_new_directions)
