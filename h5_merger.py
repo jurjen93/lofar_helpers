@@ -563,7 +563,6 @@ class MergeH5:
                         self.axes_new = ['pol'] + self.axes_new
 
             h5.close()
-            print(self.gains[0])
 
         return self
 
