@@ -35,6 +35,7 @@ __all__ = ['merge_h5']
 # TODO: test rotation (fulljones)
 # TODO: test convert_tec==False
 
+
 class MergeH5:
     """Merge multiple h5 files"""
 
@@ -694,12 +695,23 @@ def merge_h5(h5_out=None, h5_files=None, ms_files=None, convert_tec=True, make_n
     print('END: h5 solution file(s) merged')
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser
+    from argparse import ArgumentParser, ArgumentTypeError
+
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise ArgumentTypeError('Boolean value expected.')
+
     parser = ArgumentParser()
     parser.add_argument('-out', '--h5_out', type=str, help='h5 file name for output')
     parser.add_argument('-in', '--h5_files', type=str, help='h5 files to merge')
     parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
     parser.add_argument('-ct', '--convert_tec', type=bool, default=True, help='convert tec to phase')
-    parser.add_argument('-nd', '--make_new_direction', type=bool, default=True, help='make new directions')
+    parser.add_argument('-nd', '--make_new_direction', type=str2bool, const=True, default=True, help='make new directions')
     args = parser.parse_args()
     merge_h5(h5_out=args.h5_out, h5_files=args.h5_files, ms_files=args.ms_files, convert_tec=args.convert_tec, make_new_direction=args.make_new_direction)
