@@ -36,4 +36,4 @@ for box in boxes_h5_list:
 
 merge_h5(h5_out='all_directions.h5',
          h5_files=h5_files,
-         make_new_direction=args.make_new_directions)
+         make_new_direction=args.make_new_direction)
