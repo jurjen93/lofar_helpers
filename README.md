@@ -48,6 +48,7 @@ And use the following parameters:
 * ```h5_tables``` --> h5 tables to merge in list form or string (with/without wildcard)
 * ```ms_files``` --> ms files to use in list form or string (with/without wildcard)
 * ```convert_tec``` --> convert tec to phase (boolean)
+* ```make_new_direction``` --> choose to add new directions (raise the table dimensions) or merge everything into one
 
 Or you can run the script on the command line with
 ```python h5_merger.py <FLAGS>```
@@ -55,6 +56,7 @@ Or you can run the script on the command line with
 * ```-in``` --> h5 tables to merge in list form or string (with/without wildcard)
 * ```-ms``` --> ms files to use in list form or string (with/without wildcard)
 * ```-ct``` --> convert tec to phase
+* ```-nd``` --> choose to add new directions (raise the table dimensions) or merge everything into one
 
 #### Contact
 Let me know if you are using this script and have any issues or suggestions for improvements.
