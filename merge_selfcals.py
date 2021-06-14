@@ -15,7 +15,7 @@ def str2bool(v):
 parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
 parser.add_argument('-del', '--exclude_boxes', help='Exclude the following boxes (numbers only)')
-parser.add_argument('-nd', '--make_new_direction', type=str2bool, const=True, default=True, help='make new directions')
+parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True, help='make new directions')
 args = parser.parse_args()
 
 def get_digits(x):
