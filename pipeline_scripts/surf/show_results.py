@@ -6,7 +6,7 @@ from glob import glob
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('-p', '--path', type=str, help='h5 file name for output')
+    parser.add_argument('-p', '--path', type=str, help='h5 table name for output')
     args = parser.parse_args()
     if args.path:
         path = args.path

@@ -29,7 +29,7 @@ if args.exclude_boxes:
 else:
     excluded_boxes = []
 
-h5_files = []
+h5_tables = []
 boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 for box in boxes_h5_list:
@@ -39,10 +39,10 @@ for box in boxes_h5_list:
         if any(box in last_merged for box in excluded_boxes):
             print('Exclude '+last_merged.split('/')[-1])
         else:
-            h5_files.append(last_merged)
+            h5_tables.append(last_merged)
     except:
         print("No merged_selfcal* in {box}".format(box=box.split('/')[-1]))
 
 merge_h5(h5_out='all_directions.h5',
-         h5_files=h5_files,
+         h5_tables=h5_tables,
          make_new_direction=args.make_new_direction)
