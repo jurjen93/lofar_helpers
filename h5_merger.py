@@ -327,7 +327,8 @@ class MergeH5:
                 print('Adding new direction {:f},{:f}'.format(*source_coords))
                 idx = self.n
                 self.directions.update({d: source_coords})
-                self.n += 1
+                if self.make_new_direction:
+                    self.n += 1
                 if self.n>1:# for self.n==1 we dont have to do anything
                     if st.getType() in ['tec','phase','rotation']:
                         shape = list(self.phases.shape)
