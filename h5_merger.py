@@ -315,10 +315,8 @@ class MergeH5:
             d = ss.getSou()
             source_coords = d[list(d.keys())[0]]
             d = 'Dir{:02d}'.format(self.n)
-            print(self.make_new_direction)
-            if not self.make_new_direction:
+            if not self.make_new_direction and self.n==1:
                 idx = 0
-                print(idx)
             elif any([np.array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
                 # Direction already exists, add to the existing solutions.
                 idx = list([list(l) for l in self.directions.values()]).index(list(source_coords))
