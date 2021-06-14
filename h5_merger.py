@@ -9,7 +9,7 @@ EXAMPLE:
 
 from h5_merger import merge_h5
 merge_h5(h5_out='test.h5',
-        h5_files='*.h5',
+        h5_tables='*.h5',
         ms_files='*.ms',
         convert_tec=True)
 
@@ -37,12 +37,12 @@ __all__ = ['merge_h5']
 
 
 class MergeH5:
-    """Merge multiple h5 files"""
+    """Merge multiple h5 tables"""
 
-    def __init__(self, h5_out, h5_files=None, ms_files=None, convert_tec=True, make_new_direction=True):
+    def __init__(self, h5_out, h5_tables=None, ms_files=None, convert_tec=True, make_new_direction=True):
         """
-        :param h5_out: name of merged output h5 file
-        :param files: h5 files to merge, can be both list and string
+        :param h5_out: name of merged output h5 table
+        :param files: h5 tables to merge, can be both list and string
         :param ms_files: ms files to use, can be both list and string
         :param convert_tec: convert TEC to phase or not
         """
@@ -57,13 +57,13 @@ class MergeH5:
         else:
             ms = []
 
-        if type(h5_files) == list:
-            self.h5_files = h5_files
-        elif type(h5_files) == str:
-            self.h5_files = glob(h5_files)
+        if type(h5_tables) == list:
+            self.h5_tables = h5_tables
+        elif type(h5_tables) == str:
+            self.h5_tables = glob(h5_tables)
         else:
             max_num_h5 = sorted(glob('*ms.archive0*.avgsolsgrid*.h5'))[-1].split('.')[-2].split('_')[-1]
-            self.h5_files = glob('*ms.archive0*.avgsolsgrid_%s.h5' % max_num_h5)
+            self.h5_tables = glob('*ms.archive0*.avgsolsgrid_%s.h5' % max_num_h5)
         if len(ms)>0:# check if there is a valid ms file
             t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + ms[0] + '::SPECTRAL_WINDOW')
             self.ax_freq = t.getcol('CHAN_FREQ')[0]
@@ -72,11 +72,11 @@ class MergeH5:
             t = ct.table(ms[0])
             self.ax_time = sorted(np.unique(t.getcol('TIME')))
             t.close()
-        else:# if we dont have ms files, we use the time and frequency axis of the longest h5 file
-            print('No MS file given, will use h5 file for frequency and time axis')
+        else:# if we dont have ms files, we use the time and frequency axis of the longest h5 table
+            print('No MS file given, will use h5 table for frequency and time axis')
             self.ax_time = []
             self.ax_freq = []
-            for h5_name in self.h5_files:
+            for h5_name in self.h5_tables:
                 h5 = h5parm(h5_name)
                 for solset in h5.getSolsetNames():
                     ss = h5.getSolset(solset)
@@ -95,7 +95,7 @@ class MergeH5:
 
     def get_values(self, ss, st, solset, soltab):
         """
-        Get the values from the h5 file to work with.
+        Get the values from the h5 table to work with.
         Also do some checks on the time and frequency axis.
         :param ss: solution set
         :param st: solution table
@@ -157,7 +157,7 @@ class MergeH5:
         """
         self.all_soltabs, self.all_solsets, self.all_axes, self.antennas = [], [], [], []
 
-        for h5_name in self.h5_files:
+        for h5_name in self.h5_tables:
             h5 = h5parm(h5_name)
             for solset in h5.getSolsetNames():
                 self.all_solsets += [solset]
@@ -179,7 +179,7 @@ class MergeH5:
 
     def get_clean_values(self, soltab, st):
         """
-        Get default values, based on model h5 file
+        Get default values, based on model h5 table
         :param soltab: solution table name
         :param st: solution table itself
         """
@@ -238,25 +238,25 @@ class MergeH5:
 
     def get_model_h5(self, solset, soltab):
         """
-        Get model (clean) h5 file
+        Get model (clean) h5 table
         :param solset: solution set name (sol000, sol001,..)
         :param soltab: solution table name
         """
 
         if '000' in soltab:
 
-            for h5_name_to_merge in self.h5_files:  # make template
+            for h5_name_to_merge in self.h5_tables:  # make template
 
                 h5_to_merge = h5parm(h5_name_to_merge)
 
                 if solset not in h5_to_merge.getSolsetNames():
                     h5_to_merge.close()
-                    continue  # use other h5 file with solset
+                    continue  # use other h5 table with solset
                 else:
                     ss = h5_to_merge.getSolset(solset)
                 if soltab not in ss.getSoltabNames():
                     h5_to_merge.close()
-                    continue  # use other h5 file with soltab
+                    continue  # use other h5 table with soltab
                 else:
                     st = ss.getSoltab(soltab)
 
@@ -282,7 +282,7 @@ class MergeH5:
         :param solset: solution set name
         :param soltab: solution table name
         """
-        for h5_name in self.h5_files:
+        for h5_name in self.h5_tables:
 
             h5 = h5parm(h5_name)
             if solset not in h5.getSolsetNames():
@@ -316,7 +316,7 @@ class MergeH5:
             source_coords = d[list(d.keys())[0]]
             d = 'Dir{:02d}'.format(self.n)
 
-            print('Merge new h5 file in {direction}'.format(direction=d))
+            print('Merge new h5 table in {direction}'.format(direction=d))
 
             if not self.make_new_direction and self.n==1:
                 idx = 0
@@ -589,7 +589,7 @@ class MergeH5:
 
     def create_new_dataset(self, solset, soltab):
         """
-        Create a new dataset in the h5 file
+        Create a new dataset in the h5 table
         :param solset: solution set name
         :param soltab: solution table name
         """
@@ -657,17 +657,17 @@ class MergeH5:
         return self
 
 
-def merge_h5(h5_out=None, h5_files=None, ms_files=None, convert_tec=True, make_new_direction=True):
+def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_new_direction=True):
     """
-    Main function that uses the class MergeH5 to merge h5 files.
-    :param h5_out (string): h5 file name out
-    :param h5_files (string or list): h5 files to merge
+    Main function that uses the class MergeH5 to merge h5 tables.
+    :param h5_out (string): h5 table name out
+    :param h5_tables (string or list): h5 tables to merge
     :param ms_files (string or list): ms files to use, can be both list and string
     :param convert_tec (boolean): convert TEC to phase or not
     """
     if h5_out in glob(h5_out):
         os.system('rm {}'.format(h5_out))
-    merge = MergeH5(h5_out=h5_out, h5_files=h5_files, ms_files=ms_files, convert_tec=convert_tec, make_new_direction=make_new_direction)
+    merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec, make_new_direction=make_new_direction)
     merge.get_allkeys
     for ss in merge.all_solsets:
         for st_group in merge.all_soltabs:
@@ -679,7 +679,7 @@ def merge_h5(h5_out=None, h5_files=None, ms_files=None, convert_tec=True, make_n
                     merge.create_new_dataset(ss, 'phase')
                 else:
                     merge.create_new_dataset(ss, st)
-        #try:#add amplitude and phase if not available in h5 file
+        #try:#add amplitude and phase if not available in h5 table
         if 'amplitude000' not in [item for sublist in merge.all_soltabs for item in sublist]:
             merge.gains = np.ones((2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
             merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
@@ -710,17 +710,17 @@ if __name__ == '__main__':
             raise ArgumentTypeError('Boolean value expected.')
 
     parser = ArgumentParser()
-    parser.add_argument('-out', '--h5_out', type=str, help='h5 file name for output')
-    parser.add_argument('-in', '--h5_files', type=str, help='h5 files to merge')
+    parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output')
+    parser.add_argument('-in', '--h5_tables', type=str, help='h5 tables to merge')
     parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
     parser.add_argument('-ct', '--convert_tec', type=bool, default=True, help='convert tec to phase')
     parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True, help='make new directions')
 
     args = parser.parse_args()
 
-    if '[' in args.h5_files:#make sure h5 files in right format
-        h5files = args.h5_files.replace('[','').replace(']','').replace(' ','').split(',')
+    if '[' in args.h5_tables:#make sure h5 tables in right format
+        h5tables = args.h5_tables.replace('[','').replace(']','').replace(' ','').split(',')
     else:
-        h5files = args.h5_files
+        h5tables = args.h5_tables
 
-    merge_h5(h5_out=args.h5_out, h5_files=h5files, ms_files=args.ms_files, convert_tec=args.convert_tec, make_new_direction=args.make_new_direction)
+    merge_h5(h5_out=args.h5_out, h5_tables=h5tables, ms_files=args.ms_files, convert_tec=args.convert_tec, make_new_direction=args.make_new_direction)

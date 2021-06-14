@@ -45,14 +45,14 @@ just import the most important function with:
 
 And use the following parameters:
 * ```h5_out``` --> output file name
-* ```h5_files``` --> h5 files to merge in list form or string (with/without wildcard)
+* ```h5_tables``` --> h5 tables to merge in list form or string (with/without wildcard)
 * ```ms_files``` --> ms files to use in list form or string (with/without wildcard)
 * ```convert_tec``` --> convert tec to phase (boolean)
 
 Or you can run the script on the command line with
 ```python h5_merger.py <FLAGS>```
 * ```-out``` --> output file name
-* ```-in``` --> h5 files to merge in list form or string (with/without wildcard)
+* ```-in``` --> h5 tables to merge in list form or string (with/without wildcard)
 * ```-ms``` --> ms files to use in list form or string (with/without wildcard)
 * ```-ct``` --> convert tec to phase
 
