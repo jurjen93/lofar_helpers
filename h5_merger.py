@@ -714,5 +714,12 @@ if __name__ == '__main__':
     parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
     parser.add_argument('-ct', '--convert_tec', type=bool, default=True, help='convert tec to phase')
     parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True, help='make new directions')
+
     args = parser.parse_args()
-    merge_h5(h5_out=args.h5_out, h5_files=args.h5_files, ms_files=args.ms_files, convert_tec=args.convert_tec, make_new_direction=args.make_new_direction)
+
+    if '[' in args.h5_files:#make sure h5 files in right format
+        h5files = args.h5_files.replace('[','').replace(']','').replace(' ','').split(',')
+    else:
+        h5files = args.h5_files
+
+    merge_h5(h5_out=args.h5_out, h5_files=h5files, ms_files=args.ms_files, convert_tec=args.convert_tec, make_new_direction=args.make_new_direction)
