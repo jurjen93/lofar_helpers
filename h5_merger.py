@@ -315,7 +315,9 @@ class MergeH5:
             d = ss.getSou()
             source_coords = d[list(d.keys())[0]]
             d = 'Dir{:02d}'.format(self.n)
-            if any([np.array_equal(source_coords, list(sv)) for sv in self.directions.values()]) or (not self.make_new_direction and self.n==1):
+            if not self.make_new_direction and self.n==1:
+                idx = 0
+            elif any([np.array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
                 # Direction already exists, add to the existing solutions.
                 idx = list([list(l) for l in self.directions.values()]).index(list(source_coords))
             else:# new direction
@@ -323,7 +325,7 @@ class MergeH5:
                 idx = self.n
                 self.directions.update({d: source_coords})
                 self.n += 1
-                if self.n>1:# for n==0 we dont have to do anything
+                if self.n>1:# for self.n==1 we dont have to do anything
                     if st.getType() in ['tec','phase','rotation']:
                         shape = list(self.phases.shape)
                         dir_index = len(self.phases.shape)-4
