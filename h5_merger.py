@@ -563,7 +563,8 @@ class MergeH5:
                         self.axes_new = ['pol'] + self.axes_new
 
             h5.close()
-        print(self.polarizations[0])
+        print(self.gains[0])
+
         return self
 
     def DPPP_style(self, soltab):
