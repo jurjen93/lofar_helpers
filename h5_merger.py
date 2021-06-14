@@ -1,5 +1,5 @@
 """
-LAST UPDATE: 7-5-2021
+LAST UPDATE: 14-6-2021
 
 After one has created solution files from self calling on the extracted boxes,
 one can use this script to merge solution files
@@ -27,7 +27,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 import sys
 
-__author__ = "Jurjen de Jong"
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 __all__ = ['merge_h5']
 
 # TODO: Weights keep on 1 -> future investigation
@@ -38,7 +38,7 @@ __all__ = ['merge_h5']
 class MergeH5:
     """Merge multiple h5 files"""
 
-    def __init__(self, h5_out, h5_files=None, ms_files=None, convert_tec=True):
+    def __init__(self, h5_out, h5_files=None, ms_files=None, convert_tec=True, make_new_direction=True):
         """
         :param h5_out: name of merged output h5 file
         :param files: h5 files to merge, can be both list and string
@@ -88,6 +88,7 @@ class MergeH5:
                 h5.close()
 
         self.convert_tec = convert_tec  # convert tec or not
+        self.make_new_direction = make_new_direction
 
         self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time'] # standard solax order to do our manipulations
 
@@ -314,7 +315,7 @@ class MergeH5:
             d = ss.getSou()
             source_coords = d[list(d.keys())[0]]
             d = 'Dir{:02d}'.format(self.n)
-            if any([np.array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
+            if any([np.array_equal(source_coords, list(sv)) for sv in self.directions.values()]) or (not self.make_new_direction and self.n==1):
                 # Direction already exists, add to the existing solutions.
                 idx = list([list(l) for l in self.directions.values()]).index(list(source_coords))
             else:# new direction
@@ -650,7 +651,7 @@ class MergeH5:
         return self
 
 
-def merge_h5(h5_out=None, h5_files=None, ms_files=None, convert_tec=True):
+def merge_h5(h5_out=None, h5_files=None, ms_files=None, convert_tec=True, make_new_direction=True):
     """
     Main function that uses the class MergeH5 to merge h5 files.
     :param h5_out (string): h5 file name out
@@ -660,7 +661,7 @@ def merge_h5(h5_out=None, h5_files=None, ms_files=None, convert_tec=True):
     """
     if h5_out in glob(h5_out):
         os.system('rm {}'.format(h5_out))
-    merge = MergeH5(h5_out=h5_out, h5_files=h5_files, ms_files=ms_files, convert_tec=convert_tec)
+    merge = MergeH5(h5_out=h5_out, h5_files=h5_files, ms_files=ms_files, convert_tec=convert_tec, make_new_direction=make_new_direction)
     merge.get_allkeys
     for ss in merge.all_solsets:
         for st_group in merge.all_soltabs:
@@ -697,5 +698,6 @@ if __name__ == '__main__':
     parser.add_argument('-in', '--h5_files', type=str, help='h5 files to merge')
     parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
     parser.add_argument('-ct', '--convert_tec', type=bool, default=True, help='convert tec to phase')
+    parser.add_argument('-nd', '--make_new_direction', type=bool, default=True, help='make new directions')
     args = parser.parse_args()
-    merge_h5(h5_out=args.h5_out, h5_files=args.h5_files, ms_files=args.ms_files, convert_tec=args.convert_tec)
+    merge_h5(h5_out=args.h5_out, h5_files=args.h5_files, ms_files=args.ms_files, convert_tec=args.convert_tec, make_new_direction=args.make_new_direction)
