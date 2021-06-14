@@ -1,11 +1,21 @@
 from h5_merger import merge_h5
 from glob import glob
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
+
+def str2bool(v):
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise ArgumentTypeError('Boolean value expected.')
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
 parser.add_argument('-del', '--exclude_boxes', help='Exclude the following boxes (numbers only)')
-parser.add_argument('-nd', '--make_new_direction', type=bool, default=True, help='make new directions')
+parser.add_argument('-nd', '--make_new_direction', type=str2bool, const=True, default=True, help='make new directions')
 args = parser.parse_args()
 
 def get_digits(x):
