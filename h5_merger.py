@@ -242,7 +242,6 @@ class MergeH5:
         :param solset: solution set name (sol000, sol001,..)
         :param soltab: solution table name
         """
-        h5_N = 0
 
         if '000' in soltab:
 
@@ -316,6 +315,9 @@ class MergeH5:
             d = ss.getSou()
             source_coords = d[list(d.keys())[0]]
             d = 'Dir{:02d}'.format(self.n)
+
+            print('Merge new h5 file in {direction}'.format(direction=d))
+
             if not self.make_new_direction and self.n==1:
                 idx = 0
             elif any([np.array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
