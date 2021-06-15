@@ -52,36 +52,36 @@ def create_new_dataset(filename, solset, soltab, directions, sources):
     dir_index = solutiontable.getAxesNames().index('dir')
     shape = list(values_in.shape)
     shape[dir_index]=len(directions)
-    if 'amplitude' in solutiontable:
+    if 'amplitude' in soltab:
         values_new = zeros(shape)
-    elif 'phase' in solutiontable:
+    elif 'phase' in soltab:
         values_new = ones(shape)
 
     for idx_new, idx_old in enumerate(indexes):
         if dir_index == 0:
-            if 'amplitude' in solutiontable:
+            if 'amplitude' in soltab:
                 values_new[idx_new,...] *= values_in[idx_old, ...]
-            elif 'phase' in solutiontable:
+            elif 'phase' in soltab:
                 values_new[idx_new,...] += values_in[idx_old, ...]
         elif dir_index == 1:
-            if 'amplitude' in solutiontable:
+            if 'amplitude' in soltab:
                 values_new[:, idx_new,...] *= values_in[:, idx_old, ...]
-            elif 'phase' in solutiontable:
+            elif 'phase' in soltab:
                 values_new[:, idx_new,...] += values_in[:, idx_old, ...]
         elif dir_index == 2:
-            if 'amplitude' in solutiontable:
+            if 'amplitude' in soltab:
                 values_new[:, :, idx_new,...] *= values_in[:, :, idx_old, ...]
-            elif 'phase' in solutiontable:
+            elif 'phase' in soltab:
                 values_new[:, :, idx_new,...] += values_in[:, :, idx_old, ...]
         elif dir_index == 3:
-            if 'amplitude' in solutiontable:
+            if 'amplitude' in soltab:
                 values_new[:, :, :, idx_new,...] *= values_in[:, :, :, idx_old, ...]
-            elif 'phase' in solutiontable:
+            elif 'phase' in soltab:
                 values_new[:, :, :, idx_new,...] += values_in[:, :, :, idx_old, ...]
         elif dir_index == 4:
-            if 'amplitude' in solutiontable:
+            if 'amplitude' in soltab:
                 values_new[:, :, :, :, idx_new,...] *= values_in[:, :, :, :, idx_old,...]
-            elif 'phase' in solutiontable:
+            elif 'phase' in soltab:
                 values_new[:, :, :, :, idx_new,...] += values_in[:, :, :, :, idx_old,...]
 
     print(sources)
