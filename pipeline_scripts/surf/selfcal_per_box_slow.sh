@@ -28,6 +28,6 @@ echo "-----FINISHED SELFCAL-----"
 
 #merge selfcals --> DONE IN SEPARATE SCRIPT NOW
 #SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/lofar_helpers/merge_selfcals.py -d ${TO}/selfcal
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/lofar_helpers/pipeline_scripts/merge_selfcals.py -d ${TO}/selfcal
 
 echo "----------END----------"

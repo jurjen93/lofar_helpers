@@ -35,6 +35,6 @@ done
 echo "-----FINISHED SELFCAL-----"
 
 #merge selfcals
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/lofar_helpers/merge_selfcals.py -d ${TO}/selfcal
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/lofar_helpers/pipeline_scripts/merge_selfcals.py -d ${TO}/selfcal
 
 echo "----------END----------"

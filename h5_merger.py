@@ -719,8 +719,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    if '[' in args.h5_tables:#make sure h5 tables in right format
+    # make sure h5 tables in right format
+    if '[' in args.h5_tables:
         h5tables = args.h5_tables.replace('[','').replace(']','').replace(' ','').split(',')
+    elif ' ' in args.h5_tables:
+        h5tables = args.h5_tables.split()
     else:
         h5tables = args.h5_tables
 

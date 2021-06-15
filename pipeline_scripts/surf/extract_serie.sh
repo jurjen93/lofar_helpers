@@ -17,7 +17,7 @@ START_N=1
 
 #REORGANIZE FILES
 cp ~/scripts/lofar_helpers/h5_merger.py ~/scripts
-cp ~/scripts/lofar_helpers/merge_selfcals.py ~/scripts
+cp ~/scripts/lofar_helpers/pipeline_scripts/merge_selfcals.py ~/scripts
 
 #MOVE NEEDED FILES
 #echo "Moving files to ${TO}/extract and untar..."

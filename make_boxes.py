@@ -19,7 +19,7 @@ from argparse import ArgumentParser
 import warnings
 from pandas import DataFrame, concat, read_csv
 
-__author__ = "Jurjen de Jong"
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 __all__ = ['']
 
 warnings.filterwarnings("ignore")
