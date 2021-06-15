@@ -117,7 +117,7 @@ header = WCS(hdu.header, naxis=2).to_header()
 
 center= (header['CRVAL1'], header['CRVAL2'])
 
-H = tables.open_file(args.h5_file_out)
+H = tables.open_file(args.h5_file_in)
 sources = []
 directions = []
 for dir in H.root.sol000.source[:]:
