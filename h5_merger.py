@@ -29,7 +29,7 @@ from scipy.interpolate import interp1d
 import sys
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
-__all__ = ['merge_h5']
+__all__ = ['merge_h5', 'str2bool']
 
 # TODO: Weights keep on 1 -> future investigation
 # TODO: Boxes -> Euclidean distance van de fluxes

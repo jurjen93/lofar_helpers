@@ -3,6 +3,7 @@ from astropy.wcs import WCS
 from astropy.io import fits
 from argparse import ArgumentParser
 from math import pi, cos, sin, acos
+from h5_merger import *
 
 def degree_to_radian(inp):
     """degree to radian"""
@@ -19,7 +20,7 @@ def angular_distance(p1, p2):
 parser = ArgumentParser()
 parser.add_argument('-f', '--file', type=str, help='fitsfile name')
 parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
-parser.add_argument('-in', '--inside', type=bool, default=False, help='keep directions inside the angular cutoff')
+parser.add_argument('-in', '--inside', type=str2bool, default=False, help='keep directions inside the angular cutoff')
 args = parser.parse_args()
 
 hdu = fits.open(args.file)[0]
