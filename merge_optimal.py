@@ -1,9 +1,17 @@
 import tables
 from astropy.wcs import WCS
 from astropy.io import fits
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentTypeError
 from math import pi, cos, sin, acos
-from h5_merger import *
+
+def str2bool(v):
+    v = str(v)
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise ArgumentTypeError('Boolean value expected.')
 
 def degree_to_radian(inp):
     """degree to radian"""
@@ -32,7 +40,10 @@ directions = []
 H = tables.open_file('lotss.h5')
 for dir in H.root.sol000.source[:]:
     position = [radian_to_degree(i) for i in dir[1]]
-    if angular_distance(center, position)>args.angular_cutoff:
+    if args.inside and angular_distance(center, position)<args.angular_cutoff:
+        print(dir)
+        print(position)
+    else:
         print(dir)
         print(position)
 H.close()
