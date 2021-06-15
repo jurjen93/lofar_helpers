@@ -507,7 +507,7 @@ class MergeH5:
                             gaintmp[0, ...] = self.gains[0, ...]
                             gaintmp[-1, ...] = self.gains[1, ...]
                             self.gains = gaintmp
-                        elif self.gains.shape < 5:
+                        elif len(self.gains.shape) < 5:
                             gaintmp = np.zeros((4,) + self.gains.shape)
                             gaintmp[0, ...] = self.gains
                             gaintmp[-1, ...] = self.gains
