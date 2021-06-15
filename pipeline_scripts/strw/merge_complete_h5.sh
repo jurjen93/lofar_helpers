@@ -14,7 +14,7 @@ mkdir ${OUTPUT_FOLDER}
 cd ${OUTPUT_FOLDER}
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} killMS2H5parm.py lotss_merged.h5 ${FOLDER}/extract/DDS3_full*merged.npz
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} killMS2H5parm.py lotss_smoothed.h5 ${FOLDER}/extract/DDS3_full*smoothed.npz
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out DDS3_full_merged.h5 -in lotss_smoothed.h5 lotss_merged.h5
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out DDS3_full_merged.h5 -in [lotss_smoothed.h5,lotss_merged.h5]
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_helpers/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.2 -in false -h5out DDS3_full_merged_filtered.h5 -h5in DDS3_full_merged.h5
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_helpers/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.2 -in true -h5out all_directions_filtered.h5 -h5in ${FOLDER}/result/all_directions.h5
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out complete_merged.h5 -in DDS3_full_merged_filtered.h5 all_directions_filtered.h5
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out complete_merged.h5 -in [DDS3_full_merged_filtered.h5,all_directions_filtered.h5]
