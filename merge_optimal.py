@@ -27,7 +27,7 @@ def angular_distance(p1, p2):
     """angular distance for points in ra and dec"""
     return acos(sin(p1[1])*sin(p2[1])+cos(p1[1])*cos(p2[1])*cos(p1[0]-p2[0]))
 
-def create_new_dataset(filename, solset, soltab, directions, sources):
+def create_new_soltab(h5_in, h5_out, solset, soltab, directions, sources):
     """
     Create a new dataset in the h5 table
     :param filename: name of ourput file
@@ -36,26 +36,27 @@ def create_new_dataset(filename, solset, soltab, directions, sources):
     :param dirs: directions to include
     """
 
-    h5_out = h5parm(filename, readonly=False)
-    if solset in h5_out.getSolsetNames():
-        solsetout = h5_out.getSolset(solset)
-    else:
-        solsetout = h5_out.makeSolset(solset)
+    print('Filter {solset}/{soltab} from {h5_in} into {h5_out}'.format(solset=solset, soltab=soltab, h5_in=h5_in, h5_out=h5_out))
 
+    h5_in = h5parm(h5_out, readonly=True)
+    h5_out = h5parm(h5_out, readonly=False)
 
-    solutiontable = h5.getSolset(solset).getSoltab(soltab)
-
+    solutiontable = h5_in.getSolset(solset).getSoltab(soltab)
     axes = solutiontable.getValues()[1]
     values_in = solutiontable.getValues()[0]
     indexes = [list(axes['dir']).index(dir.decode('UTF-8')) for dir in directions]
     axes['dir']=directions
     dir_index = solutiontable.getAxesNames().index('dir')
+    h5_in.close()
     shape = list(values_in.shape)
     shape[dir_index]=len(directions)
     if 'amplitude' in soltab:
         values_new = zeros(shape)
     elif 'phase' in soltab:
         values_new = ones(shape)
+    else:
+        print('Skip {soltab}'.format(soltab=soltab))
+        return
 
     for idx_new, idx_old in enumerate(indexes):
         if dir_index == 0:
@@ -84,9 +85,10 @@ def create_new_dataset(filename, solset, soltab, directions, sources):
             elif 'phase' in soltab:
                 values_new[:, :, :, :, idx_new,...] += values_in[:, :, :, :, idx_old,...]
 
-    print(sources)
-    print(len(sources))
-    print(values_new.shape)
+    print('New number of sources {num}'.format(num=len(sources)))
+    print('Filtered output shape {shape}'.format(shape=values_new.shape))
+
+    solsetout = h5_out.getSolset(solset)
     current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
     new_sources = [source for source in sources if source[0] not in current_sources]
     if len(new_sources) > 0:
@@ -136,4 +138,5 @@ h5 = h5parm(args.h5_file_out)
 for ss in h5.getSolsetNames():
     for st in h5.getSolset(ss).getSoltabNames():
         print(ss, st)
-        create_new_dataset(args.output_h5, ss, st, directions, sources)
+        create_new_soltab(h5_in, h5_out, ss, st, directions, sources)
+h5.close()
