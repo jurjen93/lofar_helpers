@@ -113,7 +113,11 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
 
 
             weights = ones(values_new.shape)
-            solsetout.makeSoltab(st, axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
+            if 'amplitude' in st:
+                solsetout.makeSoltab('amplitude', axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
+                                 weights=weights)
+            if 'phase' in st:
+                solsetout.makeSoltab('phase', axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
                                  weights=weights)
     h5_in.close()
     h5_out.close()
