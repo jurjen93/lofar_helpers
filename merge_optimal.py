@@ -129,7 +129,7 @@ for dir in H.root.sol000.source[:]:
         print('Remove {dir}'.format(dir=dir))
 H.close()
 
-h5 = h5parm(args.output_h5)
+h5 = h5parm(args.h5_file_out)
 for ss in h5.getSolsetNames():
     for st in h5.getSolset(ss).getSoltabNames():
-        create_new_dataset(args.file, ss, st, directions, sources)
+        create_new_dataset(args.output_h5, ss, st, directions, sources)
