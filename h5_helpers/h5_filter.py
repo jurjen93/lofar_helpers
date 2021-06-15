@@ -1,3 +1,10 @@
+"""
+LAST UPDATE: 15-6-2021
+
+This script is meant to filter directions outside of a specific circle.
+This can be useful for excluding directions at the boundaries of a field because the solutions are less good there.
+"""
+
 import tables
 from astropy.wcs import WCS
 from astropy.io import fits
@@ -5,6 +12,8 @@ from argparse import ArgumentParser, ArgumentTypeError
 from math import pi, cos, sin, acos
 from losoto.h5parm import h5parm
 from numpy import ones, zeros
+
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
 def str2bool(v):
     v = str(v)
@@ -56,7 +65,7 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
             elif 'phase' in st:
                 values_new = ones(shape)
             else:
-                print('Skip {soltab}'.format(soltab=st))
+                print('Skip {solset}/{soltab}'.format(solset=ss, soltab=st))
                 return
 
             for idx_new, idx_old in enumerate(indexes):
@@ -100,8 +109,6 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
                 new_sources[n]=(bytes('Dir'+str(n).zfill(2), 'utf-8'), ns[1])
 
             if len(new_sources) > 0:
-                print(new_sources)
-                print(len(new_sources))
                 solsetout.obj.source.append(new_sources)
 
 
@@ -113,11 +120,10 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
 
 parser = ArgumentParser()
 parser.add_argument('-f', '--fits', type=str, help='fitsfile name')
-parser.add_argument('-h5o', '--output_h5', type=str, help='name of output h5')
 parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
 parser.add_argument('-in', '--inside', type=str2bool, default=False, help='keep directions inside the angular cutoff')
-parser.add_argument('-h5out', '--h5_file_out', type=str, help='h5 files with directions outside of the angular cutoff')
-parser.add_argument('-h5in', '--h5_file_in', type=str, help='h5 files with directions inside the angular cutoff')
+parser.add_argument('-h5out', '--h5_file_out', type=str, help='h5 output name')
+parser.add_argument('-h5in', '--h5_file_in', type=str, help='h5 input name (to filter)')
 
 args = parser.parse_args()
 
@@ -144,5 +150,6 @@ for dir in H.root.sol000.source[:]:
         print('Remove {dir}'.format(dir=dir))
 H.close()
 
-
 create_new_soltab(args.h5_file_in, args.h5_file_out, directions, sources)
+
+
