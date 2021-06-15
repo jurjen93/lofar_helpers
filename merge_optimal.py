@@ -18,7 +18,7 @@ def degree_to_radian(inp):
     return float(inp) / 360 * pi * 2
 
 def radian_to_degree(inp):
-    """degree to radian"""
+    """radion to degree"""
     return float(inp) * 360 / (pi * 2)
 
 def angular_distance(p1, p2):
