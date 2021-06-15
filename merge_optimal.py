@@ -93,9 +93,12 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
                 solsetout = h5_out.getSolset(ss)
             else:
                 solsetout = h5_out.makeSolset(ss)
+
             current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
             new_sources = [source for source in sources if source[0] not in current_sources]
             if len(new_sources) > 0:
+                print(new_sources)
+                print(len(new_sources))
                 solsetout.obj.source.append(new_sources)
 
 
