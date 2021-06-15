@@ -14,6 +14,7 @@ import os
 from astropy.wcs import WCS
 from astropy.io import fits
 from astropy.nddata import Cutout2D
+from astropy import units as u
 from argparse import ArgumentParser
 import warnings
 from pandas import DataFrame, concat, read_csv
@@ -27,6 +28,7 @@ parser = ArgumentParser()
 parser.add_argument('-f', '--file', type=str, help='fitsfile name')
 parser.add_argument('-l', '--location', type=str, help='data location folder name')
 parser.add_argument('-i', '--images', type=bool, default=True, help='return images of boxes')
+parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
 args = parser.parse_args()
 
 if args.location:
@@ -64,6 +66,8 @@ class Imaging:
         while len(self.image_data.shape) != 2:
             self.image_data = self.image_data[0]
         self.wcs = WCS(self.hdu.header, naxis=2)
+        self.header = self.wcs.to_header()
+
         if vmin is None:
             self.vmin = np.nanstd(self.image_data)
         else:
@@ -138,13 +142,35 @@ class SetBoxes(Imaging):
                                    for c in np.argwhere(resampled > 15)])
 
         self.df_peaks = concat([df_peaks, resampled_df_peaks], axis=0).\
-            drop_duplicates(subset=['pix_y', 'pix_x']).reset_index(drop=True)
+            drop_duplicates(subset=['pix_y', 'pix_x'])
+
+        if args.angular_cutoff:
+            self.df_peaks['distance_from_center_deg'] = self.df_peaks.apply(lambda x: self.angular_distance((self.header['CRPIX1'], self.header['CRPIX2']),
+                               (x['pix_x'], x['pix_y'])).value, axis=1)
+            excluded_sources = self.df_peaks[self.df_peaks.distance_from_center_deg > args.angular_cutoff]
+            excluded_sources['angular_position'] = excluded_sources.apply(
+                lambda x: ';'.join([str(self.degree_to_radian(i)) for i in self.wcs.pixel_to_world(x['pix_x'], x['pix_y']).to_string().split()]), axis=1)
+            excluded_sources.to_csv('excluded_sources.csv', index=False)
+            self.df_peaks = self.df_peaks[self.df_peaks.distance_from_center_deg<=args.angular_cutoff]
+
+        self.df_peaks = self.df_peaks.reset_index(drop=True)
 
     # euclidean distance
     @staticmethod
     def ed_array(pos=None, lst=None):
         """Euclidean distance between position and list"""
         return np.sqrt(np.sum(np.square(pos - lst), axis=1))
+
+    def angular_distance(self, p1, p2):
+        """Angular distance between two points"""
+        c1 = self.wcs.pixel_to_world(p1[0], p1[1])
+        c2 = self.wcs.pixel_to_world(p2[0], p2[1])
+        return c1.separation(c2)*u.degree/u.degree
+
+    @staticmethod
+    def degree_to_radian(inp):
+        """degree to radian"""
+        return float(inp)/360*np.pi*2
 
     def reposition(self):
         """Reposition image by looking at the data points near the boundaries."""
@@ -183,7 +209,7 @@ class SetBoxes(Imaging):
         self.after = self.before.copy()  # image data before data after repositioning
 
         #get pixel scale
-        pixscale = self.wcs.to_header()['CDELT1']
+        pixscale = self.header['CDELT1']
         max_size = abs(int(0.4//pixscale))
         min_size = abs(int(0.2//pixscale))
 
@@ -498,6 +524,7 @@ if __name__ == '__main__':
     print(f'We found {len(image.df_peaks)} high flux peaks.\n')
 
     m, r = 0, 0
+
     for n, p in enumerate(image.df_peaks.to_dict(orient="records")):
 
         replace=False
