@@ -40,10 +40,11 @@ directions = []
 H = tables.open_file('lotss.h5')
 for dir in H.root.sol000.source[:]:
     position = [radian_to_degree(i) for i in dir[1]]
+    print(angular_distance(center, position))
     if args.inside and angular_distance(center, position)<args.angular_cutoff:
         print(dir)
         print(position)
-    else:
+    elif not args.inside and angular_distance(center, position)>=args.angular_cutoff:
         print(dir)
         print(position)
 H.close()
