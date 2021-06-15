@@ -43,45 +43,45 @@ def create_new_dataset(filename, solset, soltab, directions, sources):
         solsetout = h5_out.makeSolset(solset)
 
 
-    soltab = h5.getSolset(solset).getSoltab(soltab)
+    solutiontable = h5.getSolset(solset).getSoltab(soltab)
 
-    axes = soltab.getValues()[1]
-    values_in = soltab.getValues()[0]
+    axes = solutiontable.getValues()[1]
+    values_in = solutiontable.getValues()[0]
     indexes = [list(axes['dir']).index(dir.decode('UTF-8')) for dir in directions]
     axes['dir']=directions
-    dir_index = soltab.getAxesNames().index('dir')
+    dir_index = solutiontable.getAxesNames().index('dir')
     shape = list(values_in.shape)
     shape[dir_index]=len(directions)
-    if 'amplitude' in soltab:
+    if 'amplitude' in solutiontable:
         values_new = zeros(shape)
-    elif 'phase' in soltab:
+    elif 'phase' in solutiontable:
         values_new = ones(shape)
 
     for idx_new, idx_old in enumerate(indexes):
         if dir_index == 0:
-            if 'amplitude' in soltab:
+            if 'amplitude' in solutiontable:
                 values_new[idx_new,...] *= values_in[idx_old, ...]
-            elif 'phase' in soltab:
+            elif 'phase' in solutiontable:
                 values_new[idx_new,...] += values_in[idx_old, ...]
         elif dir_index == 1:
-            if 'amplitude' in soltab:
+            if 'amplitude' in solutiontable:
                 values_new[:, idx_new,...] *= values_in[:, idx_old, ...]
-            elif 'phase' in soltab:
+            elif 'phase' in solutiontable:
                 values_new[:, idx_new,...] += values_in[:, idx_old, ...]
         elif dir_index == 2:
-            if 'amplitude' in soltab:
+            if 'amplitude' in solutiontable:
                 values_new[:, :, idx_new,...] *= values_in[:, :, idx_old, ...]
-            elif 'phase' in soltab:
+            elif 'phase' in solutiontable:
                 values_new[:, :, idx_new,...] += values_in[:, :, idx_old, ...]
         elif dir_index == 3:
-            if 'amplitude' in soltab:
+            if 'amplitude' in solutiontable:
                 values_new[:, :, :, idx_new,...] *= values_in[:, :, :, idx_old, ...]
-            elif 'phase' in soltab:
+            elif 'phase' in solutiontable:
                 values_new[:, :, :, idx_new,...] += values_in[:, :, :, idx_old, ...]
         elif dir_index == 4:
-            if 'amplitude' in soltab:
+            if 'amplitude' in solutiontable:
                 values_new[:, :, :, :, idx_new,...] *= values_in[:, :, :, :, idx_old,...]
-            elif 'phase' in soltab:
+            elif 'phase' in solutiontable:
                 values_new[:, :, :, :, idx_new,...] += values_in[:, :, :, :, idx_old,...]
 
     print(sources)
