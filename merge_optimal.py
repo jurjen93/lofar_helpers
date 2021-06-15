@@ -97,7 +97,8 @@ def create_new_dataset(filename, solset, soltab, directions, sources):
     h5_out.close()
 
 parser = ArgumentParser()
-parser.add_argument('-f', '--file', type=str, help='fitsfile name')
+parser.add_argument('-f', '--fits', type=str, help='fitsfile name')
+parser.add_argument('-h5o', '--output_h5', type=str, help='name of output h5')
 parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
 parser.add_argument('-in', '--inside', type=str2bool, default=False, help='keep directions inside the angular cutoff')
 parser.add_argument('-h5out', '--h5_file_out', type=str, help='h5 files with directions outside of the angular cutoff')
@@ -105,7 +106,7 @@ parser.add_argument('-h5in', '--h5_file_in', type=str, help='h5 files with direc
 
 args = parser.parse_args()
 
-hdu = fits.open(args.file)[0]
+hdu = fits.open(args.fits)[0]
 header = WCS(hdu.header, naxis=2).to_header()
 
 center= (header['CRVAL1'], header['CRVAL2'])
@@ -128,7 +129,7 @@ for dir in H.root.sol000.source[:]:
         print('Remove {dir}'.format(dir=dir))
 H.close()
 
-h5 = h5parm(args.h5_file_out)
+h5 = h5parm(args.output_h5)
 for ss in h5.getSolsetNames():
     for st in h5.getSolset(ss).getSoltabNames():
         create_new_dataset(args.file, ss, st, directions, sources)
