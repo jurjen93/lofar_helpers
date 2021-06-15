@@ -699,16 +699,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_
     print('END: h5 solution file(s) merged')
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser, ArgumentTypeError
-
-    def str2bool(v):
-        v = str(v)
-        if v.lower() in ('yes', 'true', 't', 'y', '1'):
-            return True
-        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-            return False
-        else:
-            raise ArgumentTypeError('Boolean value expected.')
+    from argparse import ArgumentParser
+    from merge_optimal import str2bool
 
     parser = ArgumentParser()
     parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output')
