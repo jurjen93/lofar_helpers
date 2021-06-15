@@ -42,11 +42,6 @@ def create_new_dataset(filename, solset, soltab, directions, sources):
     else:
         solsetout = h5_out.makeSolset(solset)
 
-    #validate if new source directions are not already existing
-    current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
-    new_sources = [source for source in sources if source[0] not in current_sources]
-    if len(new_sources)>0:
-        solsetout.obj.source.append(new_sources)
 
     soltab = h5.getSolset(solset).getSoltab(soltab)
 
@@ -88,6 +83,14 @@ def create_new_dataset(filename, solset, soltab, directions, sources):
                 values_new[:, :, :, :, idx_new,...] *= values_in[:, :, :, :, idx_old,...]
             elif 'phase' in soltab:
                 values_new[:, :, :, :, idx_new,...] += values_in[:, :, :, :, idx_old,...]
+
+    print(sources)
+    print(len(sources))
+    print(values_new.shape)
+    current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
+    new_sources = [source for source in sources if source[0] not in current_sources]
+    if len(new_sources) > 0:
+        solsetout.obj.source.append(new_sources)
 
 
     weights = ones(values_new.shape)
