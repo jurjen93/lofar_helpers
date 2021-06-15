@@ -27,7 +27,7 @@ def angular_distance(p1, p2):
     """angular distance for points in ra and dec"""
     return acos(sin(p1[1])*sin(p2[1])+cos(p1[1])*cos(p2[1])*cos(p1[0]-p2[0]))
 
-def create_new_soltab(h5_in, h5_out, directions, sources):
+def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
     """
     Create a new dataset in the h5 table
     :param filename: name of ourput file
@@ -37,11 +37,11 @@ def create_new_soltab(h5_in, h5_out, directions, sources):
     """
 
 
-    h5_in = h5parm(h5_in, readonly=True)
-    h5_out = h5parm(h5_out, readonly=False)
+    h5_in = h5parm(h5_in_name, readonly=True)
+    h5_out = h5parm(h5_out_name, readonly=False)
     for ss in h5_in.getSolsetNames():
         for st in h5_in.getSolset(ss).getSoltabNames():
-            print('Filter {solset}/{soltab} from {h5_in} into {h5_out}'.format(solset=ss, soltab=st, h5_in=h5_in, h5_out=h5_out))
+            print('Filter {solset}/{soltab} from {h5_in} into {h5_out}'.format(solset=ss, soltab=st, h5_in=h5_in_name, h5_out=h5_out_name))
 
             solutiontable = h5_in.getSolset(ss).getSoltab(st)
             axes = solutiontable.getValues()[1]
@@ -89,7 +89,10 @@ def create_new_soltab(h5_in, h5_out, directions, sources):
             print('New number of sources {num}'.format(num=len(sources)))
             print('Filtered output shape {shape}'.format(shape=values_new.shape))
 
-            solsetout = h5_out.getSolset(ss)
+            if ss in h5_out.getSolsetNames():
+                solsetout = h5_out.getSolset(ss)
+            else:
+                solsetout = h5_out.makeSolset(ss)
             current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
             new_sources = [source for source in sources if source[0] not in current_sources]
             if len(new_sources) > 0:
