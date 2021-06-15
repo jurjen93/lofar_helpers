@@ -135,4 +135,5 @@ H.close()
 h5 = h5parm(args.h5_file_out)
 for ss in h5.getSolsetNames():
     for st in h5.getSolset(ss).getSoltabNames():
+        print(ss, st)
         create_new_dataset(args.output_h5, ss, st, directions, sources)
