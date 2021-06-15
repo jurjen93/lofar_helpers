@@ -83,7 +83,7 @@ class MergeH5:
                     ss = h5.getSolset(solset)
                     for soltab in ss.getSoltabNames():
                         st = ss.getSoltab(soltab)
-                        print(h5_name, ss, st)
+                        print(h5_name, solset, soltab)
                         if len(st.getAxisValues('time'))>len(self.ax_time):
                             self.ax_time = st.getAxisValues('time')
                         if len(st.getAxisValues('freq'))>len(self.ax_freq):
