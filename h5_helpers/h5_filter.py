@@ -60,40 +60,19 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
             dir_index = solutiontable.getAxesNames().index('dir')
             shape = list(values_in.shape)
             shape[dir_index]=len(directions)
-            if 'amplitude' in st:
-                values_new = zeros(shape)
-            elif 'phase' in st:
-                values_new = ones(shape)
-            else:
-                print('Skip {solset}/{soltab}'.format(solset=ss, soltab=st))
-                return
+            values_new = ones(shape)
 
             for idx_new, idx_old in enumerate(indexes):
                 if dir_index == 0:
-                    if 'amplitude' in st:
-                        values_new[idx_new,...] *= values_in[idx_old, ...]
-                    elif 'phase' in st:
-                        values_new[idx_new,...] += values_in[idx_old, ...]
+                    values_new[idx_new,...] += values_in[idx_old, ...]
                 elif dir_index == 1:
-                    if 'amplitude' in st:
-                        values_new[:, idx_new,...] *= values_in[:, idx_old, ...]
-                    elif 'phase' in st:
-                        values_new[:, idx_new,...] += values_in[:, idx_old, ...]
+                    values_new[:, idx_new,...] += values_in[:, idx_old, ...]
                 elif dir_index == 2:
-                    if 'amplitude' in st:
-                        values_new[:, :, idx_new,...] *= values_in[:, :, idx_old, ...]
-                    elif 'phase' in st:
-                        values_new[:, :, idx_new,...] += values_in[:, :, idx_old, ...]
+                    values_new[:, :, idx_new,...] += values_in[:, :, idx_old, ...]
                 elif dir_index == 3:
-                    if 'amplitude' in st:
-                        values_new[:, :, :, idx_new,...] *= values_in[:, :, :, idx_old, ...]
-                    elif 'phase' in st:
-                        values_new[:, :, :, idx_new,...] += values_in[:, :, :, idx_old, ...]
+                    values_new[:, :, :, idx_new,...] += values_in[:, :, :, idx_old, ...]
                 elif dir_index == 4:
-                    if 'amplitude' in st:
-                        values_new[:, :, :, :, idx_new,...] *= values_in[:, :, :, :, idx_old,...]
-                    elif 'phase' in st:
-                        values_new[:, :, :, :, idx_new,...] += values_in[:, :, :, :, idx_old,...]
+                    values_new[:, :, :, :, idx_new,...] += values_in[:, :, :, :, idx_old,...]
 
             print('New number of sources {num}'.format(num=len(sources)))
             print('Filtered output shape {shape}'.format(shape=values_new.shape))
@@ -113,12 +92,9 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
 
 
             weights = ones(values_new.shape)
-            if 'amplitude' in st:
-                solsetout.makeSoltab('amplitude', axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
-                                 weights=weights)
-            if 'phase' in st:
-                solsetout.makeSoltab('phase', axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
-                                 weights=weights)
+            solsetout.makeSoltab(st[0:-3], axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
+                             weights=weights)
+
     h5_in.close()
     h5_out.close()
 
