@@ -19,9 +19,10 @@ def angular_distance(p1, p2):
 
 parser = ArgumentParser()
 parser.add_argument('-f', '--file', type=str, help='fitsfile name')
+parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
 args = parser.parse_args()
 
-H = tables.open_file('lotss.h5')
+
 
 hdu = fits.open(args.file)[0]
 header = WCS(hdu.header, naxis=2).to_header()
@@ -29,7 +30,9 @@ header = WCS(hdu.header, naxis=2).to_header()
 center= (header['CRVAL1'], header['CRVAL2'])
 
 directions = []
+H = tables.open_file('lotss.h5')
 for dir in H.root.sol000.source[:]:
     position = [radian_to_degree(i) for i in dir[1]]
-    if angular_distance(center, position)>0.22:
-        print(position)
+    if angular_distance(center, position)>args.angular_cutoff:
+        print(dir)
+H.close()
