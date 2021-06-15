@@ -50,6 +50,7 @@ def create_new_dataset(filename, solset, soltab, directions, sources):
     indexes = [list(axes['dir']).index(dir.decode('UTF-8')) for dir in directions]
     axes['dir']=directions
     dir_index = soltab.getAxesNames().index('dir')
+    print(dir_index)
     shape = values_in.shape
     shape[dir_index]=len(directions)
     if 'amplitude' in soltab:
