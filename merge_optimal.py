@@ -47,7 +47,7 @@ def create_new_dataset(filename, solset, soltab, directions, sources):
 
     axes = soltab.getValues()[1]
     values_in = soltab.getValues()[0]
-    indexes = [axes['dir'].index(dir) for dir in directions]
+    indexes = [list(axes['dir']).index(dir) for dir in directions]
     axes['dir']=directions
     dir_index = soltab.getAxesNames().index('dir')
     shape = values_in.shape
