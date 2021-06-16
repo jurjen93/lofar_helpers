@@ -334,6 +334,9 @@ class MergeH5:
             # get values, time, and freq axis
             table_values, time_axes, freq_axes = self.get_values(st, solset, soltab)
 
+            print(table_values.shape)
+            print(dir_index)
+
             for dir_idx in range(num_dirs):#loop over all directions
 
                 print('Merging direction {diridx}'.format(diridx=dir_idx+1))
@@ -423,20 +426,14 @@ class MergeH5:
                             print(tp.shape)
                         elif len(self.phases.shape) == 4:
                             freqs = self.ax_freq.reshape(1, 1, -1, 1)
-                            print('hier2')
-                            print(values.shape)
                             tecphase = self.tecphase_conver(values, freqs)
                             tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
                                                         self.axes_current.index('time'))
-                            print(tp.shape)
                         elif len(self.phases.shape) == 5:
                             freqs = self.ax_freq.reshape(1, 1, 1, -1, 1)
-                            print('hier3')
-                            print(values.shape)
                             tecphase = self.tecphase_conver(values, freqs)
                             tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
                                                         self.axes_current.index('time'))
-                            print(tp.shape)
                         else:
                             print('ERROR: Something went wrong with reshaping. Shouldnt end up here..')
                             sys.exit()
