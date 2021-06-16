@@ -411,7 +411,7 @@ class MergeH5:
 
                     if self.convert_tec:  # Convert tec to phase.
 
-                        if len(self.axes_current) == 3:
+                        # if len(self.axes_current) == 3:
 
 
                         if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
