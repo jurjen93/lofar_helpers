@@ -59,7 +59,7 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
     h5_out = h5parm(h5_out_name, readonly=False)
     for ss in h5_in.getSolsetNames():
         for st in h5_in.getSolset(ss).getSoltabNames():
-            print('Filter {solset}/{soltab} from {h5_in} into {h5_out}'.format(solset=ss, soltab=st, h5_in=h5_in_name, h5_out=h5_out_name))
+            print('Filter {solset}/{soltab} from {h5_in} into {h5_out}'.format(solset=ss, soltab=st, h5_in=h5_in_name.split('/')[-1], h5_out=h5_out_name.split('/')[-1]))
 
             solutiontable = h5_in.getSolset(ss).getSoltab(st)
             axes = solutiontable.getValues()[1]

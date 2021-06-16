@@ -364,7 +364,7 @@ class MergeH5:
 
                 # get source coordinates
                 d = ss.getSou()
-                source_coords = d[list(d.keys())[0]]
+                source_coords = d[list(d.keys())[dir_idx]]
                 d = 'Dir{:02d}'.format(self.n)
 
                 if not self.make_new_direction and self.n == 1:
