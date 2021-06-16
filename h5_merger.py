@@ -222,10 +222,7 @@ class MergeH5:
             self.phases = np.zeros((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         self.directions = {}  # directions in a dictionary
-        try:
-            print(self.n)
-        except:
-            pass
+
         self.n = 0  # direction number reset
 
         return self
@@ -316,6 +313,8 @@ class MergeH5:
                 h5.close()
                 continue
 
+            print('Merge from {table}'.format(table=h5_name.split('/')[-1]))
+
             st = ss.getSoltab(soltab)
 
             #current axes for reordering of axes
@@ -336,8 +335,6 @@ class MergeH5:
             d = ss.getSou()
             source_coords = d[list(d.keys())[0]]
             d = 'Dir{:02d}'.format(self.n)
-
-            print('Merge new h5 table in {direction}'.format(direction=d))
 
             if not self.make_new_direction and self.n==1:
                 idx = 0
