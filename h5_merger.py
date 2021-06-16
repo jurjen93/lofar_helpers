@@ -115,12 +115,17 @@ class MergeH5:
             print("polarization is not in {solset}/{soltab}".format(solset=solset, soltab=soltab))
 
         time_axes = st.getAxisValues('time')
-        freq_axes = st.getAxisValues('freq')
+
+        if 'freq' in st.getAxesNames():
+            freq_axes = st.getAxisValues('freq')
+        else:
+            freq_axes = self.ax_freq
 
         print('Value shape before --> {values}'.format(values=st.getValues()[0].shape))
 
         if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1] :
             print("WARNING: Time axes of h5 and MS are not overlapping.")
+
         if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1]:
             print("WARNING: Frequency axes of h5 and MS are not overlapping.")
         if float(soltab[-3:]) > 0:
@@ -357,6 +362,7 @@ class MergeH5:
                             shape[dir_index]=1
                             self.gains = np.append(self.gains, np.ones(shape),
                                                     axis=dir_index)#add clean gain to merge with
+            print(idx)
             if st.getType() == 'tec':
                 if self.convert_tec:# Convert tec to phase.
                     if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
@@ -710,11 +716,14 @@ if __name__ == '__main__':
     def str2bool(v):
         v = str(v)
         if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            print('Directions will be merged separately')
             return True
         elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            print('Directions will be merged all into the same direction')
             return False
         else:
-            raise ArgumentTypeError('Boolean value expected.')
+            print('Boolean value expected.\nDirections will be merged separately')
+            return True
 
     parser = ArgumentParser()
     parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output')
