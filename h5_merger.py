@@ -103,11 +103,10 @@ class MergeH5:
 
         self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time'] # standard solax order to do our manipulations
 
-    def get_values(self, ss, st, solset, soltab):
+    def get_values(self, st, solset, soltab):
         """
-        Get the values from the h5 table to work with.
+        Get the values from the h5 table to merge.
         Also do some checks on the time and frequency axis.
-        :param ss: solution set
         :param st: solution table
         :param solset: solset name
         :param soltab: soltab name
@@ -223,6 +222,10 @@ class MergeH5:
             self.phases = np.zeros((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         self.directions = {}  # directions in a dictionary
+        try:
+            print(self.n)
+        except:
+            pass
         self.n = 0  # direction number reset
 
         return self
@@ -257,6 +260,9 @@ class MergeH5:
         :param solset: solution set name (sol000, sol001,..)
         :param soltab: solution table name
         """
+
+        print(solset)
+        print(soltab)
 
         if '000' in soltab:
 
