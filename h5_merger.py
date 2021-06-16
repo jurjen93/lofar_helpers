@@ -258,9 +258,6 @@ class MergeH5:
         :param soltab: solution table name
         """
 
-        print(solset)
-        print(soltab)
-
         if '000' in soltab:
 
             for h5_name_to_merge in self.h5_tables:  # make template
@@ -294,6 +291,12 @@ class MergeH5:
                 h5_to_merge.close()
                 break
 
+    @staticmethod
+    def get_number_of_directions(st):
+        dir_index = st.getAxesNames().index('dir')
+        return st.getValues()[0].shape[dir_index]
+
+
     def get_sol(self, solset, soltab):
         """
         Get solutions merged
@@ -313,9 +316,10 @@ class MergeH5:
                 h5.close()
                 continue
 
-            print('Merge from {table}'.format(table=h5_name.split('/')[-1]))
-
             st = ss.getSoltab(soltab)
+
+            print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
+            print('This table has {numdirection}'.format(numdirection=self.get_number_of_directions(st)))
 
             #current axes for reordering of axes
             self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
