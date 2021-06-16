@@ -343,15 +343,15 @@ class MergeH5:
                 values = zeros(shape)
 
                 if dir_index == 0:
-                    values += table_values[dir_idx, ...]
+                    values[dir_idx, ...] += table_values[dir_idx, ...]
                 elif dir_index == 1:
-                    values += table_values[:, dir_idx, ...]
+                    values[:, dir_idx, ...] += table_values[:, dir_idx, ...]
                 elif dir_index == 2:
-                    values += table_values[:, :, dir_idx, ...]
+                    values[:, :, dir_idx, ...] += table_values[:, :, dir_idx, ...]
                 elif dir_index == 3:
-                    values += table_values[:, :, :, dir_idx, ...]
+                    values[:, :, :, dir_idx, ...] += table_values[:, :, :, dir_idx, ...]
                 elif dir_index == 4:
-                    values += table_values[:, :, :, :, dir_idx, ...]
+                    values[:, :, :, :, dir_idx, ...] += table_values[:, :, :, :, dir_idx, ...]
 
                 print(values.shape)
 
