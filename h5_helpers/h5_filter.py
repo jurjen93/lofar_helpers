@@ -13,6 +13,8 @@ from math import pi, cos, sin, acos
 from losoto.h5parm import h5parm
 from numpy import ones
 import os
+from glob import glob
+import re
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
@@ -35,7 +37,10 @@ def radian_to_degree(inp):
 
 def angular_distance(p1, p2):
     """angular distance for points in ra and dec"""
-    return acos(sin(p1[1])*sin(p2[1])+cos(p1[1])*cos(p2[1])*cos(p1[0]-p2[0]))
+    return acos(sin(p1[0])*sin(p2[0])+cos(p1[0])*cos(p2[0])*cos(p1[1]-p2[1]))
+
+def remove_numbers(inp):
+    return "".join(re.findall("[a-zA-z]+", inp))
 
 def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
     """
@@ -93,7 +98,7 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
 
 
             weights = ones(values_new.shape)
-            solsetout.makeSoltab(st[0:-3], axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
+            solsetout.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
                              weights=weights)
 
     h5_in.close()
@@ -105,14 +110,19 @@ parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='a
 parser.add_argument('-in', '--inside', type=str2bool, default=False, help='keep directions inside the angular cutoff')
 parser.add_argument('-h5out', '--h5_file_out', type=str, help='h5 output name')
 parser.add_argument('-h5in', '--h5_file_in', type=str, help='h5 input name (to filter)')
-
 args = parser.parse_args()
 
+# clean up files
+if args.h5_file_out.split('/')[-1] in [f.split('/')[-1] for f in glob(args.h5_file_out)]:
+    os.system('rm -rf {file}'.format(file=args.h5_file_out))
+
+# get header from fits file
 hdu = fits.open(args.fits)[0]
 header = WCS(hdu.header, naxis=2).to_header()
+# get center of field
+center= (header['CRVAL1'], header['CRVAL2'])
 
-center= (header['CRVAL1'], header['CRVAL2']) # center of field
-
+# return list of directions that have to be included
 H = tables.open_file(args.h5_file_in)
 sources = []
 directions = []
@@ -132,5 +142,3 @@ for dir in H.root.sol000.source[:]:
 H.close()
 
 create_new_soltab(args.h5_file_in, args.h5_file_out, directions, sources)
-
-
