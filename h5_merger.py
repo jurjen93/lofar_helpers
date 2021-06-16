@@ -327,9 +327,6 @@ class MergeH5:
             num_dirs = self.get_number_of_directions(st)  # number of directions
             print('This table has {numdirection} direction(s)'.format(numdirection=num_dirs))
 
-            # current axes for reordering of axes
-            self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
-            dir_index = self.axes_current .index('dir') #index of direction
 
             # get values, time, and freq axis
             table_values, time_axes, freq_axes = self.get_values(st, solset, soltab)
@@ -337,6 +334,10 @@ class MergeH5:
             for dir_idx in range(num_dirs):#loop over all directions
 
                 print('Merging direction {diridx}'.format(diridx=dir_idx+1))
+
+                # current axes for reordering of axes
+                self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
+                dir_index = self.axes_current.index('dir')  # index of direction
 
                 shape = list(table_values.shape)
                 shape[dir_index] = 1
@@ -404,25 +405,22 @@ class MergeH5:
                     print(self.axes_new)
                     print(self.axes_current)
 
-                    if 'freq' not in self.axes_current:
+                    if 'freq' not in self.axes_current and len(self.axes_current)==3:
                         ax = self.axes_new.index('freq') - len(self.axes_new)
                         values = expand_dims(values, axis=ax)
                         if 'pol' not in self.axes_current:
                             self.axes_current = ['dir', 'ant', 'freq', 'time']
                         else:
-                            self.axes_current = ['pol', 'dir', 'ant' ,'freq', 'time']
-                        print(values.shape)
+                            self.axes_current = ['pol', 'dir', 'ant', 'freq', 'time']
+
 
                     if self.convert_tec:  # Convert tec to phase.
-
                         if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
                             valtmp = ones((len(self.polarizations),) + values.shape)
                             valtmp[0, ...] = values
                             valtmp[-1, ...] = values
                             values = valtmp
-                            # -1 assumes the expected shape along the frequency axis.
-                            if self.axes_new[-2] != 'freq':
-                                print('WARNING: Frequency axis is not on right position')
+
                             freqs = self.ax_freq.reshape(1, 1, 1, -1, 1)
                             tecphase = self.tecphase_conver(values, freqs)
                             tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
