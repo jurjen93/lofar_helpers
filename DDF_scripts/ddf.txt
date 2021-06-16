@@ -30,7 +30,7 @@ DDF.py
 --Beam-Smooth=1
 --Freq-NBand=2
 --Freq-NDegridBand=1
---DDESolutions-DDSols=all_directions.h5:sol000/amplitude000+phase000
+--DDESolutions-DDSols=complete_merged.h5:sol000/amplitude000+phase000
 --DDESolutions-DDModeGrid=AP
 --DDESolutions-DDModeDeGrid=AP
 --Deconv-Mode=SSD
