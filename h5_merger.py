@@ -342,8 +342,6 @@ class MergeH5:
                 shape[dir_index] = 1
                 values = zeros(shape)
 
-                print(values.shape)
-
                 if dir_index == 0:
                     values[0, ...] += table_values[dir_idx, ...]
                 elif dir_index == 1:
@@ -405,7 +403,8 @@ class MergeH5:
                                 self.gains = append(self.gains, ones(shape),
                                                        axis=dir_index)  # add clean gain to merge with
                 if st.getType() == 'tec':
-                    print(values.shape)
+                    print(self.axes_new)
+                    print(self.axes_current)
                     if self.convert_tec:  # Convert tec to phase.
                         if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
                             valtmp = ones((len(self.polarizations),) + values.shape)
@@ -416,19 +415,28 @@ class MergeH5:
                             if self.axes_new[-2] != 'freq':
                                 print('WARNING: Frequency axis is not on right position')
                             freqs = self.ax_freq.reshape(1, 1, 1, -1, 1)
+                            print('hier1')
+                            print(values.shape)
                             tecphase = self.tecphase_conver(values, freqs)
                             tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
                                                         self.axes_new.index('time'))
+                            print(tp.shape)
                         elif len(self.phases.shape) == 4:
                             freqs = self.ax_freq.reshape(1, 1, -1, 1)
+                            print('hier2')
+                            print(values.shape)
                             tecphase = self.tecphase_conver(values, freqs)
                             tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
                                                         self.axes_current.index('time'))
+                            print(tp.shape)
                         elif len(self.phases.shape) == 5:
                             freqs = self.ax_freq.reshape(1, 1, 1, -1, 1)
+                            print('hier3')
+                            print(values.shape)
                             tecphase = self.tecphase_conver(values, freqs)
                             tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
                                                         self.axes_current.index('time'))
+                            print(tp.shape)
                         else:
                             print('ERROR: Something went wrong with reshaping. Shouldnt end up here..')
                             sys.exit()
