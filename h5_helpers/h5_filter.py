@@ -11,7 +11,7 @@ from astropy.io import fits
 from argparse import ArgumentParser, ArgumentTypeError
 from math import pi, cos, sin, acos
 from losoto.h5parm import h5parm
-from numpy import ones
+from numpy import ones, zeros
 import os
 from glob import glob
 import re
@@ -69,7 +69,7 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
             dir_index = solutiontable.getAxesNames().index('dir')
             shape = list(values_in.shape)
             shape[dir_index]=len(directions)
-            values_new = ones(shape)
+            values_new = zeros(shape)
 
             for idx_new, idx_old in enumerate(indexes):
                 if dir_index == 0:

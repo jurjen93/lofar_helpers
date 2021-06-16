@@ -24,10 +24,10 @@ from casacore import tables as ct
 from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
-import numpy as np
 from scipy.interpolate import interp1d
 import sys
 import re
+from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 __all__ = ['merge_h5', 'str2bool']
@@ -76,7 +76,7 @@ class MergeH5:
             t.close()
 
             t = ct.table(ms[0])
-            self.ax_time = sorted(np.unique(t.getcol('TIME')))
+            self.ax_time = sorted(unique(t.getcol('TIME')))
             t.close()
         else:  # if we dont have ms files, we use the time and frequency axis of the longest h5 table
             print('No MS file given, will use h5 table for frequency and time axis')
@@ -206,22 +206,22 @@ class MergeH5:
             self.polarizations = []  # most cases you want to have 5 dimensions but no polarization is still an option
 
         if 'amplitude' in soltab and 'pol' in st.getAxesNames():
-            self.gains = np.ones(
+            self.gains = ones(
                 (len(self.polarizations), 1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
         else:
-            self.gains = np.ones((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.gains = ones((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         if 'phase' in soltab and 'pol' in st.getAxesNames():
-            self.phases = np.zeros(
+            self.phases = zeros(
                 (max(len(self.polarizations), 1), 1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         elif 'rotation' in soltab:
-            self.phases = np.zeros((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.phases = zeros((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         elif 'tec' in soltab:
-            self.phases = np.zeros((2, 1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.phases = zeros((2, 1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
         else:
-            self.phases = np.zeros((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.phases = zeros((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         self.directions = {}  # directions in a dictionary
 
@@ -338,16 +338,20 @@ class MergeH5:
 
                 print('Merging direction {diridx}'.format(diridx=dir_idx+1))
 
+                shape = list(table_values.shape)
+                shape[dir_index] = 1
+                values = zeros(shape)
+
                 if dir_index == 0:
-                    values = table_values[dir_idx, ...]
+                    values += table_values[dir_idx, ...]
                 elif dir_index == 1:
-                    values = table_values[:, dir_idx, ...]
+                    values += table_values[:, dir_idx, ...]
                 elif dir_index == 2:
-                    values = table_values[:, :, dir_idx, ...]
+                    values += table_values[:, :, dir_idx, ...]
                 elif dir_index == 3:
-                    values = table_values[:, :, :, dir_idx, ...]
+                    values += table_values[:, :, :, dir_idx, ...]
                 elif dir_index == 4:
-                    values = table_values[:, :, :, :, dir_idx, ...]
+                    values += table_values[:, :, :, :, dir_idx, ...]
 
                 print(values.shape)
 
@@ -368,7 +372,7 @@ class MergeH5:
                 if not self.make_new_direction and self.n == 1:
                     idx = 0
                     print('Merging direction {:f},{:f} with previous direction'.format(*source_coords))
-                elif any([np.array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
+                elif any([array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
                     # Direction already exists, add to the existing solutions.
                     idx = list([list(l) for l in self.directions.values()]).index(list(source_coords))
                 else:  # new direction
@@ -386,7 +390,7 @@ class MergeH5:
                                 sys.exit()
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
-                                self.phases = np.append(self.phases, np.zeros(shape),
+                                self.phases = append(self.phases, zeros(shape),
                                                         axis=dir_index)  # add clean phase to merge with
                         elif st.getType() == 'amplitude':
                             shape = list(self.gains.shape)
@@ -396,12 +400,12 @@ class MergeH5:
                                 sys.exit()
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
-                                self.gains = np.append(self.gains, np.ones(shape),
+                                self.gains = append(self.gains, ones(shape),
                                                        axis=dir_index)  # add clean gain to merge with
                 if st.getType() == 'tec':
                     if self.convert_tec:  # Convert tec to phase.
                         if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
-                            valtmp = np.ones((len(self.polarizations),) + values.shape)
+                            valtmp = ones((len(self.polarizations),) + values.shape)
                             valtmp[0, ...] = values
                             valtmp[-1, ...] = values
                             values = valtmp
@@ -428,7 +432,7 @@ class MergeH5:
 
                         # Make tp shape same as phases
                         if len(self.phases.shape) == 5 and tp.shape[0] == 1:
-                            phasetmp = np.zeros(self.phases.shape)
+                            phasetmp = zeros(self.phases.shape)
                             phasetmp[0, ...] = tp[0, ...]
                             phasetmp[1, ...] = tp[0, ...]
                             tp = phasetmp
@@ -436,7 +440,7 @@ class MergeH5:
                         # Add phases together
                         if len(tp.shape) - len(self.phases.shape) == 1:
                             self.phases[idx, ...] += tp[0, 0, ...]
-                            phasetmp = np.zeros((2,) + self.phases.shape[:])
+                            phasetmp = zeros((2,) + self.phases.shape[:])
                             phasetmp[0, ...] = self.phases
                             phasetmp[-1, ...] = self.phases
                             self.phases = phasetmp
@@ -476,29 +480,29 @@ class MergeH5:
                             print("Add fulljones type with 4 polarizations")
                             print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
                             if self.phases.shape[0] == 2:
-                                phasetmp = np.zeros((4,) + self.phases.shape[1:])
+                                phasetmp = zeros((4,) + self.phases.shape[1:])
                                 phasetmp[0, ...] = self.phases[0, ...]
                                 phasetmp[-1, ...] = self.phases[1, ...]
                                 self.phases = phasetmp
                             elif len(self.phases.shape) < 5:
-                                phasetmp = np.zeros((4,) + self.phases.shape)
+                                phasetmp = zeros((4,) + self.phases.shape)
                                 phasetmp[0, ...] = self.phases
                                 phasetmp[-1, ...] = self.phases
                                 self.phases = phasetmp
                         elif st.getAxisLen('pol') == 2 and self.phases.shape[0] == 4:
                             print("Add to fulljones type with 4 polarizations")
                             print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
-                            phasetmp = np.zeros((4,) + values.shape[1:])
+                            phasetmp = zeros((4,) + values.shape[1:])
                             phasetmp[0, ...] = values[0, ...]
                             phasetmp[-1, ...] = values[1, ...]
                             values = phasetmp
                     elif 'pol' in self.axes_current and 'pol' not in st.getAxesNames() and len(self.phases.shape) == 5:
-                        phasetmp = np.zeros((self.phases.shape[0],) + values.shape)
+                        phasetmp = zeros((self.phases.shape[0],) + values.shape)
                         phasetmp[0, ...] = values
                         phasetmp[-1, ...] = values
                         values = phasetmp
 
-                    idxnan = np.where((~np.isfinite(values)))
+                    idxnan = where((~isfinite(values)))
                     values[idxnan] = 0.0
 
                     tp = self.interp_along_axis(values, time_axes, self.ax_time,
@@ -507,13 +511,13 @@ class MergeH5:
                     if tp.shape[-2] == 1:
                         tptmp = tp
                         for _ in self.ax_freq[:-1]:
-                            tp = np.append(tp, tptmp, axis=-2)
+                            tp = append(tp, tptmp, axis=-2)
                     else:
                         tp = self.interp_along_axis(tp, freq_axes, self.ax_freq,
                                                     self.axes_current.index('freq'))
 
                     if len(self.phases.shape) == 5 and self.phases.shape[0] == 1:
-                        phasetmp = np.zeros((2,) + self.phases.shape[1:])
+                        phasetmp = zeros((2,) + self.phases.shape[1:])
                         phasetmp[0, ...] = self.phases[0, ...]
                         phasetmp[-1, ...] = self.phases[0, ...]
                         self.phases = phasetmp
@@ -523,7 +527,7 @@ class MergeH5:
                             self.phases[:, idx, ...] += tp[:, 0, ...]
                         elif len(self.phases.shape) == 4:
                             self.phases[idx, ...] += tp[0, ...]
-                            phasetmp = np.zeros((2,) + self.phases.shape[:])
+                            phasetmp = zeros((2,) + self.phases.shape[:])
                             phasetmp[0, ...] = self.phases
                             phasetmp[-1, ...] = self.phases
                             self.phases = phasetmp
@@ -531,7 +535,7 @@ class MergeH5:
                                 self.axes_new = ['pol'] + self.axes_new
                     elif len(tp.shape) - len(self.phases.shape) == 1:
                         self.phases[idx, ...] += tp[0, 0, ...]
-                        phasetmp = np.zeros((2,) + self.phases.shape[:])
+                        phasetmp = zeros((2,) + self.phases.shape[:])
                         phasetmp[0, ...] = self.phases
                         phasetmp[-1, ...] = self.phases
                         self.phases = phasetmp
@@ -547,29 +551,29 @@ class MergeH5:
                             print("Add fulljones type with 4 polarizations")
                             print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
                             if self.gains.shape[0] == 2:
-                                gaintmp = np.zeros((4,) + self.gains.shape[1:])
+                                gaintmp = zeros((4,) + self.gains.shape[1:])
                                 gaintmp[0, ...] = self.gains[0, ...]
                                 gaintmp[-1, ...] = self.gains[1, ...]
                                 self.gains = gaintmp
                             elif len(self.gains.shape) < 5:
-                                gaintmp = np.zeros((4,) + self.gains.shape)
+                                gaintmp = zeros((4,) + self.gains.shape)
                                 gaintmp[0, ...] = self.gains
                                 gaintmp[-1, ...] = self.gains
                                 self.gains = gaintmp
                         elif st.getAxisLen('pol') == 2 and self.gains.shape[0] == 4:
                             print("Add to fulljones type with 4 polarizations")
                             print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
-                            gaintmp = np.zeros((4,) + values.shape[1:])
+                            gaintmp = zeros((4,) + values.shape[1:])
                             gaintmp[0, ...] = values[0, ...]
                             gaintmp[-1, ...] = values[1, ...]
                             values = gaintmp
                     elif 'pol' in self.axes_current and 'pol' not in st.getAxesNames() and len(self.gains.shape) == 5:
-                        phasetmp = np.zeros((self.gains.shape[0],) + values.shape)
+                        phasetmp = zeros((self.gains.shape[0],) + values.shape)
                         phasetmp[0, ...] = values
                         phasetmp[-1, ...] = values
                         values = phasetmp
 
-                    idxnan = np.where((~np.isfinite(values)))
+                    idxnan = where((~isfinite(values)))
                     values[idxnan] = 1.0
                     tp = self.interp_along_axis(values, time_axes, self.ax_time,
                                                 self.axes_current.index('time'))
@@ -577,13 +581,13 @@ class MergeH5:
                     if tp.shape[-2] == 1:
                         tptmp = tp
                         for _ in self.ax_freq[:-1]:
-                            tp = np.append(tp, tptmp, axis=-2)
+                            tp = append(tp, tptmp, axis=-2)
                     else:
                         tp = self.interp_along_axis(tp, freq_axes, self.ax_freq,
                                                     self.axes_current.index('freq'))
 
                     if len(self.gains.shape) == 5 and self.gains.shape[0] == 1:
-                        gaintmp = np.zeros((2,) + self.gains.shape[1:])
+                        gaintmp = zeros((2,) + self.gains.shape[1:])
                         gaintmp[0, ...] = self.gains[0, ...]
                         gaintmp[-1, ...] = self.gains[0, ...]
                         self.gains = gaintmp
@@ -592,7 +596,7 @@ class MergeH5:
                         self.gains[:, idx, ...] *= tp[:, 0, ...]
                     elif len(self.gains.shape) == 4 and len(tp.shape) == 4:
                         self.gains[idx, ...] *= tp[0, ...]
-                        gaintmp = np.zeros((2,) + self.gains.shape)
+                        gaintmp = zeros((2,) + self.gains.shape)
                         gaintmp[0, ...] = self.gains
                         gaintmp[-1, ...] = self.gains
                         self.gains = gaintmp
@@ -602,7 +606,7 @@ class MergeH5:
                         self.gains[0, idx, ...] *= tp[0, ...]
                         self.gains[-1, idx, ...] *= tp[0, ...]
                     elif len(self.gains.shape) == 4 and len(tp.shape) == 5:
-                        gaintmp = np.zeros((2,) + self.gains.shape)
+                        gaintmp = zeros((2,) + self.gains.shape)
                         gaintmp[0, ...] = self.gains
                         gaintmp[-1, ...] = self.gains
                         self.gains = gaintmp
@@ -650,7 +654,7 @@ class MergeH5:
         else:
             solsetout = self.h5_out.makeSolset(solset)
 
-        sources = list({i: (np.round(j[0], 4), np.round(j[1], 4)) for i, j in self.directions.items()}.items())
+        sources = list({i: (round(j[0], 4), round(j[1], 4)) for i, j in self.directions.items()}.items())
         # validate if new source directions are not already existing
         current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
         new_sources = [source for source in sources if source[0] not in current_sources]
@@ -678,12 +682,12 @@ class MergeH5:
 
         # make new solution table
         if 'phase' in soltab:
-            weights = np.ones(self.phases.shape)
+            weights = ones(self.phases.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
             solsetout.makeSoltab('phase', axesNames=self.axes_new, axesVals=axes_vals, vals=self.phases,
                                  weights=weights)
         if 'amplitude' in soltab:
-            weights = np.ones(self.gains.shape)
+            weights = ones(self.gains.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
             solsetout.makeSoltab('amplitude', axesNames=self.axes_new, axesVals=axes_vals, vals=self.gains,
                                  weights=weights)
@@ -694,7 +698,7 @@ class MergeH5:
                 self.phases = self.phases[:, :, :, 0]
             else:
                 self.phases = self.phases[:, :, 0, :]
-            weights = np.ones(self.phases.shape)
+            weights = ones(self.phases.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
             solsetout.makeSoltab('tec', axesNames=['dir', 'ant', 'time'],
                                  axesVals=[self.ax_time, self.antennas, list(self.directions.keys())],
@@ -734,7 +738,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_
                     merge.create_new_dataset(ss, st)
         # try:#add amplitude and phase if not available in h5 table
         if 'amplitude000' not in [item for sublist in merge.all_soltabs for item in sublist]:
-            merge.gains = np.ones(
+            merge.gains = ones(
                 (2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
             merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
             merge.polarizations = ['XX', 'YY']
@@ -742,7 +746,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_
             merge.create_new_dataset(ss, 'amplitude')
             # if 'phase000' not in [item for sublist in merge.all_soltabs for item in sublist] and \
             # 'tec000' not in [item for sublist in merge.all_soltabs for item in sublist]:
-            # merge.phases = np.zeros((2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
+            # merge.phases = zeros((2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
             # merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
             # merge.polarizations = ['XX', 'YY']
             # merge.phases = reorderAxes(merge.phases, merge.solaxnames, merge.axes_new)
