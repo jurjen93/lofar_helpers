@@ -239,6 +239,7 @@ class MergeH5:
         """
         print(tec.shape)
         new = tec / freqs
+        print(freqs.shape)
         print(new.shape)
         return -8.4479745e9 * tec / freqs
 
