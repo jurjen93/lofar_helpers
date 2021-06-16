@@ -11,7 +11,8 @@ from astropy.io import fits
 from argparse import ArgumentParser, ArgumentTypeError
 from math import pi, cos, sin, acos
 from losoto.h5parm import h5parm
-from numpy import ones, zeros
+from numpy import ones
+import os
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
@@ -110,13 +111,13 @@ args = parser.parse_args()
 hdu = fits.open(args.fits)[0]
 header = WCS(hdu.header, naxis=2).to_header()
 
-center= (header['CRVAL1'], header['CRVAL2'])
+center= (header['CRVAL1'], header['CRVAL2']) # center of field
 
 H = tables.open_file(args.h5_file_in)
 sources = []
 directions = []
 for dir in H.root.sol000.source[:]:
-    position = [radian_to_degree(i) for i in dir[1]]
+    position = [radian_to_degree(i) for i in dir[1]] # position of direction
     print(angular_distance(center, position))
     if args.inside and angular_distance(center, position)<args.angular_cutoff:
         print('Keep {dir}'.format(dir=dir))

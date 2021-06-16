@@ -715,7 +715,7 @@ if __name__ == '__main__':
 
     parser = ArgumentParser()
     parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output')
-    parser.add_argument('-in', '--h5_tables', type=str, help='h5 tables to merge')
+    parser.add_argument('-in', '--h5_tables', action='append', type=str, help='h5 tables to merge')
     parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
     parser.add_argument('-ct', '--convert_tec', type=bool, default=True, help='convert tec to phase')
     parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True, help='make new directions')
