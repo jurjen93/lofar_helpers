@@ -27,6 +27,7 @@ from losoto.lib_operations import reorderAxes
 import numpy as np
 from scipy.interpolate import interp1d
 import sys
+import re
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 __all__ = ['merge_h5', 'str2bool']
@@ -36,6 +37,8 @@ __all__ = ['merge_h5', 'str2bool']
 # TODO: test rotation (fulljones)
 # TODO: test convert_tec==False
 
+def remove_numbers(inp):
+    return "".join(re.findall("[a-zA-z]+", inp))
 
 class MergeH5:
     """Merge multiple h5 tables"""
@@ -430,7 +433,7 @@ class MergeH5:
                 if 'pol' in self.axes_current and 'pol' in st.getAxesNames():
                     if st.getAxisLen('pol') == 4:
                         print("Add fulljones type with 4 polarizations")
-                        print("WARNING: this part hasn't been tested yet. Please check if this is correct")
+                        print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
                         if self.phases.shape[0] == 2:
                             phasetmp = np.zeros((4,) + self.phases.shape[1:])
                             phasetmp[0, ...] = self.phases[0, ...]
@@ -443,7 +446,7 @@ class MergeH5:
                             self.phases = phasetmp
                     elif st.getAxisLen('pol') == 2 and self.phases.shape[0] == 4:
                         print("Add to fulljones type with 4 polarizations")
-                        print("WARNING: this part hasn't been tested yet. Please check if this is correct")
+                        print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
                         phasetmp = np.zeros((4,) + values.shape[1:])
                         phasetmp[0, ...] = values[0, ...]
                         phasetmp[-1, ...] = values[1, ...]
@@ -501,7 +504,7 @@ class MergeH5:
                 if 'pol' in self.axes_current and 'pol' in st.getAxesNames():
                     if st.getAxisLen('pol') == 4:
                         print("Add fulljones type with 4 polarizations")
-                        print("WARNING: this part hasn't been tested yet. Please check if this is correct")
+                        print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
                         if self.gains.shape[0] == 2:
                             gaintmp = np.zeros((4,) + self.gains.shape[1:])
                             gaintmp[0, ...] = self.gains[0, ...]
@@ -514,7 +517,7 @@ class MergeH5:
                             self.gains = gaintmp
                     elif st.getAxisLen('pol') == 2 and self.gains.shape[0] == 4:
                         print("Add to fulljones type with 4 polarizations")
-                        print("WARNING: this part hasn't been tested yet. Please check if this is correct")
+                        print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
                         gaintmp = np.zeros((4,) + values.shape[1:])
                         gaintmp[0, ...] = values[0, ...]
                         gaintmp[-1, ...] = values[1, ...]
@@ -669,7 +672,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_
     :param ms_files (string or list): ms files to use, can be both list and string
     :param convert_tec (boolean): convert TEC to phase or not
     """
-    if h5_out in glob(h5_out):
+    if h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
         os.system('rm {}'.format(h5_out))
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec, make_new_direction=make_new_direction)
     merge.get_allkeys
