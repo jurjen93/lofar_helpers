@@ -334,7 +334,7 @@ class MergeH5:
             # get values, time, and freq axis
             table_values, time_axes, freq_axes = self.get_values(st, solset, soltab)
 
-            for dir_idx in range(num_dirs):
+            for dir_idx in range(num_dirs):#loop over all directions
 
                 print('Merging direction {diridx}'.format(diridx=dir_idx+1))
 
@@ -352,8 +352,6 @@ class MergeH5:
                     values[:, :, :, 0, ...] += table_values[:, :, :, dir_idx, ...]
                 elif dir_index == 4:
                     values[:, :, :, :, 0, ...] += table_values[:, :, :, :, dir_idx, ...]
-
-                print(values.shape)
 
                 # update current and new axes if missing pol axes
                 if len(self.axes_current) == 4 and ((len(self.phases.shape) == 5
