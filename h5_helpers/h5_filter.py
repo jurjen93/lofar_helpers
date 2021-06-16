@@ -36,8 +36,11 @@ def radian_to_degree(inp):
     return float(inp) * 360 / (pi * 2)
 
 def angular_distance(p1, p2):
-    """angular distance for points in ra and dec"""
-    return acos(sin(p1[0])*sin(p2[0])+cos(p1[0])*cos(p2[0])*cos(p1[1]-p2[1]))
+    """angular distance for points in ra and dec in degrees"""
+    if p1[0]>2*pi:
+        p1 = [degree_to_radian(p) for p in p1]
+        p2 = [degree_to_radian(p) for p in p2]
+    return radian_to_degree(acos(sin(p1[1])*sin(p2[1])+cos(p1[1])*cos(p2[1])*cos(p1[0]-p2[0])))
 
 def remove_numbers(inp):
     return "".join(re.findall("[a-zA-z]+", inp))
@@ -120,20 +123,19 @@ if args.h5_file_out.split('/')[-1] in [f.split('/')[-1] for f in glob(args.h5_fi
 hdu = fits.open(args.fits)[0]
 header = WCS(hdu.header, naxis=2).to_header()
 # get center of field
-center= (header['CRVAL1'], header['CRVAL2'])
+center= (degree_to_radian(header['CRVAL1']), degree_to_radian(header['CRVAL2']))
 
 # return list of directions that have to be included
 H = tables.open_file(args.h5_file_in)
 sources = []
 directions = []
 for dir in H.root.sol000.source[:]:
-    position = [radian_to_degree(i) for i in dir[1]] # position of direction
-    print(angular_distance(center, position))
-    if args.inside and angular_distance(center, position)<args.angular_cutoff:
+    print(angular_distance(center, dir[1]))
+    if args.inside and angular_distance(center, dir[1])<args.angular_cutoff:
         print('Keep {dir}'.format(dir=dir))
         directions.append(dir[0])
         sources.append(dir)
-    elif not args.inside and angular_distance(center, position)>=args.angular_cutoff:
+    elif not args.inside and angular_distance(center, dir[1])>=args.angular_cutoff:
         print('Keep {dir}'.format(dir=dir))
         directions.append(dir[0])
         sources.append(dir)
