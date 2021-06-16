@@ -325,11 +325,11 @@ class MergeH5:
 
             print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
             num_dirs = self.get_number_of_directions(st)  # number of directions
-            dir_index = st.getAxesNames().index('dir')
             print('This table has {numdirection} direction(s)'.format(numdirection=num_dirs))
 
             # current axes for reordering of axes
             self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
+            dir_index = self.axes_current .index('dir') #index of direction
 
             # get values, time, and freq axis
             table_values, time_axes, freq_axes = self.get_values(st, solset, soltab)
@@ -408,7 +408,12 @@ class MergeH5:
                 if st.getType() == 'tec':
                     print(self.axes_new)
                     print(self.axes_current)
+
                     if self.convert_tec:  # Convert tec to phase.
+
+                        if len(self.axes_current) == 3:
+
+
                         if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
                             valtmp = ones((len(self.polarizations),) + values.shape)
                             valtmp[0, ...] = values
