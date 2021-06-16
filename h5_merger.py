@@ -323,6 +323,10 @@ class MergeH5:
 
             st = ss.getSoltab(soltab)
 
+            # current axes for reordering of axes
+            self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
+            dir_index = self.axes_current.index('dir')  # index of direction
+
             print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
             num_dirs = self.get_number_of_directions(st)  # number of directions
             print('This table has {numdirection} direction(s)'.format(numdirection=num_dirs))
@@ -334,10 +338,6 @@ class MergeH5:
             for dir_idx in range(num_dirs):#loop over all directions
 
                 print('Merging direction {diridx}'.format(diridx=dir_idx+1))
-
-                # current axes for reordering of axes
-                self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
-                dir_index = self.axes_current.index('dir')  # index of direction
 
                 shape = list(table_values.shape)
                 shape[dir_index] = 1
@@ -405,10 +405,10 @@ class MergeH5:
                     print(self.axes_new)
                     print(self.axes_current)
 
-                    if 'freq' not in self.axes_current and len(self.axes_current)==3:
+                    if 'freq' not in st.getAxesNames() and len(st.getAxesNames())==3:
                         ax = self.axes_new.index('freq') - len(self.axes_new)
                         values = expand_dims(values, axis=ax)
-                        if 'pol' not in self.axes_current:
+                        if 'pol' not in st.getAxesNames():
                             self.axes_current = ['dir', 'ant', 'freq', 'time']
                         else:
                             self.axes_current = ['pol', 'dir', 'ant', 'freq', 'time']
