@@ -237,6 +237,9 @@ class MergeH5:
         :param freqs: frequencies
         :return tec phase converted values
         """
+        print(tec.shape)
+        new = tec / freqs
+        print(new.shape)
         return -8.4479745e9 * tec / freqs
 
     @staticmethod
@@ -402,9 +405,6 @@ class MergeH5:
                                 self.gains = append(self.gains, ones(shape),
                                                        axis=dir_index)  # add clean gain to merge with
                 if st.getType() == 'tec':
-                    print(self.axes_new)
-                    print(self.axes_current)
-
                     if 'freq' not in st.getAxesNames() and len(st.getAxesNames())==3:
                         ax = self.axes_new.index('freq') - len(self.axes_new)
                         values = expand_dims(values, axis=ax)
@@ -412,7 +412,6 @@ class MergeH5:
                             self.axes_current = ['dir', 'ant', 'freq', 'time']
                         else:
                             self.axes_current = ['pol', 'dir', 'ant', 'freq', 'time']
-
 
                     if self.convert_tec:  # Convert tec to phase.
                         if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
@@ -425,7 +424,6 @@ class MergeH5:
                             tecphase = self.tecphase_conver(values, freqs)
                             tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
                                                         self.axes_new.index('time'))
-                            print(tp.shape)
                         elif len(self.phases.shape) == 4:
                             freqs = self.ax_freq.reshape(1, 1, -1, 1)
                             tecphase = self.tecphase_conver(values, freqs)
@@ -439,8 +437,6 @@ class MergeH5:
                         else:
                             print('ERROR: Something went wrong with reshaping. Shouldnt end up here..')
                             sys.exit()
-                        print(self.phases.shape)
-                        print(tp.shape)
                         # Make tp shape same as phases
 
                         if len(self.phases.shape) == 5 and tp.shape[0] == 1:
