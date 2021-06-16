@@ -342,6 +342,8 @@ class MergeH5:
                 shape[dir_index] = 1
                 values = zeros(shape)
 
+                print(values.shape)
+
                 if dir_index == 0:
                     values[0, ...] += table_values[dir_idx, ...]
                 elif dir_index == 1:
@@ -352,6 +354,8 @@ class MergeH5:
                     values[:, :, :, 0, ...] += table_values[:, :, :, dir_idx, ...]
                 elif dir_index == 4:
                     values[:, :, :, :, 0, ...] += table_values[:, :, :, :, dir_idx, ...]
+
+                print(values.shape)
 
                 # update current and new axes if missing pol axes
                 if len(self.axes_current) == 4 and ((len(self.phases.shape) == 5
@@ -401,6 +405,7 @@ class MergeH5:
                                 self.gains = append(self.gains, ones(shape),
                                                        axis=dir_index)  # add clean gain to merge with
                 if st.getType() == 'tec':
+                    print(values.shape)
                     if self.convert_tec:  # Convert tec to phase.
                         if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
                             valtmp = ones((len(self.polarizations),) + values.shape)
@@ -427,8 +432,10 @@ class MergeH5:
                         else:
                             print('ERROR: Something went wrong with reshaping. Shouldnt end up here..')
                             sys.exit()
-
+                        print(self.phases.shape)
+                        print(tp.shape)
                         # Make tp shape same as phases
+
                         if len(self.phases.shape) == 5 and tp.shape[0] == 1:
                             phasetmp = zeros(self.phases.shape)
                             phasetmp[0, ...] = tp[0, ...]
