@@ -237,10 +237,9 @@ class MergeH5:
         :param freqs: frequencies
         :return tec phase converted values
         """
-        print(tec.shape)
         new = tec / freqs
-        print(freqs.shape)
-        print(new.shape)
+        print(freqs)
+        print(new)
         return -8.4479745e9 * tec / freqs
 
     @staticmethod
