@@ -89,10 +89,13 @@ class MergeH5:
                         try:
                             if len(st.getAxisValues('time'))>len(self.ax_time):
                                 self.ax_time = st.getAxisValues('time')
+                        except:
+                            print('No time axis in {solset}/{soltab}'.format(solset=solset, soltab=soltab))
+                        try:
                             if len(st.getAxisValues('freq'))>len(self.ax_freq):
                                 self.ax_freq = st.getAxisValues('freq')
                         except:
-                            pass
+                            print('No freq axis in {solset}/{soltab}'.format(solset=solset, soltab=soltab))
                 h5.close()
 
         self.convert_tec = convert_tec  # convert tec or not
