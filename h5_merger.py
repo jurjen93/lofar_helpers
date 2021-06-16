@@ -322,7 +322,7 @@ class MergeH5:
             self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
 
             #get values, time, and freq axis
-            values, time_axes, freq_axes = self.get_values(ss, st, solset, soltab)
+            values, time_axes, freq_axes = self.get_values(st, solset, soltab)
             
             #update current and new axes if missing pol axes
             if len(self.axes_current)==4 and ((len(self.phases.shape)==5 
