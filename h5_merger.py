@@ -332,6 +332,7 @@ class MergeH5:
 
             if not self.make_new_direction and self.n==1:
                 idx = 0
+                print('Merging direction {:f},{:f} with previous direction'.format(*source_coords))
             elif any([np.array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
                 # Direction already exists, add to the existing solutions.
                 idx = list([list(l) for l in self.directions.values()]).index(list(source_coords))
@@ -362,7 +363,6 @@ class MergeH5:
                             shape[dir_index]=1
                             self.gains = np.append(self.gains, np.ones(shape),
                                                     axis=dir_index)#add clean gain to merge with
-            print(idx)
             if st.getType() == 'tec':
                 if self.convert_tec:# Convert tec to phase.
                     if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
