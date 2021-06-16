@@ -1,9 +1,7 @@
 DDF.py
---Data-MS=big-mslist.txt
 --Data-ColName=DATA
 --Predict-ColName=MODEL_DATA
 --Data-Sort=1
---Predict-InitDicoModel=image_full_ampphase_di_m.NS.DicoModel
 --Output-Mode=Clean
 --Output-Name=image_final
 --Output-RestoringBeam=6.0
@@ -30,7 +28,6 @@ DDF.py
 --Beam-Smooth=1
 --Freq-NBand=2
 --Freq-NDegridBand=1
---DDESolutions-DDSols=complete_merged.h5:sol000/amplitude000+phase000
 --DDESolutions-DDModeGrid=AP
 --DDESolutions-DDModeDeGrid=AP
 --Deconv-Mode=SSD
@@ -40,7 +37,6 @@ DDF.py
 --Deconv-CycleFactor=0.0
 --Deconv-RMSFactor=3.0
 --Deconv-PeakFactor=0.001
---Mask-External=image_full_ampphase_di_m.NS.mask01.fits
 --Mask-Auto=1
 --Mask-SigTh=5.0
 --SSDClean-NEnlargeData=0
