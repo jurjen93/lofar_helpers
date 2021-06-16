@@ -336,7 +336,7 @@ class MergeH5:
 
             for dir_idx in range(num_dirs):
 
-                print('Merging direction {diridx}'.format(diridx=dir_idx))
+                print('Merging direction {diridx}'.format(diridx=dir_idx+1))
 
                 if dir_index == 0:
                     values = table_values[dir_idx, ...]
@@ -348,6 +348,8 @@ class MergeH5:
                     values = table_values[:, :, :, dir_idx, ...]
                 elif dir_index == 4:
                     values = table_values[:, :, :, :, dir_idx, ...]
+
+                print(values.shape)
 
                 # update current and new axes if missing pol axes
                 if len(self.axes_current) == 4 and ((len(self.phases.shape) == 5
