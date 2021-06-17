@@ -57,7 +57,7 @@ class MergeH5:
 
         if type(ms_files) == list:
             ms = ms_files
-            print("WARNING: MS list given, while only one MS used.")
+            print("WARNING: MS list given. Only first MS used.")
         elif type(ms_files) == str:
             ms = glob(ms_files)
         else:
@@ -410,9 +410,13 @@ class MergeH5:
                             self.axes_current = ['dir', 'ant', 'freq', 'time']
                         else:
                             self.axes_current = ['pol', 'dir', 'ant', 'freq', 'time']
+                        valuestmp = values
+                        for _ in range(len(self.ax_freq)):
+                            values = append(values, valuestmp, axis=-2)
+                        print(values.shape)
 
                     if self.convert_tec:  # Convert tec to phase.
-                        if len(self.polarizations) > 0 and len(self.phases.shape) == 5:
+                        if len(self.polarizations) > 0 and len(self.phases.shape) == 5 and 'pol' not in self.axes_current:
                             valtmp = ones((len(self.polarizations),) + values.shape)
                             valtmp[0, ...] = values
                             valtmp[-1, ...] = values
