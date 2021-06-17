@@ -411,9 +411,8 @@ class MergeH5:
                         else:
                             self.axes_current = ['pol', 'dir', 'ant', 'freq', 'time']
                         valuestmp = values
-                        for _ in range(len(self.ax_freq)):
+                        for _ in range(len(self.ax_freq)-1):
                             values = append(values, valuestmp, axis=-2)
-                        print(values.shape)
 
                     if self.convert_tec:  # Convert tec to phase.
                         if len(self.polarizations) > 0 and len(self.phases.shape) == 5 and 'pol' not in self.axes_current:
