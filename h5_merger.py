@@ -158,11 +158,11 @@ class MergeH5:
                     sorted(sorted(tp_phasetec), key=lambda x: float(x[-3:]))]
         else:
             tp_phase = [li for li in soltabs if 'phase' in li]
-            tp_tec = [li for li in soltabs if 'tec' in li]
+            # tp_tec = [li for li in soltabs if 'tec' in li]
             tp_amplitude = [li for li in soltabs if 'amplitude' in li]
             tp_rotation = [li for li in soltabs if 'rotation' in li]
             return [sorted(tp_phase, key=lambda x: float(x[-3:])),
-                    sorted(tp_tec, key=lambda x: float(x[-3:])),
+                    # sorted(tp_tec, key=lambda x: float(x[-3:])),
                     sorted(tp_amplitude, key=lambda x: float(x[-3:])),
                     sorted(tp_rotation, key=lambda x: float(x[-3:]))]
 
@@ -402,6 +402,8 @@ class MergeH5:
                                 self.gains = append(self.gains, ones(shape),
                                                        axis=dir_index)  # add clean gain to merge with
                 if st.getType() == 'tec':
+
+                    # add frequencies
                     if 'freq' not in st.getAxesNames() and len(st.getAxesNames())==3:
                         ax = self.axes_new.index('freq') - len(self.axes_new)
                         values = expand_dims(values, axis=ax)
@@ -785,7 +787,7 @@ if __name__ == '__main__':
     parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output')
     parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge')
     parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
-    parser.add_argument('-ct', '--convert_tec', type=bool, default=True, help='convert tec to phase')
+    parser.add_argument('-ct', '--convert_tec', type=str2bool, nargs='?', const=True, default=True, help='convert tec to phase')
     parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True,
                         help='make new directions')
 
