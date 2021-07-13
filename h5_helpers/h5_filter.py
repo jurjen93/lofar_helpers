@@ -54,7 +54,6 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
     :param dirs: directions to include
     """
 
-
     h5_in = h5parm(h5_in_name, readonly=True)
     h5_out = h5parm(h5_out_name, readonly=False)
     for ss in h5_in.getSolsetNames():
@@ -123,7 +122,7 @@ if args.h5_file_out.split('/')[-1] in [f.split('/')[-1] for f in glob(args.h5_fi
 hdu = fits.open(args.fits)[0]
 header = WCS(hdu.header, naxis=2).to_header()
 # get center of field
-center= (degree_to_radian(header['CRVAL1']), degree_to_radian(header['CRVAL2']))
+center = (degree_to_radian(header['CRVAL1']), degree_to_radian(header['CRVAL2']))
 
 # return list of directions that have to be included
 H = tables.open_file(args.h5_file_in)
