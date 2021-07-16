@@ -14,14 +14,14 @@ mkdir ${OUTPUT_FOLDER}
 cd ${OUTPUT_FOLDER}
 
 #converging .npz to .h5
-singularity exec -B ${SING_BIND} ${SING_IMAGE} --noprofile --norc ${SCRIPT_FOLDER}/supporting_scripts/killMS2H5parm_jurjen.py lotss_merged.h5 ${FOLDER}/extract/DDS3_full*merged.npz --nofulljones
-singularity exec -B ${SING_BIND} ${SING_IMAGE} --noprofile --norc ${SCRIPT_FOLDER}/supporting_scripts/killMS2H5parm_jurjen.py lotss_smoothed.h5 ${FOLDER}/extract/DDS3_full*smoothed.npz --nofulljones
+singularity exec -B ${SING_BIND} ${SING_IMAGE} ${SCRIPT_FOLDER}/supporting_scripts/killMS2H5parm_jurjen.py lotss_merged.h5 ${FOLDER}/extract/DDS3_full*merged.npz --nofulljones
+singularity exec -B ${SING_BIND} ${SING_IMAGE} ${SCRIPT_FOLDER}/supporting_scripts/killMS2H5parm_jurjen.py lotss_smoothed.h5 ${FOLDER}/extract/DDS3_full*smoothed.npz --nofulljones
 
 #h5 filter
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} --noprofile --norc python ${SCRIPT_FOLDER}/supporting_scripts/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_merged_filtered.h5 -h5in ${OUTPUT_FOLDER}/lotss_merged.h5
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} --noprofile --norc python ${SCRIPT_FOLDER}/supporting_scripts/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_smoothed_filtered.h5 -h5in ${OUTPUT_FOLDER}/lotss_smoothed.h5
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} --noprofile --norc python ${SCRIPT_FOLDER}/supporting_scripts/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in true -h5out all_directions_filtered.h5 -h5in ${FOLDER}/result/all_directions.h5
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/supporting_scripts/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_merged_filtered.h5 -h5in ${OUTPUT_FOLDER}/lotss_merged.h5
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/supporting_scripts/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_smoothed_filtered.h5 -h5in ${OUTPUT_FOLDER}/lotss_smoothed.h5
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/supporting_scripts/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in true -h5out all_directions_filtered.h5 -h5in ${FOLDER}/result/all_directions.h5
 
 #merging h5 files
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} --noprofile --norc python ${SCRIPT_FOLDER}/h5_merger.py -out lotss_full_merged.h5 -in lotss_*filtered.h5 -ms '/net/tussenrijn/data2/jurjendejong/L626678/selfcal/box_*/*.goodtimes' --convert_tec 0
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} --noprofile --norc python ${SCRIPT_FOLDER}/h5_merger.py -out complete_merged.h5 -in lotss_full_merged.h5 all_directions_filtered.h5 --convert_tec 0
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out lotss_full_merged.h5 -in lotss_*filtered.h5 -ms '/net/tussenrijn/data2/jurjendejong/L626678/selfcal/box_*/*.goodtimes' --convert_tec 0
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out complete_merged.h5 -in lotss_full_merged.h5 all_directions_filtered.h5 --convert_tec 0
