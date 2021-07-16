@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-This tool is used to import killms solutions into a H5parm format.
+THIS IS AND ADAPTED VERSION BY JURJEN BECAUSE OF A BUG
+ORIGINAL: https://github.com/revoltek/losoto/blob/master/bin/killMS2H5parm.py
 
-THIS IS AND ADAPTATION BY JURJEN BECAUSE OF A BUG
+This tool is used to import killms solutions into a H5parm format.
 """
 
 
