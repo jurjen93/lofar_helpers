@@ -3,7 +3,6 @@ from argparse import ArgumentParser
 from glob import glob
 from os import path
 
-
 parser = ArgumentParser()
 parser.add_argument('-from', '--from_where', type=str, help='directory where data is from', required=True)
 parser.add_argument('-to', '--to_where', type=str, help='destination directory', required=True)
@@ -38,6 +37,7 @@ if args.time_flag:
     print('Making goodtimes')
     for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
         os.system('{SINGULARITY} python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf {time} -ms {MS}'.format(SINGULARITY=SINGULARITY, MS=MS, time=' '.join(args.time_flag)))
+        print('Created ' + MS.split('/')[-1] + '.goodtimes')
 
 #MAKE LIST WITH MEASUREMENT SETS
 os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
