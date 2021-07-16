@@ -12,6 +12,6 @@ SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
 
 #merge selfcals
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/lofar_helpers/pipeline_scripts/merge_selfcals.py -d ${TO}/selfcal
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/lofar_helpers/pipeline_scripts/surf/merge_selfcals.py -d ${TO}/selfcal
 
 echo "----------END----------"
