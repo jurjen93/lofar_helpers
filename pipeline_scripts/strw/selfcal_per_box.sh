@@ -5,8 +5,8 @@ TO=/net/tussenrijn/data2/jurjendejong/${SOURCE}
 SCRIPT_FOLDER=/net/rijn/data2/rvweeren/LoTSS_ClusterCAL
 N=$2 #box number
 
-#SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
-SING_IMAGE=/net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fedora31_ddf.sif
+SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latest.simg
+#SING_IMAGE=/net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fedora31_ddf.sif
 SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn4,/net/rijn3,/net/rijn2
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
