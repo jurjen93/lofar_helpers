@@ -24,7 +24,7 @@ END_N=$(ls -dq ${FOLDER}/boxes/box*.reg | wc -l)
 #EXTRACT
 echo "Started extract..."
 for ((i=${START_N};i<=${END_N};i++)); do
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/sub-sources-outside-region.py -b ${FOLDER}/boxes/box_${i}.reg --overwriteoutput -p box_${i}
+singularity exec -B ${SING_BIND} ${SING_IMAGE} --noprofile --norc python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/sub-sources-outside-region.py -b ${FOLDER}/boxes/box_${i}.reg --overwriteoutput -p box_${i}
 echo "Extracted box_${i}"
 done
 echo "Finished extract..."
