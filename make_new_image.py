@@ -1,10 +1,18 @@
+"""
+Example:
+    python ~/scripts/lofar_helpers/make_new_image.py
+        -from /disks/paradata/shimwell/LoTSS-DR2/archive_other/L626678
+        -to /net/tussenrijn/data2/jurjendejong/L626678/result
+        -tf 0 3000
+"""
+
 import os
 from argparse import ArgumentParser
 from glob import glob
 from os import path
 
 parser = ArgumentParser()
-parser.add_argument('-from', '--from_where', type=str, help='directory where data is from', required=True)
+parser.add_argument('-from', '--from_where', type=str, help='directory where data is originally from', required=True)
 parser.add_argument('-to', '--to_where', type=str, help='destination directory', required=True)
 parser.add_argument('-tf', '--time_flag', nargs='+', help='flag time: start_time end_time', required=False)
 args = parser.parse_args()
