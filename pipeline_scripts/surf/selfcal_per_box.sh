@@ -22,7 +22,7 @@ mkdir ${TO}/selfcal/box_${N}
 cp -r ${TO}/extract/*box_${N}.dysco.sub.shift.avg.weights.ms.archive0 ${TO}/selfcal/
 singularity exec -B ${SING_BIND} ${SING_IMAGE} DPPP msin=${TO}/selfcal/Abell399-401_box_${N}.dysco.sub.shift.avg.weights.ms.archive0 msout.storagemanager=dysco msout=${TO}/selfcal/box_${N}/box_${N}.dysco.sub.shift.avg.weights.ms.archive0.goodtimes msin.ntimes=1500 steps=[]
 cd ${TO}/selfcal/box_${N}
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/runwscleanLBautoR.py -b ${TO}/boxes/box_${N}.reg --auto --imager=DDFACET --helperscriptspath ${SCRIPT_FOLDER}/ --autofrequencyaverage-calspeedup ms box_${N}.dysco.sub.shift.avg.weights.ms.archive0.goodtimes
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/runwscleanLBautoR.py -b ${TO}/boxes/box_${N}.reg --auto --imager=DDFACET --helperscriptspath ${SCRIPT_FOLDER}/ --autofrequencyaverage-calspeedup ms=box_${N}.dysco.sub.shift.avg.weights.ms.archive0.goodtimes
 echo "Finished selfcal for box_${N}"
 echo "-----FINISHED SELFCAL-----"
 
