@@ -18,6 +18,9 @@ merge_h5(h5_out='test.h5',
 TODO:
 - bug fix python 2 with opening tables
 - Circular polarization to linear polarization (RR LL RL LR)
+-
+-
+-
 """
 
 import os
