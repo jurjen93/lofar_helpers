@@ -107,25 +107,14 @@ if __name__ == '__main__':
     weights = np.ones(shape=vals_amp.shape)
 
     is_tec = 'SolsTEC' in list(SolsDico.keys())
-    if is_tec:
-        # construct TEC array
-        vals_tec = np.zeros(shape=(td, ta, tt))
-        vals_tec = SolsDico['SolsTEC'].T
-        vals_csp = np.zeros(shape=(td, ta, tt))
-        vals_csp = SolsDico['SolsCPhase'].T
-        print((vals_tec.shape))
-        weights_tec = np.ones(shape=vals_tec.shape)
-        print(vals_csp)
 
     # write to h5pram
     h5parm = h5parm_mod.h5parm(h5parmFile, readonly=False, complevel=complevel)
     solset = h5parm.makeSolset(solsetName)
 
     if is_tec:
-        solset.makeSoltab('tec', axesNames=['ant', 'dir', 'time'], \
-                          axesVals=[antNames, dirNames, times], vals=vals_tec, weights=weights_tec)
         solset.makeSoltab('phase', axesNames=['ant', 'dir', 'time'], \
-                          axesVals=[antNames, dirNames, times], vals=vals_csp, weights=weights_tec)
+                          axesVals=[antNames, dirNames, times], vals=vals_ph, weights=weights)
     else:
         solset.makeSoltab('amplitude', axesNames=['time', 'freq', 'ant', 'dir', 'pol'], \
                           axesVals=[times, freqs, antNames, dirNames, pols], vals=vals_amp, weights=weights)
