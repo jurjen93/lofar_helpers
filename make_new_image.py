@@ -52,8 +52,8 @@ if args.time_flag:
 #MERGE LOTSS OUTER EDGE
 os.system('chmod u+x /home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/merge_complete_h5.sh')
 os.system('{SINGULARITY} python /home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/merge_complete_h5.sh L626678'.format(SINGULARITY=SINGULARITY))
-os.system('{SINGULARITY} mv {LOCATION_FROM}/{H5} {LOCATION}'.format(H5=H5, SINGULARITY=SINGULARITY, LOCATION=LOCATION, LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"result_filtered"))
-os.system('{SINGULARITY} rm -rf {LOCATION_FROM}'.format(SINGULARITY=SINGULARITY, LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"result_filtered"))
+os.system('{SINGULARITY} mv {LOCATION_FROM}/{H5} {LOCATION}'.format(H5=H5, SINGULARITY=SINGULARITY, LOCATION=LOCATION, LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"/result_filtered"))
+os.system('{SINGULARITY} rm -rf {LOCATION_FROM}'.format(SINGULARITY=SINGULARITY, LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"/result_filtered"))
 
 #MAKE LIST WITH MEASUREMENT SETS
 os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
