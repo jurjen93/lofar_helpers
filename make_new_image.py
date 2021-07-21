@@ -50,10 +50,10 @@ print('Finished moving files')
 #         print('Created ' + MS.split('/')[-1] + '.goodtimes')
 
 #MERGE LOTSS OUTER EDGE
-os.system('chmod u+x /home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/merge_complete_h5.sh')
-os.system('sh /home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/merge_complete_h5.sh L626678')
-os.system('mv {LOCATION_FROM}/{H5} {LOCATION}'.format(H5=H5, LOCATION=LOCATION, LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"/result_filtered"))
-os.system('rm -rf {LOCATION_FROM}'.format(LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"/result_filtered"))
+# os.system('chmod u+x /home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/merge_complete_h5.sh')
+# os.system('sh /home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/merge_complete_h5.sh L626678')
+# os.system('mv {LOCATION_FROM}/{H5} {LOCATION}'.format(H5=H5, LOCATION=LOCATION, LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"/result_filtered"))
+# os.system('rm -rf {LOCATION_FROM}'.format(LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"/result_filtered"))
 
 #MAKE LIST WITH MEASUREMENT SETS
 # os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
