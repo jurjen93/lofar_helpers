@@ -826,7 +826,7 @@ if __name__ == '__main__':
     parser.add_argument('-ct', '--convert_tec', type=str2bool, nargs='?', const=True, default=True, help='convert tec to phase')
     parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True, help='make new directions, if false merge everything in 1 direction')
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular')
-    parser.add_argument('--circ2lin', acion='store_true', help='transform circular polarization to linear')
+    parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear')
 
     args = parser.parse_args()
 
