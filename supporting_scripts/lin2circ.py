@@ -104,17 +104,16 @@ def make_template(h5_in, soltab):
                         G = np.ones(values.shape+(2,))
                 except:
                     sys.exit('ERROR:\nReceived '+str(solutiontable.getAxesNames())+', but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]')
+
+                axes_vals = {'time': solutiontable.getAxisValues('time'),
+                             'freq': solutiontable.getAxisValues('freq'),
+                             'ant': solutiontable.getAxisValues('ant'),
+                             'dir': solutiontable.getAxisValues('dir')}
+                if G.shape[-1]==2:
+                    axes_vals.update({'pol': ['XX', 'YY']})
+                elif G.shape[-1]==4:
+                    axes_vals.update({'pol': ['XX', 'XY', 'YX', 'YY']})
                 break
-            print(soltab)
-            print(st)
-            axes_vals = {'time': solutiontable.getAxisValues('time'),
-                         'freq': solutiontable.getAxisValues('freq'),
-                         'ant': solutiontable.getAxisValues('ant'),
-                         'dir': solutiontable.getAxisValues('dir')}
-            if G.shape[-1]==2:
-                axes_vals.update({'pol': ['XX', 'YY']})
-            elif G.shape[-1]==4:
-                axes_vals.update({'pol': ['XX', 'XY', 'YX', 'YY']})
     return G, axes_vals
 
 
