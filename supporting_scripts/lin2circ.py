@@ -39,7 +39,7 @@ def lin2circ(G):
     RL /= 2
     LR /= 2
 
-    G_new = np.zeros(G.shape[0:-1]) + (4,)
+    G_new = np.zeros(G.shape[0:-1] + (4,)).astype(np.complex128)
     G_new[..., 0] += RR
     G_new[..., 1] += RL
     G_new[..., 2] += LR
@@ -65,7 +65,7 @@ def circ2lin(G):
     XY /= 2
     YX /= 2
 
-    G_new = np.zeros(G.shape[0:-1]) + (4,)
+    G_new = np.zeros(G.shape[0:-1] + (4,)).astype(np.complex128)
     G_new[..., 0] += XX
     G_new[..., 1] += XY
     G_new[..., 2] += YX
@@ -109,10 +109,7 @@ def make_template(h5_in, soltab):
                              'freq': solutiontable.getAxisValues('freq'),
                              'ant': solutiontable.getAxisValues('ant'),
                              'dir': solutiontable.getAxisValues('dir')}
-                if G.shape[-1]==2:
-                    axes_vals.update({'pol': ['XX', 'YY']})
-                elif G.shape[-1]==4:
-                    axes_vals.update({'pol': ['XX', 'XY', 'YX', 'YY']})
+                axes_vals.update({'pol': ['XX', 'XY', 'YX', 'YY']})
                 break
     return G.astype(np.complex128), axes_vals
 
