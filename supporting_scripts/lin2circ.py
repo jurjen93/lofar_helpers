@@ -135,8 +135,12 @@ axes_names = ['time', 'freq', 'ant', 'dir', 'pol']
 
 # MAKE TEMPLATE
 G, axes_vals = make_template(h5_in, 'phase')
+print('Shape of input {shape}'.format(shape=G.shape))
 if G==0:
     make_template(h5_in, 'amplitude')
+    print('Using amplitude as template')
+else:
+    print('Using phase as template')
 
 for ss in h5_in.getSolsetNames():
 
@@ -147,6 +151,7 @@ for ss in h5_in.getSolsetNames():
 
     for st in h5_in.getSolset(ss).getSoltabNames():
         solutiontable = h5_in.getSolset(ss).getSoltab(st)
+        print('Reading {st} from {ss}'.format(ss=ss, st=st))
         if 'phase' in st:
             if 'pol' in solutiontable.getAxesNames():
                 values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), axes_names)
@@ -182,20 +187,26 @@ for ss in h5_in.getSolsetNames():
                     axes_vals.update({'pol': ['XX', 'XY', 'YX', 'YY']})
             solsetout.makeSoltab('tec', axesNames=tec_axes_names, axesVals=axes_vals, vals=tec,
                                  weights=np.ones(tec.shape))
+            print('Created new tec solutions for {ss}'.format(ss=ss))
 
     if args.lin2circ:
+        print('Convert linear polarization to circular polarization')
         G_new = lin2circ(G)
     else:
+        print('Convert circular polarization to linear polarization')
         G_new = circ2lin(G)
+    print('Shape of output for amplitude and phase: {shape}'.format(shape=G_new.shape))
 
     phase = np.angle(G_new)
     amplitude = np.abs(G_new)
 
     solsetout.makeSoltab('phase', axesNames=axes_names, axesVals=axes_vals, vals=phase,
                          weights=np.ones(phase.shape))
+    print('Created new phase solutions for {ss}'.format(ss=ss))
 
     solsetout.makeSoltab('amplitude', axesNames=axes_names, axesVals=axes_vals, vals=amplitude,
                          weights=np.ones(amplitude.shape))
+    print('Created new amplitude solutions for {ss}'.format(ss=ss))
 
 h5_in.close()
 h5_out.close()
