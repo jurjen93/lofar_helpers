@@ -114,7 +114,7 @@ def make_template(h5_in, soltab):
                 elif G.shape[-1]==4:
                     axes_vals.update({'pol': ['XX', 'XY', 'YX', 'YY']})
                 break
-    return G, axes_vals
+    return G.astype(np.complex128), axes_vals
 
 
 parser = ArgumentParser()
