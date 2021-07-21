@@ -37,6 +37,11 @@ The following steps are taken in the algorithm:
 With ```h5_merger.py``` it is possible to merge h5 solutions, which are a result from self-calibrating the different directions that are extracted with the boxes.\
 This script is compatible with both Python 2 and Python 3.
 
+### Special requirements
+
+```h5_mergers.py``` relies heavily on losoto: https://github.com/revoltek/losoto
+which works really well to work with .h5 files.
+
 #### Usage
 
 There are two ways to use this script. To use it within your script, you can
@@ -49,6 +54,8 @@ And use the following parameters:
 * ```ms_files``` --> ms files to use in list form or string (with/without wildcard)
 * ```convert_tec``` --> convert tec to phase (boolean)
 * ```make_new_direction``` --> choose to add new directions (raise the table dimensions) or merge everything into one
+* ```lin2circ``` --> linear to circular polarization transformation
+* ```circ2lin``` --> circular to linear polarization transformation
 
 Or you can run the script on the command line with
 ```python h5_merger.py <FLAGS>```
@@ -57,6 +64,8 @@ Or you can run the script on the command line with
 * ```-ms``` --> ms files to use in list form or string (with/without wildcard)
 * ```-ct``` --> convert tec to phase
 * ```-nd``` --> choose to add new directions (raise the table dimensions) or merge everything into one
+* ```--lin2circ``` --> linear to circular polarization transformation
+* ```--circ2lin``` --> circular to linear polarization transformation
 
 #### Contact
 Let me know if you are using this script and have any issues or suggestions for improvements.
