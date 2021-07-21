@@ -93,6 +93,7 @@ def make_template(h5_in, soltab):
     G, axes_vals = 0, {}
     for ss in h5_in.getSolsetNames():
         for st in h5_in.getSolset(ss).getSoltabNames():
+            st = h5_in.getSolset(ss).getSoltab(st)
             if soltab in st:
                 try:
                     if 'pol' in st.getAxesNames():
@@ -143,6 +144,7 @@ for ss in h5_in.getSolsetNames():
     solsetout.obj.source.append(solsetout.obj.source[:])
 
     for st in h5_in.getSolset(ss).getSoltabNames():
+        st = h5_in.getSolset(ss).getSoltab(st)
         if 'phase' in st:
             if 'pol' in st.getAxesNames():
                 values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_names)
@@ -192,3 +194,6 @@ for ss in h5_in.getSolsetNames():
 
     solsetout.makeSoltab('amplitude', axesNames=axes_names, axesVals=axes_vals, vals=amplitude,
                          weights=np.ones(amplitude.shape))
+
+h5_in.close()
+h5_out.close()
