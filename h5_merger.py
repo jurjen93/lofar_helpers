@@ -788,10 +788,10 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_
             sys.exit('ERROR: h5_lin2circ.py is missing or has the wrong path, so no polarization conversion has been done.'
                      '\nYou can find the latest version in github.com/jurjen93/lofar_helpers or contact Jurjen de Jong')
         if lin2circ:
-            h5_output_name = h5_out[-3:]+'_circ.h5'
+            h5_output_name = h5_out[0:-3]+'_circ.h5'
             print('Polarization will be converted from linear to circular')
         else:
-            h5_output_name = h5_out[-3:]+'_lin.h5'
+            h5_output_name = h5_out[0:-3]+'_lin.h5'
             print('Polarization will be converted from circular to linear')
 
         Pol = PolChange(h5_in=h5_out, h5_out=h5_output_name)
