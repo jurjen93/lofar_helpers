@@ -93,21 +93,21 @@ def make_template(h5_in, soltab):
     G, axes_vals = 0, {}
     for ss in h5_in.getSolsetNames():
         for st in h5_in.getSolset(ss).getSoltabNames():
-            st = h5_in.getSolset(ss).getSoltab(st)
+            solutiontable = h5_in.getSolset(ss).getSoltab(st)
             if soltab in st:
                 try:
-                    if 'pol' in st.getAxesNames():
-                        values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_names)
+                    if 'pol' in solutiontable.getAxesNames():
+                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), axes_names)
                         G = np.ones(values.shape)
                     else:
-                        values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_names[0:-1])
+                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), axes_names[0:-1])
                         G = np.ones(values.shape+(2,))
                 except:
-                    sys.exit('ERROR:\nReceived '+str(st.getAxesNames())+', but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]')
-            axes_vals = {'time': st.getAxisValues('time'),
-                         'freq': st.getAxisValues('freq'),
-                         'ant': st.getAxisValues('ant'),
-                         'dir': st.getAxisValues('dir')}
+                    sys.exit('ERROR:\nReceived '+str(solutiontable.getAxesNames())+', but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]')
+            axes_vals = {'time': solutiontable.getAxisValues('time'),
+                         'freq': solutiontable.getAxisValues('freq'),
+                         'ant': solutiontable.getAxisValues('ant'),
+                         'dir': solutiontable.getAxisValues('dir')}
             if G.shape[-1]==2:
                 axes_vals.update({'pol': ['XX', 'YY']})
             elif G.shape[-1]==4:
@@ -144,36 +144,36 @@ for ss in h5_in.getSolsetNames():
     solsetout.obj.source.append(solsetout.obj.source[:])
 
     for st in h5_in.getSolset(ss).getSoltabNames():
-        st = h5_in.getSolset(ss).getSoltab(st)
+        solutiontable = h5_in.getSolset(ss).getSoltab(st)
         if 'phase' in st:
-            if 'pol' in st.getAxesNames():
-                values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_names)
+            if 'pol' in solutiontable.getAxesNames():
+                values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), axes_names)
                 G *= np.exp(values*1j)
             else:
-                values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_names[0:-1])
+                values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), axes_names[0:-1])
                 G *= np.exp(add_polarization(values, 2)*1j)
 
         elif 'amplitude' in st:
-            if 'pol' in st.getAxesNames():
-                values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_names)
+            if 'pol' in solutiontable.getAxesNames():
+                values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), axes_names)
                 G *= values*1j
             else:
-                values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_names[0:-1])
+                values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), axes_names[0:-1])
                 G *= add_polarization(values, 2)
 
         elif 'tec' in st:
-            tec_axes_names = [ax for ax in axes_names if st.getAxesNames()]
-            tec = reorderAxes(st.getValues()[0], st.getAxesNames(), tec_axes_names)
-            if 'freq' in st.getAxesNames():
-                axes_vals = {'time': st.getAxisValues('time'),
-                             'freq': st.getAxisValues('freq'),
-                             'ant': st.getAxisValues('ant'),
-                             'dir': st.getAxisValues('dir')}
+            tec_axes_names = [ax for ax in axes_names if solutiontable.getAxesNames()]
+            tec = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), tec_axes_names)
+            if 'freq' in solutiontable.getAxesNames():
+                axes_vals = {'time': solutiontable.getAxisValues('time'),
+                             'freq': solutiontable.getAxisValues('freq'),
+                             'ant': solutiontable.getAxisValues('ant'),
+                             'dir': solutiontable.getAxisValues('dir')}
             else:
-                axes_vals = {'dir': st.getAxisValues('dir'),
-                             'ant': st.getAxisValues('ant'),
-                             'time': st.getAxisValues('time')}
-            if 'pol' in st.getAxesNames():
+                axes_vals = {'dir': solutiontable.getAxisValues('dir'),
+                             'ant': solutiontable.getAxisValues('ant'),
+                             'time': solutiontable.getAxisValues('time')}
+            if 'pol' in solutiontable.getAxesNames():
                 if tec.shape[-1]==2:
                     axes_vals.update({'pol': ['XX', 'YY']})
                 elif tec.shape[-1]==4:
