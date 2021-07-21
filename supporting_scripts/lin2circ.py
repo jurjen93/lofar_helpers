@@ -90,7 +90,7 @@ def make_template(h5_in, soltab):
     :param h5_in: h5 file input
     :param soltab: solution table (phase, amplitude)
     """
-    G, axes_vals = [], {}
+    G, axes_vals = np.array([]), {}
     for ss in h5_in.getSolsetNames():
         for st in h5_in.getSolset(ss).getSoltabNames():
             solutiontable = h5_in.getSolset(ss).getSoltab(st)
@@ -136,7 +136,7 @@ axes_names = ['time', 'freq', 'ant', 'dir', 'pol']
 # MAKE TEMPLATE
 G, axes_vals = make_template(h5_in, 'phase')
 print('Shape of input {shape}'.format(shape=G.shape))
-if G:
+if len(G.shape)>1:
     make_template(h5_in, 'amplitude')
     print('Using amplitude as template')
 else:
