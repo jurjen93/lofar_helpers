@@ -108,8 +108,9 @@ def make_template(h5_in, soltab):
                 axes_vals = {'time': solutiontable.getAxisValues('time'),
                              'freq': solutiontable.getAxisValues('freq'),
                              'ant': solutiontable.getAxisValues('ant'),
-                             'dir': solutiontable.getAxisValues('dir')}
-                axes_vals.update({'pol': ['XX', 'XY', 'YX', 'YY']})
+                             'dir': solutiontable.getAxisValues('dir'),
+                             'pol': ['XX', 'XY', 'YX', 'YY']}
+
                 break
     return G.astype(np.complex128), axes_vals
 
@@ -196,6 +197,10 @@ for ss in h5_in.getSolsetNames():
 
     phase = np.angle(G_new)
     amplitude = np.abs(G_new)
+
+    print([len(k) for k in axes_vals.values()])
+    print(amplitude.shape)
+    print(phase.shape)
 
     solsetout.makeSoltab('phase', axesNames=axes_names, axesVals=axes_vals, vals=phase,
                          weights=np.ones(phase.shape))
