@@ -115,8 +115,8 @@ def make_template(h5_in, soltab):
 
 
 parser = ArgumentParser()
-parser.add_argument('-h5out', '--h5_out', type=str, help='h5 output name')
-parser.add_argument('-h5in', '--h5_in', type=str, help='h5 input name')
+parser.add_argument('-h5out', '--h5_file_out', type=str, help='h5 output name')
+parser.add_argument('-h5in', '--h5_file_in', type=str, help='h5 input name')
 parser.add_argument('--lin2circ', type=str2bool, nargs='?', const=True, default=True, help='convert linear to circular')
 args = parser.parse_args()
 
