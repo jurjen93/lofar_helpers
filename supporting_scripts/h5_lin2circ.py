@@ -2,6 +2,19 @@
 LAST UPDATE: 20-7-2021
 
 This script is used to convert from circular to linear polarization and vice versa.
+
+The conversion is done with the coordinate transformation matrices:
+
+    C = np.matrix([[1, 1j], [1, -1j]]) / np.sqrt(2)  ----> jones matrix
+    and its Hermitian Transpose:
+    C.H
+    [Note that Hermitian matrixices are C^-1=C.H]
+
+With this we get the conversion from V_XY (linear) to V_RL (circular) by:
+V_RL = C * V_XY * C.H
+And from V_RL to V_XY:
+V_XY = C.H * V_RL * C
+
 """
 
 import numpy as np
@@ -23,9 +36,13 @@ def str2bool(v):
 
 class PolChange:
     """
-    This Object is to convert polarization from linear to circular or vice versa.
+    This Python class helps to convert polarization from linear to circular or vice versa.
     """
     def __init__(self, h5_in, h5_out):
+        """
+        :param h5_in: h5 input name
+        :param h5_out: h5 output name
+        """
         self.h5_in = h5parm(h5_in, readonly=True)
         self.h5_out = h5parm(h5_out, readonly=False)
         self.axes_names = ['time', 'freq', 'ant', 'dir', 'pol']
@@ -99,7 +116,6 @@ class PolChange:
     def make_template(self, soltab):
         """
         Make template of the Gain matrix with only ones
-        :param h5_in: h5 file input
         :param soltab: solution table (phase, amplitude)
         """
         self.G, self.axes_vals = np.array([]), {}
@@ -128,6 +144,9 @@ class PolChange:
         return self
 
     def add_tec(self, solutiontable):
+        """
+        :param solutiontable: the solution table for the TEC
+        """
         tec_axes_names = [ax for ax in self.axes_names if solutiontable.getAxesNames()]
         tec = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), tec_axes_names)
         if 'freq' in solutiontable.getAxesNames():
@@ -146,10 +165,13 @@ class PolChange:
                 axes_vals_tec.update({'pol': ['XX', 'XY', 'YX', 'YY']})
         axes_vals_tec = [v[1] for v in
                          sorted(axes_vals_tec.items(), key=lambda pair: self.axes_names.index(pair[0]))]
-        self.solsetout.makeSoltab('tec', axesNames=tec_axes_names, axesVals=axes_vals_tec, vals=tec,
-                             weights=np.ones(tec.shape))
+        self.solsetout.makeSoltab('tec', axesNames=tec_axes_names, axesVals=axes_vals_tec, vals=tec, weights=np.ones(tec.shape))
 
-    def make_new_gains(self, lin2circ):
+    def make_new_gains(self, lin2circ, circ2lin):
+        """
+        :param lin2circ: boolean for linear to circular conversion
+        :param circ2lin: boolean for circular to linear conversion
+        """
         for ss in self.h5_in.getSolsetNames():
 
             self.solsetout = self.h5_out.makeSolset(ss)
@@ -165,8 +187,7 @@ class PolChange:
                         values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
                         self.G *= np.exp(values * 1j)
                     else:
-                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(),
-                                             self.axes_names[0:-1])
+                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
                         self.G *= np.exp(self.add_polarization(values, 2) * 1j)
 
                 elif 'amplitude' in st:
@@ -174,8 +195,7 @@ class PolChange:
                         values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
                         self.G *= values * 1j
                     else:
-                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(),
-                                             self.axes_names[0:-1])
+                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
                         self.G *= self.add_polarization(values, 2)
 
                 elif 'tec' in st:
@@ -187,9 +207,11 @@ class PolChange:
             if lin2circ:
                 print('Convert linear polarization to circular polarization')
                 G_new = self.lin2circ(self.G)
-            else:
+            elif circ2lin:
                 print('Convert circular polarization to linear polarization')
                 G_new = self.circ2lin(self.G)
+            else:
+                sys.exit('ERROR: No conversion given')
             print('Shape of output for amplitude and phase: {shape}'.format(shape=G_new.shape))
 
             phase = np.angle(G_new)
@@ -197,12 +219,10 @@ class PolChange:
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
 
-            self.solsetout.makeSoltab('phase', axesNames=self.axes_names, axesVals=self.axes_vals, vals=phase,
-                                 weights=np.ones(phase.shape))
+            self.solsetout.makeSoltab('phase', axesNames=self.axes_names, axesVals=self.axes_vals, vals=phase, weights=np.ones(phase.shape))
             print('Created new phase solutions')
 
-            self.solsetout.makeSoltab('amplitude', axesNames=self.axes_names, axesVals=self.axes_vals, vals=amplitude,
-                                 weights=np.ones(amplitude.shape))
+            self.solsetout.makeSoltab('amplitude', axesNames=self.axes_names, axesVals=self.axes_vals, vals=amplitude, weights=np.ones(amplitude.shape))
             print('Created new amplitude solutions')
 
         self.h5_in.close()
@@ -215,13 +235,14 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-h5out', '--h5_file_out', type=str, help='h5 output name')
     parser.add_argument('-h5in', '--h5_file_in', type=str, help='h5 input name')
-    parser.add_argument('--lin2circ', type=str2bool, nargs='?', const=True, default=True, help='convert linear to circular')
+    parser.add_argument('--lin2circ', action='store_true', help='convert linear polarization to circular')
+    parser.add_argument('--circ2lin', action='store_true', help='convert circular polarization to linear')
     args = parser.parse_args()
 
-    """
-    C = np.matrix([[1, 1j], [1, -1j]]) / np.sqrt(2)  ----> jones matrix
-    C.H is the Hermitian Transpose
-    """
+    if args.lin2circ and args.circ2lin:
+        sys.exit('ERROR: Both polarization conversions are given, please choose 1.')
+    elif not args.lin2circ and not args.circ2lin:
+        sys.exit('ERROR: None of the polarization conversions are given, please choose 1 by using --circ2lin or lin2circ')
 
     Pol = PolChange(h5_in=args.h5_file_in, h5_out=args.h5_file_out)
 
@@ -232,4 +253,4 @@ if __name__ == '__main__':
     else:
         print('Using phase as template')
 
-    Pol.make_new_gains(args.lin2circ)
+    Pol.make_new_gains(args.lin2circ, args.circ2lin)

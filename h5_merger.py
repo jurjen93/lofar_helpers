@@ -15,9 +15,17 @@ merge_h5(h5_out='test.h5',
         ms_files='*.ms',
         convert_tec=True)
 
+Following input parameters are possible:
+h5_out ---> the output name of the h5 table
+h5_tables ---> h5 tables that have to be merged
+ms_files ---> measurement sets
+convert_tec ---> convert tec to phase
+make_new_direction ---> make a new direction (default is True), if False it adds everything in one direction
+lin2circ ---> convert linear to circular polarization (default is False)
+circ2lin ---> convert circular to linear polarization (default is False)
+
 TODO:
 - bug fix python 2 with opening tables
-- Circular polarization to linear polarization (RR LL RL LR)
 """
 
 import os
@@ -186,8 +194,7 @@ class MergeH5:
                     if n == 0:
                         self.antennas = st.getAxisValues('ant')  # check if same for all h5
                     elif list(self.antennas) != list(st.getAxisValues('ant')):
-                        print('ERROR: antennas not the same')
-                        sys.exit()
+                        sys.exit('ERROR: antennas not the same')
             h5.close()
         self.all_soltabs = self.sort_soltabs(self.all_soltabs)
         self.all_solsets = set(self.all_solsets)
@@ -386,8 +393,7 @@ class MergeH5:
                             shape = list(self.phases.shape)
                             dir_index = len(self.phases.shape) - 4
                             if dir_index < 0:
-                                print('ERROR: Missing axes')
-                                sys.exit()
+                                sys.exit('ERROR: Missing axes')
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
                                 self.phases = append(self.phases, zeros(shape),
@@ -396,8 +402,7 @@ class MergeH5:
                             shape = list(self.gains.shape)
                             dir_index = len(self.gains.shape) - 4
                             if dir_index < 0:
-                                print('ERROR: Missing axes')
-                                sys.exit()
+                                sys.exit('ERROR: Missing axes')
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
                                 self.gains = append(self.gains, ones(shape),
@@ -438,8 +443,7 @@ class MergeH5:
                             tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
                                                         self.axes_current.index('time'))
                         else:
-                            print('ERROR: Something went wrong with reshaping. Shouldnt end up here..')
-                            sys.exit()
+                            sys.exit('ERROR: Something went wrong with reshaping. Shouldnt end up here..')
                         # Make tp shape same as phases
 
                         if len(self.phases.shape) == 5 and tp.shape[0] == 1:
@@ -719,15 +723,24 @@ class MergeH5:
         self.h5_out.close()
         return self
 
+def make_h5_name(h5_name):
+    if '.h5' != h5_name[-3:]:
+        h5_name += '.h5'
+    return h5_name
 
-def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_new_direction=True):
+def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_new_direction=True, lin2circ=False, circ2lin=False):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
     :param h5_out (string): h5 table name out
     :param h5_tables (string or list): h5 tables to merge
     :param ms_files (string or list): ms files to use, can be both list and string
     :param convert_tec (boolean): convert TEC to phase or not
+    :param lin2circ: boolean for linear to circular conversion
+    :param circ2lin: boolean for circular to linear conversion
     """
+
+    h5_out = make_h5_name(h5_out)
+
     if h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
         os.system('rm {}'.format(h5_out))
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
@@ -766,10 +779,33 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_
         # pass
     print('END: h5 solution file(s) merged')
 
+    if lin2circ and circ2lin:
+        sys.exit('Both polarization conversions are given, please choose 1.')
+    elif lin2circ or circ2lin:
+        try:
+            from .supporting_scripts.h5_lin2circ import PolChange
+        except:
+            sys.exit('ERROR: h5_lin2circ.py is missing or has the wrong path, so no polarization conversion has been done.'
+                     '\nYou can find the latest version in github.com/jurjen93/lofar_helpers or contact Jurjen')
+        if lin2circ:
+            h5_output_name = h5_out[-3:]+'_circ.h5'
+            print('Polarization will be converted from linear to circular')
+        else:
+            h5_output_name = h5_out[-3:]+'_lin.h5'
+            print('Polarization will be converted from circular to linear')
+
+        Pol = PolChange(h5_in=h5_out, h5_out=h5_output_name)
+
+        Pol.make_template('phase')
+        if len(Pol.G.shape) > 1:
+            Pol.make_template('amplitude')
+
+        Pol.make_new_gains(lin2circ, circ2lin)
+        print('{file} has been created'.format(file=h5_output_name))
+
 
 if __name__ == '__main__':
     from argparse import ArgumentParser, ArgumentTypeError
-
 
     def str2bool(v):
         v = str(v)
@@ -783,14 +819,14 @@ if __name__ == '__main__':
             print('Boolean value expected.\nDirections will be merged separately')
             return True
 
-
     parser = ArgumentParser()
     parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output')
     parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge')
     parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
     parser.add_argument('-ct', '--convert_tec', type=str2bool, nargs='?', const=True, default=True, help='convert tec to phase')
-    parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True,
-                        help='make new directions')
+    parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True, help='make new directions, if false merge everything in 1 direction')
+    parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular')
+    parser.add_argument('--circ2lin', acion='store_true', help='transform circular polarization to linear')
 
     args = parser.parse_args()
 
@@ -802,5 +838,10 @@ if __name__ == '__main__':
     else:
         h5tables = args.h5_tables
 
-    merge_h5(h5_out=args.h5_out, h5_tables=h5tables, ms_files=args.ms_files, convert_tec=args.convert_tec,
-             make_new_direction=args.make_new_direction)
+    merge_h5(h5_out=args.h5_out,
+             h5_tables=h5tables,
+             ms_files=args.ms_files,
+             convert_tec=args.convert_tec,
+             make_new_direction=args.make_new_direction,
+             lin2circ=args.lin2circ,
+             circ2lin=args.circ2lin)
