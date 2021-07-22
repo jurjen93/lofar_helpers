@@ -16,7 +16,7 @@ cd ${OUTPUT_FOLDER}
 #converging and merging .npz to .h5 files from LoTSS output
 singularity exec -B ${SING_BIND} ${SING_IMAGE} killMS2H5parm.py lotss_slow.h5 ${FOLDER}/extract/DDS3_full_slow*merged.npz --nofulljones
 singularity exec -B ${SING_BIND} ${SING_IMAGE} killMS2H5parm.py lotss_smoothed.h5 ${FOLDER}/extract/DDS3_full*smoothed.npz --nofulljones
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out lotss_full_merged.h5 -in lotss_*.h5 -ms '/net/tussenrijn/data2/jurjendejong/L626678/result/box_*/*.goodtimes' --convert_tec 0
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out lotss_full_merged.h5 -in lotss_*.h5 -ms '/net/tussenrijn/data2/jurjendejong/L626678/result/*.archive' --convert_tec 0
 
 #h5 filter
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/supporting_scripts/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered.h5 -h5in lotss_full_merged.h5.h5
