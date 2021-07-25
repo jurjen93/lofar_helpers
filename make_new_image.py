@@ -43,11 +43,11 @@ os.system('cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+LOCATION)
 print('Finished moving files')
 
 #FLAG TIME
-if args.time_flag:
-    print('Making goodtimes')
-    for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
-        os.system('{SINGULARITY} python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf {time} -ms {MS}'.format(SINGULARITY=SINGULARITY, MS=MS, time=' '.join(args.time_flag)))
-        print('Created ' + MS.split('/')[-1] + '.goodtimes')
+# if args.time_flag:
+#     print('Making goodtimes')
+#     for MS in glob('{LOCATION}/*_uv.pre-cal_*.pre-cal.ms.archive'.format(LOCATION=LOCATION)):
+#         os.system('{SINGULARITY} python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf {time} -ms {MS}'.format(SINGULARITY=SINGULARITY, MS=MS, time=' '.join(args.time_flag)))
+#         print('Created ' + MS.split('/')[-1] + '.goodtimes')
 
 #MERGE LOTSS OUTER EDGE
 os.system('chmod u+x /home/jurjendejong/scripts/lofar_helpers/pipeline_scripts/strw/merge_complete_h5.sh')
@@ -56,8 +56,8 @@ os.system('mv {LOCATION_FROM}/{H5} {LOCATION}'.format(H5=H5, LOCATION=LOCATION, 
 os.system('rm -rf {LOCATION_FROM}'.format(LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"/result_filtered"))
 
 #MAKE LIST WITH MEASUREMENT SETS
-os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
-# os.system('ls -1d {LOCATION}/*.archive > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
+# os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
+os.system('ls -1d {LOCATION}/*.archive > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
 
 with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
