@@ -1,3 +1,9 @@
+"""
+Script to flag time
+"""
+
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
+
 from argparse import ArgumentParser
 import pyrap.tables as pt
 

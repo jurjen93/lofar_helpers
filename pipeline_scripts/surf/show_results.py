@@ -1,3 +1,5 @@
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
+
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from argparse import ArgumentParser

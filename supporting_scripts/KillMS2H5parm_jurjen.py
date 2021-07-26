@@ -7,6 +7,7 @@ ORIGINAL: https://github.com/revoltek/losoto/blob/master/bin/killMS2H5parm.py
 This tool is used to import killms solutions into a H5parm format.
 """
 
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
 import sys, os, glob, pickle
 import numpy as np

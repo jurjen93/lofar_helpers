@@ -28,6 +28,8 @@ TODO:
 - bug fix python 2 with opening tables
 """
 
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
+
 import os
 from casacore import tables as ct
 from glob import glob
@@ -38,7 +40,6 @@ import sys
 import re
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims
 
-__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 __all__ = ['merge_h5', 'str2bool']
 
 

@@ -1,6 +1,4 @@
 """
-LAST UPDATE: 7-6-2021
-
 Use this script to return region files of directions that need a selfcal.
 
 TODO:
@@ -8,6 +6,8 @@ TODO:
 - The brighter, the less distance between sources in same image
 - Initial size depending on brightness of source.
 """
+
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
 import numpy as np
 import os
@@ -19,7 +19,6 @@ from argparse import ArgumentParser
 import warnings
 from pandas import DataFrame, concat, read_csv
 
-__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 __all__ = ['']
 
 warnings.filterwarnings("ignore")
