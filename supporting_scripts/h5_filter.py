@@ -1,9 +1,9 @@
 """
-LAST UPDATE: 15-6-2021
-
 This script is meant to filter directions outside of a specific circle.
 This can be useful for excluding directions at the boundaries of a field because the solutions are less good there.
 """
+
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
 import tables
 from astropy.wcs import WCS
@@ -15,8 +15,6 @@ from numpy import ones, zeros
 import os
 from glob import glob
 import re
-
-__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
 def str2bool(v):
     v = str(v)

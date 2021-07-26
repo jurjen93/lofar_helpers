@@ -1,6 +1,4 @@
 """
-LAST UPDATE: 20-7-2021
-
 This script is used to convert from circular to linear polarization and vice versa.
 
 The conversion is done with the coordinate transformation matrices:
@@ -17,13 +15,13 @@ V_XY = C.H * V_RL * C
 
 """
 
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
+
 import numpy as np
 from argparse import ArgumentParser, ArgumentTypeError
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
 import sys
-
-__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
 def str2bool(v):
     v = str(v)

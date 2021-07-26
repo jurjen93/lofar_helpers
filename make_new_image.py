@@ -6,6 +6,8 @@ Example:
         -tf 0 3000
 """
 
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
+
 import os
 from argparse import ArgumentParser
 from glob import glob
