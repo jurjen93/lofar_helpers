@@ -31,7 +31,7 @@ echo "Succesfully created boxes..."
 mkdir ${TO}/test
 
 #EXTRACT
-sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract_test.sh L626678
+srun ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract_test.sh L626678
 
 #SELFCAL
 for ((N=1;N<=${TOTAL_BOXES};N++))
@@ -43,5 +43,6 @@ do
   echo "selfcal_${N}" > ${TO}/test/test_selfcal_${N}.txt
   exit
 done
+wait
 
 echo "----------END----------"
