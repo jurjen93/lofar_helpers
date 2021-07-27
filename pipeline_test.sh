@@ -1,6 +1,7 @@
 #!/bin/bash
 #SBATCH -c 1
 #SBATCH --mail-type=END,FAIL
+#SBATCH --wait
 
 #THIS SCRIPT IS WRITTEN FOR SLURM ON SURFSARA
 echo "----------START----------"
