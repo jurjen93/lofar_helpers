@@ -39,7 +39,7 @@ TOTAL_BOXES=$(ls -dq ${TO}/test/test_${N}.txt | wc -l)
 for ((N=1;N<=${TOTAL_BOXES};N++))
 do
   echo "SELFCAL ${N}"
-  while ! cat ${TO}/test/text_${N}.txt
+  while [ ! -f ${TO}/test/text_${N}.txt ]
   do
     sleep 5
   done
