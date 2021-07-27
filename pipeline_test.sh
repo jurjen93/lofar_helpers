@@ -34,6 +34,7 @@ mkdir ${TO}/test
 #EXTRACT
 echo "EXTRACT STARTED"
 sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract_test.sh L626678 &
+wait &
 
 #SELFCAL
 echo "SELFCAL STARTED"
@@ -44,10 +45,9 @@ do
   do
     sleep 5
     echo "Still waiting for ${N}"
-  done &
+  done
   echo "selfcal_${N}" > ${TO}/test/test_selfcal_${N}.txt
-  exit
-done
+done &
 wait
 
 echo "----------END----------"
