@@ -26,9 +26,10 @@ warnings.filterwarnings("ignore")
 parser = ArgumentParser()
 parser.add_argument('-f', '--file', type=str, help='fitsfile name')
 parser.add_argument('-l', '--location', type=str, help='data location folder name')
-parser.add_argument('-i', '--images', type=bool, default=True, help='return images of boxes')
+parser.add_argument('--no_images', action='store_false', help='store images')
 parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
 args = parser.parse_args()
+print(args)
 
 if args.location:
     folder = args.location
@@ -45,7 +46,7 @@ for i, f in enumerate(folders):
         print(f'Create directory: {subpath}')
         os.system(f'mkdir {subpath}')
 
-if args.images:
+if not args.no_images:
     import matplotlib.pyplot as plt
     from matplotlib.colors import SymLogNorm
 
@@ -511,7 +512,7 @@ if __name__ == '__main__':
 
     image = SetBoxes(fits_file=args.file, initial_box_size=0.2)
 
-    if args.images:
+    if not args.no_images:
         os.system(f'rm -rf {folder}/box_images; mkdir {folder}/box_images')  # make folder with box images
     os.system(f'rm -rf {folder}/boxes; mkdir {folder}/boxes')  # make folder with the .reg files
     os.system(f'rm source_file.csv') # clean up
@@ -566,7 +567,7 @@ if __name__ == '__main__':
         if not replace:
             m += 1
 
-        if args.images:
+        if not args.no_images:
             fig = plt.figure(figsize=(10, 10))
             plt.subplot(1, 2, 1, projection = image.wcs_cut)
             plt.title(f'Initial image')
@@ -590,6 +591,6 @@ if __name__ == '__main__':
 
     print('-------------------------------------------------')
     print(f'Made succesfully {m} boxes.')
-    if args.images:
+    if not args.no_images:
         print(f'Images of boxes are in {folder}/box_images.')
     print(f'Region files are in {folder}/boxes.')

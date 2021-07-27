@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -c 20
-#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl 
 
 #THIS SCRIPT IS WRITTEN FOR SLURM ON SURFSARA
