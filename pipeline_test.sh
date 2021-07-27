@@ -37,7 +37,7 @@ for ((N=1;N<=${TOTAL_BOXES};N++))
 do
   until [[ -f ${TO}/test/text_${N}.txt ]]
   do
-    sleep 60
+    sleep 5
   done
   echo "selfcal_${N}" > ${TO}/test/test_selfcal_${N}.txt
   exit
