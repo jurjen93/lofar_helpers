@@ -39,7 +39,7 @@ do
   do
     sleep 60
   done
-  sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_per_box.sh L626678 ${N}
+  sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_per_box.sh L626678 ${N} &
   exit
 done
 wait
