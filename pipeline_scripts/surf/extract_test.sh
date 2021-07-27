@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --array=1-200%10
+#SBATCH --array=1-20%10
 
 SOURCE=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
@@ -20,7 +20,7 @@ echo "There are ${END_N} boxes to extract"
 echo "-----STARTED EXTRACT-----"
 if [[ ! ${SLURM_ARRAY_TASK_ID} > ${TOTAL_BOXES} ]]
 then
-  sleep 10
+  sleep 5
   echo "box_${SLURM_ARRAY_TASK_ID}" > ${TO}/test/test_${SLURM_ARRAY_TASK_ID}.txt
   echo "Extracted box_${SLURM_ARRAY_TASK_ID}"
 else

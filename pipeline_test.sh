@@ -25,18 +25,21 @@ SING_BIND=/project/lofarvwf/Share/jdejong
 #CREATE BOXES
 echo "Create boxes..."
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO}
-TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
 echo "Succesfully created boxes..."
 
 mkdir ${TO}/test
 
 #EXTRACT
-sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract_test.sh L626678
+echo "EXTRACT STARTED"
+start sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract_test.sh L626678 &
 
 #SELFCAL
+echo "SELFCAL STARTED"
+TOTAL_BOXES=$(ls -dq ${TO}/test/test_${N}.txt | wc -l)
 for ((N=1;N<=${TOTAL_BOXES};N++))
 do
-  until [[ -f ${TO}/test/text_${N}.txt ]]
+  echo "SELFCAL ${N}"
+  while ! cat ${TO}/test/text_${N}.txt
   do
     sleep 5
   done
