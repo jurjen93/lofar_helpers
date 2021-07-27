@@ -31,7 +31,7 @@ mkdir ${TO}/test
 
 #EXTRACT
 echo "EXTRACT STARTED"
-start sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract_test.sh L626678 &
+sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract_test.sh L626678 &
 
 #SELFCAL
 echo "SELFCAL STARTED"
