@@ -22,7 +22,7 @@ if [[ ! ${SLURM_ARRAY_TASK_ID} > ${TOTAL_BOXES} ]]
 then
   sleep 10
   echo "box_${SLURM_ARRAY_TASK_ID}" > ${TO}/test/test_${SLURM_ARRAY_TASK_ID}.txt
-  echo "Extracted box_${BOX}"
+  echo "Extracted box_${SLURM_ARRAY_TASK_ID}"
 else
   :
 fi

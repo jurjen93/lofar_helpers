@@ -31,7 +31,7 @@ echo "Succesfully created boxes..."
 mkdir ${TO}/test
 
 #EXTRACT
-srun ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract_test.sh L626678
+sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract_test.sh L626678
 
 #SELFCAL
 for ((N=1;N<=${TOTAL_BOXES};N++))
