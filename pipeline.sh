@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH -c 1
+#SBATCH --mail-type=END,FAIL
 
 #THIS SCRIPT IS WRITTEN FOR SLURM ON SURFSARA
 echo "----------START----------"
@@ -29,7 +30,7 @@ TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
 echo "Succesfully created boxes..."
 
 #EXTRACT
-sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract.sh L626678
+srun ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract.sh L626678
 
 #SELFCAL
 for ((N=1;N<=${TOTAL_BOXES};N++))
@@ -38,8 +39,9 @@ do
   do
     sleep 60
   done
-  sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_per_box.sh L626678 ${N}
+  srun ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_per_box.sh L626678 ${N}
   exit
 done
+wait
 
 echo "----------END----------"

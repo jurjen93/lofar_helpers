@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore")
 parser = ArgumentParser()
 parser.add_argument('-f', '--file', type=str, help='fitsfile name')
 parser.add_argument('-l', '--location', type=str, help='data location folder name')
-parser.add_argument('--no_images', action='store_false', help='store images')
+parser.add_argument('--no_images', action='store_true', help='store images')
 parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
 args = parser.parse_args()
 print(args)
@@ -553,7 +553,8 @@ if __name__ == '__main__':
                     if len(source_list.replace('[','').replace(']',''))>0:
                         source_list = [int(s) for s in source_list.replace('[','').replace(']','').replace(' ','').split(';')]
                         if bool(set(other_sources) & set(source_list)):
-                            os.system(f'rm {folder}/box_images/box_{M+1}.png')
+                            if not args.no_images:
+                                os.system(f'rm {folder}/box_images/box_{M+1}.png')
                             os.system(f'rm {folder}/boxes/box_{M+1}.reg')
                             replace, found = True, True
                             break
