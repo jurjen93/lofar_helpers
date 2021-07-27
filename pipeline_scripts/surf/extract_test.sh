@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -c 32
 #SBATCH --ntaks-per-node=1
-#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --array=1-200%10
 
@@ -13,7 +13,7 @@ SING_IMAGE=/project/lofarvwf/Software/lofar_sksp_fedora27_ddf_slurmfix.sif
 SING_BIND=/project/lofarvwf/Share/jdejong
 
 #LAST BOX NUMBER
-TOTAL_BOXES=$(ls -dq ${TO}/boxes_test/box*.reg | wc -l)
+TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
 echo "There are ${END_N} boxes to extract"
 
 echo "-----STARTED EXTRACT-----"

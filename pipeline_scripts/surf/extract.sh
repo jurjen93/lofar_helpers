@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -c 32
 #SBATCH --ntaks-per-node=1
-#SBATCH --mail-type=END,FAIL
+#SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --array=1-200%10
 

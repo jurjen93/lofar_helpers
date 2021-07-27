@@ -1,5 +1,6 @@
 #!/bin/bash
 #SBATCH -c 1
+#SBATCH --mail-type=END,FAIL
 
 #THIS SCRIPT IS WRITTEN FOR SLURM ON SURFSARA
 echo "----------START----------"
@@ -23,8 +24,8 @@ SING_BIND=/project/lofarvwf/Share/jdejong
 
 #CREATE BOXES
 echo "Create boxes..."
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python3 ${SCRIPT_FOLDER}/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO}
-TOTAL_BOXES=$(ls -dq ${TO}/boxes_test/box*.reg | wc -l)
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO}
+TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
 echo "Succesfully created boxes..."
 
 mkdir ${TO}/test
