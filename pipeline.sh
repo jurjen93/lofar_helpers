@@ -30,7 +30,7 @@ TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
 echo "Succesfully created boxes..."
 
 #EXTRACT
-srun ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract.sh L626678
+sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract.sh L626678
 
 #SELFCAL
 for ((N=1;N<=${TOTAL_BOXES};N++))
@@ -39,7 +39,7 @@ do
   do
     sleep 60
   done
-  srun ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_per_box.sh L626678 ${N}
+  sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_per_box.sh L626678 ${N}
   exit
 done
 wait
