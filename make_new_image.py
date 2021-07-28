@@ -3,6 +3,7 @@ Example:
     python ~/scripts/lofar_helpers/make_new_image.py
         -from /disks/paradata/shimwell/LoTSS-DR2/archive_other/L626678
         -to /net/tussenrijn/data2/jurjendejong/L626678/result
+        -h5 complete_merged.h5
         -tf 0 3000
 """
 
