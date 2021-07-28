@@ -111,6 +111,11 @@ class Imaging:
 
 class SetBoxes(Imaging):
     def __init__(self, fits_file: str = None, initial_box_size: float = 0.2, peak_flux=0.07):
+        """
+        :param fits_file: fits file to find boxes
+        :param initial_box_size: initial box size to start with (making this lower, makes it more likely you get a smaller box)
+        :param peak_flux: peak fluxes considered for boxes
+        """
         self.pix_y = None
         self.pix_x = None
         self.flux = None
@@ -176,7 +181,7 @@ class SetBoxes(Imaging):
         """Reposition image by looking at the data points near the boundaries."""
 
         # calculate percentage of high flux points at the boundaries
-        outlier_threshold = 4 * np.std(self.image_data)  # use five times the standard deviation of full image as outlier threshold
+        outlier_threshold = 5 * np.std(self.image_data)  # use five times the standard deviation of full image as outlier threshold
 
         def boundary_perc(image_data):
             """Percentage of high flux"""
@@ -213,9 +218,9 @@ class SetBoxes(Imaging):
         max_size = abs(int(0.4//pixscale))
         min_size = abs(int(0.2//pixscale))
 
-        step_size = np.max(self.wcs.pixel_scale_matrix)  # step size in degrees per pixel
-        im_size = int(self.initial_box_size / step_size)  # start with square boxes with a size of 0.4 degrees
-        threshold_p = 0.000005  # max percentage of boundary elements
+        step_size = np.max(self.wcs.pixel_scale_matrix) # step size in degrees per pixel
+        im_size = int(self.initial_box_size / step_size) # starting image size
+        threshold_p = 0.000005 # max percentage of boundary elements
 
         for N in range(3):#looping multiple times
             # STEP 1: Reposition for higher flux around the borders
@@ -510,7 +515,7 @@ class SetBoxes(Imaging):
 
 if __name__ == '__main__':
 
-    image = SetBoxes(fits_file=args.file, initial_box_size=0.2)
+    image = SetBoxes(fits_file=args.file, initial_box_size=0.1)
 
     if not args.no_images:
         os.system(f'rm -rf {folder}/box_images; mkdir {folder}/box_images')  # make folder with box images
