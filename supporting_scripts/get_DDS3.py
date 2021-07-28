@@ -23,7 +23,9 @@ def get_DDS3(folder):
     for observation in ms_observations:
         for sm in single_m:
             if observation in sm:
-                t = ct.table(sm).getcol('TIME')[0] # get first time element from measurement set
+                table = ct.table(sm) # open table
+                t = table.getcol('TIME')[0] # get first time element from measurement set
+                table.close() # close table
                 diff = lambda ob_time : abs(ob_time - t) #f formula to compare difference between first time element of ms and observation times
                 closest_value = min(list(time_observation.values()), key=diff) # get closest value with lambda function
                 DDS_options = {D: time_modification[D] for D in
