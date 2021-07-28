@@ -1,5 +1,7 @@
 import os
-from supporting_scripts.get_DDS3 import get_DDS3
+import sys
+sys.path.insert(1, '~/scripts/lofar_helpers/supporting_scripts')
+from get_DDS3 import get_DDS3
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
