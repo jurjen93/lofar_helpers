@@ -1,10 +1,18 @@
 """
 Use this script to return region files of directions that need a selfcal.
 
-TODO:
-- Sources in same figure check flux with sqrt(a**2+b**2)
-- The brighter, the less distance between sources in same image
-- Initial size depending on brightness of source.
+Use make_boxes.py as a standalone script by running on the command line:
+python make_boxes.py <FLAGS>
+You can use the following flags:
+
+    -f --> followed by the fits file name (and path)
+    -i --> followed by the boolean, indicating if the script should return images of the directions or not
+    -l --> followed by the location (path) to store the data
+
+The script returns the following:
+
+    directory with .reg region boxes
+    directory with box images, to check the quality of the boxes.
 """
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
@@ -127,6 +135,7 @@ class SetBoxes(Imaging):
         # get the positions of the flux peaks from full image
         self.peak_flux = peak_flux
 
+        # peaks of non-resampled sources
         df_peaks = DataFrame([{'pix_y': c[0], 'pix_x': c[1], 'flux': self.image_data[c[0], c[1]], 'resampled':False}
                                    for c in np.argwhere(self.image_data > peak_flux)]). \
                             sort_values('flux', ascending=False)
@@ -135,16 +144,18 @@ class SetBoxes(Imaging):
         resampled = resample_pixels(self.image_data,
                                     rows=int(self.image_data.shape[0] / 100),
                                     cols=int(self.image_data.shape[1] / 100))
-        # plt.imshow(resampled, norm=SymLogNorm(linthresh=np.nanstd(resampled)/20, vmin=np.nanstd(resampled)/50, vmax=np.nanstd(resampled)*25), origin='lower')
-        # plt.show()
+
         resample_x, resample_y = resampled.shape
         original_x, original_y = self.image_data.shape
         resample_scale_x = original_x//resample_x
         resample_scale_y = original_y//resample_y
 
-        resampled_df_peaks = DataFrame([{'pix_y': c[0]*resample_scale_x, 'pix_x': c[1]*resample_scale_y,
-                                              'flux': resampled[c[0], c[1]], 'resampled':True}
-                                   for c in np.argwhere(resampled > 15)])
+        # peaked resampled sources [flux is resampled values so much higher than non-resampled]
+        resampled_df_peaks = DataFrame([{'pix_y': c[0]*resample_scale_x,
+                                        'pix_x': c[1]*resample_scale_y,
+                                         'flux': resampled[c[0], c[1]]/np.mean([resample_scale_y, resample_scale_x]),
+                                         'resampled':True}
+                                        for c in np.argwhere(resampled > 15)])
 
         self.df_peaks = concat([df_peaks, resampled_df_peaks], axis=0).\
             drop_duplicates(subset=['pix_y', 'pix_x'])
@@ -165,6 +176,16 @@ class SetBoxes(Imaging):
     def ed_array(pos=None, lst=None):
         """Euclidean distance between position and list"""
         return np.sqrt(np.sum(np.square(pos - lst), axis=1))
+
+    def im_scale(self, flux):
+        """Calculate an optimized im scale (bigger boxes for brighter sources), based on flux"""
+        if self.initial_box_size<0.3:
+            self.flux_max = max(self.df_peaks.flux) # save max peak
+            self.flux_min = min(self.df_peaks.flux) # save min peak
+            return self.initial_box_size+(0.3-self.initial_box_size)*(((flux - self.flux_min)/self.flux_max)*flux+self.flux_min)/self.flux_max
+        else:
+            return self.initial_box_size
+
 
     def angular_distance(self, p1, p2):
         """Angular distance between two points"""
@@ -216,10 +237,10 @@ class SetBoxes(Imaging):
         #get pixel scale
         pixscale = self.header['CDELT1']
         max_size = abs(int(0.4//pixscale))
-        min_size = abs(int(0.2//pixscale))
+        min_size = abs(int(0.15//pixscale))
 
         step_size = np.max(self.wcs.pixel_scale_matrix) # step size in degrees per pixel
-        im_size = int(self.initial_box_size / step_size) # starting image size
+        im_size = int(self.im_scale(self.flux) / step_size) # starting image size
         threshold_p = 0.000005 # max percentage of boundary elements
 
         for N in range(3):#looping multiple times
@@ -336,7 +357,7 @@ class SetBoxes(Imaging):
                                                             (im_size, im_size))
                 n+=1
 
-            # Step 6: Reposition
+            # STEP 6: Reposition
             n, t2 = 0, 0
             left_p, lower_p, right_p, upper_p = boundary_perc(self.after)  # get boundary percentages
             while (left_p > threshold_p or lower_p > threshold_p or right_p > threshold_p or upper_p > threshold_p or
@@ -388,15 +409,15 @@ class SetBoxes(Imaging):
                 n += 1
 
             # STEP 7: Resizing based on flux within and on the borders
-            while im_size<max_size and np.sum(self.after>np.max(self.after)/10)/self.after.size*self.before.size>50:
-                im_size += int(self.after.shape[0] / 100)  # size reduced image
+            while im_size>min_size and np.sum(self.after>np.max(self.after)/10)/self.after.size*self.before.size>50:
+                im_size -= int(self.after.shape[0] / 100)  # size reduced image
                 self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y), (im_size, im_size))  # new image
 
             n=0
             # STEP 8: Resizing and moving if needed
-            while boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size+int(im_size/30), im_size+int(im_size/30)))[0], threshold=0.01)\
-                    and n<200:
-                if im_size>min_size:
+            while boundary_sources(image_data=self.make_cutout((self.pix_x, self.pix_y), (im_size+int(im_size/10), im_size+int(im_size/10)))[0], threshold=0.01)\
+                    and n<150:
+                if im_size>0.2:
                     im_size -= int(self.after.shape[0]) / 100  # size increase
                     self.after, self.wcs_cut = self.make_cutout((self.pix_x, self.pix_y),
                                                                 (im_size, im_size))
@@ -515,7 +536,7 @@ class SetBoxes(Imaging):
 
 if __name__ == '__main__':
 
-    image = SetBoxes(fits_file=args.file, initial_box_size=0.1)
+    image = SetBoxes(fits_file=args.file, initial_box_size=0.15)
 
     if not args.no_images:
         os.system(f'rm -rf {folder}/box_images; mkdir {folder}/box_images')  # make folder with box images
@@ -600,3 +621,11 @@ if __name__ == '__main__':
     if not args.no_images:
         print(f'Images of boxes are in {folder}/box_images.')
     print(f'Region files are in {folder}/boxes.')
+
+    try:
+        print('Opening ds9 to verify box selections and make manual changes if needed.')
+        os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
+        print('Closed ds9.')
+    except:
+        print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
+              "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
