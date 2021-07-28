@@ -1,10 +1,10 @@
 import os
 from argparse import ArgumentParser
 import casacore.tables as ct
-from glob import glob
 from numpy import unique
 import pathlib
 import operator
+from glob import glob
 
 def get_DDS3(folder):
     """
@@ -49,12 +49,12 @@ args = parser.parse_args()
 # TO --> /project/lofarvwf/Share/jdejong/data/L626678
 
 files = [D.split('/')[-1] for D in get_DDS3(args.frm)] + \
-        ['*.ms.archive',
-         'image_full_ampphase_di_m.NS.tessel.reg',
+        ['image_full_ampphase_di_m.NS.tessel.reg',
          'image_full_ampphase_di_m.NS.mask01.fits',
          'image_full_ampphase_di_m.NS.DicoModel',
          'image_dirin_SSD_m.npy.ClusterCat.npy',
-         'SOLSDIR']
+         'SOLSDIR'] + \
+        glob('*.ms.archive')
 
 command_1 = 'tar -C {FROM} -cvzf /net/tussenrijn/data2/jurjendejong/data_archive.tar.gz --absolute-names '.format(FROM=args.frm) + ' '.join(files)
 os.system(command_1)
