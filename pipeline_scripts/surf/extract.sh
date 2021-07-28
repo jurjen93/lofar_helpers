@@ -6,17 +6,17 @@
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --array=1-200%10
 
-SOURCE=$1 #L626678
-TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
+FIELD=$1 #L626678
+TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts
 
 SING_IMAGE=/project/lofarvwf/Software/lofar_sksp_fedora27_ddf_slurmfix.sif
 SING_BIND=/project/lofarvwf/Share/jdejong
 
-#LAST BOX NUMBER
+#GET LAST BOX NUMBER
 TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
-echo "There are ${END_N} boxes to extract"
 
+#START EXTRACT
 echo "-----STARTED EXTRACT-----"
 cd ${TO}/extract || { echo "Missing path"; exit 1; }
 if [[ ! ${SLURM_ARRAY_TASK_ID} > ${TOTAL_BOXES} ]]
