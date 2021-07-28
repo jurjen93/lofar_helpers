@@ -34,7 +34,7 @@ def get_DDS3(folder):
                     correct_DDS = max(DDS_options.items(), key=operator.itemgetter(1))[0] # get correct DDS
                 DDS_output.append([D for D in DDS if correct_DDS.split('full_')[1].split('_smoothed')[0] in D]) # append right DDS
 
-    return DDS_output
+    return [file for sublist in DDS_output for file in sublist]
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
