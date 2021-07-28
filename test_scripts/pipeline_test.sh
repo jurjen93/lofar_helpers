@@ -13,16 +13,6 @@ SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
 
-#MOVE NEEDED FILES
-#echo "Moving files to ${TO}/extract and untar..."
-#cp -r /project/lofarvwf/Share/jdejong/data/${SOURCE}/data_archive.tar.gz ${TO}/extract
-#rm -r /project/lofarvwf/Share/jdejong/data/${SOURCE}/data_archive.tar.gz
-#echo "Succesfully finished moving files..."
-
-#cd ${TO}/extract
-#tar -zxvf data_archive.tar.gz
-#echo"Untarred succesfuly..."
-
 #CREATE BOXES
 echo "Create boxes..."
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO}
