@@ -11,18 +11,8 @@ SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
 
-#MOVE NEEDED FILES
-#echo "Moving files to ${TO}/extract and untar..."
-#cp -r /project/lofarvwf/Share/jdejong/data/${FIELD}/data_archive.tar.gz ${TO}/extract
-#rm -r /project/lofarvwf/Share/jdejong/data/${FIELD}/data_archive.tar.gz
-#echo "Succesfully finished moving files..."
-
-#cd ${TO}/extract
-#tar -zxvf data_archive.tar.gz
-#echo"Untarred succesfuly..."
-
-#CREATE FILES
-mkdir ${TO}
+#CREATE FILES [SHOULD ALREADY BEEN DONE]
+#mkdir ${TO}
 
 #CREATE BOXES
 echo "Create boxes..."
@@ -50,5 +40,8 @@ wait
 
 #MERGE ALL H5 FILES
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/lofar_helpers/pipeline_scripts/surf/merge_selfcals.py -d ${TO}/selfcal
+
+#MOVE H5 SOLUTION DONE ON STRW
+#srun ${SCRIPT_FOLDER}/move_files/move_result/move_result_selfcal_surf-strw.sh /project/lofarvwf/Share/jdejong/output/${FIELD}/selfcal/all_directions.h5 /net/tussenrijn/data2/jurjendejong/${FIELD}
 
 echo "----------END RECALIBRATING----------"
