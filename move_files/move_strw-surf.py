@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(1, '~/scripts/lofar_helpers/supporting_scripts')
+sys.path.append('~/scripts/lofar_helpers')
 from supporting_scripts.get_DDS3 import get_DDS3
 from argparse import ArgumentParser
 
