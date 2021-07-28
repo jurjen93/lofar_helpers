@@ -16,7 +16,7 @@ def get_DDS3(folder):
         if DDS: break
 
     time_modification = {D: pathlib.Path(D).stat().st_mtime for D in DDS} # get dict with DDS and time of modification
-    time_observation = {D: int(D.split('full')[1].split('.')[0]) for D in DDS if 'slow' not in D} # get dict with DDS and time of observation
+    time_observation = {D: int(D.split('full_')[1].split('.')[0]) for D in DDS if 'slow' not in D} # get dict with DDS and time of observation
     single_m = [[m for m in ms if night in m][0] for night in ms_observations] # get one measurement set per observation
 
     DDS_output = [] # DDS output
@@ -32,7 +32,7 @@ def get_DDS3(folder):
                     correct_DDS = max(DDS_options.iteritems(), key=operator.itemgetter(1))[0] # get correct DDS
                 except: # python 3
                     correct_DDS = max(DDS_options.items(), key=operator.itemgetter(1))[0] # get correct DDS
-                DDS_output.append([D for D in DDS if correct_DDS.split('full_1')[1].split('_smoothed')[0] in D]) # append right DDS
+                DDS_output.append([D for D in DDS if correct_DDS.split('full_')[1].split('_smoothed')[0] in D]) # append right DDS
 
     return DDS_output
 
