@@ -45,7 +45,7 @@ if args.location:
     if folder[-1]=='/':
         folder=folder[0:-1]
 else:
-    folder = ''
+    folder = '.'
 
 #check if folder exists and create if not
 folders = folder.split('/')
