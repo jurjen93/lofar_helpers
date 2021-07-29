@@ -35,6 +35,7 @@ parser = ArgumentParser()
 parser.add_argument('-f', '--file', type=str, help='fitsfile name')
 parser.add_argument('-l', '--location', type=str, help='data location folder name')
 parser.add_argument('--no_images', action='store_true', help='store images')
+parser.add_argument('--ds9', action='store_true', help='open ds9 to interactively check and change the box selection')
 parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
 args = parser.parse_args()
 print(args)
@@ -622,10 +623,11 @@ if __name__ == '__main__':
         print(f'Images of boxes are in {folder}/box_images.')
     print(f'Region files are in {folder}/boxes.')
 
-    try:
-        print('Opening ds9 to verify box selections and make manual changes if needed.')
-        os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
-        print('Closed ds9.')
-    except:
-        print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
-              "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
+    if args.ds9:
+        try:
+            print('Opening ds9 to verify box selections and make manual changes if needed.')
+            os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
+            print('Closed ds9.')
+        except:
+            print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
+                  "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))

@@ -17,6 +17,8 @@ You can use the following flags: \
 * ```-f``` --> followed by the fits file name (and path)
 * ```-i``` --> followed by the boolean, indicating if the script should return images of the directions or not
 * ```-l``` --> followed by the location (path) to store the data \
+* ```--no_images``` --> don't save the images locally \
+* ```--ds9``` --> interactive mode to validate the box selection in ds9
 
 The script returns the following:
 * directory with .reg region boxes.
