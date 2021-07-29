@@ -53,10 +53,11 @@ files = [D.split('/')[-1] for D in get_DDS3(args.frm)] + \
          'image_full_ampphase_di_m.NS.mask01.fits',
          'image_full_ampphase_di_m.NS.DicoModel',
          'image_dirin_SSD_m.npy.ClusterCat.npy',
+         'image_full_ampphase_di_m.NS.app.restored.fits',
          'SOLSDIR'] + \
-        glob('*.ms.archive')
+        [f.split('/')[-1] for f in glob(args.frm+'/'+'*.ms.archive')]
 
-command_1 = 'tar -C {FROM} -cvzf /net/tussenrijn/data2/jurjendejong/data_archive.tar.gz --absolute-names '.format(FROM=args.frm) + ' '.join(files)
+command_1 = 'tar -C {FROM} -cvzf /net/vdesk/data2/jurjendejong/data_archive.tar.gz --absolute-names '.format(FROM=args.frm) + ' '.join(files)
 os.system(command_1)
-command_2 = 'scp -r /net/tussenrijn/data2/jurjendejong/data_archive.tar.gz lofarvwf-jdejong@spider.surfsara.nl:{TO}'.format(TO=args.to)
+command_2 = 'scp -r /net/vdesk/data2/jurjendejong/data_archive.tar.gz lofarvwf-jdejong@spider.surfsara.nl:{TO}'.format(TO=args.to)
 os.system(command_2)

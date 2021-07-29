@@ -11,7 +11,7 @@ SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
 
-#CREATE FILES [SHOULD ALREADY BEEN DONE]
+#CREATE FILES [SHOULD HAVE ALREADY BEEN DONE]
 #mkdir ${TO}
 
 #CREATE BOXES
