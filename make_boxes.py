@@ -547,6 +547,8 @@ class SetBoxes(Imaging):
 
 if __name__ == '__main__':
 
+    FINISHED = False # for some strange reasons I need to use this variable on slurm, otherwise it already removes source files
+
     image = SetBoxes(fits_file=args.file, initial_box_size=0.15)
 
     if not args.no_images:
@@ -631,19 +633,22 @@ if __name__ == '__main__':
             print(f'Create box {m}.')
             image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
 
+        FINISHED=True
+
     print('-------------------------------------------------')
     print(f'Made succesfully {m} boxes.')
     if not args.no_images:
         print(f'Images of boxes are in {folder}/box_images.')
     print(f'Region files are in {folder}/boxes.')
 
-    os.system('rm {DATALOC}/source_file.csv && rm {DATALOC}/excluded_sources.csv'.format(DATALOC=args.location))
+    if FINISHED: # For mysterious reasons I use this 'if FINISHED' because on slurm it already deletes my source csv files before finishing
+        os.system('rm {DATALOC}/source_file.csv && rm {DATALOC}/excluded_sources.csv'.format(DATALOC=args.location))
 
-    if args.ds9:
-        try:
-            print('Opening ds9 to verify box selections and make manual changes if needed.')
-            os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
-            print('Closed ds9.')
-        except:
-            print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
-                  "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
+        if args.ds9:
+            try:
+                print('Opening ds9 to verify box selections and make manual changes if needed.')
+                os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
+                print('Closed ds9.')
+            except:
+                print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
+                      "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
