@@ -27,7 +27,7 @@ echo "Succesfully created boxes..."
 #EXTRACT WITH PARALLEL ARRAY
 echo "There are ${TOTAL_BOXES} boxes to extract"
 mkdir ${TO}/extract
-sbatch ${SCRIPT_FOLDER}/pipeline_scripts/test_scripts/extract_test_1_box.sh ${FIELD} &
+sbatch ${SCRIPT_FOLDER}/test_scripts/extract_test_1_box.sh ${FIELD} &
 wait &
 
 #SELFCAL
