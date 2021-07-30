@@ -811,13 +811,10 @@ if __name__ == '__main__':
     def str2bool(v):
         v = str(v)
         if v.lower() in ('yes', 'true', 't', 'y', '1'):
-            print('Directions will be merged separately')
             return True
         elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-            print('Directions will be merged all into the same direction')
             return False
         else:
-            print('Boolean value expected.\nDirections will be merged separately')
             return True
 
     parser = ArgumentParser()
