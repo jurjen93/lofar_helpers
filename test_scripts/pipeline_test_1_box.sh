@@ -17,6 +17,7 @@ SING_BIND=/project/lofarvwf/Share/jdejong,
 #CREATE BOXES
 echo "Create boxes..."
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO} -ac 2.5 --max_boxes=2
+rm ${TO}/source_file.csv && rm ${TO}/excluded_sources.csv
 TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
 if [[ ${TOTAL_BOXES} = 0 ]]; then
   echo "Boxes selection failed, see slurm output."

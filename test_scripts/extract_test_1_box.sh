@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --array=1-200%10
+#SBATCH --array=1-2%2
 
 FIELD=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
