@@ -636,7 +636,7 @@ if __name__ == '__main__':
             print(f'Create box {m}.')
             image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
 
-        if m == args.max_boxes or M == args.max_boxes: # finish if max boxes reached
+        if m == args.max_boxes: # finish if max boxes reached
             break # break for loop
 
 
