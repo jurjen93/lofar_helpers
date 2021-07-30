@@ -56,8 +56,12 @@ for i, f in enumerate(folders):
         os.system(f'mkdir {subpath}')
 
 if not args.no_images:
-    import matplotlib.pyplot as plt
-    from matplotlib.colors import SymLogNorm
+    try:
+        import matplotlib.pyplot as plt
+        from matplotlib.colors import SymLogNorm
+    except ImportError:
+        print('Failed to import matplotlib. Check your version.\nNo images will be made.')
+        args.no_images = True
 
 def resample_pixels(image_data, rows, cols):
     """Resample image by summing pixels together"""
@@ -93,12 +97,16 @@ class Imaging:
 
         if image_data is None:
             image_data = self.image_data
-        plt.figure(figsize=(10, 10))
-        plt.subplot(projection=self.wcs)
-        plt.imshow(image_data, norm=SymLogNorm(linthresh=self.vmin/20, vmin=self.vmin/50, vmax=self.vmax), origin='lower', cmap=cmap)
-        plt.xlabel('Galactic Longitude')
-        plt.ylabel('Galactic Latitude')
-        plt.show()
+        try:
+            plt.figure(figsize=(10, 10))
+            plt.subplot(projection=self.wcs)
+            plt.imshow(image_data, norm=SymLogNorm(linthresh=self.vmin/20, vmin=self.vmin/50, vmax=self.vmax), origin='lower', cmap=cmap)
+            plt.xlabel('Galactic Longitude')
+            plt.ylabel('Galactic Latitude')
+            plt.show()
+        except:
+            print('Error making images with matplotlib. Images will not be made.')
+            args.no_images = True
 
         return self
 
@@ -596,19 +604,23 @@ if __name__ == '__main__':
             m += 1
 
         if not args.no_images:
-            fig = plt.figure(figsize=(10, 10))
-            plt.subplot(1, 2, 1, projection = image.wcs_cut)
-            plt.title(f'Initial image')
-            plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/10, vmax=image.vmax/2), origin='lower',
-                          cmap='CMRmap')
-            plt.subplot(1, 2, 2, projection = image.wcs_cut)
-            plt.title('Repositioned')
-            plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
-                          cmap='CMRmap')
-            if replace:
-                fig.savefig(f'{folder}/box_images/box_{M+1}.png')
-            else:
-                fig.savefig(f'{folder}/box_images/box_{m}.png')
+            try:
+                fig = plt.figure(figsize=(10, 10))
+                plt.subplot(1, 2, 1, projection = image.wcs_cut)
+                plt.title(f'Initial image')
+                plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/10, vmax=image.vmax/2), origin='lower',
+                              cmap='CMRmap')
+                plt.subplot(1, 2, 2, projection = image.wcs_cut)
+                plt.title('Repositioned')
+                plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
+                              cmap='CMRmap')
+                if replace:
+                    fig.savefig(f'{folder}/box_images/box_{M+1}.png')
+                else:
+                    fig.savefig(f'{folder}/box_images/box_{m}.png')
+            except:
+                print('Error making images with matplotlib. Images will not be made.')
+                args.no_images = True
 
         if replace:
             print(f'Replace box {M+1}.')
