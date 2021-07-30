@@ -4,7 +4,7 @@
 
 echo "----------START RECALIBRATING----------"
 
-FIELD=Abell399-401
+FIELD=$1
 TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 
