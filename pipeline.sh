@@ -16,8 +16,12 @@ SING_BIND=/project/lofarvwf/Share/jdejong
 
 #CREATE BOXES
 echo "Create boxes..."
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO} -ac 2.5
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python3 ${SCRIPT_FOLDER}/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO} -ac 2.5
 TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
+if [[ ${TOTAL_BOXES} = 0 ]]; then
+  echo "Boxes selection failed, see slurm output."
+  exit
+fi
 echo "Succesfully created boxes..."
 
 #EXTRACT WITH PARALLEL ARRAY
