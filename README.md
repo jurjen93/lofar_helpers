@@ -19,6 +19,7 @@ You can use the following flags: \
 * ```-l``` --> followed by the location (path) to store the data \
 * ```--no_images``` --> don't save the images locally \
 * ```--ds9``` --> interactive mode to validate the box selection in ds9
+* ```-mb``` --> max number of boxes
 
 The script returns the following:
 * directory with .reg region boxes.

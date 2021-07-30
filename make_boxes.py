@@ -8,6 +8,10 @@ You can use the following flags:
     -f --> followed by the fits file name (and path)
     -i --> followed by the boolean, indicating if the script should return images of the directions or not
     -l --> followed by the location (path) to store the data
+    --no_images --> don't save the images locally
+    --ds9 --> interactive mode to validate the box selection in ds9
+    -mb --> max number of boxes
+
 
 The script returns the following:
 
@@ -548,8 +552,6 @@ class SetBoxes(Imaging):
 
 if __name__ == '__main__':
 
-    FINISHED = False
-
     image = SetBoxes(fits_file=args.file, initial_box_size=0.15)
 
     if not args.no_images:
@@ -565,80 +567,78 @@ if __name__ == '__main__':
 
     m, r = 0, 0
 
-    while not FINISHED:
-        for n, p in enumerate(image.df_peaks.to_dict(orient="records")):
+    for n, p in enumerate(image.df_peaks.to_dict(orient="records")):
 
-            replace=False
+        replace=False
 
-            # skip sources that are already displayed in other boxes
-            if n in sources_done:
-                continue
+        # skip sources that are already displayed in other boxes
+        if n in sources_done:
+            continue
 
-            # set values for source of interest
-            image.pix_x, image.pix_y, image.flux, image.image_number = p['pix_x'], p['pix_y'], p['flux'], n
+        # set values for source of interest
+        image.pix_x, image.pix_y, image.flux, image.image_number = p['pix_x'], p['pix_y'], p['flux'], n
 
-            image.make_initial_box()
+        image.make_initial_box()
 
-            # reposition box
-            image.reposition()
+        # reposition box
+        image.reposition()
 
-            # we now check if there are in our box sources from our list of peak sources, which we can skip later on
-            other_sources, _ = image.other_sources_in_image
+        # we now check if there are in our box sources from our list of peak sources, which we can skip later on
+        other_sources, _ = image.other_sources_in_image
 
-            # check if boxes contain multiple times the same source. If so, we replace this box with a better new one.
-            found=False
-            for source in other_sources:
-                if source in sources_done:
-                    sources = read_csv('source_file.csv')['sources']
-                    for M, source_list in enumerate(sources):
-                        if len(source_list.replace('[','').replace(']',''))>0:
-                            source_list = [int(s) for s in source_list.replace('[','').replace(']','').replace(' ','').split(';')]
-                            if bool(set(other_sources) & set(source_list)):
-                                if not args.no_images:
-                                    os.system(f'rm {folder}/box_images/box_{M+1}.png')
-                                os.system(f'rm {folder}/boxes/box_{M+1}.reg')
-                                replace, found = True, True
-                                break
-                if found:
-                    break
+        # check if boxes contain multiple times the same source. If so, we replace this box with a better new one.
+        found=False
+        for source in other_sources:
+            if source in sources_done:
+                sources = read_csv('source_file.csv')['sources']
+                for M, source_list in enumerate(sources):
+                    if len(source_list.replace('[','').replace(']',''))>0:
+                        source_list = [int(s) for s in source_list.replace('[','').replace(']','').replace(' ','').split(';')]
+                        if bool(set(other_sources) & set(source_list)):
+                            if not args.no_images:
+                                os.system(f'rm {folder}/box_images/box_{M+1}.png')
+                            os.system(f'rm {folder}/boxes/box_{M+1}.reg')
+                            replace, found = True, True
+                            break
+            if found:
+                break
 
-            sources_done += other_sources
-            image.source_to_csv(other_sources)
+        sources_done += other_sources
+        image.source_to_csv(other_sources)
 
-            # make image with before and after repositioning of our box
-            if not replace:
-                m += 1
+        # make image with before and after repositioning of our box
+        if not replace:
+            m += 1
 
-            if not args.no_images:
-                try:
-                    fig = plt.figure(figsize=(10, 10))
-                    plt.subplot(1, 2, 1, projection = image.wcs_cut)
-                    plt.title(f'Initial image')
-                    plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/10, vmax=image.vmax/2), origin='lower',
-                                  cmap='CMRmap')
-                    plt.subplot(1, 2, 2, projection = image.wcs_cut)
-                    plt.title('Repositioned')
-                    plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
-                                  cmap='CMRmap')
-                    if replace:
-                        fig.savefig(f'{folder}/box_images/box_{M+1}.png')
-                    else:
-                        fig.savefig(f'{folder}/box_images/box_{m}.png')
-                except:
-                    print('Error making images with matplotlib. Images will not be made.')
-                    args.no_images = True
+        if not args.no_images:
+            try:
+                fig = plt.figure(figsize=(10, 10))
+                plt.subplot(1, 2, 1, projection = image.wcs_cut)
+                plt.title(f'Initial image')
+                plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/10, vmax=image.vmax/2), origin='lower',
+                              cmap='CMRmap')
+                plt.subplot(1, 2, 2, projection = image.wcs_cut)
+                plt.title('Repositioned')
+                plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
+                              cmap='CMRmap')
+                if replace:
+                    fig.savefig(f'{folder}/box_images/box_{M+1}.png')
+                else:
+                    fig.savefig(f'{folder}/box_images/box_{m}.png')
+            except:
+                print('Error making images with matplotlib. Images will not be made.')
+                args.no_images = True
 
-            if replace:
-                print(f'Replace box {M+1}.')
-                image.save_box(box_name=f'{folder}/boxes/box_{M+1}.reg')
-            else:
-                print(f'Create box {m}.')
-                image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
+        if replace:
+            print(f'Replace box {M+1}.')
+            image.save_box(box_name=f'{folder}/boxes/box_{M+1}.reg')
+        else:
+            print(f'Create box {m}.')
+            image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
 
-        if m == args.max_boxes: # finish if max boxes reached
-            FINISHED = True # break for loop
+        if m == args.max_boxes or M == args.max_boxes: # finish if max boxes reached
+            break # break for loop
 
-        FINISHED = True
 
     print('-------------------------------------------------')
     print(f'Made succesfully {m} boxes.')
@@ -646,14 +646,13 @@ if __name__ == '__main__':
         print(f'Images of boxes are in {folder}/box_images.')
     print(f'Region files are in {folder}/boxes.')
 
-    if FINISHED: # For mysterious reasons I use this 'if FINISHED' because on slurm it already deletes my source csv files before finishing
-        os.system('rm {DATALOC}/source_file.csv && rm {DATALOC}/excluded_sources.csv'.format(DATALOC=args.location))
+    os.system('rm {DATALOC}/source_file.csv && rm {DATALOC}/excluded_sources.csv'.format(DATALOC=args.location))
 
-        if args.ds9:
-            try:
-                print('Opening ds9 to verify box selections and make manual changes if needed.')
-                os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
-                print('Closed ds9.')
-            except:
-                print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
-                      "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
+    if args.ds9:
+        try:
+            print('Opening ds9 to verify box selections and make manual changes if needed.')
+            os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
+            print('Closed ds9.')
+        except:
+            print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
+                  "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
