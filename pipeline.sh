@@ -37,7 +37,7 @@ for ((N=1;N<=${TOTAL_BOXES};N++))
 do
   until [[ -f ${TO}/extract/${FIELD}_box_${N}.dysco.sub.shift.avg.weights.ms.archive0 ]]
   do
-    sleep 60
+    sleep 180
   done
   sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_per_box.sh ${FIELD} ${N} &
 done

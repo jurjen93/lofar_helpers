@@ -16,3 +16,5 @@ __pycache__
 *.png
 #python
 *.pyc
+#surveys
+database/surveys
