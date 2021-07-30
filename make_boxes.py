@@ -37,6 +37,7 @@ parser.add_argument('-l', '--location', type=str, help='data location folder nam
 parser.add_argument('--no_images', action='store_true', help='store images')
 parser.add_argument('--ds9', action='store_true', help='open ds9 to interactively check and change the box selection')
 parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
+parser.add_argument('-mb', '--max_boxes', type=int, default=999, help='Set max number of boxes that can be made')
 args = parser.parse_args()
 print(args)
 
@@ -547,7 +548,7 @@ class SetBoxes(Imaging):
 
 if __name__ == '__main__':
 
-    FINISHED = False # for some strange reasons I need to use this variable on slurm, otherwise it already removes source files
+    FINISHED = False
 
     image = SetBoxes(fits_file=args.file, initial_box_size=0.15)
 
@@ -564,76 +565,80 @@ if __name__ == '__main__':
 
     m, r = 0, 0
 
-    for n, p in enumerate(image.df_peaks.to_dict(orient="records")):
+    while not FINISHED:
+        for n, p in enumerate(image.df_peaks.to_dict(orient="records")):
 
-        replace=False
+            replace=False
 
-        # skip sources that are already displayed in other boxes
-        if n in sources_done:
-            continue
+            # skip sources that are already displayed in other boxes
+            if n in sources_done:
+                continue
 
-        # set values for source of interest
-        image.pix_x, image.pix_y, image.flux, image.image_number = p['pix_x'], p['pix_y'], p['flux'], n
+            # set values for source of interest
+            image.pix_x, image.pix_y, image.flux, image.image_number = p['pix_x'], p['pix_y'], p['flux'], n
 
-        image.make_initial_box()
+            image.make_initial_box()
 
-        # reposition box
-        image.reposition()
+            # reposition box
+            image.reposition()
 
-        # we now check if there are in our box sources from our list of peak sources, which we can skip later on
-        other_sources, _ = image.other_sources_in_image
+            # we now check if there are in our box sources from our list of peak sources, which we can skip later on
+            other_sources, _ = image.other_sources_in_image
 
-        # check if boxes contain multiple times the same source. If so, we replace this box with a better new one.
-        found=False
-        for source in other_sources:
-            if source in sources_done:
-                sources = read_csv('source_file.csv')['sources']
-                for M, source_list in enumerate(sources):
-                    if len(source_list.replace('[','').replace(']',''))>0:
-                        source_list = [int(s) for s in source_list.replace('[','').replace(']','').replace(' ','').split(';')]
-                        if bool(set(other_sources) & set(source_list)):
-                            if not args.no_images:
-                                os.system(f'rm {folder}/box_images/box_{M+1}.png')
-                            os.system(f'rm {folder}/boxes/box_{M+1}.reg')
-                            replace, found = True, True
-                            break
-            if found:
-                break
+            # check if boxes contain multiple times the same source. If so, we replace this box with a better new one.
+            found=False
+            for source in other_sources:
+                if source in sources_done:
+                    sources = read_csv('source_file.csv')['sources']
+                    for M, source_list in enumerate(sources):
+                        if len(source_list.replace('[','').replace(']',''))>0:
+                            source_list = [int(s) for s in source_list.replace('[','').replace(']','').replace(' ','').split(';')]
+                            if bool(set(other_sources) & set(source_list)):
+                                if not args.no_images:
+                                    os.system(f'rm {folder}/box_images/box_{M+1}.png')
+                                os.system(f'rm {folder}/boxes/box_{M+1}.reg')
+                                replace, found = True, True
+                                break
+                if found:
+                    break
 
-        sources_done += other_sources
-        image.source_to_csv(other_sources)
+            sources_done += other_sources
+            image.source_to_csv(other_sources)
 
-        # make image with before and after repositioning of our box
-        if not replace:
-            m += 1
+            # make image with before and after repositioning of our box
+            if not replace:
+                m += 1
 
-        if not args.no_images:
-            try:
-                fig = plt.figure(figsize=(10, 10))
-                plt.subplot(1, 2, 1, projection = image.wcs_cut)
-                plt.title(f'Initial image')
-                plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/10, vmax=image.vmax/2), origin='lower',
-                              cmap='CMRmap')
-                plt.subplot(1, 2, 2, projection = image.wcs_cut)
-                plt.title('Repositioned')
-                plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
-                              cmap='CMRmap')
-                if replace:
-                    fig.savefig(f'{folder}/box_images/box_{M+1}.png')
-                else:
-                    fig.savefig(f'{folder}/box_images/box_{m}.png')
-            except:
-                print('Error making images with matplotlib. Images will not be made.')
-                args.no_images = True
+            if not args.no_images:
+                try:
+                    fig = plt.figure(figsize=(10, 10))
+                    plt.subplot(1, 2, 1, projection = image.wcs_cut)
+                    plt.title(f'Initial image')
+                    plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/10, vmax=image.vmax/2), origin='lower',
+                                  cmap='CMRmap')
+                    plt.subplot(1, 2, 2, projection = image.wcs_cut)
+                    plt.title('Repositioned')
+                    plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
+                                  cmap='CMRmap')
+                    if replace:
+                        fig.savefig(f'{folder}/box_images/box_{M+1}.png')
+                    else:
+                        fig.savefig(f'{folder}/box_images/box_{m}.png')
+                except:
+                    print('Error making images with matplotlib. Images will not be made.')
+                    args.no_images = True
 
-        if replace:
-            print(f'Replace box {M+1}.')
-            image.save_box(box_name=f'{folder}/boxes/box_{M+1}.reg')
-        else:
-            print(f'Create box {m}.')
-            image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
+            if replace:
+                print(f'Replace box {M+1}.')
+                image.save_box(box_name=f'{folder}/boxes/box_{M+1}.reg')
+            else:
+                print(f'Create box {m}.')
+                image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
 
-        FINISHED=True
+        if m == args.max_boxes: # finish if max boxes reached
+            FINISHED = True # break for loop
+
+        FINISHED = True
 
     print('-------------------------------------------------')
     print(f'Made succesfully {m} boxes.')
