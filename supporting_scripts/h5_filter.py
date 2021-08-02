@@ -55,6 +55,18 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
     h5_in = h5parm(h5_in_name, readonly=True)
     h5_out = h5parm(h5_out_name, readonly=False)
     for ss in h5_in.getSolsetNames():
+
+        if ss in h5_out.getSolsetNames():
+            solsetout = h5_out.getSolset(ss)
+        else:
+            solsetout = h5_out.makeSolset(ss)
+
+        current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
+        new_sources = [source for source in sources if source[0].decode('UTF-8') not in current_sources]
+        new_sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), ns[1]) for n, ns in enumerate(new_sources)]
+
+        if len(new_sources) > 0:
+            solsetout.obj.source.append(new_sources)
         for st in h5_in.getSolset(ss).getSoltabNames():
             print('Filter {solset}/{soltab} from {h5_in} into {h5_out}'.format(solset=ss, soltab=st, h5_in=h5_in_name.split('/')[-1], h5_out=h5_out_name.split('/')[-1]))
 
@@ -83,20 +95,7 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
             print('New number of sources {num}'.format(num=len(sources)))
             print('Filtered output shape {shape}'.format(shape=values_new.shape))
 
-            if ss in h5_out.getSolsetNames():
-                solsetout = h5_out.getSolset(ss)
-            else:
-                solsetout = h5_out.makeSolset(ss)
-
-            current_sources = [source[1] for source in solsetout.obj.source[:]]
-            new_sources = [source for source in sources if source[1] not in current_sources]
-            print(current_sources)
-            print(new_sources)
-            new_sources = [(bytes('Dir'+str(n).zfill(2), 'utf-8'), ns[1]) for n, ns in enumerate(new_sources)]
             axes['dir'] = [ns[0] for ns in new_sources]
-
-            if len(new_sources) > 0:
-                solsetout.obj.source.append(new_sources)
 
             weights = ones(values_new.shape)
             solsetout.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
