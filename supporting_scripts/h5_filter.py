@@ -93,7 +93,9 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
             for n, ns in enumerate(new_sources):
                 new_sources[n]=(bytes('Dir'+str(n).zfill(2), 'utf-8'), ns[1])
 
-            print(axes.values())
+            axes['dir'] = [ns[0] for ns in new_sources]
+            print(axes['dir'])
+
 
             if len(new_sources) > 0:
                 solsetout.obj.source.append(new_sources)
