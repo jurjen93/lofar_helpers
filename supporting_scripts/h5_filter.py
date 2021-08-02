@@ -74,7 +74,7 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
             axes = solutiontable.getValues()[1]
             values_in = solutiontable.getValues()[0]
             indexes = [list(axes['dir']).index(dir.decode('UTF-8')) for dir in directions]
-            axes['dir'] = directions
+            axes['dir'] = [ns[0] for ns in new_sources]
             dir_index = solutiontable.getAxesNames().index('dir')
             shape = list(values_in.shape)
             shape[dir_index]=len(directions)
