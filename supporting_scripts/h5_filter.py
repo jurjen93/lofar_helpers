@@ -61,12 +61,14 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
         else:
             solsetout = h5_out.makeSolset(ss)
 
+        print(sources)
         current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
         new_sources = [source for source in sources if source[0].decode('UTF-8') not in current_sources]
+        print(new_sources)
         new_sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), ns[1]) for n, ns in enumerate(new_sources)]
-
         if len(new_sources) > 0:
             solsetout.obj.source.append(new_sources)
+
         for st in h5_in.getSolset(ss).getSoltabNames():
             print('Filter {solset}/{soltab} from {h5_in} into {h5_out}'.format(solset=ss, soltab=st, h5_in=h5_in_name.split('/')[-1], h5_out=h5_out_name.split('/')[-1]))
 
@@ -74,7 +76,7 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
             axes = solutiontable.getValues()[1]
             values_in = solutiontable.getValues()[0]
             indexes = [list(axes['dir']).index(dir.decode('UTF-8')) for dir in directions]
-            axes['dir']=directions
+            axes['dir'] = [ns[0] for ns in new_sources]
             dir_index = solutiontable.getAxesNames().index('dir')
             shape = list(values_in.shape)
             shape[dir_index]=len(directions)
@@ -94,8 +96,6 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
 
             print('New number of sources {num}'.format(num=len(sources)))
             print('Filtered output shape {shape}'.format(shape=values_new.shape))
-
-            axes['dir'] = [ns[0] for ns in new_sources]
 
             weights = ones(values_new.shape)
             solsetout.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
