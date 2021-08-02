@@ -8,7 +8,7 @@ DDF.py
 --Output-Also=onNeds
 --Image-NPix=20000
 --Image-Cell=1.5
---Facets-NFacets=11
+--Facets-NFacets=15
 --Facets-DiamMax=1.5
 --Facets-DiamMin=0.1
 --Weight-ColName=IMAGING_WEIGHT

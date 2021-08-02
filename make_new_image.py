@@ -61,7 +61,6 @@ os.system('mv {LOCATION_FROM}/{H5} {LOCATION}'.format(H5=H5, LOCATION=LOCATION, 
 # os.system('rm -rf {LOCATION_FROM}'.format(LOCATION_FROM="/".join(LOCATION.split("/")[0:-1])+"/result_filtered"))
 
 #MAKE LIST WITH MEASUREMENT SETS
-# os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
 os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
 
 with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
