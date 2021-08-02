@@ -11,7 +11,7 @@ from astropy.io import fits
 from argparse import ArgumentParser, ArgumentTypeError
 from math import pi, cos, sin, acos
 from losoto.h5parm import h5parm
-from numpy import ones, zeros
+from numpy import ones, zeros, unique
 import os
 from glob import glob
 import re
@@ -89,7 +89,9 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
                 solsetout = h5_out.makeSolset(ss)
 
             current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
-            new_sources = [source for source in sources if source[0] not in current_sources]
+            new_sources = [source for source in sources
+                           if (source[0].decode('UTF-8') not in current_sources
+                               and source[0] in solutiontable.getAxisValues('dir'))]
             for n, ns in enumerate(new_sources):
                 new_sources[n]=(bytes('Dir'+str(n).zfill(2), 'utf-8'), ns[1])
 
