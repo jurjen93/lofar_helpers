@@ -90,12 +90,13 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
 
             current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
             new_sources = [source for source in sources if source[0].decode('UTF-8') not in current_sources]
-            # for n, ns in enumerate(new_sources):
-            #     new_sources[n]=(bytes('Dir'+str(n).zfill(2), 'utf-8'), ns[1])
+            for n, ns in enumerate(new_sources):
+                new_sources[n]=(bytes('Dir'+str(n).zfill(2), 'utf-8'), ns[1])
+
+            print(axes.values())
 
             if len(new_sources) > 0:
                 solsetout.obj.source.append(new_sources)
-
 
             weights = ones(values_new.shape)
             solsetout.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
