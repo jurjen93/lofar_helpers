@@ -89,9 +89,8 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
                 solsetout = h5_out.makeSolset(ss)
 
             current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
-            print(solutiontable.getAxisValues('dir'))
-            print(sources)
             new_sources = [source for source in sources if source[0].decode('UTF-8') not in current_sources]
+            print(new_sources)
             for n, ns in enumerate(new_sources):
                 new_sources[n]=(bytes('Dir'+str(n).zfill(2), 'utf-8'), ns[1])
 
