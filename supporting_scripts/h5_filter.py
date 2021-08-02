@@ -73,6 +73,8 @@ def create_new_soltab(h5_in_name, h5_out_name, directions, sources):
             solutiontable = h5_in.getSolset(ss).getSoltab(st)
             axes = solutiontable.getValues()[1]
             values_in = solutiontable.getValues()[0]
+            print(axes['dir'])
+            print(directions)
             indexes = [list(axes['dir']).index(dir.decode('UTF-8')) for dir in directions]
             axes['dir'] = directions
             dir_index = solutiontable.getAxesNames().index('dir')
