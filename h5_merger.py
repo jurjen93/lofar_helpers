@@ -725,9 +725,17 @@ class MergeH5:
         self.h5_out.close()
         return self
 
-    def add_directions(self, add_directions):
+    def add_directions(self, add_directions=None):
+        """
+        Add default directions (phase all zeros, amplitude all ones)
+        :param add_directions: list with directions
+        """
+        if not add_directions:
+            return self
+
         h5 = h5parm(self.file, readonly=True)
-        h5_temp = h5parm(self.file.replace('.h5','')+'temp.h5', readonly=False)
+        filetemp = self.file.replace('.h5','')+'temp.h5'
+        h5_temp = h5parm(filetemp, readonly=False)
         for ss in h5.getSolsetNames():
             solset = h5.getSolset(ss)
             solsettemp = h5_temp.makeSolset(ss)
@@ -782,6 +790,8 @@ class MergeH5:
         h5.close()
         h5_temp.close()
 
+        os.system('rm '+self.file +' && mv '+filetemp+' '+self.file)
+
         return self
 
 
@@ -790,7 +800,7 @@ def make_h5_name(h5_name):
         h5_name += '.h5'
     return h5_name
 
-def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge_all_in_one=False, lin2circ=False, circ2lin=False, add_directions=[]):
+def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge_all_in_one=False, lin2circ=False, circ2lin=False, add_directions=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
     :param h5_out (string): h5 table name out
@@ -843,7 +853,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge
         # pass
     print('END: h5 solution file(s) merged')
 
-    if len(add_directions)>0:
+    if add_directions:
         merge.add_directions(add_directions)
 
     if lin2circ and circ2lin:
