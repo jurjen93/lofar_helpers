@@ -10,6 +10,7 @@ N=$2 #box number
 
 until [[ -x "${TO}/box_${N}.${SLURM_ARRAY_TASK_ID}/command.sh" ]]
 do
-  sleep 60
+  sleep 5
+  echo "NOT EXISTING"
 done
 srun ${TO}/box_${N}.${SLURM_ARRAY_TASK_ID}/command.sh
