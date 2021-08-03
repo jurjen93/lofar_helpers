@@ -32,7 +32,7 @@ if len(box_archives) == 6:
             "rm -rf "+TO+"/selfcal/"+SUBBOX
         ]
         os.system("mkdir " + TO+"/selfcal/" + BOX + '.' + N)
-        with open(TO+"/selfcal/" + BOX + '.' + N + "/command.txt", "w+") as f:
+        with open(TO+"/selfcal/" + BOX + '.' + N + "/command.sh", "w+") as f:
             f.write(" && ".join(cml))
 else:
     raise ValueError("SOMETHING WENT WRONG WITH SELFCALLING " + BOX)
