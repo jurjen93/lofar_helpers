@@ -881,7 +881,7 @@ if __name__ == '__main__':
     parser.add_argument('--merge_all_in_one', action='store_true', help='merge all solutions in one direction')
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular')
     parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear')
-    parser.add_argument('--add_direction', default='[]', help='add direction with amplitude 1 and phase 0 [ex: --add_direction [0.73,0.12]')
+    parser.add_argument('--add_direction', help='add direction with amplitude 1 and phase 0 [ex: --add_direction [0.73,0.12]')
 
     args = parser.parse_args()
 
@@ -893,9 +893,8 @@ if __name__ == '__main__':
     else:
         h5tables = args.h5_tables
 
-    print(args.add_direction)
     if args.add_direction:
-        add_directions = [[float(i) for i in direction.replace('[','').replace(']','').split(',')] for direction in args.add_direction]
+        args.add_direction = args.add_directionreplace('[','').replace(']','').split(',')
 
     merge_h5(h5_out=args.h5_out,
              h5_tables=h5tables,
