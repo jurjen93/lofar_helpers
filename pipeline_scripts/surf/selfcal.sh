@@ -12,4 +12,5 @@ until [[ -f "${TO}/selfcal/box_${N}.${SLURM_ARRAY_TASK_ID}/command.txt" ]]
 do
   sleep 60
 done
-srun ${TO}/selfcal/box_${N}.${SLURM_ARRAY_TASK_ID}/command.txt
+COMMAND="cat ${TO}/selfcal/box_${N}.${SLURM_ARRAY_TASK_ID}/command.txt"
+srun ${COMMAND}
