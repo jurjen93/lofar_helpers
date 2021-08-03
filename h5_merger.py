@@ -731,8 +731,9 @@ class MergeH5:
         for ss in h5.getSolsetNames():
             solset = h5.getSolset(ss)
             solsettemp = h5_temp.makeSolset(ss)
+            print(add_directions)
             sources = list([source[1] for source in solset.obj.source[:]])+add_directions
-            sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), ns[1]) for n, ns in enumerate(sources)]
+            sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), ns) for n, ns in enumerate(sources)]
             if len(sources) > 0:
                 print(sources)
                 solsettemp.obj.source.append(sources)
