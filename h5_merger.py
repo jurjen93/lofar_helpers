@@ -745,7 +745,6 @@ class MergeH5:
                 sources = list([source[1] for source in solset.obj.source[:]]) + [add_directions]
             sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), list(ns)) for n, ns in enumerate(sources)]
             if len(sources) > 0:
-                print(sources)
                 solsettemp.obj.source.append(sources)
 
             for st in h5.getSolset(ss).getSoltabNames():
@@ -778,9 +777,6 @@ class MergeH5:
                     values_new[:, :, :, :, 0:last_idx, ...] = values
 
                 weights = ones(values_new.shape)
-                print(values.shape)
-                print(values_new.shape)
-                print([len(v) for v in axes.values()])
                 solsettemp.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
                                  weights=weights)
 
@@ -901,7 +897,7 @@ if __name__ == '__main__':
     parser.add_argument('--merge_all_in_one', action='store_true', help='merge all solutions in one direction')
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular')
     parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear')
-    parser.add_argument('--add_direction', help='add direction with amplitude 1 and phase 0 [ex: --add_direction [0.73,0.12]')
+    parser.add_argument('--add_direction', default=None, help='add direction with amplitude 1 and phase 0 [ex: --add_direction [0.73,0.12]')
 
     args = parser.parse_args()
 
@@ -916,6 +912,9 @@ if __name__ == '__main__':
     if args.add_direction:
         add_directions = args.add_direction.replace('[','').replace(']','').split(',')
         add_directions = [float(add_directions[0]), float(add_directions[1])]
+    else:
+        add_directions = None
+
 
     merge_h5(h5_out=args.h5_out,
              h5_tables=h5tables,
