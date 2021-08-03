@@ -726,7 +726,7 @@ class MergeH5:
         return self
 
     def add_directions(self, add_directions):
-        h5 = h5parm(self.file, readonly=False)
+        h5 = h5parm(self.file, readonly=True)
         h5_temp = h5parm(self.file.replace('.h5','')+'temp.h5', readonly=False)
         for ss in h5.getSolsetNames():
             solset = h5.getSolSet(ss)
