@@ -20,7 +20,7 @@ h5_out ---> the output name of the h5 table
 h5_tables ---> h5 tables that have to be merged
 ms_files ---> measurement sets
 convert_tec ---> convert tec to phase
-make_new_direction ---> make a new direction (default is True), if False it adds everything in one direction
+merge_all_in_one ---> merge all in one direction (default is False), if True it adds everything in one direction
 lin2circ ---> convert linear to circular polarization (default is False)
 circ2lin ---> convert circular to linear polarization (default is False)
 
@@ -55,12 +55,13 @@ def remove_numbers(inp):
 class MergeH5:
     """Merge multiple h5 tables"""
 
-    def __init__(self, h5_out, h5_tables=None, ms_files=None, convert_tec=True, make_new_direction=True):
+    def __init__(self, h5_out, h5_tables=None, ms_files=None, convert_tec=True, merge_all_in_one=False):
         """
         :param h5_out: name of merged output h5 table
         :param files: h5 tables to merge, can be both list and string
         :param ms_files: ms files to use, can be both list and string
         :param convert_tec: convert TEC to phase or not
+        :param merge_all_in_one: merge all in one direction
         """
 
         self.file = h5_out
@@ -111,7 +112,7 @@ class MergeH5:
                 h5.close()
 
         self.convert_tec = convert_tec  # convert tec or not
-        self.make_new_direction = make_new_direction
+        self.merge_all_in_one = merge_all_in_one
 
         self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time']  # standard solax order to do our manipulations
 
@@ -377,7 +378,7 @@ class MergeH5:
                 source_coords = d[list(d.keys())[dir_idx]]
                 d = 'Dir{:02d}'.format(self.n)
 
-                if not self.make_new_direction and self.n == 1:
+                if self.merge_all_in_one and self.n == 1:
                     idx = 0
                     print('Merging direction {:f},{:f} with previous direction'.format(*source_coords))
                 elif any([array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
@@ -387,7 +388,7 @@ class MergeH5:
                     print('Adding new direction {:f},{:f}'.format(*source_coords))
                     idx = self.n
                     self.directions.update({d: source_coords})
-                    if self.make_new_direction:
+                    if not self.merge_all_in_one:
                         self.n += 1
                     if self.n > 1:  # for self.n==1 we dont have to do anything
                         if st.getType() in ['tec', 'phase', 'rotation']:
@@ -724,20 +725,72 @@ class MergeH5:
         self.h5_out.close()
         return self
 
+    def add_directions(self, add_directions):
+        h5 = h5parm(self.file, readonly=False)
+        h5_temp = h5parm(self.file.replace('.h5','')+'temp.h5', readonly=False)
+        for ss in h5.getSolsetNames():
+            solset = h5.getSolSet(ss)
+            solsettemp = h5_temp.makeSolset(ss)
+            sources = list([source[1] for source in solset.obj.source[:]])+add_directions
+            sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), ns[1]) for n, ns in enumerate(sources)]
+            if len(sources) > 0:
+                solsettemp.obj.source.append(sources)
+
+            for st in h5.getSolset(ss).getSoltabNames():
+                solutiontable = h5.getSolset(ss).getSoltab(st)
+                axes = solutiontable.getValues()[1]
+                values = solutiontable.getValues()[0]
+                axes['dir'] = [ns[0] for ns in sources]
+                dir_index = solutiontable.getAxesNames().index('dir')
+                new_shape = list(values.shape)
+                last_idx = new_shape[dir_index]
+                new_idx = last_idx+len(add_directions)+1
+                new_shape[dir_index] = new_idx
+
+                if 'phase' in st:
+                    values_new = zeros(tuple(new_shape))
+                elif 'amplitude' in st:
+                    values_new = ones(tuple(new_shape))
+                else:
+                    values_new = zeros(tuple(new_shape))
+
+                if dir_index == 0:
+                    values_new[0:last_idx, ...] = values
+                elif dir_index == 1:
+                    values_new[:, 0:last_idx, ...] = values
+                elif dir_index == 2:
+                    values_new[:, :, 0:last_idx, ...] = values
+                elif dir_index == 3:
+                    values_new[:, :, :, 0:last_idx, ...] = values
+                elif dir_index == 4:
+                    values_new[:, :, :, :, 0:last_idx, ...] = values
+
+                weights = ones(values_new.shape)
+                solsettemp.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
+                                 weights=weights)
+
+                print('Default directions added for '+ss+'/'+st)
+                print('Shape change: '+str(values.shape)+' ---> '+str(values_new.shape))
+
+        return self
+
+
 def make_h5_name(h5_name):
     if '.h5' != h5_name[-3:]:
         h5_name += '.h5'
     return h5_name
 
-def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_new_direction=True, lin2circ=False, circ2lin=False):
+def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge_all_in_one=False, lin2circ=False, circ2lin=False, add_directions=[]):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
     :param h5_out (string): h5 table name out
     :param h5_tables (string or list): h5 tables to merge
     :param ms_files (string or list): ms files to use, can be both list and string
     :param convert_tec (boolean): convert TEC to phase or not
+    :param merge_all_in_one: merge all in one direction
     :param lin2circ: boolean for linear to circular conversion
     :param circ2lin: boolean for circular to linear conversion
+    :param add_directions: add default directions by giving a list of directions (coordinates)
     """
 
     h5_out = make_h5_name(h5_out)
@@ -745,7 +798,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_
     if h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
         os.system('rm {}'.format(h5_out))
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
-                    make_new_direction=make_new_direction)
+                    merge_all_in_one=merge_all_in_one)
     merge.get_allkeys
     for ss in merge.all_solsets:
         if not '000' in ss:
@@ -779,6 +832,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, make_
         # except:#add try to except to be sure that adding extra phase and amplitude is not going to break the code
         # pass
     print('END: h5 solution file(s) merged')
+
+    if len(add_directions)>0:
+        merge.add_directions(add_directions)
 
     if lin2circ and circ2lin:
         sys.exit('Both polarization conversions are given, please choose 1.')
@@ -822,9 +878,10 @@ if __name__ == '__main__':
     parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge')
     parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
     parser.add_argument('-ct', '--convert_tec', type=str2bool, nargs='?', const=True, default=True, help='convert tec to phase')
-    parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True, help='make new directions, if false merge everything in 1 direction')
+    parser.add_argument('--merge_all_in_one', action='store_true', help='merge all solutions in one direction')
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular')
     parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear')
+    parser.add_argument('--add_direction', default='', action='append', help='add direction with amplitude 1 and phase 0 [ex: --add_direction 0.73,0.12]', type=str)
 
     args = parser.parse_args()
 
@@ -836,10 +893,14 @@ if __name__ == '__main__':
     else:
         h5tables = args.h5_tables
 
+    if args.add_direction:
+        add_directions = [[float(i) for i in direction.replace('[','').replace(']','').split(',')] for direction in args.add_direction]
+
     merge_h5(h5_out=args.h5_out,
              h5_tables=h5tables,
              ms_files=args.ms_files,
              convert_tec=args.convert_tec,
-             make_new_direction=args.make_new_direction,
+             merge_all_in_one=args.merge_all_in_one,
              lin2circ=args.lin2circ,
-             circ2lin=args.circ2lin)
+             circ2lin=args.circ2lin,
+             add_directions=add_directions)
