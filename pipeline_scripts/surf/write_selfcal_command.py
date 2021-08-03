@@ -16,9 +16,11 @@ SING_IMAGE = "/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif"
 SING_BIND = "/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts"
 
 box_archives = sorted(glob(TO + '/extract/*' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*'))
+print(box_archives)
 
 while len(box_archives) != 6:
     time.sleep(5)
+    print('notfound')
 
 if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
