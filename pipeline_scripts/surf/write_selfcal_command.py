@@ -18,10 +18,6 @@ SING_BIND = "/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts"
 
 box_archives = sorted([b.split('/')[-1] for b in glob(TO + '/extract/*' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')])
 
-if len(box_archives)==0:
-    import sys
-    sys.exit("ERROR")
-
 while len(box_archives) != 6:
     time.sleep(5)
 
