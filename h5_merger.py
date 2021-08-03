@@ -893,6 +893,7 @@ if __name__ == '__main__':
     else:
         h5tables = args.h5_tables
 
+    print(args.add_direction)
     if args.add_direction:
         add_directions = [[float(i) for i in direction.replace('[','').replace(']','').split(',')] for direction in args.add_direction]
 
