@@ -20,11 +20,9 @@ box_archives = sorted([b.split('/')[-1] for b in glob(TO + '/extract/*' + BOX + 
 
 while len(box_archives) != 6:
     time.sleep(5)
-    print('file not found')
 
 if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
-        print(N)
         N = str(N + 1)
         cml = [
             "cp -r "+TO+"/extract/" + SUBBOX + " " + TO+"/selfcal/" + BOX + '.' + N,
@@ -32,10 +30,8 @@ if len(box_archives) == 6:
             "singularity exec -B +" + SING_BIND + " " + SING_IMAGE + " " + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath=SCRIPT_PATH/ --autofrequencyaverage-calspeedup='True' "+TO+"/selfcal/" + BOX + "/" +SUBBOX,
             "rm -rf "+TO+"/selfcal/"+SUBBOX
         ]
-        cml = " && ".join([c.replace('TO', TO) for c in cml])
-        print("FOLLOWING COMMAND READY TO BE EXECUTED:\n" + cml)
         os.system("mkdir " + TO+"/selfcal/" + BOX + '.' + N)
         with open(TO+"/selfcal/" + BOX + '.' + N + "/command.txt", "w+") as f:
-            f.write(cml)
+            f.write(" && ".join(cml))
 else:
     raise ValueError("SOMETHING WENT WRONG WITH SELFCALLING " + BOX)
