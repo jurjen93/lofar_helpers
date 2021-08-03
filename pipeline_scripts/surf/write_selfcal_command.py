@@ -34,5 +34,6 @@ if len(box_archives) == 6:
         with open(TO+"/selfcal/" + BOX + '.' + N + "/command.sh", "w+") as f:
             f.write("#!/bin/bash\n")
             f.write("\n".join(cml))
+        os.system("chmod u+x "+TO+"/selfcal/" + BOX + '.' + N + "/command.sh")
 else:
     raise ValueError("SOMETHING WENT WRONG WITH SELFCALLING " + BOX)
