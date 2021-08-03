@@ -21,14 +21,22 @@ box_archives = sorted([b.split('/')[-1] for b in glob(TO + '/extract/*' + BOX + 
 while len(box_archives) != 6:
     time.sleep(5)
 
+CUTTIME = False
+TIMECUT = str(0)
+
 if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
         N = str(N + 1)
-        cml = [
-            "cp -r "+TO+"/extract/" + SUBBOX + " " + TO+"/selfcal/" + BOX + '.' + N,
-            "cd "+TO+"/selfcal/" + BOX + '.' + N,
-            "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " " + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX,
-        ]
+        if CUTTIME:
+            cml = [
+                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " " + "DPPP msin=" + TO + "/extract/" + SUBBOX + " msout.storagemanager=dysco msout=" + TO + "/selfcal/" + BOX + '.' + N + "/" + SUBBOX + ".goodtimes msin.ntimes=" + TIMECUT + " steps=[]",
+                "cd "+TO+"/selfcal/" + BOX + '.' + N,
+                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " " + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX+'.goodtimes']
+        else:
+            cml = [
+                "cp -r "+TO+"/extract/" + SUBBOX + " " + TO+"/selfcal/" + BOX + '.' + N,
+                "cd "+TO+"/selfcal/" + BOX + '.' + N,
+                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " " + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX]
         os.system("mkdir " + TO+"/selfcal/" + BOX + '.' + N)
         with open(TO+"/selfcal/" + BOX + '.' + N + "/command.sh", "w+") as f:
             f.write("#!/bin/bash\n")
