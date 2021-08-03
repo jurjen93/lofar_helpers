@@ -12,4 +12,7 @@ until [[ -f "${TO}/box_${N}.${SLURM_ARRAY_TASK_ID}/command.sh" ]]
 do
   sleep 5
 done
+START="$(date -u +%s)"
 srun ${TO}/box_${N}.${SLURM_ARRAY_TASK_ID}/command.sh
+END="$(date -u +%s)"
+echo "Extracted in $((${END}-${START})) seconds" > ${TO}/selfcal/finished/box_${N}.${SLURM_ARRAY_TASK_ID}.txt

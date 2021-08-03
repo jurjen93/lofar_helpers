@@ -26,7 +26,7 @@ then
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${SLURM_ARRAY_TASK_ID}.reg --overwriteoutput -p box_${SLURM_ARRAY_TASK_ID}
   END="$(date -u +%s)"
   echo "Extracted box_${BOX}"
-  echo "Extracted in $((${END}-${START})) seconds" > ${TO}/extract/extracted_box_${SLURM_ARRAY_TASK_ID}.txt
+  echo "Extracted in $((${END}-${START})) seconds" > ${TO}/extract/finished/box_${SLURM_ARRAY_TASK_ID}.txt
 else
   :
 fi

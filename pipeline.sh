@@ -34,6 +34,7 @@ wait &
 
 #SELFCAL
 mkdir ${TO}/selfcal
+mkdir ${TO}/selfcal/finished
 for ((N=1;N<=${TOTAL_BOXES};N++))
 do
   until [[ -f ${TO}/extract/finished/box_${N}.txt ]]
