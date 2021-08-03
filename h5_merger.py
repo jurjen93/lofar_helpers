@@ -748,7 +748,7 @@ class MergeH5:
                 dir_index = solutiontable.getAxesNames().index('dir')
                 new_shape = list(values.shape)
                 last_idx = new_shape[dir_index]
-                new_idx = last_idx+len(add_directions)+1
+                new_idx = last_idx+len(add_directions)-1
                 new_shape[dir_index] = new_idx
 
                 if 'phase' in st:
@@ -770,6 +770,7 @@ class MergeH5:
                     values_new[:, :, :, :, 0:last_idx, ...] = values
 
                 weights = ones(values_new.shape)
+                print(values.shape)
                 print(values_new.shape)
                 print([len(v) for v in axes.values()])
                 solsettemp.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
