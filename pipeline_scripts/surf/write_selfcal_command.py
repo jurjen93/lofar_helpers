@@ -15,9 +15,7 @@ BOX = 'box_' + args.box
 SING_IMAGE = "/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif"
 SING_BIND = "/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts"
 
-print('HIER')
 box_archives = sorted(glob(TO + '/extract/*' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*'))
-print(box_archives)
 
 while len(box_archives) != 6:
     time.sleep(5)
@@ -38,7 +36,7 @@ if len(box_archives) == 6:
         ]
         cml = " && ".join([c.replace('TO', TO).replace('SCRIPT_PATH', args.script_path) for c in cml])
         print("FOLLOWING COMMAND READY TO BE EXECUTED:\n" + cml)
-        with open(SELFCAL_FOLDER + "/command.txt", "w") as f:
+        with open(SELFCAL_FOLDER + "/command.txt", "w+") as f:
             f.write(cml)
 else:
     raise ValueError("SOMETHING WENT WRONG WITH SELFCALLING " + BOX)
