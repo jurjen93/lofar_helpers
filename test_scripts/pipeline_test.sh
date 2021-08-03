@@ -1,43 +1,53 @@
 #!/bin/bash
 #SBATCH -c 1
 #SBATCH --mail-type=END,FAIL
-#SBATCH --wait
 
-#THIS SCRIPT IS WRITTEN FOR SLURM ON SURFSARA
-echo "----------START----------"
+echo "----------START RECALIBRATING----------"
 
-SOURCE=$1 #L626678
-TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
+FIELD=$1
+TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
 
+#CREATE FILES [SHOULD HAVE ALREADY BEEN DONE]
+#mkdir ${TO}
+
 #CREATE BOXES
-echo "Create boxes..."
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO}
-TOTAL_BOXES=20
-echo "Succesfully created boxes..."
+#echo "Create boxes..."
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/make_boxes.py -f ${TO}/extract/image_full_ampphase_di_m.NS.app.restored.fits -l ${TO} -ac 2.5
+#rm ${TO}/source_file.csv && rm ${TO}/excluded_sources.csv
+#TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
+#if [[ ${TOTAL_BOXES} = 0 ]]; then
+#  echo "Boxes selection failed, see slurm output."
+#  exit
+#fi
+#echo "Succesfully created boxes..."
 
-mkdir ${TO}/test
-
-#EXTRACT
-echo "EXTRACT STARTED"
-sbatch ${SCRIPT_FOLDER}/test_scripts/extract_test.sh L626678 &
-wait &
+#EXTRACT WITH PARALLEL ARRAY
+#echo "There are ${TOTAL_BOXES} boxes to extract"
+#mkdir ${TO}/extract
+#sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract.sh ${FIELD} &
+#wait &
 
 #SELFCAL
-echo "SELFCAL STARTED"
-for ((N=1;N<=${TOTAL_BOXES};N++))
+mkdir ${TO}/selfcal
+for ((N=1;N<=1;N++))
 do
-  echo "SELFCAL ${N}"
-  until [[ -f ${TO}/test/test_${N}.txt ]]
+  until [[ -f ${TO}/extract/${FIELD}_box_${N}.dysco.sub.shift.avg.weights.ms.archive0 ]]
   do
-    sleep 5
-    echo "Still waiting for ${N}"
+    sleep 180
   done
-  echo "selfcal_${N}" > ${TO}/test/test_selfcal_${N}.txt
+  singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/write_selfcal_command.py --box=N --script_path=/home/lofarvwf-jdejong/scripts --source=${FIELD}
+  sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal.sh ${FIELD} N &
 done
 wait
 
-echo "----------END----------"
+#MERGE ALL H5 FILES
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/merge_selfcals.py -d ${TO}/selfcal
+
+#MOVE H5 SOLUTION DONE ON STRW
+#srun ${SCRIPT_FOLDER}/move_files/move_result/move_result_selfcal_surf-strw.sh /project/lofarvwf/Share/jdejong/output/${FIELD}/selfcal/all_directions.h5 /net/tussenrijn/data2/jurjendejong/${FIELD}
+
+echo "----------END RECALIBRATING----------"
