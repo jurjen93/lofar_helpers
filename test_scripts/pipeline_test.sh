@@ -39,9 +39,7 @@ do
   until [[ -f ${TO}/extract/finished/box_${N}.txt ]]
   do
     sleep 5
-    echo "FILE NOT FOUND"
   done
-  echo "STARTING SINGULARITY"
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/write_selfcal_command.py --box=N --script_path=/home/lofarvwf-jdejong/scripts --source=${FIELD}
   sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal.sh ${FIELD} N &
 done
