@@ -8,9 +8,10 @@ SOURCE=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}/selfcal
 N=$2 #box number
 
-until [[ -x "${TO}/box_${N}.${SLURM_ARRAY_TASK_ID}/command.sh" ]]
+until [[ -d "${TO}/box_${N}.${SLURM_ARRAY_TASK_ID}" ]]
 do
   sleep 5
   echo "NOT EXISTING"
 done
+sleep 5
 srun ${TO}/box_${N}.${SLURM_ARRAY_TASK_ID}/command.sh
