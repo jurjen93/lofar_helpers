@@ -8,7 +8,7 @@ parser.add_argument('--source', type=str, help='Source name')
 parser.add_argument('--script_path', type=str, help='Path to scripts')
 args = parser.parse_args()
 
-TO = "/project/lofarvwf/Share/jdejong/output/" + args.field
+TO = "/project/lofarvwf/Share/jdejong/output/" + args.source
 
 BOX = 'box_' + args.box
 
@@ -20,7 +20,6 @@ print(box_archives)
 
 while len(box_archives) != 6:
     time.sleep(5)
-    print('notfound')
 
 if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
