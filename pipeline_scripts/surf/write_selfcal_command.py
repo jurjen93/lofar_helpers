@@ -26,7 +26,7 @@ if len(box_archives) == 6:
         N = str(N + 1)
         cml = [
             "cp -r "+TO+"/extract/" + SUBBOX + " " + TO+"/selfcal/" + BOX + '.' + N,
-            "cd "+TO+"/selfcal/" + TO+"/selfcal/" + BOX + '.' + N,
+            "cd "+TO+"/selfcal/" + BOX + '.' + N,
             "singularity exec -B +" + SING_BIND + " " + SING_IMAGE + " " + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+TO+"/selfcal/" + BOX + "/" +SUBBOX,
             "rm -rf "+TO+"/selfcal/"+SUBBOX
         ]
