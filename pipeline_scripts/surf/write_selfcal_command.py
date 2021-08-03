@@ -25,7 +25,6 @@ if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
         N = str(N + 1)
         cml = [
-            "#!/bin/bash\n\n"
             "cp -r "+TO+"/extract/" + SUBBOX + " " + TO+"/selfcal/" + BOX + '.' + N,
             "cd "+TO+"/selfcal/" + TO+"/selfcal/" + BOX + '.' + N,
             "singularity exec -B +" + SING_BIND + " " + SING_IMAGE + " " + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath=SCRIPT_PATH/ --autofrequencyaverage-calspeedup='True' "+TO+"/selfcal/" + BOX + "/" +SUBBOX,
