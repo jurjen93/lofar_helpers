@@ -34,6 +34,7 @@ SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts,/projec
 
 #SELFCAL
 mkdir ${TO}/selfcal
+mkdir ${TO}/selfcal/finished
 for ((N=1;N<=1;N++))
 do
   until [[ -f ${TO}/extract/finished/box_${N}.txt ]]
