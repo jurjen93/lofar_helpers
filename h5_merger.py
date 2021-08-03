@@ -732,7 +732,10 @@ class MergeH5:
             solset = h5.getSolset(ss)
             solsettemp = h5_temp.makeSolset(ss)
             print(add_directions)
-            sources = list([source[1] for source in solset.obj.source[:]])+add_directions
+            if type(add_directions[0])==list:
+                sources = list([source[1] for source in solset.obj.source[:]]) + add_directions
+            else:
+                sources = list([source[1] for source in solset.obj.source[:]]) + [add_directions]
             sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), list(ns)) for n, ns in enumerate(sources)]
             if len(sources) > 0:
                 print(sources)
