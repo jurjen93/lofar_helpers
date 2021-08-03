@@ -729,7 +729,7 @@ class MergeH5:
         h5 = h5parm(self.file, readonly=True)
         h5_temp = h5parm(self.file.replace('.h5','')+'temp.h5', readonly=False)
         for ss in h5.getSolsetNames():
-            solset = h5.getSolSet(ss)
+            solset = h5.getSolset(ss)
             solsettemp = h5_temp.makeSolset(ss)
             sources = list([source[1] for source in solset.obj.source[:]])+add_directions
             sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), ns[1]) for n, ns in enumerate(sources)]
@@ -771,6 +771,9 @@ class MergeH5:
 
                 print('Default directions added for '+ss+'/'+st)
                 print('Shape change: '+str(values.shape)+' ---> '+str(values_new.shape))
+
+        h5.close()
+        h5_temp.close()
 
         return self
 
