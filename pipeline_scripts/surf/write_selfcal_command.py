@@ -20,9 +20,11 @@ print(box_archives)
 
 while len(box_archives) != 6:
     time.sleep(5)
+    print('file not found')
 
 if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
+        print(N)
         N = str(N + 1)
         SELFCAL_FOLDER = "TO/selfcal/" + BOX + '.' + N
         cml = [
