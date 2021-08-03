@@ -894,7 +894,7 @@ if __name__ == '__main__':
         h5tables = args.h5_tables
 
     if args.add_direction:
-        args.add_direction = args.add_direction.replace('[','').replace(']','').split(',')
+        add_directions = args.add_direction.replace('[','').replace(']','').split(',')
 
     merge_h5(h5_out=args.h5_out,
              h5_tables=h5tables,
