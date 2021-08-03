@@ -55,9 +55,10 @@ And use the following parameters:
 * ```h5_tables``` --> h5 tables to merge in list form or string (with/without wildcard)
 * ```ms_files``` --> ms files to use in list form or string (with/without wildcard)
 * ```convert_tec``` --> convert tec to phase (boolean)
-* ```make_new_direction``` --> choose to add new directions (raise the table dimensions) or merge everything into one
+* ```merge_all_in_one``` --> choose to merge al directions into one direction
 * ```lin2circ``` --> linear to circular polarization transformation
 * ```circ2lin``` --> circular to linear polarization transformation
+* ```add_direction``` --> add default direction (phase 0 and amplitude 1)
 
 Or you can run the script on the command line with
 ```python h5_merger.py <FLAGS>```
@@ -65,9 +66,10 @@ Or you can run the script on the command line with
 * ```-in``` --> h5 tables to merge in list form or string (with/without wildcard)
 * ```-ms``` --> ms files to use in list form or string (with/without wildcard)
 * ```-ct``` --> convert tec to phase
-* ```-nd``` --> choose to add new directions (raise the table dimensions) or merge everything into one
+* ```-merge_all_in_one``` --> choose to merge al directions into one direction
 * ```--lin2circ``` --> linear to circular polarization transformation
 * ```--circ2lin``` --> circular to linear polarization transformation
+* ```--add_direction``` --> add default direction (phase 0 and amplitude 1)
 
 #### Contact
 Let me know if you are using this script and have any issues or suggestions for improvements.
