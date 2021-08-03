@@ -731,7 +731,6 @@ class MergeH5:
         for ss in h5.getSolsetNames():
             solset = h5.getSolset(ss)
             solsettemp = h5_temp.makeSolset(ss)
-            print(add_directions)
             if type(add_directions[0])==list:
                 sources = list([source[1] for source in solset.obj.source[:]]) + add_directions
             else:
@@ -771,6 +770,8 @@ class MergeH5:
                     values_new[:, :, :, :, 0:last_idx, ...] = values
 
                 weights = ones(values_new.shape)
+                print(values_new.shape)
+                print([len(v) for v in axes.values()])
                 solsettemp.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()), vals=values_new,
                                  weights=weights)
 
