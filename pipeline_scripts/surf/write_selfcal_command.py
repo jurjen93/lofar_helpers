@@ -19,12 +19,10 @@ box_archives = sorted(glob(TO + '/extract/*' + BOX + '.dysco.sub.shift.avg.weigh
 
 while len(box_archives) != 6:
     time.sleep(5)
-    print('FILE NOT FOUND IN WRITE SCRIPT')
 
 if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
         N = str(N + 1)
-        print(N)
         SELFCAL_FOLDER = "TO/selfcal/" + BOX + '.' + N
         cml = [
             "cd TO/selfcal/",
