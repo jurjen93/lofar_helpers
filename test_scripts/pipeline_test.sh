@@ -35,8 +35,7 @@ SING_BIND=/project/lofarvwf/Share/jdejong
 mkdir ${TO}/selfcal
 for ((N=1;N<=1;N++))
 do
-  echo "${N}"
-  until [[ -f ${TO}/extract/Abell399-401_box_${N}.dysco.sub.shift.avg.weights.ms.archive0 ]]
+  until [[ -f /project/lofarvwf/Share/jdejong/output/A399/extract/Abell399-401_box_1.dysco.sub.shift.avg.weights.ms.archive0 ]]
   do
     sleep 5
     echo "FILE NOT FOUND"
