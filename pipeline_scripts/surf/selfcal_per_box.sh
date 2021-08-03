@@ -3,8 +3,8 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl 
 
-FIELD=$1 #L626678
-TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
+SOURCE=$1 #L626678
+TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts
 N=$2 #box number
 

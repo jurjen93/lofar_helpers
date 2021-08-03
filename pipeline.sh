@@ -39,7 +39,8 @@ do
   do
     sleep 180
   done
-  sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_per_box.sh ${FIELD} ${N} &
+  singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/write_selfcal_command.py --box=N --script_path=/home/lofarvwf-jdejong/scripts --source=${FIELD}
+  sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal.sh ${FIELD} N &
 done
 wait
 
