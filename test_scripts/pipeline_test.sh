@@ -35,7 +35,7 @@ SING_BIND=/project/lofarvwf/Share/jdejong
 mkdir ${TO}/selfcal
 for ((N=1;N<=1;N++))
 do
-  until [[ -f ${TO}/extract/${FIELD}_box_${N}.dysco.sub.shift.avg.weights.ms.archive0 ]]
+  until [[ -f ${TO}/extract/Abell399-401_box_${N}.dysco.sub.shift.avg.weights.ms.archive0 ]]
   do
     sleep 10
   done
