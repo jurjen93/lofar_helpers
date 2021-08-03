@@ -9,7 +9,7 @@ TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
-SING_BIND=/project/lofarvwf/Share/jdejong
+SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 
 #CREATE FILES [SHOULD HAVE ALREADY BEEN DONE]
 #mkdir ${TO}
@@ -39,7 +39,9 @@ do
   until [[ -f ${TO}/extract/finished/box_${N}.txt ]]
   do
     sleep 5
+    echo "STILL WAITING"
   done
+  echo "WRITING FILE"
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/write_selfcal_command.py --box=N --script_path=/home/lofarvwf-jdejong/scripts --source=${FIELD}
   sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal.sh ${FIELD} N &
 done
