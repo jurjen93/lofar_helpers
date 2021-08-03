@@ -9,7 +9,7 @@ TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
-SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts,$PWD
+SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts,/project/lofarvwf/Share/jdejong/output,/project/lofarvwf/Share/jdejong/output/${FIELD}/extract,$PWD
 
 #CREATE FILES [SHOULD HAVE ALREADY BEEN DONE]
 #mkdir ${TO}
