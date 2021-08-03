@@ -28,6 +28,7 @@ SING_BIND=/project/lofarvwf/Share/jdejong
 #EXTRACT WITH PARALLEL ARRAY
 #echo "There are ${TOTAL_BOXES} boxes to extract"
 #mkdir ${TO}/extract
+#mkdir ${TO}/extract/finished
 #sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract.sh ${FIELD} &
 #wait &
 
@@ -35,7 +36,7 @@ SING_BIND=/project/lofarvwf/Share/jdejong
 mkdir ${TO}/selfcal
 for ((N=1;N<=1;N++))
 do
-  until [[ -f /project/lofarvwf/Share/jdejong/output/A399/extract/Abell399-401_box_1.dysco.sub.shift.avg.weights.ms.archive0 ]]
+  until [[ -f ${TO}/extract/finished/box_${N}.txt ]]
   do
     sleep 5
     echo "FILE NOT FOUND"

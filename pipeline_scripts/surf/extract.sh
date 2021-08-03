@@ -6,6 +6,7 @@
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --array=1-200%10
 
+
 FIELD=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts
@@ -21,8 +22,11 @@ echo "-----STARTED EXTRACT-----"
 cd ${TO}/extract || { echo "Missing path"; exit 1; }
 if [[ ! ${SLURM_ARRAY_TASK_ID} > ${TOTAL_BOXES} ]]
 then
+  START="$(date -u +%s)"
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${SLURM_ARRAY_TASK_ID}.reg --overwriteoutput -p box_${SLURM_ARRAY_TASK_ID}
+  END="$(date -u +%s)"
   echo "Extracted box_${BOX}"
+  echo "Extracted in $((${END}-${START})) seconds" > ${TO}/extract/extracted_box_${SLURM_ARRAY_TASK_ID}.txt
 else
   :
 fi

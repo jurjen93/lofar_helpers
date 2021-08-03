@@ -28,6 +28,7 @@ echo "Succesfully created boxes..."
 #EXTRACT WITH PARALLEL ARRAY
 echo "There are ${TOTAL_BOXES} boxes to extract"
 mkdir ${TO}/extract
+mkdir ${TO}/extract/finished
 sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract.sh ${FIELD} &
 wait &
 
@@ -35,7 +36,7 @@ wait &
 mkdir ${TO}/selfcal
 for ((N=1;N<=${TOTAL_BOXES};N++))
 do
-  until [[ -f ${TO}/extract/${FIELD}_box_${N}.dysco.sub.shift.avg.weights.ms.archive0 ]]
+  until [[ -f ${TO}/extract/finished/box_${N}.txt ]]
   do
     sleep 180
   done
