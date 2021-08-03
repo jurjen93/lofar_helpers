@@ -41,7 +41,6 @@ do
     sleep 5
     echo "STILL WAITING"
   done
-  echo "WRITING FILE"
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/write_selfcal_command.py --box=N --script_path=/home/lofarvwf-jdejong/scripts --source=${FIELD}
   sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal.sh ${FIELD} N &
 done
