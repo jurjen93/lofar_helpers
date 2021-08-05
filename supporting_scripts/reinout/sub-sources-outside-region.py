@@ -498,6 +498,7 @@ def adjustboxrotationlocalnorth(boxregionfile, fitsimage):
     
 
     r[0].coord_list[4] = CRVAL1 - ra # rotate box
+    print('Angle adjusted box', CRVAL1 - ra)
     
     if os.path.isfile('adjustedbox.reg'):
       os.system('rm -rf adjustedbox.reg') 
