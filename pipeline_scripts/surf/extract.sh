@@ -19,9 +19,12 @@ TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
 
 #START EXTRACT
 echo "-----STARTED EXTRACT-----"
-cd ${TO}/extract || { echo "Missing path"; exit 1; }
 if [[ ! ${SLURM_ARRAY_TASK_ID} > ${TOTAL_BOXES} ]]
 then
+  mkdir ${TO}/extract/box_${SLURM_ARRAY_TASK_ID}
+  cp ${TO}/extract/data_archive.tar.gz ${TO}/extract/box_${SLURM_ARRAY_TASK_ID}/
+  cd ${TO}/extract/box_${SLURM_ARRAY_TASK_ID} || { echo "Missing path"; exit 1; }
+  tar -xvf data_archive.tar.gz
   START="$(date -u +%s)"
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${SLURM_ARRAY_TASK_ID}.reg --overwriteoutput -p box_${SLURM_ARRAY_TASK_ID}
   END="$(date -u +%s)"
