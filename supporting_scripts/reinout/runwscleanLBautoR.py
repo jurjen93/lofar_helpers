@@ -75,11 +75,12 @@ def create_mergeparmdbname(mslist, selfcalcycle):
    print('Created parmdblist', parmdblist)
    return parmdblist
 
-def preapply(H5filelist, mslist):
+def preapply(H5filelist, mslist, updateDATA=True):
    for ms in mslist:
       parmdb = time_match_mstoH5(H5filelist, ms)
       applycal(ms, parmdb, msincol='DATA',msoutcol='CORRECTED_DATA')
-      os.system("taql 'update " + ms + " set DATA=CORRECTED_DATA'")
+      if updateDATA:
+         os.system("taql 'update " + ms + " set DATA=CORRECTED_DATA'")
    return
 
 def time_match_mstoH5(H5filelist, ms):
@@ -146,7 +147,7 @@ def logbasicinfo(args, fitsmask, mslist, version, inputsysargs):
    logger.info('User specified clean mask: ' + str(fitsmask))
    logger.info('Threshold for MakeMask:    ' + str(args['maskthreshold']))
    logger.info('Briggs robust:             ' + str(args['robust']))
-   logger.info('Imagename prefix:          ' + args['imagename'] + '_')
+   #logger.info('Imagename prefix:          ' + args['imagename'] + '_')
 
     
    return    
@@ -555,7 +556,7 @@ def checklongbaseline(ms):
     print('Contains long baselines?', haslongbaselines)
     return haslongbaselines
 
-def average(mslist, freqstep, timestep=None, start=0, msinnchan=None):
+def average(mslist, freqstep, timestep=None, start=0, msinnchan=None, phaseshiftbox=None):
     # sanity check
     if len(mslist) != len(freqstep):
       print('Hmm, made a mistake with freqstep?')
@@ -563,16 +564,23 @@ def average(mslist, freqstep, timestep=None, start=0, msinnchan=None):
     
     outmslist = []
     for ms_id, ms in enumerate(mslist):
-      if (freqstep[ms_id] > 0) or (timestep != None) or (msinnchan != None): # if this is True then average
+      if (freqstep[ms_id] > 0) or (timestep != None) or (msinnchan != None) or (phaseshiftbox != None): # if this is True then average
         msout = ms + '.avg'  
-        cmd = 'DPPP msin=' + ms + ' msout.storagemanager=dysco steps=[av] av.type=averager '
-        cmd+= 'msout='+ msout + ' msin.weightcolumn=WEIGHT_SPECTRUM msout.writefullresflag=False '
+        cmd = 'DPPP msin=' + ms + ' msout.storagemanager=dysco av.type=averager '
+        cmd += 'msout='+ msout + ' msin.weightcolumn=WEIGHT_SPECTRUM msout.writefullresflag=False '
+        if phaseshiftbox != None:
+          cmd += ' steps=[shift,av] '
+          cmd += ' shift.type=phaseshifter '
+          cmd += ' shift.phasecenter=\['+getregionboxcenter(phaseshiftbox)+'\] '
+        else:    
+          cmd +=' steps=[av] ' 
+        
         if freqstep[ms_id] != None:
-          cmd+='av.freqstep=' + str(freqstep[ms_id]) + ' '
+          cmd +='av.freqstep=' + str(freqstep[ms_id]) + ' '
         if timestep != None:  
-          cmd+='av.timestep=' + str(timestep) + ' '
+          cmd +='av.timestep=' + str(timestep) + ' '
         if msinnchan != None:
-           cmd+='msin.nchan=' + str(msinnchan) + ' ' 
+           cmd +='msin.nchan=' + str(msinnchan) + ' ' 
         if start == 0:
           print('Average with default WEIGHT_SPECTRUM:', cmd)
           if os.path.isdir(msout):
@@ -750,6 +758,11 @@ def inputchecker(args):
     print('Cannot find BLsmooth.py, file does not exist, use --helperscriptspath')
     sys.exit(1)
 
+  if args['phaseshiftbox'] != None:
+    if not os.path.isfile(args['phaseshiftbox']):
+      print('Cannot find:',args['phaseshiftbox'])
+      sys.exit(1)
+  
   if not args['no_beamcor'] and args['idg']:
     print('beamcor=True and IDG=True is not possible')
     sys.exit(1)
@@ -965,8 +978,10 @@ def bandwidthsmearing(chanw, freq, imsize, verbose=True):
   R =  (chanw/freq)*(imsize/6.) # asume we have used 3 pixels per beam
   if verbose:
     print('R value for bandwidth smearing is:', R)
+    logger.info('R value for bandwidth smearing is: ' + str(R))
     if R > 1.:
       print('Warning, try to increase your frequency resolution, or lower imsize, to reduce the R value below 1')
+      logger.warning('Warning, try to increase your frequency resolution, or lower imsize, to reduce the R value below 1')
   
   return R
 
@@ -1040,6 +1055,7 @@ def print_title(version):
           """)
 
     print('\n\nVERSION: ' + version + '\n\n')
+    logger.info('VERSION: ' + version)
     return
 
 def makemslist(mslist):
@@ -1746,8 +1762,7 @@ def setinitial_solint(mslist, soltype_list, longbaseline, LBA,\
           smoothnessreffrequency_list_ms.append(smoothnessreffrequency)
           antennaconstraint_list_ms.append(antennaconstraint)
           soltypecycles_list_ms.append(soltypecycles)
-          #logging.info('MS, NCHAN_PHASE - SOLINT_PHASE ||| NCHAN_SLOW - SOLINT_SLOW: ' + str(ms) + ':: ' + str(nchan_phase) + \
-          #             ' - ' + str (solint_phase) + ' ||| ' + str(nchan_ap) + ' - ' + str(solint_ap))
+
         
         nchan_list.append(nchan_ms)   # list of lists
         solint_list.append(solint_ms) # list of lists
@@ -1789,6 +1804,15 @@ def setinitial_solint(mslist, soltype_list, longbaseline, LBA,\
    print('smoothnessreffrequency:',smoothnessreffrequency_list)
    print('antennaconstraint:',antennaconstraint_list)
    print('soltypecycles:',soltypecycles_list)
+
+   logger.info('soltype: '+ str(soltype_list) + ' ' + str(mslist))   
+   logger.info('nchan: ' + str(innchan_list))
+   logger.info('solint: ' + str(insolint_list))
+   logger.info('smoothnessconstraint: ' + str(insmoothnessconstraint_list))
+   logger.info('smoothnessreffrequency: ' + str(insmoothnessreffrequency_list))
+   logger.info('antennaconstraint: ' + str(inantennaconstraint_list))
+   logger.info('soltypecycles: ' + str(insoltypecycles_list))   
+   
    return nchan_list, solint_list, smoothnessconstraint_list, smoothnessreffrequency_list, antennaconstraint_list, soltypecycles_list
 
 def getmsmodelinfo(ms, modelcolumn, fastrms=False, uvcutfraction=0.333):
@@ -1809,6 +1833,7 @@ def getmsmodelinfo(ms, modelcolumn, fastrms=False, uvcutfraction=0.333):
    flags = t.getcol('FLAG')
    data  = t.getcol('DATA')
    print('Compute visibility noise of the dataset with robust sigma clipping', ms)
+   logger.info('Compute visibility noise of the dataset with robust sigma clipping: ' + ms)
    if fastrms:    # take only every fifth element of the array to speed up the computation
      if freq > freqct: # HBA
         noise = astropy.stats.sigma_clipping.sigma_clipped_stats(data[0:data.shape[0]:5,np.int(np.floor(np.float(nfreq)*HBA_upfreqsel)):-1,1:3],\
@@ -1832,12 +1857,16 @@ def getmsmodelinfo(ms, modelcolumn, fastrms=False, uvcutfraction=0.333):
    time  = np.unique(t.getcol('TIME'))
    tint  = np.abs(time[1]-time[0])
    print('Integration time visibilities', tint)
+   logger.info('Integration time visibilities: ' + str(tint))
    t.close()
 
    del data, flags, model
    print('Noise visibilities:', noise, 'Jy')
-   print('Flux in model', flux, 'Jy')
-   print('UV-selection to compute model flux', str(uvdismod/1e3), 'km')
+   print('Flux in model:', flux, 'Jy')
+   print('UV-selection to compute model flux:', str(uvdismod/1e3), 'km')
+   logger.info('Noise visibilities: ' + str(noise) + 'Jy')
+   logger.info('Flux in model: ' + str(flux) + 'Jy')
+   logger.info('UV-selection to compute model flux: ' + str(uvdismod/1e3) + 'km')
 
    
    return noise, flux, tint, chanw
@@ -1918,6 +1947,7 @@ def auto_determinesolints(mslist, soltype_list, longbaseline, LBA,\
                print(tint*solint_sf* ((noise/flux)**2) * (chanw/390.625e3))
                solint_sf = solint_sf/30. 
                print('Trigger_antennaconstraint core:', soltype, ms)
+               logger.info('Trigger_antennaconstraint core: '+ soltype + ' ' + ms)
                inantennaconstraint_list[soltype_id][ms_id] = 'core'
                # do another pertubation, a slow solve of the core stations
                #if (tint*solint_sf* ((noise/flux)**2) * (chanw/390.625e3) < 360.0): # less than 6 min now, also doing constraint remote
@@ -1936,14 +1966,25 @@ def auto_determinesolints(mslist, soltype_list, longbaseline, LBA,\
              # round to nearest integer  
              solint = np.rint(solint_sf* ((noise/flux)**2) * (chanw/390.625e3) )
              # frequency scaling is need because if we avearge in freqeuncy the solint should not change for a tec(andphase) solve
+             
+             if (longbaseline) and (not LBA) and (soltype == 'tec') \
+                and (soltype_list[1] == 'tecandphase'):
+                if solint < 0.5 and (solint*tint < 16.): # so less then 16 sec   
+                   print('Longbaselines bright source detected: changing from tec to tecandphase solve')
+                   insoltypecycles_list[soltype_id][ms_id] = 999
+                   insoltypecycles_list[1][ms_id] = 0  
+             
              if solint < 1:
                 solint = 1        
              if (np.float(solint)*tint/3600.) > 0.5: # so check if larger than 30 min
                print('Warning, it seems there is not enough flux density on the longer baselines for solving')
+               logger.warning('Warning, it seems there is not enough flux density on the longer baselines for solving')
                solint = np.rint(0.5*3600./tint) # max is 30 min 
 
              print(solint_sf*((noise/flux)**2)*(chanw/390.625e3), 'Using tec(andphase) solint:', solint)
+             logger.info(str(solint_sf*((noise/flux)**2)*(chanw/390.625e3)) + '-- Using tec(andphase) solint:' + str(solint))
              print('Using tec(andphase) solint [s]:', np.float(solint)*tint)
+             logger.info('Using tec(andphase) solint [s]: ' + str(np.float(solint)*tint))
           
              insolint_list[soltype_id][ms_id] = np.int(solint)
              innchan_list[soltype_id][ms_id] = 1
@@ -1979,16 +2020,20 @@ def auto_determinesolints(mslist, soltype_list, longbaseline, LBA,\
 
              solint = np.rint(solint_sf*((noise/flux)**2)*(chanw/390.625e3)) 
              print(solint_sf*((noise/flux)**2)*(chanw/390.625e3), 'Computes gain solint:', solint, ' ')
+             logger.info(str(solint_sf*((noise/flux)**2)*(chanw/390.625e3)) + ' Computes gain solint: ' + str(solint))
              print('Computes gain solint [hr]:', np.float(solint)*tint/3600.)
+             logger.info('Computes gain solint [hr]: ' + str(np.float(solint)*tint/3600.))
 
              # do not allow very short ap solves
              if ((solint_sf*((noise/flux)**2)*(chanw/390.625e3))*tint/3600.) < tgain_min: #  check if less than tgain_min (20 min)
                solint = np.rint(tgain_min*3600./tint) # minimum tgain_min is 20 min 
                print('Setting gain solint to 20 min (the min value allowed):', np.float(solint)*tint/3600.)
+               logger.info('Setting gain solint to 20 min (the min value allowed): ' + str(np.float(solint)*tint/3600.))
 
              # do not allow ap solves that are more than tgain_max (4) hrs
              if ((solint_sf*((noise/flux)**2)*(chanw/390.625e3))*tint/3600.) > tgain_max: # so check if larger than 30 min
                print('Warning, it seems there is not enough flux density for gain solving')
+               logger.warning('Warning, it seems there is not enough flux density for gain solving')
                solint = np.rint(tgain_max*3600./tint) # max is tgain_max (4) hrs  
 
              # trigger 15 MHz smoothnessconstraint 
@@ -1996,7 +2041,8 @@ def auto_determinesolints(mslist, soltype_list, longbaseline, LBA,\
              if ((solint_sf*((noise/flux)**2)*(chanw/390.625e3))*tint/3600.) < thr_SM15Mhz: # so check if larger than 30 min
                insmoothnessconstraint_list[soltype_id][ms_id] = 5.0
              else:
-               print('Increasing smoothnessconstraint to 15 MHz')   
+               print('Increasing smoothnessconstraint to 15 MHz')
+               logger.info('Increasing smoothnessconstraint to 15 MHz')
                insmoothnessconstraint_list[soltype_id][ms_id] = 15.0
 
              # trigger nchan=0 solve because not enough S/N
@@ -2005,6 +2051,7 @@ def auto_determinesolints(mslist, soltype_list, longbaseline, LBA,\
                solint = np.rint(2.0*3600./tint) # 2 hrs nchan=0 solve (do not do bandpass because slope can diverge)
                innchan_list[soltype_id][ms_id] = 0 # no frequency dependence, smoothnessconstraint will be turned of in runDPPPbase
                print('Triggering antennaconstraint all:', soltype, ms)
+               logger.info('Triggering antennaconstraint all: ' + soltype + ' ' + ms)
              else:  
                inantennaconstraint_list[soltype_id][ms_id] = None
           
@@ -2012,6 +2059,7 @@ def auto_determinesolints(mslist, soltype_list, longbaseline, LBA,\
              if (((solint_sf*((noise/flux)**2)*(chanw/390.625e3))*tint/3600.) > thr_disable_gain):
                insoltypecycles_list[soltype_id][ms_id] = 999
                print('Disabling solve:', soltype, ms)
+               logger.info('Disabling solve: ' + soltype + ' '+ ms)
              else:  
                insoltypecycles_list[soltype_id][ms_id] = 3 # set to user input value? problem because not retained now
   
@@ -2082,6 +2130,15 @@ def auto_determinesolints(mslist, soltype_list, longbaseline, LBA,\
    print('smoothnessreffrequency:',insmoothnessreffrequency_list)
    print('antennaconstraint:',inantennaconstraint_list)
    print('soltypecycles:',insoltypecycles_list)
+
+   logger.info('soltype: '+ str(soltype_list) + ' ' + str(mslist))   
+   logger.info('nchan: ' + str(innchan_list))
+   logger.info('solint: ' + str(insolint_list))
+   logger.info('smoothnessconstraint: ' + str(insmoothnessconstraint_list))
+   logger.info('smoothnessreffrequency: ' + str(insmoothnessreffrequency_list))
+   logger.info('antennaconstraint: ' + str(inantennaconstraint_list))
+   logger.info('soltypecycles: ' + str(insoltypecycles_list))
+
       
    return innchan_list, insolint_list, insmoothnessconstraint_list, insmoothnessreffrequency_list, inantennaconstraint_list, insoltypecycles_list
 
@@ -2893,6 +2950,7 @@ def medianamp(parmdb):
     medamps = 10**(np.nanmedian(np.log10(amps[idx])))
     H5.close()
     print('Median amplitude of ', parmdb, ':', medamps)
+    logger.info('Median amplitude of ' + parmdb + ': ' + str(medamps))
     return medamps
 
 def normamplitudes(parmdb):
@@ -3024,7 +3082,9 @@ def makeimage(mslist, imageout, pixsize, imsize, channelsout, niter, robust, \
     #  --- predict only when starting from external model images ---
     if onlypredict:
       if predict:
-        cmd = 'wsclean -channels-out ' + str(channelsout) + ' -padding 1.8 -predict ' 
+        cmd = 'wsclean -padding 1.8 -predict ' 
+        if channelsout > 1:
+          cmd += '-channels-out ' + str(channelsout)   
         if idg:
           cmd += '-use-idg -grid-with-beam -use-differential-lofar-beam -idg-mode cpu '
           cmd += '-beam-aterm-update 800 '
@@ -3055,13 +3115,14 @@ def makeimage(mslist, imageout, pixsize, imsize, channelsout, niter, robust, \
       cmd += '-no-update-model-required -minuv-l ' + str(uvminim) + ' '
       cmd += '-size ' + str(np.int(imsize)) + ' ' + str(np.int(imsize)) + ' -reorder '
       cmd += '-weight briggs ' + str(robust) + ' -weighting-rank-filter 3 -clean-border 1 -parallel-reordering 4 '
-      cmd += '-mgain 0.8 -fit-beam -data-column ' + imcol +' -join-channels -channels-out '
-      cmd += str(channelsout) + ' -padding 1.4 '
+      cmd += '-mgain 0.8 -fit-beam -data-column ' + imcol + ' -padding 1.4 '
+      if channelsout > 1:
+        cmd += ' -join-channels -channels-out ' + str(channelsout) + ' '
       if paralleldeconvolution > 0:
         cmd += '-parallel-deconvolution ' +  str(paralleldeconvolution) + ' '
       if parallelgridding > 1:
         cmd += '-parallel-gridding ' + str(parallelgridding) + ' '  
-      if deconvolutionchannels > 0:
+      if deconvolutionchannels > 0 and channelsout > 1:
         cmd += '-deconvolution-channels ' +  str(deconvolutionchannels) + ' '
       if automask > 0.5:
         cmd += '-auto-mask '+ str(automask)  + ' -auto-threshold 0.5 ' # to avoid automask 0
@@ -3086,7 +3147,7 @@ def makeimage(mslist, imageout, pixsize, imsize, channelsout, niter, robust, \
         cmd += '-beam-aterm-update 800 '
         cmd += '-pol iquv -link-polarizations i '
       else:
-        if fitspectralpol:
+        if fitspectralpol and channelsout > 1:
            if fitspectrallogpol: 
              cmd += '-fit-spectral-log-pol ' + str(fitspectralpolorder) + ' '   
            else:
@@ -3108,7 +3169,9 @@ def makeimage(mslist, imageout, pixsize, imsize, channelsout, niter, robust, \
         
         # predict first to fill MODEL_DATA so we can continue with clean
         cmdp = 'wsclean -size ' 
-        cmdp += str(np.int(imsize)) + ' ' + str(np.int(imsize)) + ' -channels-out ' + str(channelsout) + ' -padding 1.8 -predict ' 
+        cmdp += str(np.int(imsize)) + ' ' + str(np.int(imsize)) +  ' -padding 1.8 -predict ' 
+        if channelsout > 1:
+           cmdp += ' -channels-out ' + str(channelsout) + ' '
         if idg:
           cmdp += '-use-idg -grid-with-beam -use-differential-lofar-beam -idg-mode cpu '
           cmdp += '-beam-aterm-update 800 '
@@ -3146,7 +3209,9 @@ def makeimage(mslist, imageout, pixsize, imsize, channelsout, niter, robust, \
 
       if predict:
         cmd = 'wsclean -size ' 
-        cmd += str(np.int(imsize)) + ' ' + str(np.int(imsize)) + ' -channels-out ' + str(channelsout) + ' -padding 1.8 -predict ' 
+        cmd += str(np.int(imsize)) + ' ' + str(np.int(imsize)) +  ' -padding 1.8 -predict ' 
+        if channelsout > 1:
+          cmd += ' -channels-out ' + str(channelsout) + ' '  
         if idg:
           cmd += '-use-idg -grid-with-beam -use-differential-lofar-beam -idg-mode cpu '
           cmd += '-beam-aterm-update 800 '
@@ -3636,6 +3701,7 @@ def main():
    parser.add_argument('--usewgridder', help='use wgridder in WSClean, mainly useful for very large images (True/False, default=True)', type=ast.literal_eval, default=True)
 
    parser.add_argument('--phaseupstations', help='phase up to a superstation (core or superterp, default None)', default=None, type=str)
+   parser.add_argument('--phaseshiftbox', help='shift phasecenter to center of this DS9 region box file', default=None, type=str)
    parser.add_argument('--paralleldeconvolution', help='parallel-deconvolution size for wsclean, default=0 (means no parallel deconvolution, suggested value in about 2000, only use for very large images)', default=0, type=int)
    parser.add_argument('--parallelgridding', help='parallel-gridding for wsclean, default=1 (means no parallel gridding)', default=1, type=int)
    parser.add_argument('--deconvolutionchannels', help='deconvolution-channels value for wsclean, default=0 (means deconvolution-channels equals channels-out)', default=0, type=int)
@@ -3708,7 +3774,7 @@ def main():
    options = parser.parse_args() # start of replacing args dictionary with objects options
    #print (options.preapplyH5_list)
 
-   version = '2.10.0'
+   version = '2.11.2'
    print_title(version)
 
    os.system('cp ' + args['helperscriptspath'] + '/lib_multiproc.py .')
@@ -3806,10 +3872,16 @@ def main():
      args['usemodeldataforsolints'] = True
      args['forwidefield'] = True
      args['autofrequencyaverage'] = True
+     
      args['soltypecycles-list'] = [0,3]
      args['soltype_list'] = ['tec','scalarcomplexgain']
      args['smoothnessconstraint_list'] = [0.0, 5.0]
-     args['uvmin'] = 20000.
+
+     #args['soltypecycles-list'] = [0,999,3]
+     #args['soltype_list'] = ['tec','tecandphase','scalarcomplexgain']
+     #args['smoothnessconstraint_list'] = [0.0, 0.0, 5.0]     
+     
+     args['uvmin'] =  20000 # 2500.
      if LBA:
        args['BLsmooth'] = True
 
@@ -3820,7 +3892,8 @@ def main():
      args['soltype_list'][1] = 'tec'  
      #args['soltype_list'][0] = 'tec'  
      if freq < 30e6:
-       args['soltype_list'] = ['tecandphase','tec']    # no scalarcomplexgain in the list
+       #args['soltype_list'] = ['tecandphase','tec']    # no scalarcomplexgain in the list, do not use "tec" that gives rings around sources for some reason
+       args['soltype_list'] = ['tecandphase','tecandphase']    # no scalarcomplexgain in the list
 
    if args['forwidefield']:
       args['doflagging'] = False
@@ -3829,7 +3902,8 @@ def main():
    # check if we could average more
    avgfreqstep = []  # vector of len(mslist) with average values, 0 means no averaging
    for ms in mslist:
-      if args['avgfreqstep'] == None and args['autofrequencyaverage'] and not LBA: # autoaverage
+      if args['avgfreqstep'] == None and args['autofrequencyaverage'] and not LBA \
+        and not args['autofrequencyaverage_calspeedup']: # autoaverage
         avgfreqstep.append(findfreqavg(ms,np.float(args['imsize'])))
       else:
         if args['avgfreqstep'] != None:
@@ -3841,7 +3915,8 @@ def main():
 
    # average if requested
    mslist = average(mslist, freqstep=avgfreqstep, timestep=args['avgtimestep'], \
-                    start=args['start'], msinnchan=args['msinnchan'])
+                    start=args['start'], msinnchan=args['msinnchan'],\
+                    phaseshiftbox=args['phaseshiftbox'])
 
 
    # extra flagging if requested
@@ -3955,7 +4030,7 @@ def main():
          mslist = average(mslist, freqstep=avgfreqstep, timestep=4)
      if args['autofrequencyaverage_calspeedup'] and i == args['stop'] - 3:
          mslist = mslist_backup[:]  # reset back, note copy by slicing otherwise list refers to original 
-         preapply(create_mergeparmdbname(mslist, i-1), mslist)
+         preapply(create_mergeparmdbname(mslist, i-1), mslist, updateDATA=False) # do not overwrite DATA column
 
      # PHASE-UP if requested
      if args['phaseupstations'] != None and i== 0:
@@ -3986,6 +4061,8 @@ def main():
        multiscale = False  
 
      # IMAGE WITH WSCLEAN OR DDF.py
+     logger.info('-----  Doing SELFCAL CYCLE: '+str(i) + '  -----')
+
      makeimage(mslist, args['imagename'] + str(i).zfill(3), args['pixelscale'], args['imsize'], args['channelsout'], \
                args['niter'], args['robust'], \
                uvtaper=False, multiscale=multiscale, idg=args['idg'], fitsmask=fitsmask, \
@@ -4059,9 +4136,11 @@ def main():
            if getlargestislandsize(fitsmask) > 1000:
              if not LBA:
                print('Extended emission found, setting uvmin to 750 klambda')
+               logger.info('Extended emission found, setting uvmin to 750 klambda')
                args['uvmin'] = 750
              else:
                print('Extended emission found, setting uvmin to 250 klambda')
+               logger.info('Extended emission found, setting uvmin to 250 klambda')
                args['uvmin'] = 250   
        else:
          fitsmask = None # no masking requested as args['maskthreshold'] less/equal 0
