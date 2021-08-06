@@ -30,6 +30,7 @@ print(box_archives)
 if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
         N = str(N + 1)
+        os.system('mkdir '+TO+"/selfcal/" + BOX + '.' + N)
         if ct.table(TO+"/extract/" + BOX + '/' + SUBBOX).getcol('TIME')[0] in CUTTIMES:
             print('Cutting time for '+SUBBOX)
             cml = [
