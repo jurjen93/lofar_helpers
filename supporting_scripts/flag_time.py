@@ -13,9 +13,9 @@ parser.add_argument('-msin', '--ms_in', help='measurement set', required=True)
 parser.add_argument('-msout', '--ms_out', help='measurement set', required=False, default='')
 args = parser.parse_args()
 
-if not args.msout:
+if not args.ms_out:
     msout = args.ms_in+'.goodtimes'
 else:
-    msout = args.ms_in
+    msout = args.ms_out
 
 pt.taql('SELECT FROM {MSIN} WHERE TIME IN (SELECT DISTINCT TIME FROM {MSIN} OFFSET {time[0]} LIMIT {time[1]}) GIVING {MSOUT} AS PLAIN'.format(MSIN=args.ms_in, MSOUT=msout, time=args.time_flag))
