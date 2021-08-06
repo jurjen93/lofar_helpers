@@ -17,7 +17,7 @@ BOX = 'box_' + args.box
 SING_IMAGE = "/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif"
 SING_BIND = "/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts"
 
-box_archives = sorted([b.split('/')[-1] for b in glob(TO + '/extract/*' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')])
+box_archives = sorted([b.split('/')[-1] for b in glob(TO + '/extract/' + BOX+'/*' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')])
 
 #starting times fom measurement sets that have to be cutted for time
 CUTTIMES = [5019387068.011121, 5017577408.011121, 5020506668.011121]
@@ -25,6 +25,7 @@ CUTTIMES = [5019387068.011121, 5017577408.011121, 5020506668.011121]
 #starting times for measurement sets that have to be cutted for freq
 CUTFREQS = [5021107868.011121]
 
+print(box_archives)
 
 if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
