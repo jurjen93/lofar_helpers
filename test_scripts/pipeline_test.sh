@@ -41,8 +41,8 @@ do
   do
     sleep 5
   done
-  singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/write_selfcal_command.py --box=${N} --script_path=/home/lofarvwf-jdejong/scripts --source=${FIELD}
-  sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal.sh ${FIELD} ${N} &
+  singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/write_selfcal_command_subboxes.py --box=${N} --script_path=/home/lofarvwf-jdejong/scripts --source=${FIELD}
+  sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_subboxes.sh ${FIELD} ${N} &
 done
 wait
 

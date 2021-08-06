@@ -12,10 +12,7 @@ TO = "/project/lofarvwf/Share/jdejong/output/A399"
 
 BOX = 'box_' + args.box
 
-SING_IMAGE = "/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif"
-SING_BIND = "/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts"
-
-ms_archives = sorted([b.split('/')[-1] for b in glob(TO + '/extract/*' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')])
+ms_archives = sorted([b.split('/')[-1] for b in glob(TO + '/extract/' + BOX+'/*' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')])
 
 while len(ms_archives) != 6:
     time.sleep(5)
@@ -36,6 +33,5 @@ for MS in ms_archives:
         os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin "+TO+"/extract/" + MS+" -msout "+TO+"/selfcal/"+BOX+'/'+MS+'.goodfreq')
     else:
         os.system("cp -r "+TO+"/extract/" + MS + " " + TO+"/selfcal/" + BOX)
-
 
 os.system("cd "+TO+"/selfcal/"+BOX+" && python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+BOX + '.dysco.sub.shift.avg.weights.ms.archive*')
