@@ -30,21 +30,21 @@ print(box_archives)
 if len(box_archives) == 6:
     for N, SUBBOX in enumerate(box_archives):
         N = str(N + 1)
-        if ct.table(TO+"/extract/" + SUBBOX).getcol('TIME')[0] in CUTTIMES:
+        if ct.table(TO+"/extract/" + BOX + '/' + SUBBOX).getcol('TIME')[0] in CUTTIMES:
             print('Cutting time for '+SUBBOX)
             cml = [
-                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/supporting_scripts/flag_time.py -tf 0 1500 -msin "+TO+"/extract/" + SUBBOX+" -msout "+TO+"/selfcal/"+BOX + '.' + N+'/'+SUBBOX,
+                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/supporting_scripts/flag_time.py -tf 0 1500 -msin "+TO+"/extract/" + BOX + '/' + SUBBOX+" -msout "+TO+"/selfcal/"+BOX + '.' + N+'/'+SUBBOX,
                 "cd "+TO+"/selfcal/" + BOX + '.' + N,
                 "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX+'.goodtimes']
-        elif ct.table(TO+"/extract/" + SUBBOX).getcol('TIME')[0] in CUTFREQS:
+        elif ct.table(TO+"/extract/" + BOX + '/' + SUBBOX).getcol('TIME')[0] in CUTFREQS:
             print('Cutting freq for '+SUBBOX)
             cml = [
-                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/supporting_scripts/flag_freq.py -ff='[15..19]' -msin "+TO+"/extract/" + SUBBOX+" -msout "+TO+"/selfcal/"+BOX + '.' + N+'/'+SUBBOX,
+                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/supporting_scripts/flag_freq.py -ff='[15..19]' -msin "+TO+"/extract/" + BOX + '/' + SUBBOX+" -msout "+TO+"/selfcal/"+BOX + '.' + N+'/'+SUBBOX,
                 "cd "+TO+"/selfcal/" + BOX + '.' + N,
                 "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX+'.goodtimes']
         else:
             cml = [
-                "cp -r "+TO+"/extract/" + SUBBOX + " " + TO+"/selfcal/" + BOX + '.' + N,
+                "cp -r "+TO+"/extract/" + BOX + '/' + SUBBOX + " " + TO+"/selfcal/" + BOX + '.' + N,
                 "cd "+TO+"/selfcal/" + BOX + '.' + N,
                 "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX]
         os.system("mkdir " + TO+"/selfcal/" + BOX + '.' + N)
