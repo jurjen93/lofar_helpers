@@ -18,4 +18,4 @@ if not args.ms_out:
 else:
     msout = args.ms_out
 
-os.system("DPPP msin={MSIN} msout={MSOUT} msout.storagemanager=dysco steps=[pf] pf.type=preflagger pf.chan={FREQCHAN}".format(MSIN=args.ms_in, MSOUT=msout, FREQCHAN=args.frequency_flag))
+os.system("DPPP msin={MSIN} msout={MSOUT} msout.storagemanager=dysco steps=[pf] pf.type=preflagger pf.chan=[15..19]".format(MSIN=args.ms_in, MSOUT=msout, FREQCHAN=args.frequency_flag))
