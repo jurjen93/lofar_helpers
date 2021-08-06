@@ -35,13 +35,13 @@ if len(box_archives) == 6:
             cml = [
                 "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/supporting_scripts/flag_time.py -tf 0 1500 -msin "+TO+"/extract/" + BOX + '/' + SUBBOX+" -msout "+TO+"/selfcal/"+BOX + '.' + N+'/'+SUBBOX,
                 "cd "+TO+"/selfcal/" + BOX + '.' + N,
-                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX+'.goodtimes']
+                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX]
         elif ct.table(TO+"/extract/" + BOX + '/' + SUBBOX).getcol('TIME')[0] in CUTFREQS:
             print('Cutting freq for '+SUBBOX)
             cml = [
                 "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/supporting_scripts/flag_freq.py -ff='[15..19]' -msin "+TO+"/extract/" + BOX + '/' + SUBBOX+" -msout "+TO+"/selfcal/"+BOX + '.' + N+'/'+SUBBOX,
                 "cd "+TO+"/selfcal/" + BOX + '.' + N,
-                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX+'.goodtimes']
+                "singularity exec -B " + SING_BIND + " " + SING_IMAGE + " python "+args.script_path+"/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath="+args.script_path+" --autofrequencyaverage-calspeedup='True' "+SUBBOX]
         else:
             cml = [
                 "cp -r "+TO+"/extract/" + BOX + '/' + SUBBOX + " " + TO+"/selfcal/" + BOX + '.' + N,
