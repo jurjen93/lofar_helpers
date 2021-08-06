@@ -3353,7 +3353,7 @@ def calibrateandapplycal(mslist, selfcalcycle, args, solint_list, nchan_list, so
        
        print(parmdbmergename,parmdbmergelist[msnumber],ms)
        h5_merger.merge_h5(h5_out=parmdbmergename,h5_tables=parmdbmergelist[msnumber],ms_files=ms,\
-                          convert_tec=True, make_new_direction=False)
+                          convert_tec=True, merge_all_in_one=True)
        
        #testing only
        #applycal(ms, parmdbmergename, msincol='DATA',msoutcol='CORRECTED_DATA')
