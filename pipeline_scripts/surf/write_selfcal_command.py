@@ -19,9 +19,6 @@ SING_BIND = "/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts"
 
 box_archives = sorted([b.split('/')[-1] for b in glob(TO + '/extract/*' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')])
 
-while len(box_archives) != 6:
-    time.sleep(5)
-
 #starting times fom measurement sets that have to be cutted for time
 CUTTIMES = [5019387068.011121, 5017577408.011121, 5020506668.011121]
 
