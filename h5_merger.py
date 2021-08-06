@@ -1,8 +1,4 @@
 """
-LAST UPDATE: 16-7-2021
-
-IMPORTANT: PYTHON 3 VERSION WORKS BEST, PYTHON 2 RAISES ISSUES IN DIRECTION ORDERS
-
 After one has created solution files from self calling on the extracted boxes,
 one can use this script to merge solution files
 Do this by importing the function merge_h5 from this script:

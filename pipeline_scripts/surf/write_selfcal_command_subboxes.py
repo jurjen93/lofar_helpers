@@ -1,6 +1,5 @@
 from argparse import ArgumentParser
 from glob import glob
-import time
 import os
 import casacore.tables as ct
 

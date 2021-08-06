@@ -4,10 +4,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --array=2-11
+#SBATCH --array=12-82%10
 
-
-FIELD=$1 #L626678
+FIELD=$1
 TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts
 

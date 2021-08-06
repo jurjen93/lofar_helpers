@@ -15,4 +15,4 @@ done
 START="$(date -u +%s)"
 srun ${TO}/box_${N}.${SLURM_ARRAY_TASK_ID}/command.sh
 END="$(date -u +%s)"
-echo "Extracted in $((${END}-${START})) seconds" > ${TO}/finished/box_${N}.${SLURM_ARRAY_TASK_ID}.txt
+echo "Selfcal in $((${END}-${START})) seconds" > ${TO}/finished/box_${N}.${SLURM_ARRAY_TASK_ID}.txt
