@@ -27,11 +27,12 @@ os.system("mkdir " + TO + "/selfcal/" + BOX)
 for MS in ms_archives:
     if ct.table(TO + "/extract/" + BOX + '/'+ MS).getcol('TIME')[0] in CUTTIMES:
         print('Cutting time for '+MS)
-        os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + TO + "/extract/" + MS + " -msout " + TO + "/selfcal/" + BOX + '/' + MS + '.goodtimes')
+        os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + TO + "/extract/" + BOX + '/' + MS + " -msout " + TO + "/selfcal/" + BOX + '/' + MS + '.goodtimes')
     elif ct.table(TO + "/extract/" + BOX + '/' + MS).getcol('TIME')[0] in CUTFREQS:
         print('Cutting freq for ' + MS)
         os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + TO + "/extract/" + BOX + '/' + MS+" -msout " + TO + "/selfcal/" + BOX + '/' + MS + '.goodfreq')
     else:
         os.system("cp -r " + TO + "/extract/" + BOX + '/' + MS + " " + TO + "/selfcal/" + BOX)
 
-os.system("cd " + TO + "/selfcal/" + BOX + " && python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b " + TO + "/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup='True' " + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')
+MS = [ms.split('/')[-1] for ms in glob(TO + '/selfcal/' + BOX + '/' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')]
+os.system("cd " + TO + "/selfcal/" + BOX + " && python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b " + TO + "/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup='True' " + ' '.join(MS))
