@@ -6,7 +6,7 @@
 BOX=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
 SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
-SCRIPT_FOLDER=SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
+SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 TO=/project/lofarvwf/Share/jdejong/output/A399/selfcal
 
 START="$(date -u +%s)"
