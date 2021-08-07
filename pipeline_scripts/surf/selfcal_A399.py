@@ -34,4 +34,4 @@ for MS in ms_archives:
     else:
         os.system("cp -r " + TO + "/extract/" + MS + " " + TO + "/selfcal/" + BOX)
 
-os.system("cd " + TO + "/selfcal/" + BOX + " && python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b "+TO+"/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup='True' " + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')
+os.system("cd " + TO + "/selfcal/" + BOX + " && python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b " + TO + "/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup='True' " + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')
