@@ -35,4 +35,7 @@ for MS in ms_archives:
         os.system("cp -r " + TO + "/extract/" + BOX + '/' + MS + " " + TO + "/selfcal/" + BOX)
 
 MS = [ms.split('/')[-1] for ms in glob(TO + '/selfcal/' + BOX + '/' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')]
-os.system("cd " + TO + "/selfcal/" + BOX + " && python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b " + TO + "/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup='True' " + ' '.join(MS))
+while len(MS) != 6:
+    MS = [ms.split('/')[-1] for ms in glob(TO + '/selfcal/' + BOX + '/' + BOX + '.dysco.sub.shift.avg.weights.ms.archive*')]
+
+os.system("cd " + TO + "/selfcal/" + BOX + " && python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b " + TO + "/boxes/" + BOX + ".reg --auto --imager=DDFACET --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup='True' ms " + ' '.join(MS))
