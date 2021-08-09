@@ -490,6 +490,8 @@ class MergeH5:
                         tp = tp.reshape((1, tp.shape[0], 1, tp.shape[1]))
                         # Now add the tecs to the total phase correction for this direction.
                         if 'dir' in self.axes_current:  # this line is trivial and could be removed
+                            print(tp.shape)
+                            print(self.phases.shape)
                             self.phases[idx, ...] += tp[0, ...]
                         else:
                             print(tp.shape)
