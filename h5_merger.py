@@ -106,6 +106,8 @@ class MergeH5:
 
         self.convert_tec = convert_tec  # convert tec or not
         self.merge_all_in_one = merge_all_in_one
+        print(self.convert_tec)
+        print('CHECK DITTTTTTTTTTTTTTTTTT')
 
         self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time']  # standard solax order to do our manipulations
 
