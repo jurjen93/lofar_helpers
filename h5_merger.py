@@ -20,8 +20,6 @@ merge_all_in_one ---> merge all in one direction (default is False), if True it 
 lin2circ ---> convert linear to circular polarization (default is False)
 circ2lin ---> convert circular to linear polarization (default is False)
 
-TODO:
-- bug fix python 2 with opening tables
 """
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
