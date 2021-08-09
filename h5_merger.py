@@ -21,6 +21,9 @@ lin2circ ---> convert linear to circular polarization (default is False)
 circ2lin ---> convert circular to linear polarization (default is False)
 """
 
+# TODO: test rotation (fulljones)
+# TODO: test convert_tec==False  ---> now they are deleted if convert_tec==false
+
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
 import os
@@ -34,12 +37,6 @@ import re
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims
 
 __all__ = ['merge_h5', 'str2bool']
-
-
-# TODO: Weights keep on 1 -> future investigation
-# TODO: Boxes -> Euclidean distance van de fluxes
-# TODO: test rotation (fulljones)
-# TODO: test convert_tec==False
 
 def remove_numbers(inp):
     return "".join(re.findall("[a-zA-z]+", inp))
@@ -166,7 +163,7 @@ class MergeH5:
             tp_amplitude = [li for li in soltabs if 'amplitude' in li]
             tp_rotation = [li for li in soltabs if 'rotation' in li]
             return [sorted(tp_phase, key=lambda x: float(x[-3:])),
-                    sorted(tp_tec, key=lambda x: float(x[-3:])),
+                    # sorted(tp_tec, key=lambda x: float(x[-3:])),
                     sorted(tp_amplitude, key=lambda x: float(x[-3:])),
                     sorted(tp_rotation, key=lambda x: float(x[-3:]))]
 
@@ -490,12 +487,8 @@ class MergeH5:
                         tp = tp.reshape((1, tp.shape[0], 1, tp.shape[1]))
                         # Now add the tecs to the total phase correction for this direction.
                         if 'dir' in self.axes_current:  # this line is trivial and could be removed
-                            print(tp.shape)
-                            print(self.phases.shape)
                             self.phases[idx, ...] += tp[0, ...]
                         else:
-                            print(tp.shape)
-                            print(self.phases.shape)
                             self.phases[idx, :, :] += tp
 
                 elif st.getType() == 'phase' or st.getType() == 'rotation':
