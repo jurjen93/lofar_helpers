@@ -5,7 +5,7 @@
 #SBATCH --job-name=array
 #SBATCH --output=array_%A_%a.out
 #SBATCH --error=array_%A_%a.err
-#SBATCH --array=1-10
+#SBATCH --array=11-82
 
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
 SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
