@@ -677,7 +677,17 @@ class MergeH5:
                     for ax in T['/'.join([ss, st])]:
                         if 'dir' == ax:
                             H = tables.open_file(self.file, 'r+')
-                            T['/'.join([ss, st, ax])][:] = [c[0] for c in H.root.sol000.source[:]]
+                            if ss=='sol000':
+                                if st=='phase000': # the following if-elif-else statements are ugly but there is a bug in h5py which isn't resolved yet.
+                                    H.root.sol000.phase000.dir[:] = [c[0] for c in H.root.sol000.source[:]]
+                                elif st=='tec000':
+                                    H.root.sol000.tec000.dir[:] = [c[0] for c in H.root.sol000.source[:]]
+                                elif st=='amplitude000':
+                                    H.root.sol000.amplitude000.dir[:] = [c[0] for c in H.root.sol000.source[:]]
+                            else:
+                                print('ERROR: {ss}!=sol000 and you are using Python 2.\n'
+                                      'This means your direction table could be wrongly ordered.\n'
+                                      'Best solution is to use Python 3.'.format(ss=ss))
                             H.close()
         T.close()
         return self
