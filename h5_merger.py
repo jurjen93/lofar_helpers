@@ -163,6 +163,7 @@ class MergeH5:
         else:
             tp_phase = [li for li in soltabs if 'phase' in li]
             tp_tec = [li for li in soltabs if 'tec' in li]
+            print(tp_tec)
             tp_amplitude = [li for li in soltabs if 'amplitude' in li]
             tp_rotation = [li for li in soltabs if 'rotation' in li]
             return [sorted(tp_phase, key=lambda x: float(x[-3:])),
