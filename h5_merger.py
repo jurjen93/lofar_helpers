@@ -663,6 +663,10 @@ class MergeH5:
         return DPPP_axes
 
     def order_directions(self):
+        """
+        This method will be called when the user is using python 2, as there is a bug in the direction that we can resolve
+        with this extra step.
+        """
         import h5py
         import tables
         from numpy import sort
