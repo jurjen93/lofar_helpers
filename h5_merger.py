@@ -652,6 +652,9 @@ class MergeH5:
 
         return DPPP_axes
 
+    def order_directions(self):
+        pass
+
     def create_new_dataset(self, solset, soltab):
         """
         Create a new dataset in the h5 table
@@ -666,6 +669,9 @@ class MergeH5:
             solsetout = self.h5_out.getSolset(solset)
         else:
             solsetout = self.h5_out.makeSolset(solset)
+
+        if sys.version_info.major==2:
+            print('You are using python 2')
 
         sources = list({i: (round(j[0], 4), round(j[1], 4)) for i, j in self.directions.items()}.items())
         # validate if new source directions are not already existing
