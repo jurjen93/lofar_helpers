@@ -12,4 +12,4 @@ TO=/project/lofarvwf/Share/jdejong/output/A399/selfcal
 START="$(date -u +%s)"
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_A399.py --box ${BOX}
 END="$(date -u +%s)"
-echo "Selfcal in $((${END}-${START})) seconds" > ${TO}/finished/box_${N}.txt
+echo "Selfcal in $((${END}-${START})) seconds" > ${TO}/finished/box_${BOX}.txt
