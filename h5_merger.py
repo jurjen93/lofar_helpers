@@ -19,7 +19,6 @@ convert_tec ---> convert tec to phase
 merge_all_in_one ---> merge all in one direction (default is False), if True it adds everything in one direction
 lin2circ ---> convert linear to circular polarization (default is False)
 circ2lin ---> convert circular to linear polarization (default is False)
-
 """
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
@@ -163,11 +162,11 @@ class MergeH5:
                     sorted(sorted(tp_phasetec), key=lambda x: float(x[-3:]))]
         else:
             tp_phase = [li for li in soltabs if 'phase' in li]
-            # tp_tec = [li for li in soltabs if 'tec' in li]
+            tp_tec = [li for li in soltabs if 'tec' in li]
             tp_amplitude = [li for li in soltabs if 'amplitude' in li]
             tp_rotation = [li for li in soltabs if 'rotation' in li]
             return [sorted(tp_phase, key=lambda x: float(x[-3:])),
-                    # sorted(tp_tec, key=lambda x: float(x[-3:])),
+                    sorted(tp_tec, key=lambda x: float(x[-3:])),
                     sorted(tp_amplitude, key=lambda x: float(x[-3:])),
                     sorted(tp_rotation, key=lambda x: float(x[-3:]))]
 
@@ -747,6 +746,7 @@ class MergeH5:
             solsetout.makeSoltab('amplitude', axesNames=self.axes_new, axesVals=axes_vals, vals=self.gains,
                                  weights=weights)
         if 'tec' in soltab:
+            print('ADD TEC')
             if self.axes_new.index('freq') == 1:
                 self.phases = self.phases[:, 0, :, :]
             elif self.axes_new.index('freq') == 3:
