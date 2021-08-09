@@ -18,7 +18,7 @@ TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
 
 #START EXTRACT
 echo "-----STARTED EXTRACT-----"
-if [[ ! ${BOX} > ${TOTAL_BOXES} ]]
+if [[ ! ${BOX} -gt ${TOTAL_BOXES} ]]
 then
   mkdir ${TO}/extract/box_${BOX}
   cp ${TO}/extract/data_archive.tar.gz ${TO}/extract/box_${BOX}/
