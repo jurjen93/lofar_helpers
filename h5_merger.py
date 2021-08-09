@@ -669,7 +669,7 @@ class MergeH5:
         T = h5py.File(self.file, 'r+')
         for ss in T.keys():
             T[ss+'/source'][:] = sort(T[ss+'/source'][:])
-            if '00' in T[ss+'/source'][:]: # for some reason it sorts randomly ascending or descending, this extra step is a fix for that
+            if '00' in ss: # for some reason it sorts randomly ascending or descending, this extra step is a fix for that
                 T[ss + '/source'][:] = sort(T[ss + '/source'][:])
             for st in T[ss].keys():
                 if self.has_integer(st):
