@@ -1,13 +1,15 @@
 #!/bin/bash
 
+number=$1
 
-for ((N=1;N<=20;N++))
-do
-  until [[ -f /home/jurjen/Documents/Python/lofar_helpers/test_${N}.txt ]]
-  do
-    sleep 2
-    echo "Waiting for ${N}"
-  done &
-  echo "FINISHED ${N}"
-done
-wait
+TOTAL_BOXES=$(ls -dq boxes/box*.reg | wc -l)
+
+if [[ ! ${number} > ${TOTAL_BOXES} ]]
+then
+  echo "HOI"
+fi
+
+if [[ ! ${number} -gt ${TOTAL_BOXES} ]]
+then
+  echo "HOI2"
+fi

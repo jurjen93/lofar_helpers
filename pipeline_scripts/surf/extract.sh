@@ -4,7 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --array=12-82%10
+#SBATCH --array=12-82%20
 
 FIELD=$1
 TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
@@ -18,7 +18,7 @@ TOTAL_BOXES=$(ls -dq ${TO}/boxes/box*.reg | wc -l)
 
 #START EXTRACT
 echo "-----STARTED EXTRACT-----"
-if [[ ! ${SLURM_ARRAY_TASK_ID} > ${TOTAL_BOXES} ]]
+if [[ ! ${SLURM_ARRAY_TASK_ID} -gt ${TOTAL_BOXES} ]]
 then
   mkdir ${TO}/extract/box_${SLURM_ARRAY_TASK_ID}
   cp ${TO}/extract/data_archive.tar.gz ${TO}/extract/box_${SLURM_ARRAY_TASK_ID}/
