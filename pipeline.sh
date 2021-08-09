@@ -12,7 +12,7 @@ SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
 
 #CREATE FILES [SHOULD HAVE ALREADY BEEN DONE]
-#mkdir ${TO}
+#mkdir -p ${TO}
 
 #CREATE BOXES
 echo "Create boxes..."
@@ -27,14 +27,13 @@ echo "Succesfully created boxes..."
 
 #EXTRACT WITH PARALLEL ARRAY
 echo "There are ${TOTAL_BOXES} boxes to extract"
-mkdir ${TO}/extract
-mkdir ${TO}/extract/finished
+mkdir -p ${TO}/extract
+mkdir -p ${TO}/extract/finished
 sbatch ${SCRIPT_FOLDER}/pipeline_scripts/surf/extract.sh ${FIELD} &
 wait &
 
 #SELFCAL
-mkdir ${TO}/selfcal
-mkdir ${TO}/selfcal/finished
+mkdir -p ${TO}/selfcal && mkdir -p ${TO}/selfcal/finished
 for ((N=1;N<=${TOTAL_BOXES};N++))
 do
   until [[ -f ${TO}/extract/finished/box_${N}.txt ]]
