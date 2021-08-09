@@ -106,8 +106,6 @@ class MergeH5:
 
         self.convert_tec = convert_tec  # convert tec or not
         self.merge_all_in_one = merge_all_in_one
-        print(self.convert_tec)
-        print('CHECK DITTTTTTTTTTTTTTTTTT')
 
         self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time']  # standard solax order to do our manipulations
 
@@ -165,7 +163,6 @@ class MergeH5:
         else:
             tp_phase = [li for li in soltabs if 'phase' in li]
             tp_tec = [li for li in soltabs if 'tec' in li]
-            print(tp_tec)
             tp_amplitude = [li for li in soltabs if 'amplitude' in li]
             tp_rotation = [li for li in soltabs if 'rotation' in li]
             return [sorted(tp_phase, key=lambda x: float(x[-3:])),
@@ -495,6 +492,8 @@ class MergeH5:
                         if 'dir' in self.axes_current:  # this line is trivial and could be removed
                             self.phases[idx, ...] += tp[0, ...]
                         else:
+                            print(tp.shape)
+                            print(self.phases.shape)
                             self.phases[idx, :, :] += tp
 
                 elif st.getType() == 'phase' or st.getType() == 'rotation':
