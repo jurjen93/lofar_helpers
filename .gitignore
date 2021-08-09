@@ -18,3 +18,5 @@ __pycache__
 *.pyc
 #surveys
 database/surveys
+#test scripts
+test.sh

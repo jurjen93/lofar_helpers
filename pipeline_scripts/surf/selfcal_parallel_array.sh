@@ -5,7 +5,7 @@
 #SBATCH --job-name=array
 #SBATCH --output=array_%A_%a.out
 #SBATCH --error=array_%A_%a.err
-#SBATCH --array=1-82%10
+#SBATCH --array=12-82%20
 
 SOURCE=$1 #L626678
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
