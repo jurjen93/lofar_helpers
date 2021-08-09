@@ -173,6 +173,16 @@ class MergeH5:
                     sorted(tp_amplitude, key=lambda x: float(x[-3:])),
                     sorted(tp_rotation, key=lambda x: float(x[-3:]))]
 
+    @staticmethod
+    def has_integer(input):
+        try:
+            for s in str(input):
+                if s.isdigit():
+                    return True
+            return False
+        except:
+            return False
+
     @property
     def get_allkeys(self):
         """
@@ -653,7 +663,21 @@ class MergeH5:
         return DPPP_axes
 
     def order_directions(self):
-        pass
+        import h5py
+        from numpy import sort
+
+        T = h5py.File(self.file, 'r+')
+        for ss in T.keys():
+            T[ss+'/source'][:] = sort(T[ss+'/source'][:])
+            if '00' in T[ss+'/source'][:]: # for some reason it sorts randomly ascending or descending, this extra step is a fix for that
+                T[ss + '/source'][:] = sort(T[ss + '/source'][:])
+            for st in T[ss].keys():
+                if self.has_integer(st):
+                    for ax in T['/'.join([ss, st])]:
+                        if 'dir' == ax:
+                            T['/'.join([ss, st, ax])][:] = sort(T['/'.join([ss, st, ax])][:], dtype='|S5')
+        T.close()
+        return self
 
     def create_new_dataset(self, solset, soltab):
         """
@@ -669,9 +693,6 @@ class MergeH5:
             solsetout = self.h5_out.getSolset(solset)
         else:
             solsetout = self.h5_out.makeSolset(solset)
-
-        if sys.version_info.major==2:
-            print('You are using python 2')
 
         sources = list({i: (round(j[0], 4), round(j[1], 4)) for i, j in self.directions.items()}.items())
         # validate if new source directions are not already existing
@@ -877,6 +898,10 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge
 
         Pol.make_new_gains(lin2circ, circ2lin)
         print('{file} has been created'.format(file=h5_output_name))
+
+    if sys.version_info.major == 2:
+        print('You are using python 2. For this version we need to do an extra reordering step.')
+        merge.order_directions()
 
 
 if __name__ == '__main__':
