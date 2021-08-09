@@ -675,7 +675,7 @@ class MergeH5:
                 if self.has_integer(st):
                     for ax in T['/'.join([ss, st])]:
                         if 'dir' == ax:
-                            T['/'.join([ss, st, ax])][:] = sort(T['/'.join([ss, st, ax])][:], dtype='|S5')
+                            T['/'.join([ss, st, ax])][:] = sort(T['/'.join([ss, st, ax])][:])
         T.close()
         return self
 
