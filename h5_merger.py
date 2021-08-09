@@ -23,6 +23,7 @@ circ2lin ---> convert circular to linear polarization (default is False)
 
 # TODO: test rotation (fulljones)
 # TODO: test convert_tec==False  ---> now they are deleted if convert_tec==false
+# TODO: test circ2lin and vice versa
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
