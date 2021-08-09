@@ -12,7 +12,7 @@ SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 TO=/project/lofarvwf/Share/jdejong/output/A399/selfcal
 
-mkdir -p ${TO} && mkdir -p ${TO}/finished
+mkdir -p ${TO}/box_${SLURM_ARRAY_TASK_ID} && mkdir -p ${TO}/finished
 
 START="$(date -u +%s)"
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_A399.py --box ${SLURM_ARRAY_TASK_ID}
