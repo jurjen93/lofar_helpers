@@ -664,6 +664,7 @@ class MergeH5:
 
     def order_directions(self):
         import h5py
+        import tables
         from numpy import sort
 
         T = h5py.File(self.file, 'r+')
@@ -675,7 +676,19 @@ class MergeH5:
                 if self.has_integer(st):
                     for ax in T['/'.join([ss, st])]:
                         if 'dir' == ax:
-                            T['/'.join([ss, st, ax])][:] = sort(T['/'.join([ss, st, ax])][:])
+                            H = tables.open_file(self.file, 'r+')
+                            if ss=='sol000':
+                                if st=='phase000': # the following if-elif-else statements are ugly but there is a bug in h5py which isn't resolved yet.
+                                    H.root.sol000.phase000.dir[:] = sort(T['/'.join([ss, st, ax])][:])
+                                elif st=='tec000':
+                                    H.root.sol000.tec000.dir[:] = sort(T['/'.join([ss, st, ax])][:])
+                                elif st=='amplitude000':
+                                    H.root.sol000.amplitude000.dir[:] = sort(T['/'.join([ss, st, ax])][:])
+                            else:
+                                print('ERROR: {ss}!=sol000 and you are using Python 2.\n'
+                                      'This means your direction table could be wrongly ordered.\n'
+                                      'Best solution is to use Python 3.'.format(ss=ss))
+                            H.close()
         T.close()
         return self
 
