@@ -45,6 +45,9 @@ if r:
             print(BOX+': selfcal status --> '+r['selfcal_status'])
         else:
             print(BOX + ': is not self-calibrated')
+else:
+    r = sdb.db_create('recalibrating', BOX)
+    print('Created new entry: '+BOX)
 
 # update status
 if args.selfcal_inprogress:
