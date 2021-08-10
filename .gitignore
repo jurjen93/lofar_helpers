@@ -20,3 +20,5 @@ __pycache__
 database/surveys
 #test scripts
 test.sh
+#deep learning data
+/DL_data
