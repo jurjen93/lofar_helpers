@@ -2,14 +2,16 @@
 Check database if box needs to be done or not
 
 Script example to put selfcal in progress status for box 21:
-python database.py --box=21 --selfcal_inprogress
+python db_update.py --box=21 --selfcal_inprogress
+
+Script example to check selfcal and extract status for box 12:
+python db_update.py --box=12 --check_selfcal --check_extract
 
 Use following status:
 * DONE --> for fully finished
 * INPROGRESS --> if selfcal or extract is in progress
 * None --> if not existing
 
-CHECK https://github.com/mhardcastle/lotss-query/blob/master/surveys_db.py FOR FULL CODE
 """
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
@@ -35,7 +37,7 @@ sdb = SurveysDB()
 # check if box exists in database
 r = sdb.db_get(TABLE, BOX)
 if r:
-    print(BOX+' exists in recalibration database')
+    print(BOX+' exists in recalibrating database')
     # check if extracted and self-calibrated
     if args.check_extract:
         if r['extract_status']:
@@ -48,7 +50,7 @@ if r:
         else:
             print(BOX + ': is not self-calibrated')
 else:
-    query = 'INSERT INTO recalibrating(id) values '+BOX
+    query = 'INSERT INTO recalibrating(id) values (BOX)'.format(BOX=BOX)
     print('EXECUTING QUERY:\n' + query)
     sdb.execute(query)
 

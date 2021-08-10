@@ -1,3 +1,7 @@
+"""
+This code is based on https://github.com/mhardcastle/lotss-query/blob/master/surveys_db.py
+"""
+
 from __future__ import print_function
 from builtins import object
 import sshtunnel
@@ -11,6 +15,7 @@ try:
 except ImportError:
     import pymysql as mdb
     import pymysql.cursors as mdbcursors
+
 
 class SurveysDB(object):
     '''Database for recalibration'''
@@ -26,14 +31,14 @@ class SurveysDB(object):
 
     def close(self):
         # if 'closed' doesn't exist, then we are most likely being called through __del__ due to a failure in the init call. So skip the rest.
-        if hasattr(self,'closed'):
+        if hasattr(self, 'closed'):
             if not self.closed:
                 if not self.readonly:
                     self.cur.execute('unlock tables')
                 self.con.close()
                 if self.usetunnel:
                     self.tunnel.stop()
-                self.closed=True # prevent del from trying again
+                self.closed = True  # prevent del from trying again
 
     def __init__(self, readonly=False, verbose=False, survey=None):
 
@@ -134,18 +139,18 @@ class SurveysDB(object):
             print(args)
         self.cur.execute(*args)
 
-    def db_get(self,table,id):
-        table=self.check_table(table)
-        self.execute('select * from '+table+' where id=%s',(id,))
-        result=self.cur.fetchall()
-        if len(result)==0:
+    def db_get(self, table, id):
+        table = self.check_table(table)
+        self.execute('select * from ' + table + ' where id=%s', (id,))
+        result = self.cur.fetchall()
+        if len(result) == 0:
             return None
         else:
             return result[0]
 
-    def check_table(self,table):
+    def check_table(self, table):
         if table not in self.tables:
-            table+='s'
+            table += 's'
             if table not in self.tables:
                 raise RuntimeError('Unknown table %s requested' % table)
         return table
