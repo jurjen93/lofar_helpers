@@ -9,11 +9,12 @@ Use following status:
 * INPROGRESS --> if selfcal or extract is in progress
 * None --> if not existing
 
+CHECK https://github.com/mhardcastle/lotss-query/blob/master/surveys_db.py FOR FULL CODE
 """
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
-from surveys_db import SurveysDB
+from recalibration_db import SurveysDB
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
@@ -38,12 +39,12 @@ if r:
     # check if extracted and self-calibrated
     if args.check_extract:
         if r['extract_status']:
-            print(BOX+': extract status --> '+r['extract_status'])
+            print(BOX + ': extract status --> '+r['extract_status'])
         else:
             print(BOX + ': is not extracted')
     if args.check_selfcal:
         if r['selfcal_status']:
-            print(BOX+': selfcal status --> '+r['selfcal_status'])
+            print(BOX + ': selfcal status --> '+r['selfcal_status'])
         else:
             print(BOX + ': is not self-calibrated')
 else:
