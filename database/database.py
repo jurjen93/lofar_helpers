@@ -26,14 +26,13 @@ parser.add_argument('--selfcal_done', action='store_true', help='update selfcal 
 parser.add_argument('--extract_done', action='store_true', help='update extract status to DONE')
 args = parser.parse_args()
 
+TABLE = 'recalibrating'
 BOX = 'box_'+str(args.box)
 
 sdb = SurveysDB()
 
 # check if box exists in database
-r = sdb.db_get('recalibrating', BOX)
-print(r['selfcal_status'])
-print(r['extract_status'])
+r = sdb.db_get(TABLE, BOX)
 if r:
     print(BOX+' exists in recalibration database')
     # check if extracted and self-calibrated
@@ -48,22 +47,22 @@ if r:
         else:
             print(BOX + ': is not self-calibrated')
 else:
-    r = sdb.db_create('recalibrating', BOX)
-    print('Created new entry: '+BOX)
+    query = 'INSERT INTO recalibrating(id) values '+BOX
+    print('EXECUTING QUERY:\n' + query)
+    sdb.execute(query)
 
 # update status
 sdb.readonly = False
-if args.selfcal_inprogress:
-    sdb.db_set('recalibrating', {'id': BOX, 'selfcal_status': 'INPROGRESS'})
-    print(BOX + ': selfcal status updated --> INPROGRESS')
-if args.extract_inprogress:
-    sdb.db_set('recalibrating', {'id': BOX, 'extract_status': 'INPROGRESS'})
-    print(BOX + ': extract status updated --> INPROGRESS')
-if args.selfcal_done:
-    sdb.db_set('recalibrating', {'id': BOX, 'selfcal_status': 'DONE'})
-    print(BOX + ': selfcal status updated --> DONE')
-if args.extract_done:
-    sdb.db_set('recalibrating', {'id': BOX, 'extract_status': 'DONE'})
-    print(BOX + ': extract status updated --> DONE')
+if args.selfcal_inprogress or args.extract_inprogress or args.selfcal_done or args.extract_done:
+    if args.selfcal_inprogress:
+        query = 'UPDATE recalibrating SET selfcal_status=INPROGRESS WHERE id='+BOX
+    if args.extract_inprogress:
+        query = 'UPDATE recalibrating SET extract_status=INPROGRESS WHERE id='+BOX
+    if args.selfcal_done:
+        query='UPDATE recalibrating SET selfcal_status=DONE WHERE id='+BOX
+    if args.extract_done:
+        query='UPDATE recalibrating SET extract_status=DONE WHERE id='+BOX
+    print('EXECUTING QUERY:\n'+query)
+    sdb.execute(query)
 
 sdb.close()
