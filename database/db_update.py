@@ -58,13 +58,13 @@ else:
 sdb.readonly = False
 if args.selfcal_inprogress or args.extract_inprogress or args.selfcal_done or args.extract_done:
     if args.selfcal_inprogress:
-        query = 'UPDATE recalibrating SET selfcal_status=INPROGRESS WHERE id='+BOX
+        query = "UPDATE recalibrating SET selfcal_status=INPROGRESS WHERE id='{BOX}'".format(BOX=BOX)
     if args.extract_inprogress:
-        query = 'UPDATE recalibrating SET extract_status=INPROGRESS WHERE id='+BOX
+        query = "UPDATE recalibrating SET extract_status=INPROGRESS WHERE id='{BOX}'".format(BOX=BOX)
     if args.selfcal_done:
-        query='UPDATE recalibrating SET selfcal_status=DONE WHERE id='+BOX
+        query="UPDATE recalibrating SET selfcal_status=DONE WHERE id='{BOX}'".format(BOX=BOX)
     if args.extract_done:
-        query='UPDATE recalibrating SET extract_status=DONE WHERE id='+BOX
+        query="UPDATE recalibrating SET extract_status=DONE WHERE id='{BOX}'".format(BOX=BOX)
     print('EXECUTING QUERY:\n'+query)
     sdb.execute(query)
 
