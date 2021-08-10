@@ -608,7 +608,7 @@ if __name__ == '__main__':
 
         # make DL data
         if args.make_DL_food:
-            np.save("{LOCATION}/DL_data/numpy/{NAME}_box_".format(LOCATION=folder, NAME=args.file.split('/')[-1])+str(m), image.before)
+            np.save("{LOCATION}/DL_data/numpy/{NAME}_box_".format(LOCATION=folder, NAME=args.file.split('/')[-1].split('.fits')[0])+str(m), image.before)
             matplotlib.use("TkAgg")
             plt.ion()
             plt.imshow(image.before,
@@ -617,11 +617,11 @@ if __name__ == '__main__':
                        cmap='CMRmap')
             plt.axis('off')
             plt.show()
-            plt.savefig("{LOCATION}/DL_data/png/{NAME}_box_".format(LOCATION=folder, NAME=args.file.split('/')[-1])+str(m)+'.png',)
+            plt.savefig("{LOCATION}/DL_data/png/{NAME}_box_".format(LOCATION=folder, NAME=args.file.split('/')[-1].split('.fits')[0])+str(m)+'.png',)
 
             with open("{LOCATION}/DL_data/DL_data.csv".format(LOCATION=folder), 'a+') as file:
                 writer = csv.writer(file)
-                writer.writerow([args.file.split('/')[-1]+"box_"+str(m),
+                writer.writerow([args.file.split('/')[-1].split('.fits')[0]+"_box_"+str(m),
                                  image.before.shape[0],
                                  int(input("Recalibration? (y/n):")=='y')])
             matplotlib.use('Agg')
