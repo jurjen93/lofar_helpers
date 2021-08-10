@@ -50,7 +50,7 @@ if r:
         else:
             print(BOX + ': is not self-calibrated')
 else:
-    query = 'INSERT INTO recalibrating(id) values ({BOX})'.format(BOX=BOX)
+    query = "INSERT INTO recalibrating(id) VALUES ('{BOX}')".format(BOX=BOX)
     print('EXECUTING QUERY:\n' + query)
     sdb.execute(query)
 
