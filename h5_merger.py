@@ -918,7 +918,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge
 
 
 if __name__ == '__main__':
-    from argparse import ArgumentParser, ArgumentTypeError
+    from argparse import ArgumentParser
 
     def str2bool(v):
         v = str(v)
