@@ -32,6 +32,8 @@ sdb = SurveysDB()
 
 # check if box exists in database
 r = sdb.db_get('recalibrating', BOX)
+print(r['selfcal_status'])
+print(r['extract_status'])
 if r:
     print(BOX+' exists in recalibration database')
     # check if extracted and self-calibrated
