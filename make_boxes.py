@@ -29,6 +29,8 @@ from astropy import units as u
 from argparse import ArgumentParser
 import warnings
 from pandas import DataFrame, concat, read_csv
+import csv
+import sys
 
 __all__ = ['']
 
@@ -36,20 +38,44 @@ warnings.filterwarnings("ignore")
 
 parser = ArgumentParser()
 parser.add_argument('-f', '--file', type=str, help='fitsfile name')
-parser.add_argument('-l', '--location', type=str, help='data location folder name')
+parser.add_argument('-l', '--location', type=str, help='data location folder name', default='.')
 parser.add_argument('--no_images', action='store_true', help='store images')
+parser.add_argument('--make_DL_food', action='store_true', help='store images for creating the DL model')
 parser.add_argument('--ds9', action='store_true', help='open ds9 to interactively check and change the box selection')
 parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
 parser.add_argument('-mb', '--max_boxes', type=int, default=999, help='Set max number of boxes that can be made')
 args = parser.parse_args()
 print(args)
 
-if args.location:
-    folder = args.location
-    if folder[-1]=='/':
-        folder=folder[0:-1]
-else:
-    folder = '.'
+if sys.version_info.major == 2:
+    print('ERROR: This code only works for Python 3. Please switch.\n.....ENDED.....')
+    sys.exit()
+
+folder = args.location
+if folder[-1] == '/':
+    folder = folder[0:-1]
+
+if args.make_DL_food:
+    os.system('mkdir -p {LOCATION}/DL_data/numpy'.format(LOCATION=folder))
+    os.system('mkdir -p {LOCATION}/DL_data/png'.format(LOCATION=folder))
+    if not os.path.isfile("{LOCATION}/DL_data/DL_data.csv".format(LOCATION=folder)):
+        with open("{LOCATION}/DL_data/DL_data.csv".format(LOCATION=folder), 'w') as file:
+            writer = csv.writer(file)
+            writer.writerow(["Name", "Size", "Recalibrate"])
+    # try: # Install tkinter/tk for using interactive window mode
+    #     import importlib
+    #     importlib_found = importlib.util.find_spec("tk") is not None
+    #     if not importlib_found:
+    #         os.system('pip install --user tk')
+    #     try:
+    #         import tk
+    #         use_tk = True
+    #     except ModuleNotFoundError:
+    #         use_tk = False
+    # except:
+    #     print('ERROR: tk cannot be installed')
+    #     use_tk = False
+
 
 #check if folder exists and create if not
 folders = folder.split('/')
@@ -577,7 +603,28 @@ if __name__ == '__main__':
         # set values for source of interest
         image.pix_x, image.pix_y, image.flux, image.image_number = p['pix_x'], p['pix_y'], p['flux'], n
 
+        # make initial cutout
         image.make_initial_box()
+
+        # make DL data
+        if args.make_DL_food:
+            np.save("{LOCATION}/DL_data/numpy/box_".format(LOCATION=folder)+str(m), image.before)
+            matplotlib.use("TkAgg")
+            plt.ion()
+            plt.imshow(image.before,
+                       norm=SymLogNorm(linthresh=image.vmin / 10, vmin=image.vmin / 10, vmax=image.vmax / 2),
+                       origin='lower',
+                       cmap='CMRmap')
+            plt.axis('off')
+            plt.show()
+            plt.savefig("{LOCATION}/DL_data/png/box_".format(LOCATION=folder)+str(m)+'.png',)
+
+            with open("{LOCATION}/DL_data/DL_data.csv".format(LOCATION=folder), 'a+') as file:
+                writer = csv.writer(file)
+                writer.writerow(["box_"+str(m),
+                                 image.before.shape[0],
+                                 int(input("Recalibration? (y/n):")=='y')])
+            matplotlib.use('Agg')
 
         # reposition box
         image.reposition()
@@ -645,13 +692,13 @@ if __name__ == '__main__':
         print(f'Images of boxes are in {folder}/box_images.')
     print(f'Region files are in {folder}/boxes.')
 
-    # os.system('rm {DATALOC}/source_file.csv && rm {DATALOC}/excluded_sources.csv'.format(DATALOC=args.location))
+    # os.system('rm {DATALOC}/source_file.csv && rm {DATALOC}/excluded_sources.csv'.format(DATALOC=folder))
 
     if args.ds9:
         try:
             print('Opening ds9 to verify box selections and make manual changes if needed.')
-            os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
+            os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=folder))
             print('Closed ds9.')
         except:
             print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
-                  "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=args.location))
+                  "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=folder))
