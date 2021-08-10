@@ -21,6 +21,6 @@ database/surveys
 #test scripts
 test.sh
 #deep learning data
-/DL_data
+/deeplearning/DL_data
 #pickles
 *.sav

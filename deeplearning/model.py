@@ -1,3 +1,10 @@
+"""
+Make Deep Learning model
+It dumps a pickle which should be used to decide if recalibration is needed
+"""
+
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
+
 import warnings
 warnings.filterwarnings("ignore")
 import tensorflow as tf
@@ -64,10 +71,10 @@ def evaluate_model(X_test, y_test, model):
 
 if __name__ == '__main__':
 
-    df_labels = pd.read_csv('../DL_data/DL_data.csv').set_index('Name')
+    df_labels = pd.read_csv('DL_data/DL_data.csv').set_index('Name')
     labels = []
     images = []
-    for im in glob('../DL_data/numpy/*.npy'):
+    for im in glob('DL_data/numpy/*.npy'):
         image = np.load(im)
         image /= np.max(image)
         image = image.reshape(list(image.shape) + [1])
