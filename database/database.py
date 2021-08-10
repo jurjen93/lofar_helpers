@@ -54,16 +54,16 @@ else:
 # update status
 sdb.readonly = False
 if args.selfcal_inprogress:
-    sdb.db_set(BOX, {'selfcal_status': 'INPROGRESS'})
+    sdb.db_set('recalibrating', {'id': BOX, 'selfcal_status': 'INPROGRESS'})
     print(BOX + ': selfcal status updated --> ' + r['selfcal_status'])
 if args.extract_inprogress:
-    sdb.db_set(BOX, {'extract_status': 'INPROGRESS'})
+    sdb.db_set('recalibrating', {'id': BOX, 'extract_status': 'INPROGRESS'})
     print(BOX + ': extract status updated --> ' + r['extract_status'])
 if args.selfcal_done:
-    sdb.db_set(BOX, {'selfcal_status': 'DONE'})
+    sdb.db_set('recalibrating', {'id': BOX, 'selfcal_status': 'DONE'})
     print(BOX + ': selfcal status updated --> ' + r['selfcal_status'])
 if args.extract_done:
-    sdb.db_set(BOX, {'extract_status': 'DONE'})
+    sdb.db_set('recalibrating', {'id': BOX, 'extract_status': 'DONE'})
     print(BOX + ': extract status updated --> ' + r['extract_status'])
 
 sdb.close()
