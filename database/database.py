@@ -52,7 +52,7 @@ else:
     print('Created new entry: '+BOX)
 
 # update status
-r.readonly = False
+sdb.readonly = False
 if args.selfcal_inprogress:
     r['selfcal_status'] = 'INPROGRESS'
     print(BOX + ': selfcal status updated --> ' + r['selfcal_status'])
