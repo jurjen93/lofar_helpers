@@ -4,7 +4,8 @@
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 
 BOX=$1
-SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
+#SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
+SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora27_ddf_slurmfix.sif
 SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 TO=/project/lofarvwf/Share/jdejong/output/A399/selfcal
