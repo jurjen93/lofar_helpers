@@ -10,3 +10,4 @@ mkdir ${RESULT}
 mv ${DATAFOLDER}/image_*.png ${RESULT}
 mv ${DATAFOLDER}/*box_*.dysco.sub.shift.avg.weights.ms.archive*.avg ${RESULT}
 mv ${DATAFOLDER}/plotlosoto* ${RESULT}
+mv ${DATAFOLDER}/*.h5 ${RESULT}
