@@ -11,4 +11,4 @@ mv ${DATAFOLDER}/image_*.png ${RESULT}
 mv ${DATAFOLDER}/*box_*.dysco.sub.shift.avg.weights.ms.archive*.avg ${RESULT}
 mv ${DATAFOLDER}/plotlosoto* ${RESULT}
 mv ${DATAFOLDER}/merged_selfcalcyle007*.h5 ${RESULT} # note that this is for max 8 cycles
-mv ${RESULT} ${DATAFOLDER}
+#mv ${RESULT} ${DATAFOLDER}
