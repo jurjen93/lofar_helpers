@@ -24,6 +24,7 @@ then
   cp ${TO}/extract/data_archive.tar.gz ${TO}/extract/box_${BOX}/
   cd ${TO}/extract/box_${BOX} || { echo "Missing path"; exit 1; }
   tar -xvf data_archive.tar.gz
+  rm data_archive.tar.gz
   START="$(date -u +%s)"
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${BOX}.reg --overwriteoutput -p box_${BOX}
   END="$(date -u +%s)"
