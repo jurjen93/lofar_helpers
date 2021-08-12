@@ -7,6 +7,6 @@ RESULT=${FOLDER}/box_${BOX}_result
 DATAFOLDER=${FOLDER}/box_${BOX}
 
 mkdir ${RESULT}
-mv ${RESULT}/image_*.png ${DATAFOLDER}
-mv ${RESULT}/box_*.dysco.sub.shift.avg.weights.ms.archive*.avg ${DATAFOLDER}
-mv ${RESULT}/plotlosoto* ${DATAFOLDER}
+mv ${DATAFOLDER}/image_*.png ${RESULT}
+mv ${DATAFOLDER}/box_*.dysco.sub.shift.avg.weights.ms.archive*.avg ${RESULT}
+mv ${DATAFOLDER}/plotlosoto* ${RESULT}
