@@ -7,5 +7,5 @@ RESULT=${FOLDER}/box_${BOX}_result
 DATAFOLDER=${FOLDER}/box_${BOX}
 
 mkdir ${RESULT}
-mv ${DATAFOLDER}/*box_${BOX}.dysco.sub.shift.avg.weights.ms.archive0 ${RESULT}
+mv ${DATAFOLDER}/*box_${BOX}.dysco.sub.shift.avg.weights.ms.archive* ${RESULT}
 #mv ${RESULT} ${DATAFOLDER}
