@@ -5,5 +5,5 @@ BOXEND=$2
 
 for ((N=${BOXSTART};N<=${BOXEND};N++))
 do
-  ./cleaning_extract_per_box.sh ${N}
+  source /home/lofarvwf-jdejong/scripts/lofar_helpers/cleaning/cleaning_extract_per_box.sh ${N}
 done
