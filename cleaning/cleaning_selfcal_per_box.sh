@@ -8,6 +8,13 @@ DATAFOLDER=${FOLDER}/box_${BOX}
 
 rm ${DATAFOLDER}/*.ddfcache
 rm ${DATAFOLDER}/*.py
+rm ${DATAFOLDER}/merged_selfcalcyle000*.h5
+rm ${DATAFOLDER}/merged_selfcalcyle001*.h5
+rm ${DATAFOLDER}/merged_selfcalcyle002*.h5
+rm ${DATAFOLDER}/merged_selfcalcyle003*.h5
+rm ${DATAFOLDER}/merged_selfcalcyle004*.h5
+rm ${DATAFOLDER}/merged_selfcalcyle005*.h5
+rm ${DATAFOLDER}/merged_selfcalcyle006*.h5
 
 #mkdir ${RESULT}
 #mv ${DATAFOLDER}/image_*.png ${RESULT}
