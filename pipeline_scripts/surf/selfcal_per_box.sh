@@ -11,6 +11,15 @@ N=$2 #box number
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
 SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 
+# get CPU ID currently used by self
+echo "CPU ID:"
+CPU_ID=$(cat /proc/self/stat)
+echo $CPU_ID | gawk '{print $39}'
+# find all CPU ID's that are allocated (reserved) by self
+echo "CPU ALLOC:"
+CPU_ALLOC=$(cat /proc/self/status | grep 'Cpus_allowed_list')
+echo $CPU_ALLOC
+
 echo "-----START SELFCAL-----"
 echo "Started selfcal for box_${N}"
 cd ${TO}/selfcal/
