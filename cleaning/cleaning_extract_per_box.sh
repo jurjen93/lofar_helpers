@@ -8,5 +8,5 @@ DATAFOLDER=${FOLDER}/box_${BOX}
 
 mkdir ${RESULT}
 mv ${DATAFOLDER}/*box_${BOX}.dysco.sub.shift.avg.weights.ms.archive* ${RESULT}
-rm -rf ${DATAFOLDER}
+rm -rf ${DATAFOLDER} # BE VERY CAREFUL HERE
 mv ${RESULT} ${DATAFOLDER}
