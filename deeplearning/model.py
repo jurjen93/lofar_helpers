@@ -31,11 +31,11 @@ def train_model(X_train, y_train, save=False):
     :param y_train: Training labels (Numpy array)
     """
     model = Sequential()
-    # model.add(layers.Conv2D(16, (2, 2), padding='same', activation='relu', input_shape=(img_height, img_width, 1)))
+    # model.add(layers.Conv2D(16, (3, 3), padding='same', activation='relu', input_shape=(X_train.shape[1], X_train.shape[2], X_train.shape[3])))
     # model.add(layers.MaxPooling2D()),
-    # model.add(layers.Conv2D(32, (2, 2), padding='same', activation='relu'))
+    # model.add(layers.Conv2D(32, (3, 3), padding='same', activation='relu'))
     # model.add(layers.MaxPooling2D())
-    # model.add(layers.Conv2D(64, (2, 2), padding='same', activation='relu'))
+    # model.add(layers.Conv2D(64, (3, 3), padding='same', activation='relu'))
     # model.add(layers.MaxPooling2D())
     model.add(layers.Flatten(input_shape=(X_train.shape[1], X_train.shape[2], X_train.shape[3])))
     model.add(layers.Dense(128, activation='relu'))
@@ -71,6 +71,7 @@ def evaluate_model(X_test, y_test, model):
 
 if __name__ == '__main__':
 
+    #LOAD DATA
     df_labels = pd.read_csv('DL_data/DL_data.csv').set_index('Name')
     labels = []
     images = []
@@ -90,7 +91,9 @@ if __name__ == '__main__':
     labels = np.array(labels)
     images = images
 
+    #SPLIT TRAIN/TEST
     X_train, X_test, y_train, y_test = train_test_split(images, labels, test_size=0.33, random_state=42)
+
 
     print(df_labels.Recalibrate.value_counts() / len(df_labels))
     model = train_model(X_train, y_train, save=False)

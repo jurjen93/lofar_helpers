@@ -1,5 +1,6 @@
 #!/bin/bash
-#SBATCH -c 20
+#SBATCH -c 5
+#SBATCH -p short
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 
@@ -20,6 +21,6 @@ CPU_ALLOC=$(cat /proc/self/status | grep 'Cpus_allowed_list')
 echo $CPU_ALLOC
 
 START="$(date -u +%s)"
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/selfcal_A399.py --box ${BOX}
+sleep 5
 END="$(date -u +%s)"
 echo "Selfcal in $((${END}-${START})) seconds" > ${TO}/finished/box_${BOX}.txt
