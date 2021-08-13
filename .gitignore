@@ -24,3 +24,4 @@ test.sh
 /deeplearning/DL_data
 #pickles
 *.sav
+*.npy
