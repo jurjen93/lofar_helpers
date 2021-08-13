@@ -33,4 +33,8 @@ then
 else
   :
 fi
+
+echo "#####CLEANING UP#####"
+source ${SCRIPT_FOLDER}/lofar_helpers/cleaning/cleaning_extract_per_box.sh ${SLURM_ARRAY_TASK_ID}
+
 echo "-----FINISHED EXTRACT-----"
