@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -c 30
+#SBATCH -c 32
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=FAIL
