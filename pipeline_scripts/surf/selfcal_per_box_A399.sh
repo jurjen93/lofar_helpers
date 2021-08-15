@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -c 20
+#SBATCH -c 24
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 

@@ -1,11 +1,11 @@
 #!/bin/bash
-#SBATCH -c 20
+#SBATCH -c 24
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=array
 #SBATCH --output=array_%A_%a.out
 #SBATCH --error=array_%A_%a.err
-#SBATCH --array=11-82
+#SBATCH --array=18-82
 
 SOURCE=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
