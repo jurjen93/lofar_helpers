@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -c 24
+#SBATCH -c 20
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=array
@@ -24,10 +24,8 @@ echo $CPU_ALLOC
 
 mkdir -p ${TO}/box_${SLURM_ARRAY_TASK_ID} && mkdir -p ${TO}/finished
 
-START="$(date -u +%s)"
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/prepare_data_${SOURCE}.py --box ${SLURM_ARRAY_TASK_ID}
 wait
 cd /project/lofarvwf/Share/jdejong/output/${SOURCE}/selfcal/box_${SLURM_ARRAY_TASK_ID}
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b /project/lofarvwf/Share/jdejong/output/${SOURCE}/boxes/box_${SLURM_ARRAY_TASK_ID}.reg --auto --imager=DDFACET --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup='True' *box_${SLURM_ARRAY_TASK_ID}.dysco.sub.shift.avg.weights.ms.archive*
-END="$(date -u +%s)"
-echo "Selfcal in $((${END}-${START})) seconds" > ${TO}/finished/box_${SLURM_ARRAY_TASK_ID}.txt
+echo "Selfcal box_${SLURM_ARRAY_TASK_ID} finished" > ${TO}/finished/box_${SLURM_ARRAY_TASK_ID}.txt
