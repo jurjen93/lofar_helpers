@@ -3,7 +3,7 @@
 #SBATCH -p normal
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --constraint="napels|skylake|rome"
+#SBATCH --constraint="[skylake|rome]"
 
 BOX=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
