@@ -25,11 +25,9 @@ then
   cd ${TO}/extract/box_${SLURM_ARRAY_TASK_ID} || { echo "Missing path"; exit 1; }
   tar -xvf data_archive.tar.gz
   rm -rf data_archive.tar.gz
-  START="$(date -u +%s)"
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${SLURM_ARRAY_TASK_ID}.reg --overwriteoutput -p box_${SLURM_ARRAY_TASK_ID}
-  END="$(date -u +%s)"
-  echo "Extracted box_${BOX}"
-  echo "Extracted in $((${END}-${START})) seconds" > ${TO}/extract/finished/box_${SLURM_ARRAY_TASK_ID}.txt
+  echo "Extracted box_${SLURM_ARRAY_TASK_ID}"
+  echo "Selfcal box_${SLURM_ARRAY_TASK_ID} finished" > ${TO}/finished/box_${SLURM_ARRAY_TASK_ID}.txt
 else
   :
 fi
