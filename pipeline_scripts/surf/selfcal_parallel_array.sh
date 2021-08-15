@@ -3,7 +3,8 @@
 #SBATCH -p normal
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --job-name=array
+#SBATCH --job-name=selfcal
+#SBATCH --constraint="napels|skylake|rome"
 #SBATCH --array=34-82
 
 SOURCE=$1
