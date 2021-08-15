@@ -4,7 +4,7 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=selfcal
-#SBATCH --constraint="[skylake|rome|broadwell|napels]"
+#SBATCH --constraint=amd|intel
 #SBATCH --array=34-82
 
 SOURCE=$1
