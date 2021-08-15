@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH -c 5
-#SBATCH -p short
+#SBATCH -p normal
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --nodelist=wn-hb-03
