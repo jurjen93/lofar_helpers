@@ -3,7 +3,7 @@
 #SBATCH -p short
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --constraint=intel
+#SBATCH --constraint=
 
 BOX=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
