@@ -4,8 +4,6 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=array
-#SBATCH --output=array_%A_%a.out
-#SBATCH --error=array_%A_%a.err
 #SBATCH --array=34-82
 
 SOURCE=$1
