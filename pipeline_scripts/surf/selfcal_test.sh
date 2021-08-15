@@ -1,9 +1,8 @@
 #!/bin/bash
 #SBATCH -c 5
-#SBATCH -p normal
+#SBATCH -p short
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --nodelist=wn-hb-03
 
 BOX=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif

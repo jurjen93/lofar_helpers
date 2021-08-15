@@ -5,6 +5,7 @@
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --array=12-82%20
+#SBATCH --job-name=extract
 
 FIELD=$1
 TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
