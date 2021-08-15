@@ -4,6 +4,7 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
+#SBATCH --constraint=skylake|rome
 
 FIELD=$1
 BOX=$2
