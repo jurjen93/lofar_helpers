@@ -25,11 +25,9 @@ then
   cd ${TO}/extract/box_${BOX} || { echo "Missing path"; exit 1; }
   tar -xvf data_archive.tar.gz
   rm data_archive.tar.gz
-  START="$(date -u +%s)"
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${BOX}.reg --overwriteoutput -p box_${BOX}
-  END="$(date -u +%s)"
   echo "Extracted box_${BOX}"
-  echo "Extracted in $((${END}-${START})) seconds" > ${TO}/extract/finished/box_${BOX}.txt
+  echo "Selfcal box_${BOX} finished" > ${TO}/finished/box_${BOX}.txt
 else
   :
 fi
