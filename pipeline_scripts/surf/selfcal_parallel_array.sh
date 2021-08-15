@@ -1,6 +1,6 @@
 #!/bin/bash
-#SBATCH -c 20
-#SBATCH -p infinite
+#SBATCH -c 24
+#SBATCH -p normal
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=array
