@@ -58,10 +58,10 @@ if folder[-1] == '/':
 if args.make_DL_food:
     os.system('mkdir -p {LOCATION}/DL_data/numpy'.format(LOCATION=folder))
     os.system('mkdir -p {LOCATION}/DL_data/png'.format(LOCATION=folder))
-    if not os.path.isfile("{LOCATION}/DL_data/DL_data.csv".format(LOCATION=folder)):
-        with open("{LOCATION}/DL_data/DL_data.csv".format(LOCATION=folder), 'w') as file:
+    if not os.path.isfile("{LOCATION}/DL_data/label_data.csv".format(LOCATION=folder)):
+        with open("{LOCATION}/DL_data/label_data.csv".format(LOCATION=folder), 'w') as file:
             writer = csv.writer(file)
-            writer.writerow(["Name", "Size", "Recalibrate"])
+            writer.writerow(["Name", "Recalibrate"])
     # try: # Install tkinter/tk for using interactive window mode
     #     import importlib
     #     importlib_found = importlib.util.find_spec("tk") is not None
@@ -619,10 +619,9 @@ if __name__ == '__main__':
             plt.show()
             plt.savefig("{LOCATION}/DL_data/png/{NAME}_box_".format(LOCATION=folder, NAME=args.file.split('/')[-1].split('.fits')[0])+str(m)+'.png',)
 
-            with open("{LOCATION}/DL_data/DL_data.csv".format(LOCATION=folder), 'a+') as file:
+            with open("{LOCATION}/DL_data/label_data.csv".format(LOCATION=folder), 'a+') as file:
                 writer = csv.writer(file)
                 writer.writerow([args.file.split('/')[-1].split('.fits')[0]+"_box_"+str(m),
-                                 image.before.shape[0],
                                  int(input("Recalibration? (y/n):")=='y')])
             matplotlib.use('Agg')
 

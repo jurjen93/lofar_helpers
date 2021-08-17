@@ -4,8 +4,8 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=selfcal
-#SBATCH --exclude=wn-hb[01-06]
 #SBATCH --array=34-82
+#SBATCH --constraint =intel
 
 SOURCE=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
