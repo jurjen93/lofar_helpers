@@ -25,3 +25,4 @@ test.sh
 #pickles
 *.sav
 *.npy
+*.h5
