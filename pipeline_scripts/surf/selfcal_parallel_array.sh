@@ -4,11 +4,10 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=selfcal
-#SBATCH --array=34-82
-#SBATCH --constraint="[skylake|rome]"
+#SBATCH --array=37-82
 
 SOURCE=$1
-SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
+SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf_fixed.sif
 SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}/selfcal
