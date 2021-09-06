@@ -35,7 +35,7 @@ from losoto.lib_operations import reorderAxes
 from scipy.interpolate import interp1d
 import sys
 import re
-from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims
+from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi
 
 __all__ = ['merge_h5', 'str2bool']
 
@@ -952,6 +952,8 @@ if __name__ == '__main__':
     if args.add_direction:
         add_directions = args.add_direction.replace('[','').replace(']','').split(',')
         add_directions = [float(add_directions[0]), float(add_directions[1])]
+        if add_directions[0]>pi*6 or add_directions[1]>pi*6:
+            sys.exit('ERROR: Please give values in radian')
     else:
         add_directions = None
 
