@@ -383,6 +383,8 @@ class MergeH5:
                 # get source coordinates
                 d = ss.getSou()
                 source_coords = d[list(d.keys())[dir_idx]]
+                print(source_coords)
+
                 d = 'Dir{:02d}'.format(self.n)
 
                 if self.merge_all_in_one and self.n == 1:
