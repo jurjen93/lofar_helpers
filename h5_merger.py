@@ -724,8 +724,9 @@ class MergeH5:
         sources = list({i: (round(j[0], 4), round(j[1], 4)) for i, j in self.directions.items()}.items())
         # validate if new source directions are not already existing
         current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
-        new_sources = [source for source in sources if
-                       (source[0] not in current_sources) and (float(source[1][0])>0 and float(source[1][1])>0)]
+        new_sources = [source for source in sources if source[0] not in current_sources]
+        new_sources = [source for source in new_sources if (float(source[1][0])>0 and float(source[1][1])>0)]
+
         if len(new_sources) > 0:
             solsetout.obj.source.append(new_sources)
 
