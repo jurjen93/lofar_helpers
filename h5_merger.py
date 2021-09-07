@@ -78,7 +78,7 @@ class MergeH5:
                 print('--h5_time and/or --h5_freq are given, so measurement sets will not be used.')
             T = tables.open_file(h5_time_freq)
             self.ax_time = T.root.sol000.phase000.time[:]
-            self.freq = T.root.sol000.phase000.freq[:]
+            self.ax_freq = T.root.sol000.phase000.freq[:]
             T.close()
         elif len(ms) > 0:  # check if there is a valid ms file
             t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + ms[0] + '::SPECTRAL_WINDOW')
