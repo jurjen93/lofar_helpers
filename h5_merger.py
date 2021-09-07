@@ -348,8 +348,6 @@ class MergeH5:
 
             for dir_idx in range(num_dirs):#loop over all directions
 
-                print('Merging direction {diridx}'.format(diridx=dir_idx+1))
-
                 shape = list(table_values.shape)
                 shape[dir_index] = 1
                 values = zeros(shape)
@@ -384,6 +382,7 @@ class MergeH5:
                     print('Merging direction {:f},{:f} with previous direction'.format(*source_coords))
                 elif any([array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
                     # Direction already exists, add to the existing solutions.
+                    print('Direction {:f},{:f} already exists. Adding to this direction.'.format(*source_coords))
                     idx = list([list(l) for l in self.directions.values()]).index(list(source_coords))
                 else:  # new direction
                     print('Adding new direction {:f},{:f}'.format(*source_coords))
