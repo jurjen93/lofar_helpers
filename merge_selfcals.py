@@ -3,6 +3,9 @@ __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 from h5_merger import merge_h5
 from glob import glob
 from argparse import ArgumentParser
+import tables
+
+tables.file._open_files.close_all()
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
