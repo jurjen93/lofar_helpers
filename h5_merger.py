@@ -939,7 +939,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         print('You are using python 2. For this version we need to do an extra reordering step.')
         merge.order_directions()
 
-    if tables.open_file('all_directions0.h5').root.sol000.source[:][0].nbytes>200:
+    if tables.open_file(merge.file).root.sol000.source[:][0].nbytes>200:
         print('The source table memory size is too big. We will change the dtype to reduce size (probably a Python 3 issue).')
         merge.reduce_memory_source()
 
