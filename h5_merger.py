@@ -691,9 +691,9 @@ class MergeH5:
 
     def reduce_memory_source(self):
         T = tables.open_file(self.file, 'r+')
-        tempsource = array(T.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+        new_source = array(T.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
         T.root.sol000.source._f_remove()
-        T.root.sol000.source = tempsource
+        T.create_table(T.root.sol000, 'source', new_source, "Source names and directions")
         T.close()
         return self
 
@@ -922,9 +922,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge
         print('You are using python 2. For this version we need to do an extra reordering step.')
         merge.order_directions()
 
-    # if tables.open_file('all_directions0.h5').root.sol000.source[:][0].nbytes>200:
-    #     print('The source table memory size is too big. We will change the dtype to reduce size (probably a Python 3 issue).')
-    #     merge.reduce_memory_source()
+    if tables.open_file('all_directions0.h5').root.sol000.source[:][0].nbytes>200:
+        print('The source table memory size is too big. We will change the dtype to reduce size (probably a Python 3 issue).')
+        merge.reduce_memory_source()
 
 
 if __name__ == '__main__':
