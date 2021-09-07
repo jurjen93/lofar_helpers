@@ -14,7 +14,7 @@ merge_h5(h5_out='test.h5',
 Following input parameters are possible:
 h5_out ---> the output name of the h5 table
 h5_tables ---> h5 tables that have to be merged
-ms_files ---> measurement sets
+ms_time_freq ---> measurement sets
 convert_tec ---> convert tec to phase
 merge_all_in_one ---> merge all in one direction (default is False), if True it adds everything in one direction
 lin2circ ---> convert linear to circular polarization (default is False)
@@ -47,7 +47,7 @@ def remove_numbers(inp):
 class MergeH5:
     """Merge multiple h5 tables"""
 
-    def __init__(self, h5_out, h5_tables=None, ms_files=None, convert_tec=True, merge_all_in_one=False):
+    def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False):
         """
         :param h5_out: name of merged output h5 table
         :param files: h5 tables to merge, can be both list and string
@@ -71,9 +71,16 @@ class MergeH5:
         elif type(h5_tables) == str:
             self.h5_tables = glob(h5_tables)
         else:
-            max_num_h5 = sorted(glob('*ms.archive0*.avgsolsgrid*.h5'))[-1].split('.')[-2].split('_')[-1]
-            self.h5_tables = glob('*ms.archive0*.avgsolsgrid_%s.h5' % max_num_h5)
-        if len(ms) > 0:  # check if there is a valid ms file
+            print('No h5 table given. We will use all h5 tables in current folder.')
+            self.h5_tables = glob('*.h5')
+        if h5_time_freq:
+            if len(ms)>0:
+                print('--h5_time and/or --h5_freq are given, so measurement sets will not be used.')
+            T = tables.open_file(h5_time_freq)
+            self.ax_time = T.root.sol000.phase000.time[:]
+            self.freq = T.root.sol000.phase000.freq[:]
+            T.close()
+        elif len(ms) > 0:  # check if there is a valid ms file
             t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + ms[0] + '::SPECTRAL_WINDOW')
             self.ax_freq = t.getcol('CHAN_FREQ')[0]
             t.close()
@@ -81,6 +88,7 @@ class MergeH5:
             t = ct.table(ms[0])
             self.ax_time = sorted(unique(t.getcol('TIME')))
             t.close()
+
         else:  # if we dont have ms files, we use the time and frequency axis of the longest h5 table
             print('No MS file given, will use h5 table for frequency and time axis')
             self.ax_time = []
@@ -839,7 +847,7 @@ def make_h5_name(h5_name):
         h5_name += '.h5'
     return h5_name
 
-def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge_all_in_one=False, lin2circ=False, circ2lin=False, add_directions=None):
+def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False, lin2circ=False, circ2lin=False, add_directions=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
     :param h5_out (string): h5 table name out
@@ -857,7 +865,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge
     if h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
         os.system('rm {}'.format(h5_out))
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
-                    merge_all_in_one=merge_all_in_one)
+                    merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq)
     merge.get_allkeys()
     for ss in merge.all_solsets:
         if not '000' in ss:
@@ -898,6 +906,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge
     if lin2circ and circ2lin:
         sys.exit('Both polarization conversions are given, please choose 1.')
     elif lin2circ or circ2lin:
+        print("THIS FUNCTION HASN'T BEEN TESTED YET! PLEASE PROVIDE FEEDBACK IF ANY STRANGE RESULT OCCURS.")
         try:
             from supporting_scripts.h5_lin2circ import PolChange
         except:
@@ -943,7 +952,8 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output')
     parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge')
-    parser.add_argument('-ms', '--ms_files', type=str, help='ms files')
+    parser.add_argument('-ms', '--ms_time_freq', type=str, help='ms files to use time and frequency arrays from')
+    parser.add_argument('--h5_time_freq', type=str, help='h5 file to use time and frequency arrays from')
     parser.add_argument('-ct', '--convert_tec', type=str2bool, nargs='?', const=True, default=True, help='convert tec to phase')
     parser.add_argument('--merge_all_in_one', action='store_true', help='merge all solutions in one direction')
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular')
@@ -971,7 +981,8 @@ if __name__ == '__main__':
 
     merge_h5(h5_out=args.h5_out,
              h5_tables=h5tables,
-             ms_files=args.ms_files,
+             ms_files=args.ms_time_freq,
+             h5_time_freq=args.h5_time_freq,
              convert_tec=args.convert_tec,
              merge_all_in_one=args.merge_all_in_one,
              lin2circ=args.lin2circ,
