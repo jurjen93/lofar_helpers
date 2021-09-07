@@ -28,7 +28,7 @@ boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 number_of_measurements = len(glob(boxes_h5_list[0]+'/'+'tecandphase0_selfcalcyle000*'))
 
-for box in boxes_h5_list:
+for box in boxes_h5_list[0:2]:
     try:
         last_merged = sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]
         print(last_merged)
