@@ -4,7 +4,7 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=merge
-#SBATCH --array=0-5
+#SBATCH --array=0-1
 
 SOURCE=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf_fixed.sif
