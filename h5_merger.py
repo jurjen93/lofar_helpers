@@ -383,13 +383,14 @@ class MergeH5:
                 # get source coordinates
                 d = ss.getSou()
                 source_coords = d[list(d.keys())[dir_idx]]
-                print(source_coords)
 
                 d = 'Dir{:02d}'.format(self.n)
 
                 if self.merge_all_in_one and self.n == 1:
                     idx = 0
                     print('Merging direction {:f},{:f} with previous direction'.format(*source_coords))
+                    if self.directions['Dir00'][0]>0 and self.directions['Dir00'][1]>0:
+                        self.directions.update({'Dir00': source_coords}) # 0.0 coordinate bug
                 elif any([array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
                     # Direction already exists, add to the existing solutions.
                     print('Direction {:f},{:f} already exists. Adding to this direction.'.format(*source_coords))
@@ -726,8 +727,8 @@ class MergeH5:
         sources = list({i: (round(j[0], 4), round(j[1], 4)) for i, j in self.directions.items()}.items())
         # validate if new source directions are not already existing
         current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
-        new_sources = [source for source in sources if source[0] not in current_sources]
-        new_sources = [source for source in new_sources if (float(source[1][0])>0 and float(source[1][1])>0)]
+        new_sources = [source for source in sources if
+                       (source[0] not in current_sources) and (float(source[1][0])>0 and float(source[1][1])>0)]
 
         if len(new_sources) > 0:
             solsetout.obj.source.append(new_sources)
