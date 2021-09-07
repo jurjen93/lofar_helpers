@@ -32,12 +32,12 @@ for box in boxes_h5_list[59:61]:
     try:
         last_merged_tecphase = sorted(glob('{box}/tecandphase*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]
         last_merged_scalarcomplexgain = sorted(glob('{box}/scalarcomplexgain*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]
-        print('\n'.join([last_merged_tecphase, last_merged_scalarcomplexgain]))
-        h5_tables.append(last_merged_tecphase)
-        h5_tables.append(last_merged_scalarcomplexgain)
+        merge_h5(h5_out='{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive)),
+                 h5_tables=[last_merged_tecphase, last_merged_scalarcomplexgain],
+                 h5_time_freq=sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1])
     except:
         print("No merged_selfcal* in {box}".format(box=box.split('/')[-1]))
 
+
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
-         h5_tables=h5_tables,
-         h5_time_freq=sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1])
+         h5_tables=glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive))))
