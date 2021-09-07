@@ -3,15 +3,11 @@ __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 from h5_merger import merge_h5
 from glob import glob
 from argparse import ArgumentParser
-import tables
-
-tables.file._open_files.close_all()
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
 parser.add_argument('-a', '--archive', type=str, help='archive number', default='0')
 parser.add_argument('-del', '--exclude_boxes', help='Exclude the following boxes (numbers only)')
-# parser.add_argument('-nd', '--make_new_direction', type=str2bool, nargs='?', const=True, default=True, help='make new directions')
 args = parser.parse_args()
 
 def get_digits(x):
