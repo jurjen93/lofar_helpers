@@ -35,7 +35,8 @@ from losoto.lib_operations import reorderAxes
 from scipy.interpolate import interp1d
 import sys
 import re
-from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi
+import tables
+from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array
 
 __all__ = ['merge_h5', 'str2bool']
 
@@ -178,7 +179,6 @@ class MergeH5:
         except:
             return False
 
-    @property
     def get_allkeys(self):
         """
         Get all solution sets, solutions tables, and ax names in lists.
@@ -662,7 +662,6 @@ class MergeH5:
         with this extra step.
         """
         import h5py
-        import tables
         from numpy import sort
 
         T = h5py.File(self.file, 'r+')
@@ -688,6 +687,13 @@ class MergeH5:
                                       'Best solution is to use Python 3.'.format(ss=ss))
                             H.close()
         T.close()
+        return self
+
+    def reduce_memory_source(self):
+        T = tables.open_file(self.file, 'r+')
+        tempsource = array(T.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+        del T.root.sol000.source
+        T.root.sol000.source = tempsource
         return self
 
     def create_new_dataset(self, solset, soltab):
@@ -850,7 +856,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge
         os.system('rm {}'.format(h5_out))
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
                     merge_all_in_one=merge_all_in_one)
-    merge.get_allkeys
+    merge.get_allkeys()
     for ss in merge.all_solsets:
         if not '000' in ss:
             print('Got {ss}. We expect only solution sets with trailing zeros (sol000). So, we skip this one.'.format(
@@ -914,6 +920,10 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge
     if sys.version_info.major == 2:
         print('You are using python 2. For this version we need to do an extra reordering step.')
         merge.order_directions()
+
+    if tables.open_file('all_directions0.h5').root.sol000.source[:][0].nbytes>200:
+        print('The source table memory size is too big. We will change the dtype to reduce size (probably a Python 3 issue).')
+        merge.reduce_memory_source()
 
 
 if __name__ == '__main__':
