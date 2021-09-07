@@ -36,5 +36,7 @@ for box in boxes_h5_list:
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
          h5_tables=glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive))))
 
+boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
+boxes_h5_list.sort(key=lambda x: get_digits(x))
 merge_h5(h5_out='all_directions{n}_wrong.h5'.format(n=str(args.archive)),
-         h5_tables=[sorted(glob('{box}/merged_selfcal*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1] for box in boxes_h5_list])
+         h5_tables=[sorted(glob('{box}/merged_selfcal*.ms.archive{n}*h5'.format(box=box, n=str(args.archive))))[-1] for box in boxes_h5_list])
