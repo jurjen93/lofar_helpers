@@ -26,7 +26,7 @@ boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 # number_of_measurements = len(glob(boxes_h5_list[0]+'/'+'tecandphase0_selfcalcyle000*'))
 
-for box in boxes_h5_list[59:61]:
+for box in boxes_h5_list:
     merge_h5(h5_out='{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive)),
              h5_tables=[sorted(glob('{box}/tecandphase*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1],
                         sorted(glob('{box}/scalarcomplexgain*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]],
@@ -37,4 +37,4 @@ merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
          h5_tables=glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive))))
 
 merge_h5(h5_out='all_directions{n}_wrong.h5'.format(n=str(args.archive)),
-         h5_tables=[sorted(glob('{box}/merged_selfcal*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1] for box in boxes_h5_list[59:61]])
+         h5_tables=[sorted(glob('{box}/merged_selfcal*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1] for box in boxes_h5_list])
