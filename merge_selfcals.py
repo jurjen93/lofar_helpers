@@ -34,7 +34,8 @@ for box in boxes_h5_list[59:61]:
         last_merged_scalarcomplexgain = sorted(glob('{box}/scalarcomplexgain*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]
         merge_h5(h5_out='{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive)),
                  h5_tables=[last_merged_tecphase, last_merged_scalarcomplexgain],
-                 h5_time_freq=sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1])
+                 h5_time_freq=sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1],
+                 merge_all_in_one=True)
     except:
         print("No merged_selfcal* in {box}".format(box=box.split('/')[-1]))
 
