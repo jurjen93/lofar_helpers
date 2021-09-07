@@ -694,6 +694,7 @@ class MergeH5:
         tempsource = array(T.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
         del T.root.sol000.source
         T.root.sol000.source = tempsource
+        T.close()
         return self
 
     def create_new_dataset(self, solset, soltab):
@@ -852,74 +853,74 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, convert_tec=True, merge
 
     h5_out = make_h5_name(h5_out)
 
-    if h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
-        os.system('rm {}'.format(h5_out))
+    # if h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
+    #     os.system('rm {}'.format(h5_out))
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
                     merge_all_in_one=merge_all_in_one)
-    merge.get_allkeys()
-    for ss in merge.all_solsets:
-        if not '000' in ss:
-            print('Got {ss}. We expect only solution sets with trailing zeros (sol000). So, we skip this one.'.format(
-                ss=ss))
-            continue
-        for st_group in merge.all_soltabs:
-            if len(st_group) > 0:
-                for st in st_group:
-                    merge.get_model_h5(ss, st)
-                    merge.get_sol(ss, st)
-                if merge.convert_tec and (('phase' in st_group[0]) or ('tec' in st_group[0])):
-                    merge.create_new_dataset(ss, 'phase')
-                else:
-                    merge.create_new_dataset(ss, st)
-        # try:#add amplitude and phase if not available in h5 table
-        if 'amplitude000' not in [item for sublist in merge.all_soltabs for item in sublist]:
-            merge.gains = ones(
-                (2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
-            merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
-            merge.polarizations = ['XX', 'YY']
-            merge.gains = reorderAxes(merge.gains, merge.solaxnames, merge.axes_new)
-            merge.create_new_dataset(ss, 'amplitude')
-            # if 'phase000' not in [item for sublist in merge.all_soltabs for item in sublist] and \
-            # 'tec000' not in [item for sublist in merge.all_soltabs for item in sublist]:
-            # merge.phases = zeros((2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
-            # merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
-            # merge.polarizations = ['XX', 'YY']
-            # merge.phases = reorderAxes(merge.phases, merge.solaxnames, merge.axes_new)
-            # merge.create_new_dataset(ss, 'phase')
-        # except:#add try to except to be sure that adding extra phase and amplitude is not going to break the code
-        # pass
-    print('END: h5 solution file(s) merged')
-
-    if add_directions:
-        merge.add_directions(add_directions)
-
-    if lin2circ and circ2lin:
-        sys.exit('Both polarization conversions are given, please choose 1.')
-    elif lin2circ or circ2lin:
-        try:
-            from supporting_scripts.h5_lin2circ import PolChange
-        except:
-            sys.exit('ERROR: h5_lin2circ.py is missing or has the wrong path, so no polarization conversion has been done.'
-                     '\nYou can find the latest version in github.com/jurjen93/lofar_helpers or contact Jurjen de Jong')
-        if lin2circ:
-            h5_output_name = h5_out[0:-3]+'_circ.h5'
-            print('Polarization will be converted from linear to circular')
-        else:
-            h5_output_name = h5_out[0:-3]+'_lin.h5'
-            print('Polarization will be converted from circular to linear')
-
-        Pol = PolChange(h5_in=h5_out, h5_out=h5_output_name)
-
-        Pol.make_template('phase')
-        if len(Pol.G.shape) > 1:
-            Pol.make_template('amplitude')
-
-        Pol.make_new_gains(lin2circ, circ2lin)
-        print('{file} has been created'.format(file=h5_output_name))
-
-    if sys.version_info.major == 2:
-        print('You are using python 2. For this version we need to do an extra reordering step.')
-        merge.order_directions()
+    # merge.get_allkeys()
+    # for ss in merge.all_solsets:
+    #     if not '000' in ss:
+    #         print('Got {ss}. We expect only solution sets with trailing zeros (sol000). So, we skip this one.'.format(
+    #             ss=ss))
+    #         continue
+    #     for st_group in merge.all_soltabs:
+    #         if len(st_group) > 0:
+    #             for st in st_group:
+    #                 merge.get_model_h5(ss, st)
+    #                 merge.get_sol(ss, st)
+    #             if merge.convert_tec and (('phase' in st_group[0]) or ('tec' in st_group[0])):
+    #                 merge.create_new_dataset(ss, 'phase')
+    #             else:
+    #                 merge.create_new_dataset(ss, st)
+    #     # try:#add amplitude and phase if not available in h5 table
+    #     if 'amplitude000' not in [item for sublist in merge.all_soltabs for item in sublist]:
+    #         merge.gains = ones(
+    #             (2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
+    #         merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
+    #         merge.polarizations = ['XX', 'YY']
+    #         merge.gains = reorderAxes(merge.gains, merge.solaxnames, merge.axes_new)
+    #         merge.create_new_dataset(ss, 'amplitude')
+    #         # if 'phase000' not in [item for sublist in merge.all_soltabs for item in sublist] and \
+    #         # 'tec000' not in [item for sublist in merge.all_soltabs for item in sublist]:
+    #         # merge.phases = zeros((2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
+    #         # merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
+    #         # merge.polarizations = ['XX', 'YY']
+    #         # merge.phases = reorderAxes(merge.phases, merge.solaxnames, merge.axes_new)
+    #         # merge.create_new_dataset(ss, 'phase')
+    #     # except:#add try to except to be sure that adding extra phase and amplitude is not going to break the code
+    #     # pass
+    # print('END: h5 solution file(s) merged')
+    #
+    # if add_directions:
+    #     merge.add_directions(add_directions)
+    #
+    # if lin2circ and circ2lin:
+    #     sys.exit('Both polarization conversions are given, please choose 1.')
+    # elif lin2circ or circ2lin:
+    #     try:
+    #         from supporting_scripts.h5_lin2circ import PolChange
+    #     except:
+    #         sys.exit('ERROR: h5_lin2circ.py is missing or has the wrong path, so no polarization conversion has been done.'
+    #                  '\nYou can find the latest version in github.com/jurjen93/lofar_helpers or contact Jurjen de Jong')
+    #     if lin2circ:
+    #         h5_output_name = h5_out[0:-3]+'_circ.h5'
+    #         print('Polarization will be converted from linear to circular')
+    #     else:
+    #         h5_output_name = h5_out[0:-3]+'_lin.h5'
+    #         print('Polarization will be converted from circular to linear')
+    #
+    #     Pol = PolChange(h5_in=h5_out, h5_out=h5_output_name)
+    #
+    #     Pol.make_template('phase')
+    #     if len(Pol.G.shape) > 1:
+    #         Pol.make_template('amplitude')
+    #
+    #     Pol.make_new_gains(lin2circ, circ2lin)
+    #     print('{file} has been created'.format(file=h5_output_name))
+    #
+    # if sys.version_info.major == 2:
+    #     print('You are using python 2. For this version we need to do an extra reordering step.')
+    #     merge.order_directions()
 
     if tables.open_file('all_directions0.h5').root.sol000.source[:][0].nbytes>200:
         print('The source table memory size is too big. We will change the dtype to reduce size (probably a Python 3 issue).')
