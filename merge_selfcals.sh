@@ -7,7 +7,7 @@
 #SBATCH --array=0-5
 
 SOURCE=$1
-SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
+SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf_fixed.sif
 SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 SELFCAL=/project/lofarvwf/Share/jdejong/output/${SOURCE}/selfcal
