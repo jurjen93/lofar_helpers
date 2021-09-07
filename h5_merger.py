@@ -692,7 +692,7 @@ class MergeH5:
     def reduce_memory_source(self):
         T = tables.open_file(self.file, 'r+')
         tempsource = array(T.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
-        del T.root.sol000.source
+        T.root.sol000.source._f_remove()
         T.root.sol000.source = tempsource
         T.close()
         return self
