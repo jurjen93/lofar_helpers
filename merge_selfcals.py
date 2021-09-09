@@ -26,12 +26,16 @@ boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 # number_of_measurements = len(glob(boxes_h5_list[0]+'/'+'tecandphase0_selfcalcyle000*'))
 
+
 for box in boxes_h5_list:
-    merge_h5(h5_out='{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive)),
-             h5_tables=[sorted(glob('{box}/tecandphase*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1],
-                        sorted(glob('{box}/scalarcomplexgain*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]],
-             h5_time_freq=sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1],
-             merge_all_in_one=True)
+    try:
+        merge_h5(h5_out='{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive)),
+                 h5_tables=[sorted(glob('{box}/tecandphase*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1],
+                            sorted(glob('{box}/scalarcomplexgain*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]],
+                 h5_time_freq=sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1],
+                 merge_all_in_one=True)
+    except:
+        print('Issues with finding scalarcomplexgain and/or tecandphase for box: \n'+box)
 
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
          h5_tables=sorted(glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive)))))
