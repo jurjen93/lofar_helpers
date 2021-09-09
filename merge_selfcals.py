@@ -34,9 +34,15 @@ for box in boxes_h5_list:
              merge_all_in_one=True)
 
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
-         h5_tables=glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive))))
+         h5_tables=sorted(glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive)))))
 
-boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
-boxes_h5_list.sort(key=lambda x: get_digits(x))
+final_boxes = []
+for box in boxes_h5_list:
+    try:
+        final_boxes.append(sorted(glob('{box}/merged_selfcal*.ms.archive{n}*h5'.format(box=box, n=str(args.archive))))[-1])
+    except:
+        print('Issues with finding:')
+        print('{box}/merged_selfcal*.ms.archive{n}*h5'.format(box=box, n=str(args.archive)))
+
 merge_h5(h5_out='all_directions{n}_wrong.h5'.format(n=str(args.archive)),
-         h5_tables=[sorted(glob('{box}/merged_selfcal*.ms.archive{n}*h5'.format(box=box, n=str(args.archive))))[-1] for box in boxes_h5_list])
+         h5_tables=final_boxes)
