@@ -28,9 +28,9 @@ boxes_h5_list.sort(key=lambda x: get_digits(x))
 
 
 final_boxes = []
-for box in boxes_h5_list[0:1]:
+for box in boxes_h5_list[0:2]:
     try:
-        final_boxes.append(sorted(glob('{box}/merged_selfcal*.ms.archive{n}*h5'.format(box=box, n=str(args.archive))))[-1])
+        final_boxes.append(sorted(glob('{box}/tecandphase*.ms.archive{n}*h5'.format(box=box, n=str(args.archive))))[-1])
     except:
         print('Issues with finding:')
         print('{box}/merged_selfcal*.ms.archive{n}*h5'.format(box=box, n=str(args.archive)))
