@@ -52,7 +52,8 @@ class MergeH5:
         """
         :param h5_out: name of merged output h5 table
         :param files: h5 tables to merge, can be both list and string
-        :param ms_files: ms files to use, can be both list and string
+        :param ms_files: read time and frequency from measurement set
+        :param h5_time_freq: read time and frequency from h5
         :param convert_tec: convert TEC to phase or not
         :param merge_all_in_one: merge all in one direction
         """
@@ -222,7 +223,7 @@ class MergeH5:
         :param st: solution table itself
         """
 
-        num_dir = max(len(self.directions), 1) # number of directions already existing
+        num_dir = max(len(self.directions), 1)  # number of directions already existing
 
         if 'pol' in st.getAxesNames():
             self.polarizations = st.getAxisValues('pol')
@@ -887,7 +888,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     Main function that uses the class MergeH5 to merge h5 tables.
     :param h5_out (string): h5 table name out
     :param h5_tables (string or list): h5 tables to merge
-    :param ms_files (string or list): ms files to use, can be both list and string
+    :param ms_files (string or list): ms files to take freq and time axis from
+    :param h5_time_freq (str or list): h5 file to take freq and time axis from
     :param convert_tec (boolean): convert TEC to phase or not
     :param merge_all_in_one: merge all in one direction
     :param lin2circ: boolean for linear to circular conversion
