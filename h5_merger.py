@@ -703,7 +703,11 @@ class MergeH5:
         return self
 
     def reduce_memory_source(self):
-        tables.file._open_files.close_all()
+        """
+        We need to store the data in 136 bytes per directions.
+        Python 3 saves it automatically in more than that number.
+        """
+        # tables.file._open_files.close_all()
         T = tables.open_file(self.file, 'r+')
         new_source = array(T.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
         T.root.sol000.source._f_remove()
@@ -713,6 +717,12 @@ class MergeH5:
 
     @staticmethod
     def keep_new_sources(current_sources, new_sources):
+        """
+        Remove sources from new_sources that are already in current_sources
+        :param current_sources: current sources that we need to compare with new_sources
+        :param new_sources: new sources to be add
+        :return ---> New unique sources
+        """
         current_sources_dir = [source[0].decode('UTF-8') for source in current_sources]
         current_sources_coor = [source[1] for source in current_sources]
         new_sources = [source for source in new_sources if source[0] not in current_sources_dir]
@@ -954,7 +964,11 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         print('You are using python 2. For this version we need to do an extra reordering step.')
         merge.order_directions()
 
-    if tables.open_file(merge.file).root.sol000.source[:][0].nbytes>200:
+    #Check table source size
+    T = tables.open_file(merge.file)
+    first_source = T.root.sol000.source[:][0]
+    T.close()
+    if first_source.nbytes>140:
         print('The source table memory size is too big. We will change the dtype to reduce size (probably a Python 3 issue).')
         merge.reduce_memory_source()
 
