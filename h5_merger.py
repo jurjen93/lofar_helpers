@@ -748,7 +748,7 @@ class MergeH5:
         new_sources = self.keep_new_sources(solsetout.obj.source[:], list(self.directions.items()))
 
         if len(new_sources) > 0:
-            solsetout.obj.source.append(array(new_sources, dtype=[('name', 'S128'), ('dir', '<f4', (2,))]))
+            solsetout.obj.source.append(new_sources)
 
         axes_vals = {'dir': list(self.directions.keys()),
                      'ant': self.antennas,
