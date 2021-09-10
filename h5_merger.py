@@ -711,6 +711,18 @@ class MergeH5:
         T.close()
         return self
 
+    @staticmethod
+    def keep_new_sources(current_sources, new_sources):
+        current_sources_dir = [source[0].decode('UTF-8') for source in current_sources]
+        current_sources_coor = [source[1] for source in current_sources]
+        new_sources = [source for source in new_sources if source[0] not in current_sources_dir]
+        del_index = []
+        for coor in current_sources_coor:
+            for n, source in enumerate(new_sources):
+                if round(coor[0],4)==round(new_sources[1][0],4) and round(coor[1],4)==round(new_sources[1][1],4):
+                    del_index.append(n)
+        return [source for i, source in enumerate(new_sources) if i not in del_index]
+
     def create_new_dataset(self, solset, soltab):
         """
         Create a new dataset in the h5 table
@@ -726,15 +738,17 @@ class MergeH5:
         else:
             solsetout = self.h5_out.makeSolset(solset)
 
-        sources = list({i: (round(j[0], 4), round(j[1], 4)) for i, j in self.directions.items()}.items())
         # validate if new source directions are not already existing
-        current_sources = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
+        # current_sources_dir = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
+        # current_sources_coor = [source[1] for source in solsetout.obj.source[:]]
         # new_sources = [source for source in sources if
         #                (source[0] not in current_sources) and (float(source[1][0])>0 and float(source[1][1])>0)]
-        new_sources = [source for source in sources if (source[0] not in current_sources)]
+        # new_sources = [source for source in sources if (source[0] not in current_sources_dir) and (source[1] not in current_sources_coor)]
+
+        new_sources = self.keep_new_sources(solsetout.obj.source[:], list(self.directions.items()))
 
         if len(new_sources) > 0:
-            solsetout.obj.source.append(new_sources)
+            solsetout.obj.source.append(array(new_sources, dtype=[('name', 'S128'), ('dir', '<f4', (2,))]))
 
         axes_vals = {'dir': list(self.directions.keys()),
                      'ant': self.antennas,
