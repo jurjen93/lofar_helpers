@@ -719,7 +719,7 @@ class MergeH5:
         del_index = []
         for coor in current_sources_coor:
             for n, source in enumerate(new_sources):
-                if round(coor[0],4)==round(new_sources[1][0],4) and round(coor[1],4)==round(new_sources[1][1],4):
+                if round(coor[0], 4) == round(new_sources[1][0], 4) and round(coor[1], 4) == round(new_sources[1][1], 4):
                     del_index.append(n)
         return [source for i, source in enumerate(new_sources) if i not in del_index]
 
