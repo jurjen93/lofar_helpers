@@ -14,7 +14,8 @@ merge_h5(h5_out='test.h5',
 Following input parameters are possible:
 h5_out ---> the output name of the h5 table
 h5_tables ---> h5 tables that have to be merged
-ms_time_freq ---> measurement sets
+ms_files ---> read time and frequency from measurement set
+h5_time_freq ---> read time and frequency from h5
 convert_tec ---> convert tec to phase
 merge_all_in_one ---> merge all in one direction (default is False), if True it adds everything in one direction
 lin2circ ---> convert linear to circular polarization (default is False)
@@ -115,6 +116,8 @@ class MergeH5:
         self.merge_all_in_one = merge_all_in_one
 
         self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time']  # standard solax order to do our manipulations
+
+        self.directions = {}  # directions in a dictionary
 
     def get_values(self, st, solset, soltab):
         """
@@ -219,6 +222,8 @@ class MergeH5:
         :param st: solution table itself
         """
 
+        num_dir = max(len(self.directions), 1) # number of directions already existing
+
         if 'pol' in st.getAxesNames():
             self.polarizations = st.getAxisValues('pol')
         else:
@@ -226,23 +231,21 @@ class MergeH5:
 
         if 'amplitude' in soltab and 'pol' in st.getAxesNames():
             self.gains = ones(
-                (len(self.polarizations), 1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+                (len(self.polarizations), num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
         else:
             self.gains = ones((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         if 'phase' in soltab and 'pol' in st.getAxesNames():
             self.phases = zeros(
-                (max(len(self.polarizations), 1), 1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+                (max(len(self.polarizations), 1), num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         elif 'rotation' in soltab:
-            self.phases = zeros((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.phases = zeros((num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         elif 'tec' in soltab:
-            self.phases = zeros((2, 1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.phases = zeros((2, num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
         else:
-            self.phases = zeros((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
-
-        self.directions = {}  # directions in a dictionary
+            self.phases = zeros((num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
 
         self.n = 0  # direction number reset
 
@@ -493,7 +496,7 @@ class MergeH5:
                                 self.phases[1, idx, ...] += tp[1, 0, ...]
 
                     else:
-                        if 'dir' in self.axes_current:  # this line is trivial and could be removed
+                        if 'dir' in self.axes_current:  # this line is trivial and could maybe be removed
                             values = values[0, :, 0, :]
 
                         tp = self.interp_along_axis(values, time_axes, self.ax_time, -1)
