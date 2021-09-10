@@ -5,6 +5,7 @@ from glob import glob
 from argparse import ArgumentParser
 import tables
 import numpy as np
+import os
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
@@ -29,6 +30,7 @@ boxes_h5_list.sort(key=lambda x: get_digits(x))
 
 for box in boxes_h5_list:
     h5out = '{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive))
+    os.system('rm '+h5out)
     tecandphase1 = sorted(glob('{box}/tecandphase1*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))
     tecandphase0 = sorted(glob('{box}/tecandphase0*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))
     scalarcomplexgain2 = sorted(glob('{box}/scalarcomplexgain2*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))
