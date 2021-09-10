@@ -58,7 +58,7 @@ for box in boxes_h5_list:
         openfile=''
     if openfile!='':
         H = tables.open_file(openfile, 'r+')
-        new_source = np.array(T.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+        new_source = np.array(H.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
         H.close()
         T.create_table(T.root.sol000, 'source', new_source, "Source names and directions")
     T.close()
