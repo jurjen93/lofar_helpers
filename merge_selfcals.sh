@@ -4,7 +4,7 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=merge
-#SBATCH --array=0-5%1
+#SBATCH --array=3-3%1
 
 SOURCE=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
