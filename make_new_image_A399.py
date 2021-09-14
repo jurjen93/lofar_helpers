@@ -44,10 +44,10 @@ print('Finished moving files')
 #FLAG TIME AND FREQUENCY
 
 #starting times fom measurement sets that have to be cutted for time
-CUTTIMES = [5019387068.011121, 5017577408.011121, 5020506668.011121]
+CUTTIMES = [5019387068.011121, 5019387064.005561, 5017577408.011121, 5017577404.005561, 5020506668.011121, 5020506664.005561]
 
 #starting times for measurement sets that have to be cutted for freq
-CUTFREQS = [5021107868.011121]
+CUTFREQS = [5021107868.011121, 5021107864.005561]
 
 for MS in glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive'):
     t = ct.table(MS)
