@@ -9,7 +9,7 @@ def get_DDS3(folder):
     This function returns from a folder the last DDS file for all the measurement sets within that same folder.
     :param folder: string of folder path
     """
-    ms = glob(folder+'/*.ms.archive') # get all measurement sets in folder
+    ms = glob(folder+'/*.pre-cal.ms.archive*') # get all measurement sets in folder
     ms_observations = unique([m.split('/')[-1].split('_')[0] for m in ms]) # get unique observation names
     for i in '321': # get correct DDS*.npz files [should be DDS3*]
         DDS = glob(folder+'/DDS'+i+'*')
@@ -20,6 +20,7 @@ def get_DDS3(folder):
     single_m = [[m for m in ms if night in m][0] for night in ms_observations] # get one measurement set per observation
 
     DDS_output = [] # DDS output
+    DDS_dict = {}
     for observation in ms_observations:
         for sm in single_m:
             if observation in sm:
@@ -35,12 +36,18 @@ def get_DDS3(folder):
                 except: # python 3
                     correct_DDS = max(DDS_options.items(), key=operator.itemgetter(1))[0] # get correct DDS
                 DDS_output.append([D for D in DDS if correct_DDS.split('full_')[1].split('_smoothed')[0] in D]) # append right DDS
+                DDS_dict.update({sm : [D for D in DDS if correct_DDS.split('full_')[1].split('_smoothed')[0] in D]})
 
-    return [file for sublist in DDS_output for file in sublist]
+    return [file for sublist in DDS_output for file in sublist], DDS_dict
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
     parser.add_argument('-f', '--folder', type=str, help='folder with the files')
+    parser.add_argument('--to', type=str, default=None, help='copy to')
     args = parser.parse_args()
-    print(get_DDS3(args.folder))
+    DDS3, DDS3_dict = get_DDS3(args.folder)
+    print(DDS3_dict)
+    if args.to:
+        import os
+        os.system('cp '.join([s+' '+args.to+' &&' for s in DDS3]))
