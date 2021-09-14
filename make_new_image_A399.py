@@ -50,13 +50,18 @@ CUTTIMES = [5019387068.011121, 5017577408.011121, 5020506668.011121]
 CUTFREQS = [5021107868.011121]
 
 for MS in glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive'):
-    if ct.table(MS).getcol('TIME')[0] in CUTTIMES:
+    t = ct.table(MS)
+    time = t.getcol('TIME')[0]
+    print(time)
+    t.close()
+    if time in CUTTIMES:
         print('Cutting time for '+MS)
         os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
-    elif ct.table(MS).getcol('TIME')[0] in CUTFREQS:
+    elif time in CUTFREQS:
         print('Cutting freq for ' + MS)
         os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS+" -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
     else:
+        print('Copying for ' + MS)
         os.system("cp -r " + MS + " " + TO)
 
 # important to wait until everything is ready before moving on
