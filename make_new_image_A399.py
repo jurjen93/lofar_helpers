@@ -16,7 +16,6 @@ import tables
 
 TO='/net/tussenrijn/data2/jurjendejong/A399/result'
 FROM='/net/tussenrijn/data2/jurjendejong/A399_DEEP'
-H5=args.h5_file
 SING_IMAGE='/net/rijn/data2/rvweeren/data/pill-latestMay2021.simg'
 SING_BIND='/net/tussenrijn'
 SINGULARITY=' '.join(['singularity exec -B', SING_BIND, SING_IMAGE])
