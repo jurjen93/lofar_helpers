@@ -27,13 +27,13 @@ if not path.exists(TO):
     print('Created {LOCATION}'.format(LOCATION=TO))
 
 #CLEAN CACHE
-os.system('{SINGULARITY} CleanSHM.py'.format(SINGULARITY=SINGULARITY))
+os.system('CleanSHM.py')
 
 #MOVE FILES
 print('Moving files to '+TO)
 command = 'cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+TO+ ' && '+\
-        'cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+TO+' && '+\
-        'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
+        'cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+TO+' && wait'
+        # 'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
 
 os.system(command)
 print('Finished moving files')
@@ -52,14 +52,15 @@ CUTFREQS = [5021107868.011121]
 for MS in glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive'):
     if ct.table(MS).getcol('TIME')[0] in CUTTIMES:
         print('Cutting time for '+MS)
-        os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + '/' + MS + '.goodtimes')
+        os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
     elif ct.table(MS).getcol('TIME')[0] in CUTFREQS:
         print('Cutting freq for ' + MS)
-        os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS+" -msout " + TO + '/' + MS + '.goodfreq')
+        os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS+" -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
     else:
         os.system("cp -r " + MS + " " + TO)
 
-while len(glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*')):#important to wait until everything is ready before moving on
+# important to wait until everything is ready before moving on
+while len(glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*')):
     print('TIME AND FREQUENCY FLAGGING')
 #----------------------------------------------------------------------------------------------------------------------
 
@@ -82,7 +83,7 @@ command = []
 for ms in DDS3_dict.items():
     new_h5=[]
     for npz in ms[1]:
-        command.append(SINGULARITY + ' killMS2Hparm.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
+        command.append('killMS2Hparm.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
         new_h5.append(npz.replace('npz','h5'))
 
     table = ct.table(ms[0])  # open table
@@ -91,9 +92,9 @@ for ms in DDS3_dict.items():
     diff = lambda ob_time: abs(ob_time - t)  # f formula to compare difference between first time element of ms and observation times
     closest_value = min(list(soltable_times.values()), key=diff)  # get closest value with lambda function
     h5 = soltable_times[closest_value]
-    command.append(SINGULARITY + ' python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_'+str(closest_value)+'.h5 -in '+' '.join(new_h5)+' -ms '+ms[0]+' --convert_tec 0')
-    command.append(SINGULARITY + ' python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/tussenrijn/data2/jurjendejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_'+str(closest_value)+'.h5 -h5in final_lotss_'+str(closest_value)+'.h5')
-    command.append(SINGULARITY + ' python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_'+str(closest_value)+'.h5 -in lotss_full_merged_filtered_'+str(closest_value)+'.h5 ' + soltable_times[closest_value]+' --convert_tec 0')
+    command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_'+str(closest_value)+'.h5 -in '+' '.join(new_h5)+' -ms '+ms[0]+' --convert_tec 0')
+    command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/tussenrijn/data2/jurjendejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_'+str(closest_value)+'.h5 -h5in final_lotss_'+str(closest_value)+'.h5')
+    command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_'+str(closest_value)+'.h5 -in lotss_full_merged_filtered_'+str(closest_value)+'.h5 ' + soltable_times[closest_value]+' --convert_tec 0')
 print('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered &&\n'+' &&\n'.join(command))
 """
 OUTPUT_FOLDER=${FOLDER}/result_filtered
@@ -117,16 +118,17 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE LIST WITH MEASUREMENT SETS
-# os.system('ls -1d {LOCATION}/*.pre-cal.ms.archive* > {LOCATION}/big-mslist.txt'.format(LOCATION=TO))
-#
-# #----------------------------------------------------------------------------------------------------------------------
-#
+os.system('ls -1d /net/tussenrijn/data2/jurjendejong/A399/result/*.pre-cal.ms.archive* > /net/tussenrijn/data2/jurjendejong/A399/result/big-mslist.txt'.format(LOCATION=TO))
+
+#----------------------------------------------------------------------------------------------------------------------
+
+#MAKE DDF COMMAND
 # with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
 #     lines = [l.replace('\n','') for l in f.readlines()]
-#     lines+=['--Data-MS={LOCATION}/big-mslist.txt'.format(LOCATION=TO)]
-#     lines+=['--Predict-InitDicoModel={LOCATION}/image_full_ampphase_di_m.NS.DicoModel'.format(LOCATION=TO)]
-#     lines+=['--DDESolutions-DDSols={LOCATION}/{H5}:sol000/amplitude000+phase000'.format(H5=H5, LOCATION=TO)]
-#     lines+=['--Mask-External={LOCATION}/image_full_ampphase_di_m.NS.mask01.fits'.format(LOCATION=TO)]
+#     lines+=['--Data-MS=/net/tussenrijn/data2/jurjendejong/A399/result/big-mslist.txt']
+#     lines+=['--Predict-InitDicoModel=/net/tussenrijn/data2/jurjendejong/A399/result/image_full_ampphase_di_m.NS.DicoModel']
+#     lines+=['--DDESolutions-DDSols=/net/tussenrijn/data2/jurjendejong/A399/result/complete_merged*.h5:sol000/amplitude000+phase000']
+#     lines+=['--Mask-External=/net/tussenrijn/data2/jurjendejong/A399/result/image_full_ampphase_di_m.NS.mask01.fits']
 #
 # #RUN DDF COMMAND
 # print('Running DDF COMMAND')
