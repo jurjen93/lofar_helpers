@@ -883,6 +883,9 @@ class MergeH5:
         """
         os.system('cp '+self.file+' '+self.file.replace('.h5', '_singlepol.h5'))
         T = tables.open_file(self.file, 'r+')
+        T.root.sol000.phase000.val[:] = T.root.sol000.phase000.val[:,:,:,:,0:1]
+        T.root.sol000.amplitude000.val[:] = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
+        T.root.sol000.phase000.pol
         new_source = array(T.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
         T.root.sol000.source._f_remove()
         T.create_table(T.root.sol000, 'source', new_source, "Source names and directions")
