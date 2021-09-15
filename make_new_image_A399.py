@@ -95,8 +95,8 @@ for ms in DDS3_dict.items():
     table = ct.table(ms[0])  # open table
     t = table.getcol('TIME')[0]  # get first time element from measurement set
     table.close()  # close table
-    diff = lambda ob_time: abs(ob_time - t)  # f formula to compare difference between first time element of ms and observation times
-    closest_value = min(list(soltable_times.values()), key=diff)  # get closest value with lambda function
+    diff = lambda ob_time: abs(ob_time - t)  # formula to compare difference between first time element of ms and observation times
+    closest_value = min(list(soltable_times.keys()), key=diff)  # get closest value with lambda function
     h5 = soltable_times[closest_value]
     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_'+str(closest_value)+'.h5 -in '+' '.join(new_h5)+' -ms '+ms[0]+' --convert_tec 0')
     command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/tussenrijn/data2/jurjendejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_'+str(closest_value)+'.h5 -h5in final_lotss_'+str(closest_value)+'.h5')
