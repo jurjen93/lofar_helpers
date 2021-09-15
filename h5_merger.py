@@ -877,13 +877,27 @@ class MergeH5:
 
         return self
 
+    def make_single_pol(self):
+        """
+        Reduce table to one single polarization
+        """
+        os.system('cp '+self.file+' '+self.file.replace('.h5', '_singlepol.h5'))
+        T = tables.open_file(self.file, 'r+')
+        new_source = array(T.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+        T.root.sol000.source._f_remove()
+        T.create_table(T.root.sol000, 'source', new_source, "Source names and directions")
+        T.close()
+
+
+
 
 def make_h5_name(h5_name):
     if '.h5' != h5_name[-3:]:
         h5_name += '.h5'
     return h5_name
 
-def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False, lin2circ=False, circ2lin=False, add_directions=None):
+def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
+             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
     :param h5_out (string): h5 table name out
@@ -977,6 +991,12 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         print('The source table memory size is too big. We will change the dtype to reduce size (probably a Python 3 issue).')
         merge.reduce_memory_source()
 
+    #remove polarization axis if double
+    if single_pol:
+        print('Make a single polarization')
+        merge.make_single_pol()
+
+
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
@@ -1000,6 +1020,7 @@ if __name__ == '__main__':
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular')
     parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear')
     parser.add_argument('--add_direction', default=None, help='add direction with amplitude 1 and phase 0 [ex: --add_direction [0.73,0.12]')
+    parser.add_argument('--single_pol', default=None, help='Return only a single polarization axis if both polarizations are the same.')
 
     args = parser.parse_args()
 
@@ -1028,4 +1049,5 @@ if __name__ == '__main__':
              merge_all_in_one=args.merge_all_in_one,
              lin2circ=args.lin2circ,
              circ2lin=args.circ2lin,
-             add_directions=add_directions)
+             add_directions=add_directions,
+             single_pol=args.single_pol)
