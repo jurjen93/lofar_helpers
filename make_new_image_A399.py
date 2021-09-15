@@ -89,7 +89,7 @@ command = []
 for ms in DDS3_dict.items():
     new_h5=[]
     for npz in ms[1]:
-        command.append('/home/jurjendejong/scripts/lofar_helpers/supporting_scripts/KillMS2Hparm_jurjen.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
+        command.append('/home/jurjendejong/scripts/lofar_helpers/supporting_scripts/KillMS2H5parm_jurjen.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
         new_h5.append(npz.split('/')[-1].replace('npz','h5 '))
 
     table = ct.table(ms[0])  # open table
