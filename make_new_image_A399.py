@@ -59,7 +59,7 @@ for MS in glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive'):
     elif time in CUTFREQS:
         print('Cutting freq for ' + MS)
         # os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS+" -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
-        os.system("cp -r " + MS + " " + TO)
+        # os.system("cp -r " + MS + " " + TO)
     else:
         print('Copying for ' + MS)
         # os.system("cp -r " + MS + " " + TO)
@@ -89,7 +89,7 @@ command = []
 for ms in DDS3_dict.items():
     new_h5=[]
     for npz in ms[1]:
-        command.append('killMS2Hparm.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
+        command.append('/home/jurjendejong/scripts/lofar_helpers/supporting_scripts/killMS2Hparm_jurjen.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
         new_h5.append(npz.split('/')[-1].replace('npz','h5 '))
 
     table = ct.table(ms[0])  # open table
