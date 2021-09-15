@@ -1027,7 +1027,7 @@ if __name__ == '__main__':
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular')
     parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear')
     parser.add_argument('--add_direction', default=None, help='add direction with amplitude 1 and phase 0 [ex: --add_direction [0.73,0.12]')
-    parser.add_argument('--single_pol', default=None, help='Return only a single polarization axis if both polarizations are the same.')
+    parser.add_argument('--single_pol', action='store_true', default=None, help='Return only a single polarization axis if both polarizations are the same.')
 
     args = parser.parse_args()
 
