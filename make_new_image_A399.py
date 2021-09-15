@@ -138,5 +138,5 @@ with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
 
 #RUN DDF COMMAND
 print('Running DDF COMMAND')
-os.system(' '.join(['cd', TO, '&&', SINGULARITY] + lines))
+os.system(' '.join(['cd', TO, '&&'] + lines))
 print('Finished making new image')
