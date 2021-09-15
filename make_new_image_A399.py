@@ -110,7 +110,6 @@ while len(glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive')) != 
 
 #MERGE LOTSS OUTER EDGE
 
-from supporting_scripts.get_DDS3 import get_DDS3
 
 DDS3, DDS3_dict = get_DDS3('/net/tussenrijn/data2/jurjendejong/A399_DEEP')
 
