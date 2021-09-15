@@ -65,7 +65,7 @@ for MS in glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive'):
         # os.system("cp -r " + MS + " " + TO)
 
 # important to wait until everything is ready before moving on
-while len(glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*')):
+while len(glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
     print('TIME AND FREQUENCY FLAGGING')
 #----------------------------------------------------------------------------------------------------------------------
 
