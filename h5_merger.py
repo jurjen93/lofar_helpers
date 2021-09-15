@@ -891,7 +891,7 @@ class MergeH5:
             T.root.sol000.phase000.val = T.root.sol000.phase000.val[:,:,:,:,0:1]
             T.root.sol000.amplitude000.val = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
             T.root.sol000.phase000.pol = array([b'I'], dtype='|S2')
-            T.root.sol000.amplitude.pol = array([b'I'], dtype='|S2')
+            T.root.sol000.amplitude000.pol = array([b'I'], dtype='|S2')
         else:
             print('WARNING: Phase and Amplitude have not the same values for XX and YY polarization.\nNo reduction will be done.')
         T.close()
