@@ -881,19 +881,25 @@ class MergeH5:
         """
         Reduce table to one single polarization
         """
-        os.system('cp '+self.file+' '+self.file.replace('.h5', '_singlepol.h5'))
         T = tables.open_file(self.file, 'r+')
         if T.root.sol000.phase000.val[0,0,0,0,0] == T.root.sol000.phase000.val[0,0,0,0,-1] and \
             T.root.sol000.phase000.val[-1, 0, 0, 0, 0] == T.root.sol000.phase000.val[-1, 0, 0, 0, -1] and \
             T.root.sol000.amplitude000.val[0, 0, 0, 0, 0] == T.root.sol000.amplitude000.val[0, 0, 0, 0, -1] and \
             T.root.sol000.amplitude000.val[-1, 0, 0, 0, 0] == T.root.sol000.amplitude000.val[-1, 0, 0, 0, -1]:
             print('Phase and Amplitude have same values for XX and YY polarization.\nReducing into one Polarization I.')
-            T.root.sol000.phase000.val = T.root.sol000.phase000.val[:,:,:,:,0:1]
-            T.root.sol000.amplitude000.val = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
-            T.root.sol000.phase000.pol = array([b'I'], dtype='|S2')
-            T.root.sol000.amplitude000.pol = array([b'I'], dtype='|S2')
+            newphase = T.root.sol000.phase000.val[:,:,:,:,0:1]
+            newampl = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
+            newpol = array([b'I'], dtype='|S2')
+            T.root.sol000.phase000.val._f_remove()
+            T.root.sol000.amplitude000.val_f_remove()
+            T.root.sol000.phase000.pol_f_remove()
+            T.root.sol000.amplitude000.pol_f_remove()
+            T.create_array(T.root.sol000.amplitude000, 'val', newampl)
+            T.create_array(T.root.sol000.phase000, 'val', newphase)
+            T.create_array(T.root.sol000.amplitude000, 'pol', newpol)
+            T.create_array(T.root.sol000.phase000, 'pol', newpol)
         else:
-            print('WARNING: Phase and Amplitude have not the same values for XX and YY polarization.\nNo reduction will be done.')
+            print('WARNING: Phase and Amplitude have not the same values for XX and YY polarization.\nWARNING: No polarization reduction will be done.')
         T.close()
         return self
 
