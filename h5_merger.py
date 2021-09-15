@@ -882,25 +882,37 @@ class MergeH5:
         Reduce table to one single polarization
         """
         T = tables.open_file(self.file, 'r+')
-        if T.root.sol000.phase000.val[0,0,0,0,0] == T.root.sol000.phase000.val[0,0,0,0,-1] and \
-            T.root.sol000.phase000.val[-1, 0, 0, 0, 0] == T.root.sol000.phase000.val[-1, 0, 0, 0, -1] and \
-            T.root.sol000.amplitude000.val[0, 0, 0, 0, 0] == T.root.sol000.amplitude000.val[0, 0, 0, 0, -1] and \
-            T.root.sol000.amplitude000.val[-1, 0, 0, 0, 0] == T.root.sol000.amplitude000.val[-1, 0, 0, 0, -1]:
-            print('Phase and Amplitude have same values for XX and YY polarization.\nReducing into one Polarization I.')
-            newphase = T.root.sol000.phase000.val[:,:,:,:,0:1]
-            newampl = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
-            newpol = array([b'I'], dtype='|S2')
-            T.root.sol000.phase000.val._f_remove()
-            T.root.sol000.amplitude000.val._f_remove()
-            T.root.sol000.phase000.pol._f_remove()
-            T.root.sol000.amplitude000.pol._f_remove()
-            T.create_array(T.root.sol000.amplitude000, 'val', newampl)
-            T.create_array(T.root.sol000.phase000, 'val', newphase)
-            T.create_array(T.root.sol000.amplitude000, 'pol', newpol)
-            T.create_array(T.root.sol000.phase000, 'pol', newpol)
-        else:
-            print('ERROR: Phase and Amplitude have not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
-            sys.exit()
+        newpol = array([b'I'], dtype='|S2')
+        try:
+            if T.root.sol000.phase000.val[0,0,0,0,0] == T.root.sol000.phase000.val[0,0,0,0,-1] and \
+                T.root.sol000.phase000.val[-1, 0, 0, 0, 0] == T.root.sol000.phase000.val[-1, 0, 0, 0, -1]:
+                print('Phase has same values for XX and YY polarization.\nReducing into one Polarization I.')
+                newphase = T.root.sol000.phase000.val[:, :, :, :, 0:1]
+                T.root.sol000.phase000.val._f_remove()
+                T.root.sol000.phase000.pol._f_remove()
+                T.create_array(T.root.sol000.phase000, 'val', newphase)
+                T.create_array(T.root.sol000.phase000, 'pol', newpol)
+            else:
+                print('ERROR: Phase has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
+                sys.exit()
+        except:
+            pass
+
+        try:
+            if T.root.sol000.amplitude000.val[0, 0, 0, 0, 0] == T.root.sol000.amplitude000.val[0, 0, 0, 0, -1] and \
+                T.root.sol000.amplitude000.val[-1, 0, 0, 0, 0] == T.root.sol000.amplitude000.val[-1, 0, 0, 0, -1]:
+                print('Amplitude has same values for XX and YY polarization.\nReducing into one Polarization I.')
+                newampl = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
+                T.root.sol000.amplitude000.val._f_remove()
+                T.root.sol000.amplitude000.pol._f_remove()
+                T.create_array(T.root.sol000.amplitude000, 'val', newampl)
+                T.create_array(T.root.sol000.amplitude000, 'pol', newpol)
+            else:
+                print('ERROR: Amplitude has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
+                sys.exit()
+        except:
+            pass
+
         T.close()
         return self
 
