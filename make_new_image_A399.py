@@ -79,12 +79,12 @@ soltable_times = {}
 for soltable in glob('/net/tussenrijn/data2/jurjendejong/A399/result/all_directions*.h5'):
     tab = tables.open_file(soltable)
     t = tab.root.sol000.phase000.time[0]
-    soltable_times.update({soltable: t})
+    soltable_times.update({t: soltable})
     tab.close()  # close table
 print(soltable_times)
 
-os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/result_filtered')
-os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/result_filtered' for s in DDS3]))
+# os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/result_filtered')
+# os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/result_filtered' for s in DDS3]))
 command = []
 for ms in DDS3_dict.items():
     new_h5=[]
