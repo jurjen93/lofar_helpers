@@ -81,6 +81,7 @@ for soltable in glob('/net/tussenrijn/data2/jurjendejong/A399/result/all_directi
     t = tab.root.sol000.phase000.time[0]
     soltable_times.update({soltable: t})
     tab.close()  # close table
+print(soltable_times)
 
 os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/result_filtered')
 os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/result_filtered' for s in DDS3]))
