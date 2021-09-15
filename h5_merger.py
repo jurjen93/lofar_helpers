@@ -893,8 +893,7 @@ class MergeH5:
                 T.create_array(T.root.sol000.phase000, 'val', newphase)
                 T.create_array(T.root.sol000.phase000, 'pol', newpol)
             else:
-                print('ERROR: Phase has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
-                sys.exit()
+                sys.exit('ERROR: Phase has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
         except:
             pass
 
@@ -908,8 +907,7 @@ class MergeH5:
                 T.create_array(T.root.sol000.amplitude000, 'val', newampl)
                 T.create_array(T.root.sol000.amplitude000, 'pol', newpol)
             else:
-                print('ERROR: Amplitude has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
-                sys.exit()
+                sys.exit('ERROR: Amplitude has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
         except:
             pass
 
