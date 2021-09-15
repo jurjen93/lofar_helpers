@@ -891,9 +891,9 @@ class MergeH5:
             newampl = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
             newpol = array([b'I'], dtype='|S2')
             T.root.sol000.phase000.val._f_remove()
-            T.root.sol000.amplitude000.val_f_remove()
-            T.root.sol000.phase000.pol_f_remove()
-            T.root.sol000.amplitude000.pol_f_remove()
+            T.root.sol000.amplitude000.val._f_remove()
+            T.root.sol000.phase000.pol._f_remove()
+            T.root.sol000.amplitude000.pol._f_remove()
             T.create_array(T.root.sol000.amplitude000, 'val', newampl)
             T.create_array(T.root.sol000.phase000, 'val', newphase)
             T.create_array(T.root.sol000.amplitude000, 'pol', newpol)
