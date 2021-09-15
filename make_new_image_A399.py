@@ -81,28 +81,27 @@ for soltable in glob('/net/tussenrijn/data2/jurjendejong/A399/result/all_directi
     t = tab.root.sol000.phase000.time[0]
     soltable_times.update({t: soltable})
     tab.close()  # close table
-print(soltable_times)
 
 # os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/result_filtered')
 # os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/result_filtered' for s in DDS3]))
-command = []
-for ms in DDS3_dict.items():
-    new_h5=[]
-    for npz in ms[1]:
-        command.append('killMS2H5parm.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
-        new_h5.append(npz.split('/')[-1].replace('npz','h5 '))
-
-    table = ct.table(ms[0])  # open table
-    t = table.getcol('TIME')[0]  # get first time element from measurement set
-    table.close()  # close table
-    diff = lambda ob_time: abs(ob_time - t)  # formula to compare difference between first time element of ms and observation times
-    closest_value = min(list(soltable_times.keys()), key=diff)  # get closest value with lambda function
-    h5 = soltable_times[closest_value]
-    command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_'+str(closest_value)+'.h5 -in '+' '.join(new_h5) + '--convert_tec 0')
-    command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/tussenrijn/data2/jurjendejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_'+str(closest_value)+'.h5 -h5in final_lotss_'+str(closest_value)+'.h5')
-    command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_'+str(closest_value)+'.h5 -in lotss_full_merged_filtered_'+str(closest_value)+'.h5 ' + soltable_times[closest_value]+' --convert_tec 0')
-print('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
-os.system('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
+# command = []
+# for ms in DDS3_dict.items():
+#     new_h5=[]
+#     for npz in ms[1]:
+#         command.append('killMS2H5parm.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
+#         new_h5.append(npz.split('/')[-1].replace('npz','h5 '))
+#
+#     table = ct.table(ms[0])  # open table
+#     t = table.getcol('TIME')[0]  # get first time element from measurement set
+#     table.close()  # close table
+#     diff = lambda ob_time: abs(ob_time - t)  # formula to compare difference between first time element of ms and observation times
+#     closest_value = min(list(soltable_times.keys()), key=diff)  # get closest value with lambda function
+#     h5 = soltable_times[closest_value]
+#     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_'+str(closest_value)+'.h5 -in '+' '.join(new_h5) + '--convert_tec 0')
+#     command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/tussenrijn/data2/jurjendejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_'+str(closest_value)+'.h5 -h5in final_lotss_'+str(closest_value)+'.h5')
+#     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_'+str(closest_value)+'.h5 -in lotss_full_merged_filtered_'+str(closest_value)+'.h5 ' + soltable_times[closest_value]+' --convert_tec 0')
+# print('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
+# os.system('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
 """
 OUTPUT_FOLDER=${FOLDER}/result_filtered
 mkdir ${OUTPUT_FOLDER}
@@ -130,14 +129,14 @@ os.system('ls -1d /net/tussenrijn/data2/jurjendejong/A399/result/*.pre-cal.ms.ar
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE DDF COMMAND
-# with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
-#     lines = [l.replace('\n','') for l in f.readlines()]
-#     lines+=['--Data-MS=/net/tussenrijn/data2/jurjendejong/A399/result/big-mslist.txt']
-#     lines+=['--Predict-InitDicoModel=/net/tussenrijn/data2/jurjendejong/A399/result/image_full_ampphase_di_m.NS.DicoModel']
-#     lines+=['--DDESolutions-DDSols=/net/tussenrijn/data2/jurjendejong/A399/result/complete_merged*.h5:sol000/amplitude000+phase000']
-#     lines+=['--Mask-External=/net/tussenrijn/data2/jurjendejong/A399/result/image_full_ampphase_di_m.NS.mask01.fits']
-#
-# #RUN DDF COMMAND
-# print('Running DDF COMMAND')
-# os.system(' '.join(['cd', TO, '&&', SINGULARITY] + lines))
-# print('Finished making new image')
+with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
+    lines = [l.replace('\n','') for l in f.readlines()]
+    lines+=['--Data-MS=/net/tussenrijn/data2/jurjendejong/A399/result/big-mslist.txt']
+    lines+=['--Predict-InitDicoModel=/net/tussenrijn/data2/jurjendejong/A399/result/image_full_ampphase_di_m.NS.DicoModel']
+    lines+=['--DDESolutions-DDSols=/net/tussenrijn/data2/jurjendejong/A399/result/complete_merged*.h5:sol000/amplitude000+phase000']
+    lines+=['--Mask-External=/net/tussenrijn/data2/jurjendejong/A399/result/image_full_ampphase_di_m.NS.mask01.fits']
+
+#RUN DDF COMMAND
+print('Running DDF COMMAND')
+os.system(' '.join(['cd', TO, '&&', SINGULARITY] + lines))
+print('Finished making new image')
