@@ -891,6 +891,7 @@ class MergeH5:
                 T.root.sol000.phase000.val._f_remove()
                 T.root.sol000.phase000.pol._f_remove()
                 T.create_array(T.root.sol000.phase000, 'val', newphase)
+                T.root.sol000.phase000.val.attrs['AXES'] = b'time,freq,ant,dir,pol'
                 T.create_array(T.root.sol000.phase000, 'pol', newpol)
             else:
                 sys.exit('ERROR: Phase has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
@@ -905,6 +906,7 @@ class MergeH5:
                 T.root.sol000.amplitude000.val._f_remove()
                 T.root.sol000.amplitude000.pol._f_remove()
                 T.create_array(T.root.sol000.amplitude000, 'val', newampl)
+                T.root.sol000.amplitude000.val.attrs['AXES'] = b'time,freq,ant,dir,pol'
                 T.create_array(T.root.sol000.amplitude000, 'pol', newpol)
             else:
                 sys.exit('ERROR: Amplitude has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
