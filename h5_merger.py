@@ -880,6 +880,7 @@ class MergeH5:
     def remove_pol(self, single=False):
         """
         Reduce table to one single polarization
+        :param single: if single==True we leave a single pole such that values have shape=(..., 1), if False we remove pol-axis entirely
         """
         T = tables.open_file(self.file, 'r+')
         if single:
