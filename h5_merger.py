@@ -877,22 +877,32 @@ class MergeH5:
 
         return self
 
-    def make_single_pol(self):
+    def remove_pol(self, single=False):
         """
         Reduce table to one single polarization
         """
         T = tables.open_file(self.file, 'r+')
-        newpol = array([b'I'], dtype='|S2')
+        if single:
+            newpol = array([b'I'], dtype='|S2')
         try:
             if T.root.sol000.phase000.val[0,0,0,0,0] == T.root.sol000.phase000.val[0,0,0,0,-1] and \
                 T.root.sol000.phase000.val[-1, 0, 0, 0, 0] == T.root.sol000.phase000.val[-1, 0, 0, 0, -1]:
-                print('Phase has same values for XX and YY polarization.\nReducing into one Polarization I.')
-                newphase = T.root.sol000.phase000.val[:, :, :, :, 0:1]
+                if single:
+                    print('Phase has same values for XX and YY polarization.\nReducing into one Polarization I.')
+                else:
+                    print('Phase has same values for XX and YY polarization.\nRemoving Polarization.')
+                if single:
+                    newphase = T.root.sol000.phase000.val[:, :, :, :, 0:1]
+                else:
+                    newphase = T.root.sol000.phase000.val[:, :, :, :, 0]
                 T.root.sol000.phase000.val._f_remove()
                 T.root.sol000.phase000.pol._f_remove()
                 T.create_array(T.root.sol000.phase000, 'val', newphase)
-                T.root.sol000.phase000.val.attrs['AXES'] = b'time,freq,ant,dir,pol'
-                T.create_array(T.root.sol000.phase000, 'pol', newpol)
+                if single:
+                    T.root.sol000.phase000.val.attrs['AXES'] = b'time,freq,ant,dir,pol'
+                    T.create_array(T.root.sol000.phase000, 'pol', newpol)
+                else:
+                    T.root.sol000.phase000.val.attrs['AXES'] = b'time,freq,ant,dir'
             else:
                 sys.exit('ERROR: Phase has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
         except:
@@ -901,13 +911,22 @@ class MergeH5:
         try:
             if T.root.sol000.amplitude000.val[0, 0, 0, 0, 0] == T.root.sol000.amplitude000.val[0, 0, 0, 0, -1] and \
                 T.root.sol000.amplitude000.val[-1, 0, 0, 0, 0] == T.root.sol000.amplitude000.val[-1, 0, 0, 0, -1]:
-                print('Amplitude has same values for XX and YY polarization.\nReducing into one Polarization I.')
-                newampl = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
+                if single:
+                    print('Amplitude has same values for XX and YY polarization.\nReducing into one Polarization I.')
+                else:
+                    print('Phase has same values for XX and YY polarization.\nRemoving Polarization.')
+                if single:
+                    newampl = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
+                else:
+                    newampl = T.root.sol000.amplitude000.val[:, :, :, :, 0]
                 T.root.sol000.amplitude000.val._f_remove()
                 T.root.sol000.amplitude000.pol._f_remove()
                 T.create_array(T.root.sol000.amplitude000, 'val', newampl)
-                T.root.sol000.amplitude000.val.attrs['AXES'] = b'time,freq,ant,dir,pol'
-                T.create_array(T.root.sol000.amplitude000, 'pol', newpol)
+                if single:
+                    T.root.sol000.amplitude000.val.attrs['AXES'] = b'time,freq,ant,dir,pol'
+                    T.create_array(T.root.sol000.amplitude000, 'pol', newpol)
+                else:
+                    T.root.sol000.amplitude000.val.attrs['AXES'] = b'time,freq,ant,dir'
             else:
                 sys.exit('ERROR: Amplitude has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
         except:
@@ -923,7 +942,7 @@ def make_h5_name(h5_name):
     return h5_name
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
-             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None):
+             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
     :param h5_out (string): h5 table name out
@@ -1020,7 +1039,10 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     #remove polarization axis if double
     if single_pol:
         print('Make a single polarization')
-        merge.make_single_pol()
+        merge.remove_pol(single=True)
+    elif no_pol:
+        print('Remove polarization')
+        merge.remove_pol()
 
 
 
@@ -1047,7 +1069,7 @@ if __name__ == '__main__':
     parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear')
     parser.add_argument('--add_direction', default=None, help='add direction with amplitude 1 and phase 0 [ex: --add_direction [0.73,0.12]')
     parser.add_argument('--single_pol', action='store_true', default=None, help='Return only a single polarization axis if both polarizations are the same.')
-
+    parser.add_argument('--no_pol', action='store_true', default=None, help='Remove polarization axis if both polarizations are the same.')
     args = parser.parse_args()
 
     # make sure h5 tables in right format
@@ -1076,4 +1098,5 @@ if __name__ == '__main__':
              lin2circ=args.lin2circ,
              circ2lin=args.circ2lin,
              add_directions=add_directions,
-             single_pol=args.single_pol)
+             single_pol=args.single_pol,
+             no_pol=args.no_pol)
