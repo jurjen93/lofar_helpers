@@ -914,7 +914,7 @@ class MergeH5:
                 if single:
                     print('Amplitude has same values for XX and YY polarization.\nReducing into one Polarization I.')
                 else:
-                    print('Phase has same values for XX and YY polarization.\nRemoving Polarization.')
+                    print('Amplitude has same values for XX and YY polarization.\nRemoving Polarization.')
                 if single:
                     newampl = T.root.sol000.amplitude000.val[:, :, :, :, 0:1]
                 else:
