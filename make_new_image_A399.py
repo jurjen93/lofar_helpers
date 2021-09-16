@@ -55,15 +55,15 @@ for MS in glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive'):
     t.close()
     if time in CUTTIMES:
         print('Cutting time for '+MS)
-        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+        # os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
     elif time in CUTFREQS:
         print('Cutting freq for ' + MS)
         # os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS+" -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
-        if '127' not in MS:
-            os.system("cp -r " + MS + " " + TO)
+        # if '127' not in MS:
+        #     os.system("cp -r " + MS + " " + TO)
     else:
         print('Copying for ' + MS)
-        # os.system("cp -r " + MS + " " + TO)
+        os.system("cp -r " + MS + " " + TO)
 
 # important to wait until everything is ready before moving on
 while len(glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
