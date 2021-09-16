@@ -55,11 +55,12 @@ for MS in glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive'):
     t.close()
     if time in CUTTIMES:
         print('Cutting time for '+MS)
-        # os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
     elif time in CUTFREQS:
         print('Cutting freq for ' + MS)
         # os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS+" -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
-        # os.system("cp -r " + MS + " " + TO)
+        if '127' not in MS:
+            os.system("cp -r " + MS + " " + TO)
     else:
         print('Copying for ' + MS)
         # os.system("cp -r " + MS + " " + TO)
@@ -71,16 +72,16 @@ while len(glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive')) != 
 
 #MERGE LOTSS OUTER EDGE
 
-from supporting_scripts.get_DDS3 import get_DDS3
-
-DDS3, DDS3_dict = get_DDS3('/net/tussenrijn/data2/jurjendejong/A399_DEEP')
-
-soltable_times = {}
-for soltable in glob('/net/tussenrijn/data2/jurjendejong/A399/result/all_directions*.h5'):
-    tab = tables.open_file(soltable)
-    t = tab.root.sol000.phase000.time[0]
-    soltable_times.update({t: soltable})
-    tab.close()  # close table
+# from supporting_scripts.get_DDS3 import get_DDS3
+#
+# DDS3, DDS3_dict = get_DDS3('/net/tussenrijn/data2/jurjendejong/A399_DEEP')
+#
+# soltable_times = {}
+# for soltable in glob('/net/tussenrijn/data2/jurjendejong/A399/result/all_directions*.h5'):
+#     tab = tables.open_file(soltable)
+#     t = tab.root.sol000.phase000.time[0]
+#     soltable_times.update({t: soltable})
+#     tab.close()  # close table
 
 # os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/result_filtered')
 # os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/result_filtered' for s in DDS3]))
