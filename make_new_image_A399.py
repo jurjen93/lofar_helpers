@@ -35,7 +35,7 @@ command = 'cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+TO+ ' && '+\
         'cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+TO+' && wait'
         # 'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
 
-# os.system(command)
+os.system(command)
 print('Finished moving files')
 
 
@@ -63,7 +63,7 @@ for MS in glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive'):
         #     os.system("cp -r " + MS + " " + TO)
     else:
         print('Copying for ' + MS)
-        os.system("cp -r " + MS + " " + TO)
+        # os.system("cp -r " + MS + " " + TO)
 
 # important to wait until everything is ready before moving on
 while len(glob('/net/tussenrijn/data2/jurjendejong/A399_DEEP/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
