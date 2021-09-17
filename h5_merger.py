@@ -364,6 +364,8 @@ class MergeH5:
                 shape[dir_index] = 1
                 values = zeros(shape)
 
+                print(shape)
+
                 if dir_index == 0:
                     values[0, ...] += table_values[dir_idx, ...]
                 elif dir_index == 1:
@@ -792,9 +794,6 @@ class MergeH5:
         if 'amplitude' in soltab:
             weights = ones(self.gains.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
-            print(self.gains.shape)
-            print(self.axes_new)
-            print([len(a) for a in axes_vals])
             solsetout.makeSoltab('amplitude', axesNames=self.axes_new, axesVals=axes_vals, vals=self.gains,
                                  weights=weights)
         if 'tec' in soltab:
