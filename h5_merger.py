@@ -356,7 +356,6 @@ class MergeH5:
             num_dirs = self.get_number_of_directions(st)  # number of directions
             print('This table has {numdirection} direction(s)'.format(numdirection=num_dirs))
 
-
             # get values, time, and freq axis
             table_values, time_axes, freq_axes = self.get_values(st, solset, soltab)
 
@@ -365,11 +364,6 @@ class MergeH5:
                 shape = list(table_values.shape)
                 shape[init_dir_index] = 1
                 values = zeros(shape)
-
-                print(shape)
-                print(dir_idx)
-                print(init_dir_index)
-                print(values.shape)
 
                 if init_dir_index == 0:
                     values[0, ...] += table_values[dir_idx, ...]
@@ -1067,8 +1061,8 @@ if __name__ == '__main__':
             return True
 
     parser = ArgumentParser()
-    parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output')
-    parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge')
+    parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output', required=True)
+    parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge', required=True)
     parser.add_argument('-ms', '--ms_time_freq', type=str, help='ms files to use time and frequency arrays from')
     parser.add_argument('--h5_time_freq', type=str, help='h5 file to use time and frequency arrays from')
     parser.add_argument('-ct', '--convert_tec', type=str2bool, nargs='?', const=True, default=True, help='convert tec to phase')
@@ -1081,7 +1075,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # make sure h5 tables in right format
-    print(args.h5_tables)
     if '[' in args.h5_tables:
         h5tables = args.h5_tables.replace('[', '').replace(']', '').replace(' ', '').split(',')
     elif ' ' in args.h5_tables:
