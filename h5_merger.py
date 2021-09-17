@@ -369,6 +369,7 @@ class MergeH5:
                 print(shape)
                 print(dir_idx)
                 print(init_dir_index)
+                print(values.shape)
 
                 if init_dir_index == 0:
                     values[0, ...] += table_values[dir_idx, ...]
@@ -1080,6 +1081,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # make sure h5 tables in right format
+    print(args.h5_tables)
     if '[' in args.h5_tables:
         h5tables = args.h5_tables.replace('[', '').replace(']', '').replace(' ', '').split(',')
     elif ' ' in args.h5_tables:
