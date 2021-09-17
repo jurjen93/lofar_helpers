@@ -333,6 +333,8 @@ class MergeH5:
         """
         for h5_name in self.h5_tables:
 
+            print(h5_name, len(self.h5_tables))
+
             h5 = h5parm(h5_name)
             if solset not in h5.getSolsetNames():
                 h5.close()
@@ -348,7 +350,7 @@ class MergeH5:
 
             # current axes for reordering of axes
             self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
-            dir_index = self.axes_current.index('dir')  # index of direction
+
 
             print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
             num_dirs = self.get_number_of_directions(st)  # number of directions
@@ -359,6 +361,8 @@ class MergeH5:
             table_values, time_axes, freq_axes = self.get_values(st, solset, soltab)
 
             for dir_idx in range(num_dirs):#loop over all directions
+
+                dir_index = self.axes_current.index('dir')  # index of direction
 
                 shape = list(table_values.shape)
                 shape[dir_index] = 1
