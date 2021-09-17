@@ -792,6 +792,9 @@ class MergeH5:
         if 'amplitude' in soltab:
             weights = ones(self.gains.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
+            print(self.gains.shape)
+            print(self.axes_new)
+            print(axes_vals.shape)
             solsetout.makeSoltab('amplitude', axesNames=self.axes_new, axesVals=axes_vals, vals=self.gains,
                                  weights=weights)
         if 'tec' in soltab:
