@@ -365,6 +365,7 @@ class MergeH5:
                 values = zeros(shape)
 
                 print(shape)
+                print(dir_idx)
 
                 if dir_index == 0:
                     values[0, ...] += table_values[dir_idx, ...]
