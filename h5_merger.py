@@ -402,7 +402,7 @@ class MergeH5:
                     print('Direction {:f},{:f} already exists. Adding to this direction.'.format(*source_coords))
                     idx = list([list(l) for l in self.directions.values()]).index(list(source_coords))
                 else:  # new direction
-                    if source_coords[0] > 0 and source_coords[1] > 0 and self.merge_all_in_one:
+                    if source_coords[0] > 0 and source_coords[1] > 0:
                         print('Adding new direction {:f},{:f}'.format(*source_coords))
                     idx = self.n
                     self.directions.update({d: source_coords})
