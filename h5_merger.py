@@ -772,7 +772,7 @@ class MergeH5:
         DPPP_axes = self.DPPP_style(soltab)  # reorder the axis to DPPP style
 
         if 'pol' in self.axes_new:
-            if len(self.polarizations) > 0:
+            if len(self.polarizations) > 1:
                 axes_vals.update({'pol': self.polarizations})
             else:
                 axes_vals.update({'pol': ['XX', 'YY']})  # need to be updated for rotation where len(pol)==4
