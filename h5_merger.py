@@ -348,36 +348,37 @@ class MergeH5:
 
             st = ss.getSoltab(soltab)
 
+            # current axes for reordering of axes
+            self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
+            init_dir_index = self.axes_current.index('dir')  # index of direction
+
             print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
             num_dirs = self.get_number_of_directions(st)  # number of directions
             print('This table has {numdirection} direction(s)'.format(numdirection=num_dirs))
+
 
             # get values, time, and freq axis
             table_values, time_axes, freq_axes = self.get_values(st, solset, soltab)
 
             for dir_idx in range(num_dirs):#loop over all directions
 
-                # current axes for reordering of axes
-                self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
-                dir_index = self.axes_current.index('dir')  # index of direction
-
                 shape = list(table_values.shape)
-                shape[dir_index] = 1
+                shape[init_dir_index] = 1
                 values = zeros(shape)
 
                 print(shape)
                 print(dir_idx)
-                print(dir_index)
+                print(init_dir_index)
 
-                if dir_index == 0:
+                if init_dir_index == 0:
                     values[0, ...] += table_values[dir_idx, ...]
-                elif dir_index == 1:
+                elif init_dir_index == 1:
                     values[:, 0, ...] += table_values[:, dir_idx, ...]
-                elif dir_index == 2:
+                elif init_dir_index == 2:
                     values[:, :, 0, ...] += table_values[:, :, dir_idx, ...]
-                elif dir_index == 3:
+                elif init_dir_index == 3:
                     values[:, :, :, 0, ...] += table_values[:, :, :, dir_idx, ...]
-                elif dir_index == 4:
+                elif init_dir_index == 4:
                     values[:, :, :, :, 0, ...] += table_values[:, :, :, :, dir_idx, ...]
 
                 # update current and new axes if missing pol axes
