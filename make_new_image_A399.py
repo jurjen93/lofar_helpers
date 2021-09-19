@@ -35,7 +35,7 @@ command = 'cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+TO+ ' && '+\
         'cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+TO+' && wait'
         # 'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
 
-# os.system(command)
+os.system(command)
 print('Finished moving files')
 
 
@@ -59,8 +59,8 @@ for MS in glob(FROM+'/*.ms.archive'):
     elif time in CUTFREQS:
         print('Cutting freq for ' + MS)
         # os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS+" -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
-        if '127' not in MS:
-            os.system("cp -r " + MS + " " + TO)
+        # if '127' not in MS:
+        #     os.system("cp -r " + MS + " " + TO)
     else:
         print('Copying for ' + MS)
         # os.system("cp -r " + MS + " " + TO)
