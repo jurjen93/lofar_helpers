@@ -82,14 +82,29 @@ class MergeH5:
             self.ax_time = T.root.sol000.phase000.time[:]
             self.ax_freq = T.root.sol000.phase000.freq[:]
             T.close()
-        elif len(ms) > 0:  # check if there is a valid ms file
-            t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + ms[0] + '::SPECTRAL_WINDOW')
-            self.ax_freq = t.getcol('CHAN_FREQ')[0]
-            t.close()
+        # elif len(ms) == 1:  # check if there is a valid ms file
+        #     t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + ms[0] + '::SPECTRAL_WINDOW')
+        #     self.ax_freq = t.getcol('CHAN_FREQ')[0]
+        #     t.close()
+        #
+        #     t = ct.table(ms[0])
+        #     self.ax_time = sorted(unique(t.getcol('TIME')))
+        #     t.close()
 
-            t = ct.table(ms[0])
-            self.ax_time = sorted(unique(t.getcol('TIME')))
-            t.close()
+        elif len(ms)>0:
+            print('Will take the time and freq from the following measurement sets:\n'+'\n'.join(ms))
+            self.ax_time = array([])
+            self.ax_freq = array([])
+            for m in ms:
+                t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + m + '::SPECTRAL_WINDOW')
+                self.ax_freq = append(self.ax_freq, t.getcol('CHAN_FREQ')[0])
+                t.close()
+
+                t = ct.table(m)
+                self.ax_time = append(self.ax_freq, t.getcol('TIME'))
+                t.close()
+            self.ax_time = sorted(unique(self.ax_time))
+            self.ax_freq = sorted(unique(self.ax_freq))
 
         else:  # if we dont have ms files, we use the time and frequency axis of the longest h5 table
             print('No MS file given, will use h5 table for frequency and time axis')
