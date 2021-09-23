@@ -91,7 +91,7 @@ class MergeH5:
         #     self.ax_time = sorted(unique(t.getcol('TIME')))
         #     t.close()
 
-        elif len(ms)>0:
+        elif len(ms)>0: # if there are multiple ms files
             print('Will take the time and freq from the following measurement sets:\n'+'\n'.join(ms))
             self.ax_time = array([])
             self.ax_freq = array([])
@@ -1087,6 +1087,7 @@ if __name__ == '__main__':
     parser.add_argument('--add_direction', default=None, help='add direction with amplitude 1 and phase 0 [ex: --add_direction [0.73,0.12]')
     parser.add_argument('--single_pol', action='store_true', default=None, help='Return only a single polarization axis if both polarizations are the same.')
     parser.add_argument('--no_pol', action='store_true', default=None, help='Remove polarization axis if both polarizations are the same.')
+    parser.add_argument('--combine_h5', action='store_true', default=None, help='Combine h5 with different time axis into 1.')
     args = parser.parse_args()
 
     # make sure h5 tables in right format
