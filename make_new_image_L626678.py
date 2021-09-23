@@ -63,7 +63,7 @@ for MS in glob(TO+'/*.ms.archive'):
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE LIST WITH MEASUREMENT SETS
-os.system('ls -1d /net/tussenrijn/data2/jurjendejong/L626678/*.pre-cal.ms.archive* > /net/tussenrijn/data2/jurjendejong/L626678/big-mslist.txt'.format(LOCATION=TO))
+os.system('ls -1d /net/tussenrijn/data2/jurjendejong/L626678/*.pre-cal.ms.archive.goodtimes > /net/tussenrijn/data2/jurjendejong/L626678/big-mslist.txt'.format(LOCATION=TO))
 
 #----------------------------------------------------------------------------------------------------------------------
 
