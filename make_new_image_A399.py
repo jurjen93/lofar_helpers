@@ -58,7 +58,6 @@ for MS in glob(FROM+'/*.ms.archive'):
         # os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
     elif time in CUTFREQS:
         print('Cutting freq for ' + MS)
-        # os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS+" -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
         # if '127' not in MS:
         #     os.system("cp -r " + MS + " " + TO)
     else:
