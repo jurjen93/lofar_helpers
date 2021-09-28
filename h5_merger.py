@@ -101,7 +101,7 @@ class MergeH5:
                 t.close()
 
                 t = ct.table(m)
-                self.ax_time = append(self.ax_freq, t.getcol('TIME'))
+                self.ax_time = append(self.ax_time, t.getcol('TIME'))
                 t.close()
             self.ax_time = sorted(unique(self.ax_time))
             self.ax_freq = sorted(unique(self.ax_freq))
