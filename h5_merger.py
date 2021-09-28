@@ -108,8 +108,8 @@ class MergeH5:
 
         else:  # if we dont have ms files, we use the time and frequency axis of the longest h5 table
             print('No MS file given, will use h5 table for frequency and time axis')
-            self.ax_time = []
-            self.ax_freq = []
+            self.ax_time = array([])
+            self.ax_freq = array([])
             for h5_name in self.h5_tables:
                 h5 = h5parm(h5_name)
                 for solset in h5.getSolsetNames():
@@ -127,6 +127,11 @@ class MergeH5:
                         except:
                             print('No freq axis in {solset}/{soltab}'.format(solset=solset, soltab=soltab))
                 h5.close()
+
+        if type(self.ax_freq)==list:
+            sys.exit('Cannot read frequency axis from input MS set or input H5.')
+        if type(self.ax_time)==list:
+            sys.exit('Cannot read time axis from input MS or input H5.')
 
         self.convert_tec = convert_tec  # convert tec or not
         self.merge_all_in_one = merge_all_in_one
