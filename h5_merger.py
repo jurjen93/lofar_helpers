@@ -103,8 +103,8 @@ class MergeH5:
                 t = ct.table(m)
                 self.ax_time = append(self.ax_time, t.getcol('TIME'))
                 t.close()
-            self.ax_time = sorted(unique(self.ax_time))
-            self.ax_freq = sorted(unique(self.ax_freq))
+            self.ax_time = array(sorted(unique(self.ax_time)))
+            self.ax_freq = array(sorted(unique(self.ax_freq)))
 
         else:  # if we dont have ms files, we use the time and frequency axis of the longest h5 table
             print('No MS file given, will use h5 table for frequency and time axis')
