@@ -1111,8 +1111,12 @@ if __name__ == '__main__':
 
     if type(h5tables)==str:
         h5tables = glob(h5tables)
-    else:
-        print(h5tables)
+    elif type(h5tables)==list and len(h5tables)==1:
+        h5tables = glob(h5tables[0])
+    elif type(h5tables)==list:
+        h5tablestemp=[]
+        for h5 in h5tables:
+            h5tablestemp+=glob(h5)
 
     if args.add_direction:
         add_directions = args.add_direction.replace('[','').replace(']','').split(',')
