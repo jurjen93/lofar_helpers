@@ -1109,7 +1109,10 @@ if __name__ == '__main__':
     else:
         h5tables = args.h5_tables
 
-    h5tables = glob(h5tables)
+    if type(h5tables)==str:
+        h5tables = glob(h5tables)
+    else:
+        print(h5tables)
 
     if args.add_direction:
         add_directions = args.add_direction.replace('[','').replace(']','').split(',')
