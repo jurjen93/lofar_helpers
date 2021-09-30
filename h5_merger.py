@@ -782,6 +782,12 @@ class MergeH5:
 
         new_sources = self.keep_new_sources(solsetout.obj.source[:], list(self.directions.items()))
 
+        # antennas = st.getAxisvalues('ant')
+        # ss_antennas = ss.obj.antennas.read()
+        # antennasout = solsetout.getAnt()
+        # antennatable=solsetout.obj._f_get_child('antenna')
+        # antennatable.append(ss_antennas)
+
         if len(new_sources) > 0:
             solsetout.obj.source.append(new_sources)
 
@@ -1102,6 +1108,8 @@ if __name__ == '__main__':
         h5tables = args.h5_tables.split()
     else:
         h5tables = args.h5_tables
+
+    h5tables = glob(h5tables)
 
     if args.add_direction:
         add_directions = args.add_direction.replace('[','').replace(']','').split(',')
