@@ -702,6 +702,8 @@ class MergeH5:
         if 'phase' in soltab or 'tec' in soltab or 'rotation' in soltab:
             self.phases = reorderAxes(self.phases, self.axes_new, DPPP_axes)
         elif 'amplitude' in soltab:
+            print(self.gains.shape)
+            print(self.axes_new)
             self.gains = reorderAxes(self.gains, self.axes_new, DPPP_axes)
 
         return DPPP_axes
