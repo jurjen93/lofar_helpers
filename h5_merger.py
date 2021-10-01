@@ -348,8 +348,11 @@ class MergeH5:
         Get number of directions in solution table
         :param st: solution table
         """
-        dir_index = st.getAxesNames().index('dir')
-        return st.getValues()[0].shape[dir_index]
+        if 'dir' in st.getAxesNames():
+            dir_index = st.getAxesNames().index('dir')
+            return st.getValues()[0].shape[dir_index]
+        else:
+            return 1
 
     def get_sol(self, solset, soltab):
         """
