@@ -379,9 +379,13 @@ class MergeH5:
 
             # current axes for reordering of axes
             self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
+
+            # add dir if missing
             if 'dir' not in self.axes_new:
-                self.axes_current.insert(1, 'dir')
                 self.axes_new.insert(1, 'dir')
+            if 'dir' not in self.axes_current:
+                self.axes_current.insert(1, 'dir')
+
             init_dir_index = self.axes_current.index('dir')  # index of direction
 
             print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
