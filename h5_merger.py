@@ -172,7 +172,13 @@ class MergeH5:
         for av in self.axes_new:
             if av in st.getAxesNames() and st.getAxisLen(av) == 0:
                 print("No {av} in {solset}/{soltab}".format(av=av, solset=solset, soltab=soltab))
-        values = reorderAxes(st.getValues()[0], st.getAxesNames(), self.axes_current)
+
+        if 'dir' in st.getAxesNames():
+            values = reorderAxes(st.getValues()[0], st.getAxesNames(), self.axes_current)
+        else:
+            print('No direction axis, we will add this.')
+            origin_values = st.getValues()[0]
+            values = reorderAxes(origin_values.reshape(origin_values.shape+(1,)), st.getAxesNames()+['dir'], self.axes_current)
 
         return values, time_axes, freq_axes
 
@@ -370,6 +376,9 @@ class MergeH5:
 
             # current axes for reordering of axes
             self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
+            if 'dir' not in self.axes_current:
+                self.axes_current.append('dir')
+                self.axes_new.append('dir')
             init_dir_index = self.axes_current.index('dir')  # index of direction
 
             print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
@@ -968,6 +977,35 @@ def make_h5_name(h5_name):
     if '.h5' != h5_name[-3:]:
         h5_name += '.h5'
     return h5_name
+
+def change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
+    """
+    This function is to change the solset numbers.
+
+    1) Copy solset_in to solset_out (overwriting if overwrite==True)
+    2) Delete solset_in if delete==True
+    """
+    H = tables.open_file(h5, 'r+')
+    if solset_in=='sol001':
+        H.root.sol001._f_copy(H.root, newname=solset_out, overwrite=overwrite, recursive=True)
+        print('Succesfully copied ' + solset_in + ' to ' + solset_out)
+        if delete:
+            H.root.sol001._f_remove(recursive=True)
+            print('Removed ' + solset_in)
+        H.close()
+    elif solset_in=='sol000':
+        H.root.sol000._f_copy(H.root, newname=solset_out, overwrite=overwrite, recursive=True)
+        print('Succesfully copied ' + solset_in + ' to ' + solset_out)
+        if delete:
+            H.root.sol000._f_remove(recursive=True)
+            print('Removed ' + solset_in)
+        H.close()
+
+    else:
+        H.close()
+        sys.exit('Code is not advanced enough to change the solset name.\n '
+                 'Please contact jurjendejong@strw.leidenuniv.nl.')
+
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None):
