@@ -981,10 +981,11 @@ class MergeH5:
 
     def add_antennas(self):
         "Add antennas to output table"
+        print('Add antenna table.')
         T = tables.open_file(self.h5_tables[0])
         antennas = T.root.sol000.antenna[:]
         T.close()
-        H = tables.open_file(self.file, 'r')
+        H = tables.open_file(self.file, 'r+')
         H.root.sol000.antenna = antennas
         H.close()
         return self
