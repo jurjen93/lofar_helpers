@@ -381,7 +381,7 @@ class MergeH5:
             self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
             if 'dir' not in self.axes_current:
                 self.axes_current.append('dir')
-                self.axes_new.append('dir')
+                self.axes_new.insert(1, 'dir')
             init_dir_index = self.axes_current.index('dir')  # index of direction
 
             print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
