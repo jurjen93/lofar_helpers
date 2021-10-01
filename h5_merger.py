@@ -380,7 +380,7 @@ class MergeH5:
             # current axes for reordering of axes
             self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
             if 'dir' not in self.axes_current:
-                self.axes_current.append('dir')
+                self.axes_current.insert(1, 'dir')
                 self.axes_new.insert(1, 'dir')
             init_dir_index = self.axes_current.index('dir')  # index of direction
 
