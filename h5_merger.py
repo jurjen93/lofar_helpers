@@ -140,7 +140,7 @@ class MergeH5:
 
         self.directions = {}  # directions in a dictionary
 
-    def get_values(self, st, solset, soltab):
+    def get_and_check_values(self, st, solset, soltab):
         """
         Get the values from the h5 table to merge.
         Also do some checks on the time and frequency axis.
@@ -393,7 +393,7 @@ class MergeH5:
             print('This table has {numdirection} direction(s)'.format(numdirection=num_dirs))
 
             # get values, time, and freq axis
-            table_values, time_axes, freq_axes = self.get_values(st, solset, soltab)
+            table_values, time_axes, freq_axes = self.get_and_check_values(st, solset, soltab)
 
             for dir_idx in range(num_dirs):#loop over all directions
 
@@ -706,8 +706,6 @@ class MergeH5:
         if 'phase' in soltab or 'tec' in soltab or 'rotation' in soltab:
             self.phases = reorderAxes(self.phases, self.axes_new, DPPP_axes)
         elif 'amplitude' in soltab:
-            print(self.gains.shape)
-            print(self.axes_new)
             self.gains = reorderAxes(self.gains, self.axes_new, DPPP_axes)
 
         return DPPP_axes
@@ -981,6 +979,16 @@ class MergeH5:
         T.close()
         return self
 
+    def add_antennas(self):
+        "Add antennas to output table"
+        T = tables.open_file(self.h5_tables[0])
+        antennas = T.root.sol000.antenna[:]
+        T.close()
+        H = tables.open_file(self.file, 'r')
+        H.root.sol000.antenna = antennas
+        H.close()
+        return self
+
 
 def make_h5_name(h5_name):
     if '.h5' != h5_name[-3:]:
@@ -1069,6 +1077,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             # merge.create_new_dataset(ss, 'phase')
         # except:#add try to except to be sure that adding extra phase and amplitude is not going to break the code
         # pass
+
+        #Add antennas
+        merge.add_antennas()
     print('END: h5 solution file(s) merged')
 
     if add_directions:
