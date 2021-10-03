@@ -6,6 +6,7 @@ from argparse import ArgumentParser
 import tables
 import numpy as np
 import os
+import sys
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
@@ -28,11 +29,13 @@ else:
 boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 
+merged_boxes = []
 
 for box in boxes_h5_list:
     print(box)
     h5out = '{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive))
     h5merge = sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1]
+    merged_boxes.append(h5merge)
     os.system('rm '+h5out)
     os.system('cp '+h5merge+' '+h5out)
 
@@ -62,13 +65,12 @@ final_merge.sort(key=lambda x: get_digits(x))
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
          h5_tables=sorted(glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive)))))
 
-# final_boxes = []
-# for box in boxes_h5_list:
-#     try:
-#         final_boxes.append(sorted(glob('{box}/merged_selfcal*.ms.archive{n}*h5'.format(box=box, n=str(args.archive))))[-1])
-#     except:
-#         print('Issues with finding:')
-#         print('{box}/merged_selfcal*.ms.archive{n}*h5'.format(box=box, n=str(args.archive)))
-#
-# merge_h5(h5_out='all_directions{n}_wrong.h5'.format(n=str(args.archive)),
-#          h5_tables=final_boxes)
+merged_boxes.sort(key=lambda x: get_digits(x))
+H = tables.open_file('all_directions{n}.h5'.format(n=str(args.archive)))
+for n, h5 in enumerate(merged_boxes):
+    T = tables.open_file(h5)
+    if H.root.sol000.phase000.val[0,0,0,n,0]!=T.root.sol000.phase000.val[0,0,0,0,0] or \
+        H.root.sol000.amplitude000.val[0,0,0,n,0]!=T.root.sol000.amplitude000.val[0,0,0,0,0]:
+        sys.exit('check direction '+str(n))
+    T.close()
+H.close()
