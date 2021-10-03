@@ -987,7 +987,7 @@ class MergeH5:
         T.close()
         H = tables.open_file(self.file, 'r+')
         H.root.sol000.antenna._f_remove()
-        H.create_table(T.root.sol000, 'antenna', antennas, "Antenna names and positions")
+        H.create_table(H.root.sol000, 'antenna', antennas, "Antenna names and positions")
         H.close()
         return self
 
