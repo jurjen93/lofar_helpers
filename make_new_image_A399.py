@@ -29,7 +29,7 @@ os.system('CleanSHM.py')
 print('Moving files to '+TO)
 command = 'cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+TO+ ' && '+\
         'cp -r '+FROM+'/image_full_ampphase_di_m.NS.DicoModel '+TO+' && '+\
-        'scp -rf lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/A399/selfcal/all_directions*.h5 '+TO+' && wait'
+        'scp lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/A399/selfcal/all_directions*.h5 '+TO+' && wait'
         # 'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
 
 os.system(command)
