@@ -37,7 +37,7 @@ from scipy.interpolate import interp1d
 import sys
 import re
 import tables
-from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all
+from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle
 
 __all__ = ['merge_h5', 'str2bool']
 
@@ -1036,6 +1036,202 @@ def change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
         sys.exit('Code is not advanced enough to change the solset name.\n '
                  'Please contact jurjendejong@strw.leidenuniv.nl.')
 
+class PolChange:
+    """
+    This Python class helps to convert polarization from linear to circular or vice versa.
+    """
+    def __init__(self, h5_in, h5_out):
+        """
+        :param h5_in: h5 input name
+        :param h5_out: h5 output name
+        """
+        self.h5_in = h5parm(h5_in, readonly=True)
+        self.h5_out = h5parm(h5_out, readonly=False)
+        self.axes_names = ['time', 'freq', 'ant', 'dir', 'pol']
+
+    @staticmethod
+    def lin2circ(G):
+        """Convert linear polarization to circular polarization"""
+        RR = (G[..., 0] + G[..., -1]).astype(complex128)
+        LL = (G[..., 0] + G[..., -1]).astype(complex128)
+        RL = (G[..., 0] - G[..., -1]).astype(complex128)
+        LR = (G[..., 0] - G[..., -1]).astype(complex128)
+
+        if G.shape[-1] == 4:
+            RR += 1j * (G[..., 2] - G[..., 1])
+            LL += 1j * (G[..., 1] - G[..., 2])
+            RL += 1j * (G[..., 2] + G[..., 1])
+            LR -= 1j * (G[..., 2] + G[..., 1])
+
+        RR /= 2
+        LL /= 2
+        RL /= 2
+        LR /= 2
+
+        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
+        G_new[..., 0] += RR
+        G_new[..., 1] += RL
+        G_new[..., 2] += LR
+        G_new[..., 3] += LL
+        return G_new
+
+    @staticmethod
+    def circ2lin(G):
+        """Convert circular polarization to linear polarization"""
+        XX = (G[..., 0] + G[..., -1]).astype(complex128)
+        YY = (G[..., 0] + G[..., -1]).astype(complex128)
+        XY = 1j * (G[..., 0] - G[..., -1]).astype(complex128)
+        YX = 1j * (G[..., -1] - G[..., 0]).astype(complex128)
+
+        if G.shape[-1] == 4:
+            XX += (G[..., 2] + G[..., 1]).astype(complex128)
+            YY -= (G[..., 1] + G[..., 2]).astype(complex128)
+            XY += 1j * (G[..., 2] - G[..., 1])
+            YX += 1j * (G[..., 2] - G[..., 1])
+
+        XX /= 2
+        YY /= 2
+        XY /= 2
+        YX /= 2
+
+        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
+        G_new[..., 0] += XX
+        G_new[..., 1] += XY
+        G_new[..., 2] += YX
+        G_new[..., 3] += YY
+        return G_new
+
+    @staticmethod
+    def add_polarization(values, dim_pol):
+        """
+        Add extra polarization if there is no polarization
+        :param values: values which need to get a polarization
+        :param dim_pol: number of dimensions
+        """
+        values_temp = ones(values.shape+(dim_pol,))
+        for i in range(dim_pol):
+            values_temp[..., i] = values
+
+        return values_temp
+
+
+    def make_template(self, soltab):
+        """
+        Make template of the Gain matrix with only ones
+        :param soltab: solution table (phase, amplitude)
+        """
+        self.G, self.axes_vals = array([]), {}
+        for ss in self.h5_in.getSolsetNames():
+            for st in self.h5_in.getSolset(ss).getSoltabNames():
+                solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
+                if soltab in st:
+                    try:
+                        if 'pol' in solutiontable.getAxesNames():
+                            values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
+                            self.G = ones(values.shape).astype(complex128)
+                        else:
+                            values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
+                            self.G = ones(values.shape+(2,)).astype(complex128)
+                    except:
+                        sys.exit('ERROR:\nReceived '+str(solutiontable.getAxesNames())+', but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]')
+
+                    self.axes_vals = {'time': solutiontable.getAxisValues('time'),
+                                 'freq': solutiontable.getAxisValues('freq'),
+                                 'ant': solutiontable.getAxisValues('ant'),
+                                 'dir': solutiontable.getAxisValues('dir'),
+                                 'pol': ['XX', 'XY', 'YX', 'YY']}
+                    break
+
+        print('Shape of input {shape}'.format(shape=self.G.shape))
+        return self
+
+    def add_tec(self, solutiontable):
+        """
+        :param solutiontable: the solution table for the TEC
+        """
+        tec_axes_names = [ax for ax in self.axes_names if solutiontable.getAxesNames()]
+        tec = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), tec_axes_names)
+        if 'freq' in solutiontable.getAxesNames():
+            axes_vals_tec = {'time': solutiontable.getAxisValues('time'),
+                             'freq': solutiontable.getAxisValues('freq'),
+                             'ant': solutiontable.getAxisValues('ant'),
+                             'dir': solutiontable.getAxisValues('dir')}
+        else:
+            axes_vals_tec = {'dir': solutiontable.getAxisValues('dir'),
+                             'ant': solutiontable.getAxisValues('ant'),
+                             'time': solutiontable.getAxisValues('time')}
+        if 'pol' in solutiontable.getAxesNames():
+            if tec.shape[-1] == 2:
+                axes_vals_tec.update({'pol': ['XX', 'YY']})
+            elif tec.shape[-1] == 4:
+                axes_vals_tec.update({'pol': ['XX', 'XY', 'YX', 'YY']})
+        axes_vals_tec = [v[1] for v in
+                         sorted(axes_vals_tec.items(), key=lambda pair: self.axes_names.index(pair[0]))]
+        self.solsetout.makeSoltab('tec', axesNames=tec_axes_names, axesVals=axes_vals_tec, vals=tec, weights=ones(tec.shape))
+
+    def make_new_gains(self, lin2circ, circ2lin):
+        """
+        :param lin2circ: boolean for linear to circular conversion
+        :param circ2lin: boolean for circular to linear conversion
+        """
+        for ss in self.h5_in.getSolsetNames():
+
+            self.solsetout = self.h5_out.makeSolset(ss)
+            solsetin = self.h5_in.getSolset(ss)
+
+            self.solsetout.obj.source.append(solsetin.obj.source[:])
+
+            for st in self.h5_in.getSolset(ss).getSoltabNames():
+                solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
+                print('Reading {st} from {ss}'.format(ss=ss, st=st))
+                if 'phase' in st:
+                    if 'pol' in solutiontable.getAxesNames():
+                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
+                        self.G *= exp(values * 1j)
+                    else:
+                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
+                        self.G *= exp(self.add_polarization(values, 2) * 1j)
+
+                elif 'amplitude' in st:
+                    if 'pol' in solutiontable.getAxesNames():
+                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
+                        self.G *= values * 1j
+                    else:
+                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
+                        self.G *= self.add_polarization(values, 2)
+
+                elif 'tec' in st:
+                    self.add_tec(solutiontable)
+                else:
+                    print("Didn't include {st} in this version yet".format(st=st))
+                    print("Let me (Jurjen) know if you need to include this.")
+
+            if lin2circ:
+                print('Convert linear polarization to circular polarization')
+                G_new = self.lin2circ(self.G)
+            elif circ2lin:
+                print('Convert circular polarization to linear polarization')
+                G_new = self.circ2lin(self.G)
+            else:
+                sys.exit('ERROR: No conversion given')
+            print('Shape of output for amplitude and phase: {shape}'.format(shape=G_new.shape))
+
+            phase = angle(G_new)
+            amplitude = abs(G_new)
+
+            self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
+
+            self.solsetout.makeSoltab('phase', axesNames=self.axes_names, axesVals=self.axes_vals, vals=phase, weights=ones(phase.shape))
+            print('Created new phase solutions')
+
+            self.solsetout.makeSoltab('amplitude', axesNames=self.axes_names, axesVals=self.axes_vals, vals=amplitude, weights=ones(amplitude.shape))
+            print('Created new amplitude solutions')
+
+        self.h5_in.close()
+        self.h5_out.close()
+
+        return self
+
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None):
@@ -1101,12 +1297,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if lin2circ and circ2lin:
         sys.exit('Both polarization conversions are given, please choose 1.')
     elif lin2circ or circ2lin:
-        print("THIS FUNCTION HASN'T BEEN TESTED YET! PLEASE PROVIDE FEEDBACK IF ANY STRANGE RESULT OCCURS.")
-        try:
-            from supporting_scripts.h5_lin2circ import PolChange
-        except:
-            sys.exit('ERROR: h5_lin2circ.py is missing or has the wrong path, so no polarization conversion has been done.'
-                     '\nYou can find the latest version in github.com/jurjen93/lofar_helpers or contact Jurjen de Jong')
+
         if lin2circ:
             h5_output_name = h5_out[0:-3]+'_circ.h5'
             print('Polarization will be converted from linear to circular')
