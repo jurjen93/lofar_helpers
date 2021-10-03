@@ -43,8 +43,8 @@ Version 1.3 (2014, Reinout van Weeren) - corrected the flux error, factor of 0.5
 Since the transformation matrices are hermitian, C_A ^-1 = C+_A and C+_A^-1 = C_A.
 So, we have: 
 
-	V_XY = C+_A*V_RL*C_A
-	
+    V_XY = C+_A*V_RL*C_A
+
 which is:
 
 XX =   RR +  RL +  LR +  LL
@@ -58,82 +58,82 @@ import casacore.tables as pt
 import numpy
 
 def main(options):
-	stepsize = 200000
-	cI = numpy.complex(0.,1.)
-	
-	inms = options.inms
-	if inms == '':
-			print('Error: you have to specify an input MS, use -h for help')
-			return
-	column = options.column
-	outcol = options.outcol
-	
-	t = pt.table(inms, readonly=False, ack=True)
-	if options.back:
-		lincol = options.lincol
-		if lincol not in t.colnames():
-			print('Adding the output linear polarization column',lincol,'to',inms)            
-			desc = t.getcoldesc(column)
-			newdesc = pt.makecoldesc(lincol, desc)
-			newdmi = t.getdminfo(column)
-			newdmi['NAME'] = 'Dysco' + lincol
-			t.addcols(newdesc, newdmi)  
+    stepsize = 200000
+    cI = numpy.complex(0.,1.)
+
+    inms = options.inms
+    if inms == '':
+            print('Error: you have to specify an input MS, use -h for help')
+            return
+    column = options.column
+    outcol = options.outcol
+
+    t = pt.table(inms, readonly=False, ack=True)
+    if options.back:
+        lincol = options.lincol
+        if lincol not in t.colnames():
+            print('Adding the output linear polarization column',lincol,'to',inms)
+            desc = t.getcoldesc(column)
+            newdesc = pt.makecoldesc(lincol, desc)
+            newdmi = t.getdminfo(column)
+            newdmi['NAME'] = 'Dysco' + lincol
+            t.addcols(newdesc, newdmi)
             
 
-                ### RVW EDIT 2012   
-		print('Reading the input column (circular)', column)
-		if column not in t.colnames():
-			print('Error: Input column does not exist')
-			return
-		for row in range(0,t.nrows(),stepsize):
-			print('Doing row', row, 'out of', t.nrows())
-			### RVW EDIT 2012 Input column with the -c switch 
-			cirdata = t.getcol(column, startrow=row, nrow=stepsize, rowincr=1)
-			#cirdata = t.getcol(outcol)
-			#print 'SHAPE ARRAY', numpy.shape(cirdata)
+        ### RVW EDIT 2012
+        print('Reading the input column (circular)', column)
+        if column not in t.colnames():
+            print('Error: Input column does not exist')
+            return
+        for row in range(0,t.nrows(),stepsize):
+            print('Doing row', row, 'out of', t.nrows())
+            ### RVW EDIT 2012 Input column with the -c switch
+            cirdata = t.getcol(column, startrow=row, nrow=stepsize, rowincr=1)
+            #cirdata = t.getcol(outcol)
+            #print 'SHAPE ARRAY', numpy.shape(cirdata)
             
-			print('Computing the linear polarization terms...')
-			lindata = numpy.transpose(numpy.array([
+            print('Computing the linear polarization terms...')
+            lindata = numpy.transpose(numpy.array([
                     0.5*(cirdata[:,:,0]+cirdata[:,:,1]+cirdata[:,:,2]+cirdata[:,:,3]),
                     0.5*(cI*cirdata[:,:,0]-cI*cirdata[:,:,1]+cI*cirdata[:,:,2]-cI*cirdata[:,:,3]),
                     0.5*(-cI*cirdata[:,:,0]-cI*cirdata[:,:,1]+cI*cirdata[:,:,2]+cI*cirdata[:,:,3]),
                     0.5*(cirdata[:,:,0]-cirdata[:,:,1]-cirdata[:,:,2]+cirdata[:,:,3])]),
                     (1,2,0))
-			print('Finishing up...')
-			t.putcol(lincol, lindata, startrow=row, nrow=stepsize, rowincr=1)
-		t.close()
-	else:
-		if outcol not in t.colnames():
-			print('Adding the output column',outcol,'to',inms)
-			desc = t.getcoldesc(column)
-			newdesc = pt.makecoldesc(outcol, desc)
-			newdmi = t.getdminfo(column)
-			newdmi['NAME'] = 'Dysco' + outcol
-			t.addcols(newdesc, newdmi)  			
+            print('Finishing up...')
+            t.putcol(lincol, lindata, startrow=row, nrow=stepsize, rowincr=1)
+        t.close()
+    else:
+        if outcol not in t.colnames():
+            print('Adding the output column',outcol,'to',inms)
+            desc = t.getcoldesc(column)
+            newdesc = pt.makecoldesc(outcol, desc)
+            newdmi = t.getdminfo(column)
+            newdmi['NAME'] = 'Dysco' + outcol
+            t.addcols(newdesc, newdmi)
 
-		print('Reading the input column (linear)', column)
-		for row in range(0,t.nrows(),stepsize):
-			print('Doing row', row, 'out of', t.nrows(), row+stepsize)
-			data = t.getcol(column, startrow=row, nrow=stepsize, rowincr=1)
-			print('Computing the output circular column')
-			outdata = numpy.transpose(numpy.array([
+        print('Reading the input column (linear)', column)
+        for row in range(0,t.nrows(),stepsize):
+            print('Doing row', row, 'out of', t.nrows(), row+stepsize)
+            data = t.getcol(column, startrow=row, nrow=stepsize, rowincr=1)
+            print('Computing the output circular column')
+            outdata = numpy.transpose(numpy.array([
                     0.5*(data[:,:,0]-cI*data[:,:,1]+cI*data[:,:,2]+data[:,:,3]),
                     0.5*(data[:,:,0]+cI*data[:,:,1]+cI*data[:,:,2]-data[:,:,3]),
                     0.5*(data[:,:,0]-cI*data[:,:,1]-cI*data[:,:,2]-data[:,:,3]),
                     0.5*(data[:,:,0]+cI*data[:,:,1]-cI*data[:,:,2]+data[:,:,3])]),
                     (1,2,0))
-			print('Finishing up...')
-			t.putcol(outcol, outdata, startrow=row, nrow=stepsize, rowincr=1)
-		t.close()
-	if options.poltable:
-		print('Updating the POLARIZATION table...')
-		tp = pt.table(inms+'/POLARIZATION',readonly=False,ack=True)
-		
-		### RVW EDIT 2012
-		if options.back:
-		   tp.putcol('CORR_TYPE',numpy.array([[9,10,11,12]],dtype=numpy.int32)) # FROM CIRC-->LIN
-		else:
-		   tp.putcol('CORR_TYPE',numpy.array([[5,6,7,8]],dtype=numpy.int32)) # FROM LIN-->CIRC
+            print('Finishing up...')
+            t.putcol(outcol, outdata, startrow=row, nrow=stepsize, rowincr=1)
+        t.close()
+    if options.poltable:
+        print('Updating the POLARIZATION table...')
+        tp = pt.table(inms+'/POLARIZATION',readonly=False,ack=True)
+
+        ### RVW EDIT 2012
+        if options.back:
+           tp.putcol('CORR_TYPE',numpy.array([[9,10,11,12]],dtype=numpy.int32)) # FROM CIRC-->LIN
+        else:
+           tp.putcol('CORR_TYPE',numpy.array([[5,6,7,8]],dtype=numpy.int32)) # FROM LIN-->CIRC
 
 opt = optparse.OptionParser()
 opt.add_option('-i','--inms',help='Input MS [no default]',default='')
