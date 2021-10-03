@@ -16,10 +16,6 @@ import tables
 
 TO='/net/tussenrijn/data2/jurjendejong/A399/result'
 FROM='/net/rijn/data2/jdejong/A399_DEEP'
-SING_IMAGE='/net/rijn/data2/rvweeren/data/pill-latestMay2021.simg'
-SING_BIND='/net/tussenrijn'
-SINGULARITY=' '.join(['singularity exec -B', SING_BIND, SING_IMAGE])
-# SINGULARITY=' '.join(['singularity exec ', SING_IMAGE])
 
 #CREATE DESTINATION DIRECTORY IF NOT EXISTS
 if not path.exists(TO):
@@ -55,53 +51,54 @@ for MS in glob(FROM+'/*.ms.archive'):
     t.close()
     if time in CUTTIMES:
         print('Cutting time for '+MS)
-        # os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
     elif time in CUTFREQS:
         print('Cutting freq for ' + MS)
-        # if '127' not in MS:
-        #     os.system("cp -r " + MS + " " + TO)
+        if '127' not in MS:
+            os.system("cp -r " + MS + " " + TO)
     else:
         print('Copying for ' + MS)
-        # os.system("cp -r " + MS + " " + TO)
+        os.system("cp -r " + MS + " " + TO)
 
-# # important to wait until everything is ready before moving on
-# while len(glob(FROM+'/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
-#     print('TIME AND FREQUENCY FLAGGING')
+# important to wait until everything is ready before moving on
+while len(glob(FROM+'/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
+    print('TIME AND FREQUENCY FLAGGING')
 #----------------------------------------------------------------------------------------------------------------------
 
 #MERGE LOTSS OUTER EDGE
 
-# from supporting_scripts.get_DDS3 import get_DDS3
-#
-# DDS3, DDS3_dict = get_DDS3(FROM)
-#
-# soltable_times = {}
-# for soltable in glob('/net/tussenrijn/data2/jurjendejong/A399/result/all_directions*.h5'):
-#     tab = tables.open_file(soltable)
-#     t = tab.root.sol000.phase000.time[0]
-#     soltable_times.update({t: soltable})
-#     tab.close()  # close table
+from supporting_scripts.get_DDS3 import get_DDS3
 
-# os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/result_filtered')
-# os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/result_filtered' for s in DDS3]))
-# command = []
-# for ms in DDS3_dict.items():
-#     new_h5=[]
-#     for npz in ms[1]:
-#         command.append('killMS2H5parm.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
-#         new_h5.append(npz.split('/')[-1].replace('npz','h5 '))
-#
-#     table = ct.table(ms[0])  # open table
-#     t = table.getcol('TIME')[0]  # get first time element from measurement set
-#     table.close()  # close table
-#     diff = lambda ob_time: abs(ob_time - t)  # formula to compare difference between first time element of ms and observation times
-#     closest_value = min(list(soltable_times.keys()), key=diff)  # get closest value with lambda function
-#     h5 = soltable_times[closest_value]
-#     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_'+str(closest_value)+'.h5 -in '+' '.join(new_h5) + '--convert_tec 0')
-#     command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/rijn/data2/jdejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_'+str(closest_value)+'.h5 -h5in final_lotss_'+str(closest_value)+'.h5')
-#     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_'+str(closest_value)+'.h5 -in lotss_full_merged_filtered_'+str(closest_value)+'.h5 ' + soltable_times[closest_value]+' --convert_tec 0')
-# print('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
-# os.system('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
+DDS3, DDS3_dict = get_DDS3(FROM)
+
+soltable_times = {}
+for soltable in glob('/net/tussenrijn/data2/jurjendejong/A399/result/all_directions*.h5'):
+    tab = tables.open_file(soltable)
+    t = tab.root.sol000.phase000.time[0]
+    soltable_times.update({t: soltable})
+    tab.close()  # close table
+
+os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/result_filtered')
+os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/result_filtered' for s in DDS3]))
+command = []
+for ms in DDS3_dict.items():
+    new_h5=[]
+    for npz in ms[1]:
+        command.append('killMS2H5parm.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
+        new_h5.append(npz.split('/')[-1].replace('npz','h5 '))
+
+    table = ct.table(ms[0])  # open table
+    t = table.getcol('TIME')[0]  # get first time element from measurement set
+    table.close()  # close table
+    diff = lambda ob_time: abs(ob_time - t)  # formula to compare difference between first time element of ms and observation times
+    closest_value = min(list(soltable_times.keys()), key=diff)  # get closest value with lambda function
+    h5 = soltable_times[closest_value]
+    command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_'+str(closest_value)+'.h5 -in '+' '.join(new_h5) + '--convert_tec 0')
+    command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/rijn/data2/jdejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_'+str(closest_value)+'.h5 -h5in final_lotss_'+str(closest_value)+'.h5')
+    command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_'+str(closest_value)+'.h5 -in lotss_full_merged_filtered_'+str(closest_value)+'.h5 ' + soltable_times[closest_value]+' --convert_tec 0')
+print('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
+os.system('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
+os.system('mv /net/tussenrijn/data2/jurjendejong/A399/result_filtered complete_merged*.h5 /net/tussenrijn/data2/jurjendejong/A399/result/')
 """
 OUTPUT_FOLDER=${FOLDER}/result_filtered
 mkdir ${OUTPUT_FOLDER}
