@@ -1298,6 +1298,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         sys.exit('Both polarization conversions are given, please choose 1.')
     elif lin2circ or circ2lin:
 
+        print('THIS FEATURE IS NOT PROPERLY TESTED YET, PLEASE GIVE FEEDBACK IF THE RESULT IS NOT AS EXPECTED (jurjendejong@strw.leidenuniv.nl)')
+
         if lin2circ:
             h5_output_name = h5_out[0:-3]+'_circ.h5'
             print('Polarization will be converted from linear to circular')
