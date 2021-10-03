@@ -34,7 +34,7 @@ merged_boxes = []
 for box in boxes_h5_list:
     print(box)
     h5out = '{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive))
-    h5merge = sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1]
+    h5merge = sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]
     merged_boxes.append(h5merge)
     os.system('rm '+h5out)
     os.system('cp '+h5merge+' '+h5out)
