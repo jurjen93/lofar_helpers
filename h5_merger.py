@@ -120,11 +120,10 @@ class MergeH5:
                             print('No freq axis in {solset}/{soltab}'.format(solset=solset, soltab=soltab))
                 h5.close()
 
-        if type(self.ax_freq)==list:
+        if len(self.ax_freq) == 0:
             sys.exit('Cannot read frequency axis from input MS set or input H5.')
-        if type(self.ax_time)==list:
+        if len(self.ax_time) == 0:
             sys.exit('Cannot read time axis from input MS or input H5.')
-
         if not self.same_antennas:
             sys.exit('Antenna tables are not the same')
 
@@ -144,7 +143,7 @@ class MergeH5:
             H = tables.open_file(h5_name)
             antennas = H.root.sol000.antenna[:]
             H.close()
-            if not all(antennas_ref==antennas):
+            if not all(antennas_ref == antennas):
                 print('Antennas from '+self.h5_tables[0]+':')
                 print(antennas_ref)
                 print('Antennas from '+h5_name+':')

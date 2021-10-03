@@ -28,26 +28,20 @@ else:
 boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 
+
 for box in boxes_h5_list:
+    print(box)
     h5out = '{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive))
+    h5merge = sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1]
     os.system('rm '+h5out)
+    os.system('cp '+h5merge+' '+h5out)
+
     tecandphase1 = sorted(glob('{box}/tecandphase1*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))
     tecandphase0 = sorted(glob('{box}/tecandphase0*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))
     scalarcomplexgain2 = sorted(glob('{box}/scalarcomplexgain2*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))
-    h5_files = []
-    if len(tecandphase1)>1:
-        h5_files.append(tecandphase1[-1])
-    if len(tecandphase0)>1:
-        h5_files.append(tecandphase0[-1])
-    if len(scalarcomplexgain2)>1:
-        h5_files.append(scalarcomplexgain2[-1])
-    merge_h5(h5_out=h5out,
-             h5_tables=h5_files,
-             h5_time_freq=sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=boxes_h5_list[0], n=args.archive)))[-1],
-             merge_all_in_one=True)
+
     T = tables.open_file(h5out, 'r+')
     T.root.sol000.source._f_remove()
-    alt_files = []
     if len(tecandphase1)>1:
         openfile = tecandphase1[0]
     elif len(tecandphase0)>1:
@@ -63,6 +57,7 @@ for box in boxes_h5_list:
         T.create_table(T.root.sol000, 'source', new_source, "Source names and directions")
     T.close()
 
+print('\n'.join(sorted(glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive))))))
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
          h5_tables=sorted(glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive)))))
 
