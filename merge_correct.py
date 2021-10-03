@@ -57,7 +57,8 @@ for box in boxes_h5_list:
         T.create_table(T.root.sol000, 'source', new_source, "Source names and directions")
     T.close()
 
-print('\n'.join(sorted(glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive))))))
+final_merge = glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive)))
+final_merge.sort(key=lambda x: get_digits(x))
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
          h5_tables=sorted(glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive)))))
 
