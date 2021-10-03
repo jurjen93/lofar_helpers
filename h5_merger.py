@@ -138,11 +138,11 @@ class MergeH5:
     @property
     def same_antennas(self):
         H_ref = tables.open_file(self.h5_tables[0])
-        antennas_ref = H_ref.root.sol000.antenna
+        antennas_ref = H_ref.root.sol000.antenna[:]
         H_ref.close()
         for h5_name in self.h5_tables:
             H = tables.open_file(h5_name)
-            antennas = H.root.sol000.antenna
+            antennas = H.root.sol000.antenna[:]
             H.close()
             if not all(antennas_ref==antennas):
                 print('Antennas from '+self.h5_tables[0]+':')
