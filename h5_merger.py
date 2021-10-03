@@ -37,7 +37,7 @@ from scipy.interpolate import interp1d
 import sys
 import re
 import tables
-from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array
+from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all
 
 __all__ = ['merge_h5', 'str2bool']
 
@@ -82,14 +82,6 @@ class MergeH5:
             self.ax_time = T.root.sol000.phase000.time[:]
             self.ax_freq = T.root.sol000.phase000.freq[:]
             T.close()
-        # elif len(ms) == 1:  # check if there is a valid ms file
-        #     t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + ms[0] + '::SPECTRAL_WINDOW')
-        #     self.ax_freq = t.getcol('CHAN_FREQ')[0]
-        #     t.close()
-        #
-        #     t = ct.table(ms[0])
-        #     self.ax_time = sorted(unique(t.getcol('TIME')))
-        #     t.close()
 
         elif len(ms)>0: # if there are multiple ms files
             print('Will take the time and freq from the following measurement sets:\n'+'\n'.join(ms))
@@ -133,12 +125,32 @@ class MergeH5:
         if type(self.ax_time)==list:
             sys.exit('Cannot read time axis from input MS or input H5.')
 
+        if not self.same_antennas:
+            sys.exit('Antenna tables are not the same')
+
         self.convert_tec = convert_tec  # convert tec or not
         self.merge_all_in_one = merge_all_in_one
 
         self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time']  # standard solax order to do our manipulations
 
         self.directions = {}  # directions in a dictionary
+
+    @property
+    def same_antennas(self):
+        H_ref = tables.open_file(self.h5_tables[0])
+        antennas_ref = H_ref.root.sol000.antenna
+        H_ref.close()
+        for h5_name in self.h5_tables:
+            H = tables.open_file(h5_name)
+            antennas = H.root.sol000.antenna
+            H.close()
+            if not all(antennas_ref==antennas):
+                print('Antennas from '+self.h5_tables[0]+':')
+                print(antennas_ref)
+                print('Antennas from '+h5_name+':')
+                print(antennas)
+                return False
+        return True
 
     def get_and_check_values(self, st, solset, soltab):
         """
