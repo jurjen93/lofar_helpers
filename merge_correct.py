@@ -63,12 +63,11 @@ for box in boxes_h5_list:
 final_merge = glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive)))
 final_merge.sort(key=lambda x: get_digits(x))
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
-         h5_tables=sorted(glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive)))))
+         h5_tables=final_merge)
 
 merged_boxes.sort(key=lambda x: get_digits(x))
 H = tables.open_file('all_directions{n}.h5'.format(n=str(args.archive)))
 for n, h5 in enumerate(merged_boxes):
-    print(h5)
     T = tables.open_file(h5)
     if H.root.sol000.phase000.val[0,0,0,n,0]!=T.root.sol000.phase000.val[0,0,0,0,0] or \
         H.root.sol000.amplitude000.val[0,0,0,n,0]!=T.root.sol000.amplitude000.val[0,0,0,0,0]:
