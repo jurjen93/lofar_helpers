@@ -32,7 +32,7 @@ command = 'cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+TO+ ' && '+\
         'scp lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/A399/selfcal/all_directions*.h5 '+TO+' && wait'
         # 'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
 
-os.system(command)
+# os.system(command)
 print('Finished moving files')
 
 
@@ -45,25 +45,25 @@ CUTTIMES = [5019387068.011121, 5019387064.005561, 5017577408.011121, 5017577404.
 
 #starting times for measurement sets that have to be cutted for freq
 CUTFREQS = [5021107868.011121, 5021107864.005561]
-
-for MS in glob(FROM+'/*.ms.archive'):
-    t = ct.table(MS)
-    time = t.getcol('TIME')[0]
-    t.close()
-    if time in CUTTIMES:
-        print('Cutting time for '+MS)
-        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
-    elif time in CUTFREQS:
-        print('Cutting freq for ' + MS)
-        if '127' not in MS:
-            os.system("cp -r " + MS + " " + TO)
-    else:
-        print('Copying for ' + MS)
-        os.system("cp -r " + MS + " " + TO)
-
-# important to wait until everything is ready before moving on
-while len(glob(FROM+'/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
-    print('TIME AND FREQUENCY FLAGGING')
+#
+# for MS in glob(FROM+'/*.ms.archive'):
+#     t = ct.table(MS)
+#     time = t.getcol('TIME')[0]
+#     t.close()
+#     if time in CUTTIMES:
+#         print('Cutting time for '+MS)
+#         os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+#     elif time in CUTFREQS:
+#         print('Cutting freq for ' + MS)
+#         if '127' not in MS:
+#             os.system("cp -r " + MS + " " + TO)
+#     else:
+#         print('Copying for ' + MS)
+#         os.system("cp -r " + MS + " " + TO)
+#
+# # important to wait until everything is ready before moving on
+# while len(glob(FROM+'/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
+#     print('TIME AND FREQUENCY FLAGGING')
 #----------------------------------------------------------------------------------------------------------------------
 
 #MERGE LOTSS OUTER EDGE
@@ -79,8 +79,8 @@ for soltable in glob('/net/tussenrijn/data2/jurjendejong/A399/result/all_directi
     soltable_times.update({t: soltable})
     tab.close()  # close table
 
-os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/result_filtered')
-os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/result_filtered' for s in DDS3]))
+os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/H5files')
+os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/H5files' for s in DDS3]))
 command = []
 for ms in DDS3_dict.items():
     new_h5=[]
@@ -97,11 +97,12 @@ for ms in DDS3_dict.items():
     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_'+str(closest_value)+'.h5 -in '+' '.join(new_h5) + '--convert_tec 0')
     command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/rijn/data2/jdejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_'+str(closest_value)+'.h5 -h5in final_lotss_'+str(closest_value)+'.h5')
     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_'+str(closest_value)+'.h5 -in lotss_full_merged_filtered_'+str(closest_value)+'.h5 ' + soltable_times[closest_value]+' --convert_tec 0')
-print('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
-os.system('cd /net/tussenrijn/data2/jurjendejong/A399/result_filtered && '+' && '.join(command))
-os.system('mv /net/tussenrijn/data2/jurjendejong/A399/result_filtered complete_merged*.h5 /net/tussenrijn/data2/jurjendejong/A399/result/')
+print('cd /net/tussenrijn/data2/jurjendejong/A399/H5files && '+' && '.join(command))
+os.system('cd /net/tussenrijn/data2/jurjendejong/A399/H5files && '+' && '.join(command))
+os.system('mv /net/tussenrijn/data2/jurjendejong/A399/H5files/complete_merged*.h5 /net/tussenrijn/data2/jurjendejong/A399/result/ && wait')
+os.system('rm -rf /net/tussenrijn/data2/jurjendejong/A399/H5files')
 """
-OUTPUT_FOLDER=${FOLDER}/result_filtered
+OUTPUT_FOLDER=${FOLDER}/H5files
 mkdir ${OUTPUT_FOLDER}
 
 cd ${OUTPUT_FOLDER}
