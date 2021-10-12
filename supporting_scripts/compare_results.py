@@ -42,8 +42,6 @@ if __name__ == '__main__':
     parser.add_argument('--region_files', type=str, help='region files location', required=True)
     args = parser.parse_args()
 
-    print(args.surf_im)
-    print(args.region_files)
     surf_images = glob(args.surf_im)
     region_files = glob(args.region_files)
     int_restored = args.int_restored
@@ -51,5 +49,6 @@ if __name__ == '__main__':
     app_restored = args.app_restored
 
     for reg in region_files:
+        print(image_final)
         make_cutout(image_final, reg)
         break
