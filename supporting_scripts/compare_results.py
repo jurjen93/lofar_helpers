@@ -13,13 +13,14 @@ def make_cutout(fitsfile: str = None, region: str = None ):
     hdu = fits.open(fitsfile)
     image_data = hdu[0].data
     header = hdu[0].header
-    hdu.close()
 
     r = pyregion.open(region)
     ra  = r[0].coord_list[0]
     dec = r[0].coord_list[1]
-    sizex = r[0].coord_list[2]
-    sizey = r[0].coord_list[3]
+    sizex = int(r[0].coord_list[2]/hdu[0].header['CDELT2'])
+    sizey = int(r[0].coord_list[3]/hdu[0].header['CDELT2'])
+
+    hdu.close()
 
     print(ra, dec)
     print(sizex, sizey)
