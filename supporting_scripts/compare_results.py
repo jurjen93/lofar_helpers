@@ -87,5 +87,5 @@ if __name__ == '__main__':
 
     for reg in region_files:
         print(image_final)
-        make_cutout(image_final, reg)
+        make_image(image_final, reg)
         break
