@@ -12,7 +12,7 @@ def make_cutout(fitsfile: str = None, region: str = None ):
 
     hdu = fits.open(fitsfile)
     image_data = hdu[0].data
-    header = hdu.header
+    header = hdu[0].header
     hdu.close()
 
     r = pyregion.open(region)
