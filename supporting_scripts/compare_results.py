@@ -11,7 +11,7 @@ from astropy.nddata import Cutout2D
 def make_cutout(fitsfile: str = None, region: str = None ):
 
     hdu = fits.open(fitsfile)
-    image_data = hdu[0].data
+    image_data = hdu[0].data[0][0]
     header = hdu[0].header
 
 
