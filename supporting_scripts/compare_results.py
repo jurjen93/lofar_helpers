@@ -2,12 +2,12 @@ import pyregion
 from astropy.io import fits
 import numpy as np
 from astropy.wcs import WCS
-import sys
 from argparse import ArgumentParser
 from glob import glob
 from astropy.nddata import Cutout2D
 import matplotlib.pyplot as plt
 from matplotlib.colors import SymLogNorm
+import os
 
 
 def make_cutout(fitsfile: str = None, region: str = None ):
@@ -15,7 +15,6 @@ def make_cutout(fitsfile: str = None, region: str = None ):
     hdu = fits.open(fitsfile)
     image_data = hdu[0].data[0][0]
     header = hdu[0].header
-
 
     r = pyregion.open(region)
     ra  = r[0].coord_list[0]
@@ -28,9 +27,6 @@ def make_cutout(fitsfile: str = None, region: str = None ):
     wcs = WCS(header, naxis=2)
 
     posx, posy = wcs.all_world2pix([[ra, dec]], 0)[0]
-
-    print(int(posx), int(posy))
-    print(image_data.shape)
 
     out = Cutout2D(
         data=image_data,
@@ -59,7 +55,7 @@ def findrms(mIn,maskSup=1e-7):
         rmsold=rms
     return rms
 
-def make_image(image_final, app_restored, int_restored, surf_im, region):
+def make_image(image_final, app_restored, int_restored, surf_im, region, name):
     image_final, wcs = make_cutout(image_final, region)
     imagenoise_final = findrms(image_final)
 
@@ -74,14 +70,7 @@ def make_image(image_final, app_restored, int_restored, surf_im, region):
 
     imagenoise = max(imagenoise_final, imagenoise_app, imagenoise_int, imagenoise_surf)
 
-
-    # plt.figure(figsize=(10, 10))
-    # plt.subplot(projection=wcs)
-    # plt.imshow(data, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
-    #            origin='lower', cmap='CMRmap')
-    # plt.xlabel('Galactic Longitude')
-    # plt.ylabel('Galactic Latitude')
-    # plt.savefig('test.png')
+    print(imagenoise)
 
     fig, axs = plt.subplots(2, 2, figsize=(10, 10))
 
@@ -103,7 +92,7 @@ def make_image(image_final, app_restored, int_restored, surf_im, region):
 
     fig.suptitle(region)
 
-    plt.savefig('test.png')
+    plt.savefig(name+'/'+region.split('/')[-1].split('.')[0]+'.png')
 
 if __name__ == '__main__':
     parser = ArgumentParser()
@@ -120,8 +109,13 @@ if __name__ == '__main__':
     image_final = args.image_final
     app_restored = args.app_restored
 
+    outputfile = '/'.join(image_final.split('/')[0:-2])+'/comparisons'
+
+    os.system('mkdir '+outputfile)
+
+
     for reg in region_files:
         surf_image = '/'.join(args.surf_im.split('/')[0:-1])+'/'+reg.split('/')[-1].split('.')[0]+'.fits'
         print(surf_image)
-        make_image(image_final, app_restored, int_restored, surf_image, reg)
+        make_image(image_final, app_restored, int_restored, surf_image, reg, outputfile)
         break
