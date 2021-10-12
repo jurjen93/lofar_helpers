@@ -76,7 +76,7 @@ def make_image(image_final, app_restored, int_restored, surf_im, region, name):
     surf_im, wcs = make_cutout(surf_im, region)
     imagenoise_surf = findrms(surf_im)
 
-    imagenoise = max(imagenoise_final, imagenoise_app, imagenoise_int, imagenoise_surf)
+    imagenoise = min(imagenoise_final, imagenoise_app, imagenoise_int, imagenoise_surf)
 
     print(imagenoise)
 
