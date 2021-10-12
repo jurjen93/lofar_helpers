@@ -85,19 +85,19 @@ def make_image(image_final, app_restored, int_restored, surf_im, region):
 
     print(imagenoise)
 
-    axs[0, 0].imshow(image_final, vmin=imagenoise*6, vmax=16*imagenoise,
+    axs[0, 0].imshow(image_final, vmin=imagenoise*2, vmax=16*imagenoise,
                origin='lower', cmap='bone')
     axs[0, 0].set_title('image_final')
 
-    axs[0, 1].imshow(app_restored, vmin=imagenoise*6, vmax=16*imagenoise,
+    axs[0, 1].imshow(app_restored, vmin=imagenoise*2, vmax=16*imagenoise,
                origin='lower', cmap='bone')
     axs[0, 1].set_title('app_restored')
 
-    axs[1, 0].imshow(int_restored, vmin=imagenoise*6, vmax=16*imagenoise,
+    axs[1, 0].imshow(int_restored, vmin=imagenoise*2, vmax=16*imagenoise,
                origin='lower', cmap='bone')
     axs[1, 0].set_title('int_restored')
 
-    axs[1, 1].imshow(surf_im, vmin=imagenoise*6, vmax=16*imagenoise,
+    axs[1, 1].imshow(surf_im, vmin=imagenoise*2, vmax=16*imagenoise,
                origin='lower', cmap='bone')
     axs[1, 1].set_title('surf_im')
 
