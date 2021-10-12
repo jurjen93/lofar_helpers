@@ -81,7 +81,7 @@ if __name__ == '__main__':
     parser.add_argument('--int_restored', type=str, nargs='+', help='*int.restored.fits file', required=True)
     parser.add_argument('--image_final', type=str, nargs='+', help='final image', required=True)
     parser.add_argument('--app_restored', type=str, nargs='+', help='*app.restored.fits image', required=True)
-    parser.add_argument('--region_files', type=str, nargs='+', help='region files location', required=True)
+    parser.add_argument('--region_files', type=str, help='region files location', required=True)
     args = parser.parse_args()
 
     print(args.surf_im)
