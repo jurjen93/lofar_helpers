@@ -21,6 +21,9 @@ def make_cutout(fitsfile: str = None, region: str = None ):
     sizex = r[0].coord_list[2]
     sizey = r[0].coord_list[3]
 
+    print(ra, dec)
+    print(sizex, sizey)
+
     wcs = WCS(header, naxis=2)
     out = Cutout2D(
         data=image_data,
