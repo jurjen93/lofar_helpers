@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 from glob import glob
 from astropy.nddata import Cutout2D
 import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm
+from matplotlib.colors import SymLogNorm
 
 
 def make_cutout(fitsfile: str = None, region: str = None ):
@@ -29,6 +29,8 @@ def make_cutout(fitsfile: str = None, region: str = None ):
 
     posx, posy = wcs.all_world2pix([[ra, dec]], 0)[0]
 
+    print(int(posx), int(posy))
+    print(image_data.shape)
 
     out = Cutout2D(
         data=image_data,
@@ -83,21 +85,19 @@ def make_image(image_final, app_restored, int_restored, surf_im, region):
 
     fig, axs = plt.subplots(2, 2)
 
-    print(imagenoise)
-
-    axs[0, 0].imshow(image_final, vmin=imagenoise*2, vmax=16*imagenoise,
+    axs[0, 0].imshow(image_final, norm=SymLogNorm(linthresh=imagenoise, vmin=imagenoise/10, vmax=16*imagenoise),
                origin='lower', cmap='bone')
     axs[0, 0].set_title('image_final')
 
-    axs[0, 1].imshow(app_restored, vmin=imagenoise*2, vmax=16*imagenoise,
+    axs[0, 1].imshow(app_restored, norm=SymLogNorm(linthresh=imagenoise, vmin=imagenoise/10, vmax=16*imagenoise),
                origin='lower', cmap='bone')
     axs[0, 1].set_title('app_restored')
 
-    axs[1, 0].imshow(int_restored, vmin=imagenoise*2, vmax=16*imagenoise,
+    axs[1, 0].imshow(int_restored, norm=SymLogNorm(linthresh=imagenoise, vmin=imagenoise/10, vmax=16*imagenoise),
                origin='lower', cmap='bone')
     axs[1, 0].set_title('int_restored')
 
-    axs[1, 1].imshow(surf_im, vmin=imagenoise*2, vmax=16*imagenoise,
+    axs[1, 1].imshow(surf_im, norm=SymLogNorm(linthresh=imagenoise, vmin=imagenoise/10, vmax=16*imagenoise),
                origin='lower', cmap='bone')
     axs[1, 1].set_title('surf_im')
 
