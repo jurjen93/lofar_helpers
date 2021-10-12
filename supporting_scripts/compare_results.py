@@ -36,9 +36,9 @@ def make_cutout(fitsfile: str = None, region: str = None ):
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--surf_im', type=str, help='fits images produced on surfsara', required=True)
-    parser.add_argument('--int_restored', type=str, nargs='+', help='*int.restored.fits file', required=True)
-    parser.add_argument('--image_final', type=str, nargs='+', help='final image', required=True)
-    parser.add_argument('--app_restored', type=str, nargs='+', help='*app.restored.fits image', required=True)
+    parser.add_argument('--int_restored', type=str, help='*int.restored.fits file', required=True)
+    parser.add_argument('--image_final', type=str, help='final image', required=True)
+    parser.add_argument('--app_restored', type=str, help='*app.restored.fits image', required=True)
     parser.add_argument('--region_files', type=str, help='region files location', required=True)
     args = parser.parse_args()
 
