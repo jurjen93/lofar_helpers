@@ -6,6 +6,8 @@ import sys
 from argparse import ArgumentParser
 from glob import glob
 from astropy.nddata import Cutout2D
+import matplotlib.pyplot as plt
+from matplotlib.colors import SymLogNorm
 
 
 def make_cutout(fitsfile: str = None, region: str = None ):
@@ -23,14 +25,10 @@ def make_cutout(fitsfile: str = None, region: str = None ):
 
     hdu.close()
 
-    print(ra, dec)
-    print(sizex, sizey)
-
     wcs = WCS(header, naxis=2)
 
     posx, posy = wcs.all_world2pix([[ra, dec]], 0)[0]
-    print(int(posx), int(posy))
-    print(image_data.shape)
+
 
     out = Cutout2D(
         data=image_data,
@@ -42,6 +40,35 @@ def make_cutout(fitsfile: str = None, region: str = None ):
 
     return out.data, out.wcs
 
+def findrms(mIn,maskSup=1e-7):
+    """
+    find the rms of an array, from Cycil Tasse/kMS
+    """
+    m=mIn[np.abs(mIn)>maskSup]
+    rmsold=np.std(m)
+    diff=1e-1
+    cut=3.
+    bins=np.arange(np.min(m),np.max(m),(np.max(m)-np.min(m))/30.)
+    med=np.median(m)
+    for i in range(10):
+        ind=np.where(np.abs(m-med)<rmsold*cut)[0]
+        rms=np.std(m[ind])
+        if np.abs((rms-rmsold)/rmsold)<diff: break
+        rmsold=rms
+    return rms
+
+def make_image(fitsfile, region):
+    data, wcs = make_cutout(fitsfile, region)
+    imagenoise = findrms(data)
+
+
+    plt.figure(figsize=(10, 10))
+    plt.subplot(projection=wcs)
+    plt.imshow(data, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
+               origin='lower', cmap='CMRmap')
+    plt.xlabel('Galactic Longitude')
+    plt.ylabel('Galactic Latitude')
+    plt.show()
 
 if __name__ == '__main__':
     parser = ArgumentParser()
