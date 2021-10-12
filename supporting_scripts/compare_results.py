@@ -29,10 +29,12 @@ def make_cutout(fitsfile: str = None, region: str = None ):
     wcs = WCS(header, naxis=2)
 
     posx, posy = wcs.all_world2pix([[ra, dec]], 0)[0]
-    print(posx, posy)
+    print(int(posx), int(posy))
+    print(image_data.shape)
+
     out = Cutout2D(
         data=image_data,
-        position=(posx, posy),
+        position=(int(posx), int(posy)),
         size=(sizex, sizey),
         wcs=wcs,
         mode='partial'
