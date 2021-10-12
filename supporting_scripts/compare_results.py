@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
     outputfile = '/'.join(image_final.split('/')[0:-2])+'/comparisons'
 
-    os.system('mkdir '+outputfile)
+    os.system('mkdir -p '+outputfile)
 
 
     for reg in region_files:
