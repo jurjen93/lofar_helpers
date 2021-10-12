@@ -119,6 +119,6 @@ if __name__ == '__main__':
 
     for reg in region_files:
         print(image_final)
-        surf_image = args.surf_im+'/'+reg.split('.')[0]+'.fits'
+        surf_image = args.surf_im.replace('*','')+'/'+reg.split('.')[0].split('/')[-1]+'.fits'
         make_image(image_final, app_restored, int_restored, surf_image, reg)
         break
