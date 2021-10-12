@@ -14,6 +14,7 @@ def make_cutout(fitsfile: str = None, region: str = None ):
     image_data = hdu[0].data
     header = hdu[0].header
 
+
     r = pyregion.open(region)
     ra  = r[0].coord_list[0]
     dec = r[0].coord_list[1]
@@ -26,6 +27,9 @@ def make_cutout(fitsfile: str = None, region: str = None ):
     print(sizex, sizey)
 
     wcs = WCS(header, naxis=2)
+
+    ra, dec = wcs.world_to_pixel(ra, dec)
+    print(ra, dec)
     out = Cutout2D(
         data=image_data,
         position=(ra, dec),
