@@ -32,9 +32,8 @@ command = 'cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+TO+ ' && '+\
         'scp lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/A399/selfcal/all_directions*.h5 '+TO+' && wait'
         # 'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
 
-# os.system(command)
+os.system(command)
 print('Finished moving files')
-
 
 #----------------------------------------------------------------------------------------------------------------------
 
@@ -45,25 +44,25 @@ CUTTIMES = [5019387068.011121, 5019387064.005561, 5017577408.011121, 5017577404.
 
 #starting times for measurement sets that have to be cutted for freq
 CUTFREQS = [5021107868.011121, 5021107864.005561]
-#
-# for MS in glob(FROM+'/*.ms.archive'):
-#     t = ct.table(MS)
-#     time = t.getcol('TIME')[0]
-#     t.close()
-#     if time in CUTTIMES:
-#         print('Cutting time for '+MS)
-#         os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
-#     elif time in CUTFREQS:
-#         print('Cutting freq for ' + MS)
-#         if '127' not in MS:
-#             os.system("cp -r " + MS + " " + TO)
-#     else:
-#         print('Copying for ' + MS)
-#         os.system("cp -r " + MS + " " + TO)
-#
-# # important to wait until everything is ready before moving on
-# while len(glob(FROM+'/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
-#     print('TIME AND FREQUENCY FLAGGING')
+
+for MS in glob(FROM+'/*.ms.archive'):
+    t = ct.table(MS)
+    time = t.getcol('TIME')[0]
+    t.close()
+    if time in CUTTIMES:
+        print('Cutting time for '+MS)
+        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+    elif time in CUTFREQS:
+        print('Cutting freq for ' + MS)
+        if '127' not in MS:
+            os.system("cp -r " + MS + " " + TO)
+    else:
+        print('Copying for ' + MS)
+        os.system("cp -r " + MS + " " + TO)
+
+# important to wait until everything is ready before moving on
+while len(glob(FROM+'/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
+    print('TIME AND FREQUENCY FLAGGING')
 #----------------------------------------------------------------------------------------------------------------------
 
 #MERGE LOTSS OUTER EDGE
@@ -101,24 +100,6 @@ print('cd /net/tussenrijn/data2/jurjendejong/A399/H5files && '+' && '.join(comma
 os.system('cd /net/tussenrijn/data2/jurjendejong/A399/H5files && '+' && '.join(command))
 os.system('mv /net/tussenrijn/data2/jurjendejong/A399/H5files/complete_merged*.h5 /net/tussenrijn/data2/jurjendejong/A399/result/ && wait')
 os.system('rm -rf /net/tussenrijn/data2/jurjendejong/A399/H5files')
-"""
-OUTPUT_FOLDER=${FOLDER}/H5files
-mkdir ${OUTPUT_FOLDER}
-
-cd ${OUTPUT_FOLDER}
-
-#converging and merging .npz to .h5 files from LoTSS output
-singularity exec -B ${SING_BIND} ${SING_IMAGE} killMS2H5parm.py lotss_slow.h5 ${FOLDER}/extract/DDS3_full_slow*merged.npz --nofulljones
-singularity exec -B ${SING_BIND} ${SING_IMAGE} killMS2H5parm.py lotss_smoothed.h5 ${FOLDER}/extract/DDS3_full*smoothed.npz --nofulljones
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out lotss_full_merged.h5 -in lotss_*.h5 -ms '/net/tussenrijn/data2/jurjendejong/L626678/result/*.goodtimes' --convert_tec 0
-
-#h5 filter
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/supporting_scripts/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered.h5 -h5in lotss_full_merged.h5
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/supporting_scripts/h5_filter.py -f ${FOLDER}/extract/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in true -h5out all_directions_filtered.h5 -h5in ${FOLDER}/result/all_directions.h5
-
-#merging h5 files
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/h5_merger.py -out complete_merged.h5 -in lotss_full_merged_filtered.h5 all_directions_filtered.h5 --convert_tec 0
-"""
 
 #----------------------------------------------------------------------------------------------------------------------
 
