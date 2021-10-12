@@ -29,6 +29,8 @@ def make_cutout(fitsfile: str = None, region: str = None ):
 
     posx, posy = wcs.all_world2pix([[ra, dec]], 0)[0]
 
+    print(int(posx), int(posy))
+    print(image_data.shape)
 
     out = Cutout2D(
         data=image_data,
@@ -118,8 +120,7 @@ if __name__ == '__main__':
     app_restored = args.app_restored
 
     for reg in region_files:
-        print(reg.split('/')[-1].split('.')[0])
-        print(args.surf_im.replace('*','')+'/')
         surf_image = '/'.join(args.surf_im.split('/')[0:-1])+'/'+reg.split('/')[-1].split('.')[0]+'.fits'
+        print(surf_image)
         make_image(image_final, app_restored, int_restored, surf_image, reg)
         break
