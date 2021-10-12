@@ -115,6 +115,9 @@ if __name__ == '__main__':
 
 
     for reg in region_files:
-        surf_image = '/'.join(args.surf_im.split('/')[0:-1])+'/'+reg.split('/')[-1].split('.')[0]+'.fits'
-        print(surf_image)
-        make_image(image_final, app_restored, int_restored, surf_image, reg, outputfile)
+        try:
+            surf_image = '/'.join(args.surf_im.split('/')[0:-1])+'/'+reg.split('/')[-1].split('.')[0]+'.fits'
+            print(surf_image)
+            make_image(image_final, app_restored, int_restored, surf_image, reg, outputfile)
+        except:
+            print(reg+' does not exist')
