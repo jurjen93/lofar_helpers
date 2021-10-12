@@ -57,17 +57,49 @@ def findrms(mIn,maskSup=1e-7):
         rmsold=rms
     return rms
 
-def make_image(fitsfile, region):
-    data, wcs = make_cutout(fitsfile, region)
-    imagenoise = findrms(data)
+def make_image(image_final, app_restored, int_restored, surf_im, region):
+    image_final, wcs = make_cutout(image_final, region)
+    imagenoise_final = findrms(image_final)
+
+    app_restored, wcs = make_cutout(app_restored, region)
+    imagenoise_app = findrms(app_restored)
+
+    int_restored, wcs = make_cutout(int_restored, region)
+    imagenoise_int = findrms(int_restored)
+
+    surf_im, wcs = make_cutout(surf_im, region)
+    imagenoise_surf = findrms(surf_im)
+
+    imagenoise = max(imagenoise_final, imagenoise_app, imagenoise_int, imagenoise_surf)
 
 
-    plt.figure(figsize=(10, 10))
-    plt.subplot(projection=wcs)
-    plt.imshow(data, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
+    # plt.figure(figsize=(10, 10))
+    # plt.subplot(projection=wcs)
+    # plt.imshow(data, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
+    #            origin='lower', cmap='CMRmap')
+    # plt.xlabel('Galactic Longitude')
+    # plt.ylabel('Galactic Latitude')
+    # plt.savefig('test.png')
+
+    fig, axs = plt.subplots(2, 2)
+    axs[0, 0].imshow(imagenoise_final, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
                origin='lower', cmap='CMRmap')
-    plt.xlabel('Galactic Longitude')
-    plt.ylabel('Galactic Latitude')
+    axs[0, 0].set_title('imagenoise_final')
+
+    axs[0, 1].imshow(imagenoise_app, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
+               origin='lower', cmap='CMRmap')
+    axs[0, 1].set_title('imagenoise_app')
+
+    axs[1, 0].imshow(int_restored, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
+               origin='lower', cmap='CMRmap')
+    axs[1, 0].set_title('int_restored')
+
+    axs[1, 1].imshow(surf_im, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
+               origin='lower', cmap='CMRmap')
+    axs[1, 1].set_title('surf_im')
+
+    fig.suptitle(region)
+
     plt.savefig('test.png')
 
 if __name__ == '__main__':
@@ -87,5 +119,6 @@ if __name__ == '__main__':
 
     for reg in region_files:
         print(image_final)
-        make_image(image_final, reg)
+        surf_image = args.surf_im+'/'+reg.split('.')[0]+'.fits'
+        make_image(image_final, app_restored, int_restored, surf_image, reg)
         break
