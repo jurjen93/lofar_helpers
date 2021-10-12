@@ -68,7 +68,7 @@ def make_image(fitsfile, region):
                origin='lower', cmap='CMRmap')
     plt.xlabel('Galactic Longitude')
     plt.ylabel('Galactic Latitude')
-    plt.show()
+    plt.savefig('test.png')
 
 if __name__ == '__main__':
     parser = ArgumentParser()
