@@ -84,13 +84,14 @@ def make_image(image_final, app_restored, int_restored, surf_im, region):
     # plt.savefig('test.png')
 
     fig, axs = plt.subplots(2, 2)
-    axs[0, 0].imshow(imagenoise_final, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
-               origin='lower', cmap='CMRmap')
-    axs[0, 0].set_title('imagenoise_final')
 
-    axs[0, 1].imshow(imagenoise_app, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
+    axs[0, 0].imshow(image_final, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
                origin='lower', cmap='CMRmap')
-    axs[0, 1].set_title('imagenoise_app')
+    axs[0, 0].set_title('image_final')
+
+    axs[0, 1].imshow(app_restored, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
+               origin='lower', cmap='CMRmap')
+    axs[0, 1].set_title('app_restored')
 
     axs[1, 0].imshow(int_restored, norm=SymLogNorm(linthresh=imagenoise*6, vmin=imagenoise, vmax=16*imagenoise),
                origin='lower', cmap='CMRmap')
