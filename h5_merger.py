@@ -22,7 +22,7 @@ lin2circ ---> convert linear to circular polarization (default is False)
 circ2lin ---> convert circular to linear polarization (default is False)
 add_directions ---> add default directions by giving a list of directions (coordinates)
 single_pol ---> only one polarization
-use_solset ---> use specific solset number
+use_solset ---> use specific solset number, default: sol000
 """
 
 # TODO: test rotation (fulljones)
