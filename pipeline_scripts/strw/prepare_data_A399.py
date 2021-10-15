@@ -10,7 +10,7 @@ args = parser.parse_args()
 
 BOX = 'box_' + args.box
 
-ms_archives = sorted([b.split('/')[-1] for b in glob('.dysco.sub.shift.avg.weights.ms.archive*')])
+ms_archives = sorted([b.split('/')[-1] for b in glob('*.dysco.sub.shift.avg.weights.ms.archive*')])
 
 while len(ms_archives) != 6:
     time.sleep(5)
