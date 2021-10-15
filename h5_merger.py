@@ -20,6 +20,9 @@ convert_tec ---> convert tec to phase
 merge_all_in_one ---> merge all in one direction (default is False), if True it adds everything in one direction
 lin2circ ---> convert linear to circular polarization (default is False)
 circ2lin ---> convert circular to linear polarization (default is False)
+add_directions ---> add default directions by giving a list of directions (coordinates)
+single_pol ---> only one polarization
+use_solset ---> use specific solset number
 """
 
 # TODO: test rotation (fulljones)
@@ -1410,12 +1413,12 @@ if __name__ == '__main__':
             h5tablestemp+=glob(h5)
 
     if args.add_direction:
-        add_directions = args.add_direction.replace('[','').replace(']','').split(',')
-        add_directions = [float(add_directions[0]), float(add_directions[1])]
-        if add_directions[0]>pi*6 or add_directions[1]>pi*6:
+        add_direction = args.add_direction.replace('[','').replace(']','').split(',')
+        add_direction = [float(add_direction[0]), float(add_direction[1])]
+        if add_direction[0]>pi*6 or add_direction[1]>pi*6:
             sys.exit('ERROR: Please give values in radian')
     else:
-        add_directions = None
+        add_direction = None
 
 
     merge_h5(h5_out=args.h5_out,
@@ -1426,7 +1429,7 @@ if __name__ == '__main__':
              merge_all_in_one=args.merge_all_in_one,
              lin2circ=args.lin2circ,
              circ2lin=args.circ2lin,
-             add_directions=add_directions,
+             add_directions=add_direction,
              single_pol=args.single_pol,
              no_pol=args.no_pol,
              use_solset=args.usesolset)
