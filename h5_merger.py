@@ -40,7 +40,7 @@ from scipy.interpolate import interp1d
 import sys
 import re
 import tables
-from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle
+from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort
 
 __all__ = ['merge_h5', 'str2bool']
 
@@ -734,7 +734,6 @@ class MergeH5:
         with this extra step.
         """
         import h5py
-        from numpy import sort
 
         T = h5py.File(self.file, 'r+')
         for ss in T.keys():
@@ -1269,6 +1268,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if use_solset!='sol000':
         for h5_ind, h5 in enumerate(h5_tables):
             temph5 = h5.replace('.h5', 'temp.h5')
+            print('Using different solset. Make temporary h5 file: '+temph5)
             os.system('cp '+h5+' '+temph5)
             change_solset(temph5, use_solset, 'sol000')
             h5_tables[h5_ind] = temph5
@@ -1360,8 +1360,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         for h5 in h5_tables:
             if 'temp.h5' in h5:
                 os.system('rm '+h5)
-
-
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
