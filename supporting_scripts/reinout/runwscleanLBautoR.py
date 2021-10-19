@@ -2611,7 +2611,7 @@ def beamcor(ms, usedppp=True):
         cmd += 'msout.datacolumn=CORRECTED_DATA steps=[ac1,ac2] msout.storagemanager=dysco '
         cmd += 'ac1.parmdb='+H5name + ' ac2.parmdb='+H5name + ' '
         cmd += 'ac1.type=applycal ac2.type=applycal '
-        cmd += 'ac1.correction=phase000 ac2.correction=amplitude000 ac2.updateweights=True ' 
+        cmd += 'ac1.correction=phase000 ac2.correction=amplitude000 ac2.updateweights=True '
         print('DPPP applycal:', cmd)
         os.system(cmd)
         os.system(taql + " 'update " + ms + " set DATA=CORRECTED_DATA'")
@@ -3356,7 +3356,7 @@ def calibrateandapplycal(mslist, selfcalcycle, args, solint_list, nchan_list, so
                           convert_tec=True, merge_all_in_one=True)
        
        #testing only
-       #applycal(ms, parmdbmergename, msincol='DATA',msoutcol='CORRECTED_DATA')
+       applycal(ms, parmdbmergename, msincol='DATA',msoutcol='CORRECTED_DATA')
    #except:
    #  pass 
  
