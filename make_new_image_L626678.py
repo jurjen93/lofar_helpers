@@ -2,7 +2,7 @@
 Example:
     python ~/scripts/lofar_helpers/make_new_image.py
         -from /disks/paradata/shimwell/LoTSS-DR2/archive_other/L626678
-        -to /net/tussenrijn/data2/jurjendejong/L626678/result
+        -to /net/nieuwerijn/data2/jurjendejong/L626678/result
         -h5 complete_merged.h5
 """
 
@@ -12,9 +12,8 @@ import os
 from glob import glob
 from os import path
 import casacore.tables as ct
-import tables
 
-TO='/net/tussenrijn/data2/jurjendejong/L626678'
+TO='/net/nieuwerijn/data2/jurjendejong/L626678'
 FROM='/net/rijn/data2/jdejong/A399_DEEP'
 
 #CREATE DESTINATION DIRECTORY IF NOT EXISTS
@@ -45,7 +44,7 @@ CUTTIMES = [5019387068.011121, 5019387064.005561, 5017577408.011121, 5017577404.
 #starting times for measurement sets that have to be cutted for freq
 CUTFREQS = [5021107868.011121, 5021107864.005561]
 
-for MS in glob(TO+'/*.ms.archive'):
+for MS in glob(FROM+'/L626678*.ms.archive'):
     t = ct.table(MS)
     time = t.getcol('TIME')[0]
     t.close()
@@ -63,17 +62,17 @@ for MS in glob(TO+'/*.ms.archive'):
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE LIST WITH MEASUREMENT SETS
-os.system('ls -1d /net/tussenrijn/data2/jurjendejong/L626678/*.pre-cal.ms.archive.goodtimes > /net/tussenrijn/data2/jurjendejong/L626678/big-mslist.txt'.format(LOCATION=TO))
+os.system('ls -1d /net/nieuwerijn/data2/jurjendejong/L626678/*.pre-cal.ms.archive.goodtimes > /net/nieuwerijn/data2/jurjendejong/L626678/big-mslist.txt'.format(LOCATION=TO))
 
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE DDF COMMAND
 with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
-    lines+=['--Data-MS=/net/tussenrijn/data2/jurjendejong/L626678/big-mslist.txt']
-    lines+=['--Predict-InitDicoModel=/net/tussenrijn/data2/jurjendejong/L626678/image_full_ampphase_di_m.NS.DicoModel']
-    lines+=['--DDESolutions-DDSols=/net/tussenrijn/data2/jurjendejong/L626678/complete_merged*.h5:sol000/amplitude000+phase000']
-    lines+=['--Mask-External=/net/tussenrijn/data2/jurjendejong/L626678/image_full_ampphase_di_m.NS.mask01.fits']
+    lines+=['--Data-MS=/net/nieuwerijn/data2/jurjendejong/L626678/big-mslist.txt']
+    lines+=['--Predict-InitDicoModel=/net/nieuwerijn/data2/jurjendejong/L626678/image_full_ampphase_di_m.NS.DicoModel']
+    lines+=['--DDESolutions-DDSols=/net/nieuwerijn/data2/jurjendejong/L626678/all_directions*.h5:sol000/amplitude000+phase000']
+    lines+=['--Mask-External=/net/nieuwerijn/data2/jurjendejong/L626678/image_full_ampphase_di_m.NS.mask01.fits']
 
 #RUN DDF COMMAND
 print('Running DDF COMMAND')
