@@ -21,9 +21,9 @@ CUTTIMES = [5019387068.011121, 5017577408.011121, 5020506668.011121]
 #starting times for measurement sets that have to be cutted for freq
 CUTFREQS = [5021107868.011121]
 
-selfcalrepo = 'selfcal_flag'
+selfcalrepo = 'cut'
 
-# os.system("mkdir -p "+selfcalrepo)
+os.system("mkdir -p "+selfcalrepo)
 for MS in ms_archives:
     if ct.table(MS).getcol('TIME')[0] in CUTTIMES:
         print('Cutting time for '+MS)
