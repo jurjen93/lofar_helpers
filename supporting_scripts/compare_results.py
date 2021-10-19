@@ -2,7 +2,7 @@
 python ~/scripts/lofar_helpers/supporting_scripts/compare_results.py
 --surf_im='/net/tussenrijn/data2/jurjendejong/A399/box_images/*.fits'
 --int_restored='/net/rijn/data2/jdejong/A399_DEEP/image_full_ampphase_di_m.NS.int.restored.fits'
---image_final='/net/tussenrijn/data2/jurjendejong/A399/result/image_final.app.restored.fits'
+--image_final='/net/tussenrijn/data2/jurjendejong/A399/result/image_final.int.restored.fits'
 --app_restored='/net/rijn/data2/jdejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits'
 --region_files='A399/boxes/*.reg'
 """
@@ -84,19 +84,19 @@ def make_image(image_final, app_restored, int_restored, surf_im, region, name):
 
     axs[0, 0].imshow(image_final, norm=SymLogNorm(linthresh=imagenoise, vmin=imagenoise/10, vmax=16*imagenoise),
                origin='lower', cmap='bone')
-    axs[0, 0].set_title('image_final')
+    axs[0, 0].set_title('image_final.int')
 
     axs[0, 1].imshow(app_restored, norm=SymLogNorm(linthresh=imagenoise, vmin=imagenoise/10, vmax=16*imagenoise),
                origin='lower', cmap='bone')
-    axs[0, 1].set_title('app_restored')
+    axs[0, 1].set_title('lotss app_restored')
 
     axs[1, 0].imshow(int_restored, norm=SymLogNorm(linthresh=imagenoise, vmin=imagenoise/10, vmax=16*imagenoise),
                origin='lower', cmap='bone')
-    axs[1, 0].set_title('int_restored')
+    axs[1, 0].set_title('lotss int_restored')
 
     axs[1, 1].imshow(surf_im, norm=SymLogNorm(linthresh=imagenoise, vmin=imagenoise/10, vmax=16*imagenoise),
                origin='lower', cmap='bone')
-    axs[1, 1].set_title('surf_im')
+    axs[1, 1].set_title('surf image')
 
     fig.suptitle(region)
 
