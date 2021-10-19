@@ -102,7 +102,7 @@ for ms in DDS3_dict.items():
     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_'+str(closest_value)+'.h5 -in lotss_full_merged_filtered_'+str(closest_value)+'.h5 ' + soltable_times[closest_value]+' --convert_tec 0')
 print('cd /net/tussenrijn/data2/jurjendejong/A399/H5files && '+' && '.join(command))
 os.system('cd /net/tussenrijn/data2/jurjendejong/A399/H5files && '+' && '.join(command))
-os.system('mv /net/tussenrijn/data2/jurjendejong/A399/H5files/complete_merged*.h5 /net/tussenrijn/data2/jurjendejong/A399/result/ && wait')
+# os.system('mv /net/tussenrijn/data2/jurjendejong/A399/H5files/complete_merged*.h5 /net/tussenrijn/data2/jurjendejong/A399/result/ && wait')
 # os.system('rm -rf /net/tussenrijn/data2/jurjendejong/A399/H5files')
 
 #----------------------------------------------------------------------------------------------------------------------
