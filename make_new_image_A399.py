@@ -83,6 +83,7 @@ os.system('mkdir /net/tussenrijn/data2/jurjendejong/A399/H5files')
 os.system(' && '.join(['cp '+s+' /net/tussenrijn/data2/jurjendejong/A399/H5files' for s in DDS3]))
 command = []
 for ms in DDS3_dict.items():
+    print(ms)
     new_h5=[]
     for npz in ms[1]:
         command.append('killMS2H5parm.py ' + npz.split('/')[-1].replace('npz','h5 ') + npz + ' --nofulljones')
@@ -94,13 +95,15 @@ for ms in DDS3_dict.items():
     diff = lambda ob_time: abs(ob_time - t)  # formula to compare difference between first time element of ms and observation times
     closest_value = min(list(soltable_times.keys()), key=diff)  # get closest value with lambda function
     h5 = soltable_times[closest_value]
+    print(h5)
+    print(closest_value)
     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_'+str(closest_value)+'.h5 -in '+' '.join(new_h5) + '--convert_tec 0')
     command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/rijn/data2/jdejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_'+str(closest_value)+'.h5 -h5in final_lotss_'+str(closest_value)+'.h5')
     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_'+str(closest_value)+'.h5 -in lotss_full_merged_filtered_'+str(closest_value)+'.h5 ' + soltable_times[closest_value]+' --convert_tec 0')
 print('cd /net/tussenrijn/data2/jurjendejong/A399/H5files && '+' && '.join(command))
 os.system('cd /net/tussenrijn/data2/jurjendejong/A399/H5files && '+' && '.join(command))
 os.system('mv /net/tussenrijn/data2/jurjendejong/A399/H5files/complete_merged*.h5 /net/tussenrijn/data2/jurjendejong/A399/result/ && wait')
-os.system('rm -rf /net/tussenrijn/data2/jurjendejong/A399/H5files')
+# os.system('rm -rf /net/tussenrijn/data2/jurjendejong/A399/H5files')
 
 #----------------------------------------------------------------------------------------------------------------------
 
