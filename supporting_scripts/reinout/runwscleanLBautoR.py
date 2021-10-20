@@ -3356,7 +3356,7 @@ def calibrateandapplycal(mslist, selfcalcycle, args, solint_list, nchan_list, so
                           convert_tec=True, merge_all_in_one=True)
        
        #testing only
-       applycal(ms, parmdbmergename, msincol='DATA',msoutcol='CORRECTED_DATA')
+       # applycal(ms, parmdbmergename, msincol='DATA',msoutcol='CORRECTED_DATA')
    #except:
    #  pass 
  
