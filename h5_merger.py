@@ -413,15 +413,15 @@ class MergeH5:
                 values = zeros(shape)
 
                 if init_dir_index == 0:
-                    values[0, ...] += table_values[dir_idx, ...]
+                    values[0, ...] = table_values[dir_idx, ...]
                 elif init_dir_index == 1:
-                    values[:, 0, ...] += table_values[:, dir_idx, ...]
+                    values[:, 0, ...] = table_values[:, dir_idx, ...]
                 elif init_dir_index == 2:
-                    values[:, :, 0, ...] += table_values[:, :, dir_idx, ...]
+                    values[:, :, 0, ...] = table_values[:, :, dir_idx, ...]
                 elif init_dir_index == 3:
-                    values[:, :, :, 0, ...] += table_values[:, :, :, dir_idx, ...]
+                    values[:, :, :, 0, ...] = table_values[:, :, :, dir_idx, ...]
                 elif init_dir_index == 4:
-                    values[:, :, :, :, 0, ...] += table_values[:, :, :, :, dir_idx, ...]
+                    values[:, :, :, :, 0, ...] = table_values[:, :, :, :, dir_idx, ...]
 
                 # update current and new axes if missing pol axes
                 if len(self.axes_current) == 4 and ((len(self.phases.shape) == 5
