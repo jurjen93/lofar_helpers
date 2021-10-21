@@ -1247,7 +1247,8 @@ class PolChange:
 def test_h5_output(h5_out, tables_to_merge):
     """
     With this function we test if the output has the expected output by going through source coordinates and compare in and output H5.
-    This only works when the phase000 and amplitude000 haven't changed. So, when tec000 is not merged with phase000, otherwise only amplitude000 are compared.
+    This only works when the phase000 and amplitude000 haven't changed. So, when tec000 is not merged with phase000,
+    otherwise only amplitude000 are compared.
     :param h5_out: the output H5
     :param tables_to_merge: list of tables that have been merged together
     """
@@ -1401,8 +1402,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         merge.remove_pol()
 
     # brief test of output
-    if not merge_all_in_one:
-        test_h5_output(h5_out, h5_tables)
+    # if not merge_all_in_one:
+    #     test_h5_output(h5_out, h5_tables)
 
     if use_solset!='sol000':
         for h5 in h5_tables:
@@ -1439,7 +1440,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # check if solset name is accepted
-    if 'sol' not in args.usesolset or sum(c.isdigit() for c in args.usesolset)!=3:
+    if 'sol' not in args.usesolset or sum([c.isdigit() for c in args.usesolset])!=3:
         sys.exit(args.usesolse+' not an accepted name. Only sol000, sol001, sol002, ... are accepted names for solsets.')
 
     # make sure h5 tables in right format
