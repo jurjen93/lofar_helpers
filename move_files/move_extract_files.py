@@ -64,4 +64,4 @@ if 'lofarvwf' in args.to:
     os.system(command_2)
 else:
     for f in files:
-        os.system('cp '+args.frm+'/'+f+' '+args.to)
+        os.system('cp -r '+args.frm+'/'+f+' '+args.to)
