@@ -40,7 +40,7 @@ from scipy.interpolate import interp1d
 import sys
 import re
 import tables
-from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort
+from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort, power, sum, argmin
 
 __all__ = ['merge_h5', 'str2bool']
 
@@ -1244,6 +1244,50 @@ class PolChange:
 
         return self
 
+def test_h5_output(h5_out, tables_to_merge):
+    """
+    With this function we test if the output has the expected output by going through source coordinates and compare in and output H5.
+    This only works when the phase000 and amplitude000 haven't changed. So, when tec000 is not merged with phase000, otherwise only amplitude000 are compared.
+    :param h5_out: the output H5
+    :param tables_to_merge: list of tables that have been merged together
+    """
+    H5out = tables.open_file(h5_out)
+    sources_out = array([s[1] for s in H5out.root.sol000.source[:]])
+    source_count=0
+    for h5 in tables_to_merge:
+        H5in = tables.open_file(h5)
+        source_count+=len(H5in.root.sol000.source[:])
+        H5in.close()
+    if len(sources_out)==source_count:
+        if type(tables_to_merge)!=list:
+            sys.exit('h5_tables type is not list. Might be bug in code.')
+        for h5 in tables_to_merge:
+            H5in = tables.open_file(h5)
+            sources = H5in.root.sol000.source[:]
+            for n, source in enumerate(sources):
+                m = argmin(sum(power(sources_out-source[1], 2), axis=1))
+                try:
+                    try:
+                        H5out.root.sol000._f_get_child('tec000')
+                    except:
+                        # No tec000, so it hasn't been merged with phase000 and changed the values
+                        if H5out.root.sol000.phase000.val[0, 0, 0, m, 0]!=H5in.root.sol000.phase000.val[0, 0, 0, n, 0] or \
+                            H5out.root.sol000.phase000.val[-1, 0, 0, m, 0]!=H5in.root.sol000.phase000.val[-1, 0, 0, n, 0]:
+                            print('ERROR: Merge bug. Source table does not correspond with index for phase000. Please check.')
+                except:
+                    pass
+                try:
+                    if H5out.root.sol000.ampltiude000.val[0, 0, 0, m, 0]!=H5in.root.sol000.ampltiude000.val[0, 0, 0, n, 0] or \
+                        H5out.root.sol000.ampltiude000.val[-1, 0, 0, m, 0]!=H5in.root.sol000.ampltiude000.val[-1, 0, 0, n, 0]:
+                        print('ERROR: Merge bug. Source table does not correspond with index for ampltiude000. Please check.')
+                except:
+                    pass
+            H5in.close()
+    else:
+        print('Received at least once the same source coordinates of two directions, which have been merged together.')
+    H5out.close()
+
+
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000'):
@@ -1356,10 +1400,15 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         print('Remove polarization')
         merge.remove_pol()
 
+    # brief test of output
+    if not merge_all_in_one:
+        test_h5_output(h5_out, h5_tables)
+
     if use_solset!='sol000':
         for h5 in h5_tables:
             if 'temp.h5' in h5:
                 os.system('rm '+h5)
+
 
 if __name__ == '__main__':
     from argparse import ArgumentParser
