@@ -57,7 +57,11 @@ files = [D.split('/')[-1] for D in get_DDS3(args.frm)] + \
          'SOLSDIR'] + \
         [f.split('/')[-1] for f in glob(args.frm+'/'+'*.ms.archive')]
 
-command_1 = 'tar -C {FROM} -cvzf /net/vdesk/data2/jurjendejong/data_archive.tar.gz --absolute-names '.format(FROM=args.frm) + ' '.join(files)
-os.system(command_1)
-command_2 = 'scp -r /net/vdesk/data2/jurjendejong/data_archive.tar.gz lofarvwf-jdejong@spider.surfsara.nl:{TO}'.format(TO=args.to)
-os.system(command_2)
+if 'lofarvwf' in args.to:
+    command_1 = 'tar -C {FROM} -cvzf /net/vdesk/data2/jurjendejong/data_archive.tar.gz --absolute-names '.format(FROM=args.frm) + ' '.join(files)
+    os.system(command_1)
+    command_2 = 'scp -r /net/vdesk/data2/jurjendejong/data_archive.tar.gz lofarvwf-jdejong@spider.surfsara.nl:{TO}'.format(TO=args.to)
+    os.system(command_2)
+else:
+    for f in files:
+        os.system('cp '+args.frm+'/'+f+' '+args.to)
