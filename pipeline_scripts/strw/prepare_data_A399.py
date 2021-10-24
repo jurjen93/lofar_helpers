@@ -21,7 +21,7 @@ CUTTIMES = [5019387068.011121, 5017577408.011121, 5020506668.011121]
 #starting times for measurement sets that have to be cutted for freq
 CUTFREQS = [5021107868.011121]
 
-selfcalrepo = 'cut'
+selfcalrepo = 'selfcal'
 
 os.system("mkdir -p "+selfcalrepo)
 for MS in ms_archives:
