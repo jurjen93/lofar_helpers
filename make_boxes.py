@@ -616,7 +616,9 @@ if __name__ == '__main__':
 
     if args.ds9:
         """
-        With the following part you can move ds9 region files
+        With the following part you can move ds9 region files.
+        Save them under a new name in $PWD/boxes such that this script will recognize you made changes.
+        When closing, the new region files will be generated.
         """
         try:
             from glob import glob
