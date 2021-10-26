@@ -8,4 +8,4 @@ SCRIPT_FOLDER=/home/jurjendejong/scripts/lofar_helpers
 
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/move_files/move_extract_files.py --frm /net/rijn/data2/jdejong/A399_DEEP --to /net/nieuwerijn/data2/jurjendejong/A399/fullextracted
 cd /net/nieuwerijn/data2/jurjendejong/A399/fullextracted
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/sub-sources-outside-region.py -b fullextracted.reg --overwriteoutput --noconcat --nophaseshift --adjustboxrotation=False -p extr
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/sub-sources-outside-region.py -b extracted.reg --overwriteoutput --noconcat --nophaseshift --adjustboxrotation=False -p extr
