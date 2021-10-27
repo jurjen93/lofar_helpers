@@ -4,11 +4,11 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --array=12-82%20
+#SBATCH --array=1-82
 #SBATCH --job-name=extract
 
-FIELD=$1
-TO=/project/lofarvwf/Share/jdejong/output/${FIELD}
+SOURCE=$1
+TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts
 
 SING_IMAGE=/project/lofarvwf/Software/lofar_sksp_fedora27_ddf_slurmfix.sif
