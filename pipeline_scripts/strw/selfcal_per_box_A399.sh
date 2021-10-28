@@ -6,8 +6,8 @@ SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederr
 SCRIPT_FOLDER=/home/jurjendejong/scripts/lofar_helpers
 
 #cp -r /net/nieuwerijn/data2/jurjendejong/box_33_new_extract/Abell* /net/nieuwerijn/data2/jurjendejong/box_33_new_selfcal/
-#cp -r /net/nieuwerijn/data2/jurjendejong/box_33_new_extract/box_33_new.reg /net/nieuwerijn/data2/jurjendejong/box_33_new_selfcal/
-#cd /net/nieuwerijn/data2/jurjendejong/box_33_new_selfcal
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/strw/prepare_data_A399.py --box ${BOX}
-#cd selfcal
+cp -r /net/nieuwerijn/data2/jurjendejong/box_33_new_extract/box_33_new.reg /net/nieuwerijn/data2/jurjendejong/box_33_new_selfcal/selfcal_A399_new
+cd /net/nieuwerijn/data2/jurjendejong/box_33_new_selfcal
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/strw/prepare_data_A399.py --box ${BOX}
+cd selfcal_A399_new
 singularity exec -B ${SING_BIND} /net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fedora31_ddf.sif python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/runwscleanLBautoR.py -b box_${BOX}.reg --auto --imager=DDFACET --helperscriptspath=/net/rijn/data2/rvweeren/LoTSS_ClusterCAL --autofrequencyaverage-calspeedup --useaoflagger --uvmin=750 *box_${BOX}.dysco.sub.shift.avg.weights.ms.archive*
