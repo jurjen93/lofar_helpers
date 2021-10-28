@@ -1,24 +1,25 @@
 ----PIPELINE STEPS----
 
-1) MAKE BOXES with make_boxes.py
+1) MAKE BOXES with make_boxes.py (including interactive adaptation)
 
 2) EXTRACT sources with supporting_scripts/reinout/sub-sources-outside-region.py
 
-3) SELFCAL sources with supporting_scripts/reinout/runwscleanLBautoR.py
+3) Cut/flag data with prepare_data_...py
+
+4) SELFCAL sources with supporting_scripts/reinout/runwscleanLBautoR.py
 (needs to be done whenever a box is extracted)
 
-4) MERGE SOLUTIONS with merge_selfcals.sh
+5) MERGE SOLUTIONS with merge_selfcals.sh
 (needs to be done when all solutions are there)
 
-5) DECIDE WHICH SOLUTIONS ARE GOOD ENOUGH
-TODO!!
+6) DECIDE WHICH SOLUTIONS ARE GOOD ENOUGH
+(currently manually)
 
-6) MAKE IMAGE with make_new_image.py
+7) MAKE IMAGE with make_new_image.py
 
 EXTRA: Use database in between to check which boxes are done
 
-TODO:
-- implement step 5)
+- implement automation for step 5)
 - make sure that user just gives location of the repo of the image that has to be improved and location where files are going to be created and dumped
 - make sure that user has all needed scripts
 - make sure there is enough available space
