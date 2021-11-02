@@ -16,10 +16,10 @@ rm ${DATAFOLDER}/merged_selfcalcyle004*.h5
 rm ${DATAFOLDER}/merged_selfcalcyle005*.h5
 rm ${DATAFOLDER}/merged_selfcalcyle006*.h5
 rm -rf ${DATAFOLDER}/*.ddfcache
-rm -rf ${DATAFOLDER}/*box_${BOX}.dysco.sub.shift.avg.weights*
+rm -rf ${DATAFOLDER}/Abell399*box_${BOX}.dysco.sub.shift.avg.weights.ms*
 rm -rf ${DATAFOLDER}/*templatejones.h5
 rm -rf ${DATAFOLDER}/final_merge*.h5
-rm -rf ${DATAFOLDER}/box_1.tar.gz
+rm -rf ${DATAFOLDER}/box_${BOX}.tar.gz
 rm ${DATAFOLDER}/antennaconstraint.p
 rm ${DATAFOLDER}/image_001*
 rm ${DATAFOLDER}/image_002*
