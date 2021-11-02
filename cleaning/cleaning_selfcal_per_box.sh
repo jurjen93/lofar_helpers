@@ -34,6 +34,11 @@ rm ${DATAFOLDER}/solint.p
 rm ${DATAFOLDER}/soltypecycles.p
 rm ${DATAFOLDER}/nchan.p
 rm ${DATAFOLDER}/mslist.txt
+rm ${DATAFOLDER}/last_DDFacet.obj
+rm ${DATAFOLDER}/last_MyCasapy2BBS.obj
+rm ${DATAFOLDER}/losotobeam.parset
+rm ${DATAFOLDER}/losoto_flag_apgrid.parset
+rm ${DATAFOLDER}/*brutalRestored*
 
 #mkdir ${RESULT}
 #mv ${DATAFOLDER}/image_*.png ${RESULT}
