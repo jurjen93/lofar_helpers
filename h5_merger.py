@@ -67,7 +67,6 @@ class MergeH5:
 
         if type(ms_files) == list:
             ms = ms_files
-            print("WARNING: MS list given. Only first MS used.")
         elif type(ms_files) == str:
             ms = glob(ms_files)
         else:
