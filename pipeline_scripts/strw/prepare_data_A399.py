@@ -5,7 +5,7 @@ import os
 import casacore.tables as ct
 
 parser = ArgumentParser()
-parser.add_argument('--box', type=str, help='Measurement set input')
+parser.add_argument('--box', type=str, help='Box number')
 args = parser.parse_args()
 
 BOX = 'box_' + args.box
