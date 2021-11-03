@@ -5,6 +5,7 @@ def has0coordinates(h5):
     h5 = tables.open_file(h5)
     for c in h5.root.sol000.source[:]:
         x, y = c[1]
+        print(x, y)
         if x==0. and y==0.:
             h5.close()
             return True
