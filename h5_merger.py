@@ -468,7 +468,7 @@ class MergeH5:
                     idx = list([[round(l[0],5), round(l[1],5)] for l in self.directions.values()]).\
                         index([round(source_coords[0], 5), round(source_coords[1], 5)])
                 else:  # new direction
-                    if source_coords[0] > 0 and source_coords[1] > 0:
+                    if abs(source_coords[0]) > 0 and abs(source_coords[1]) > 0:
                         print('Adding new direction {:f},{:f}'.format(*source_coords))
                     idx = self.n
                     self.directions.update({d: source_coords})
