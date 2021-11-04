@@ -458,7 +458,7 @@ class MergeH5:
                 if self.merge_all_in_one and self.n == 1:
                     idx = 0
                     print('Merging direction {:f},{:f} with previous direction'.format(*source_coords))
-                    if self.directions['Dir00'][0]>0 and self.directions['Dir00'][1]>0:
+                    if abs(self.directions['Dir00'][0])>0 and abs(self.directions['Dir00'][1])>0:
                         self.directions.update({'Dir00': source_coords}) # 0.0 coordinate bug
                         print('Adding new direction {:f},{:f}'.format(*source_coords))
                 elif any([array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
@@ -1402,7 +1402,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     first_source = T.root.sol000.source[:][0]
     T.close()
     if first_source.nbytes>140:
-        print('The source table memory size is too big. We will change the dtype to reduce size (probably a Python 3 issue).')
+        print('We change the dtype to reduce memory size.')
         merge.reduce_memory_source()
 
     #remove polarization axis if double
