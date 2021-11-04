@@ -1,4 +1,6 @@
 """
+USE THIS SCRIPT PREFERABLY WITH PYTHON 3, AS ALL TESTS ARE DONE WITH PYTHON 3.
+
 After one has created solution files from self calling on the extracted boxes,
 one can use this script to merge solution files
 Do this by importing the function merge_h5 from this script:
@@ -40,6 +42,7 @@ from scipy.interpolate import interp1d
 import sys
 import re
 import tables
+from collections import OrderedDict
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort, power, sum, argmin
 
 __all__ = ['merge_h5', 'str2bool']
@@ -135,7 +138,7 @@ class MergeH5:
 
         self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time']  # standard solax order to do our manipulations
 
-        self.directions = {}  # directions in a dictionary
+        self.directions = OrderedDict()  # directions in a dictionary
 
     @property
     def same_antennas(self):
@@ -1131,7 +1134,7 @@ class PolChange:
         Make template of the Gain matrix with only ones
         :param soltab: solution table (phase, amplitude)
         """
-        self.G, self.axes_vals = array([]), {}
+        self.G, self.axes_vals = array([]), OrderedDict()
         for ss in self.h5_in.getSolsetNames():
             for st in self.h5_in.getSolset(ss).getSoltabNames():
                 solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
