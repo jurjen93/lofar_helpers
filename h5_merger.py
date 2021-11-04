@@ -50,6 +50,9 @@ __all__ = ['merge_h5', 'str2bool']
 def remove_numbers(inp):
     return "".join(re.findall("[a-zA-z]+", inp))
 
+if sys.version_info.major == 2:
+    print('WARINING: This code is optimized for Python 3. Please switch to Python 3 if possible.')
+
 
 class MergeH5:
     """Merge multiple h5 tables"""
@@ -443,6 +446,11 @@ class MergeH5:
 
                 # get source coordinates
                 d = ss.getSou()
+                if 'dir' in list(d.keys())[0].lower() and list(d.keys())[0][-1].isnumeric():
+                    d = OrderedDict(sorted(d.items()))
+                elif len(d)>1 and (sys.version_info.major==2 or (sys.version_info.major==3 and sys.version_info.minor<6)):
+                    print('WARNING: Order of source directions from h5 table might not be ordered. This is a Python 2 issue.'
+                          '\nSuggest to switch to Python 3')
                 source_coords = d[list(d.keys())[dir_idx]]
 
                 d = 'Dir{:02d}'.format(self.n)
@@ -456,7 +464,9 @@ class MergeH5:
                 elif any([array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
                     # Direction already exists, add to the existing solutions.
                     print('Direction {:f},{:f} already exists. Adding to this direction.'.format(*source_coords))
-                    idx = list([list(l) for l in self.directions.values()]).index(list(source_coords))
+                    # We are matching on 5 decimals rounding
+                    idx = list([[round(l[0],5), round(l[1],5)] for l in self.directions.values()]).\
+                        index([round(source_coords[0], 5), round(source_coords[1], 5)])
                 else:  # new direction
                     if source_coords[0] > 0 and source_coords[1] > 0:
                         print('Adding new direction {:f},{:f}'.format(*source_coords))
