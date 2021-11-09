@@ -26,5 +26,5 @@ mkdir -p ${TO}/box_${SLURM_ARRAY_TASK_ID} && mkdir -p ${TO}/finished
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/prepare_data_${SOURCE}.py --box ${SLURM_ARRAY_TASK_ID}
 wait
 cd /project/lofarvwf/Share/jdejong/output/${SOURCE}/selfcal/box_${SLURM_ARRAY_TASK_ID}
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b /project/lofarvwf/Share/jdejong/output/${SOURCE}/boxes/box_${SLURM_ARRAY_TASK_ID}.reg --auto --imager=DDFACET --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup --useaoflagger --uvmin=750 *box_${SLURM_ARRAY_TASK_ID}.dysco.sub.shift.avg.weights.ms.archive*
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b /project/lofarvwf/Share/jdejong/output/${SOURCE}/boxes/box_${SLURM_ARRAY_TASK_ID}.reg --auto --imager=DDFACET --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup --useaoflagger --uvmin=750 --tecfactorsolint=1.5 --gainfactorsolint=2.0 *box_${SLURM_ARRAY_TASK_ID}.dysco.sub.shift.avg.weights.ms.archive*
 echo "Selfcal box_${SLURM_ARRAY_TASK_ID} finished" > ${TO}/finished/box_${SLURM_ARRAY_TASK_ID}.txt
