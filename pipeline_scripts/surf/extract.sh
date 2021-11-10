@@ -28,7 +28,6 @@ then
   rm -rf data_archive.tar.gz
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${SLURM_ARRAY_TASK_ID}.reg --overwriteoutput -p box_${SLURM_ARRAY_TASK_ID}
   echo "Extracted box_${SLURM_ARRAY_TASK_ID}"
-  echo "Selfcal box_${SLURM_ARRAY_TASK_ID} finished" > ${TO}/finished/box_${SLURM_ARRAY_TASK_ID}.txt
 else
   :
 fi
