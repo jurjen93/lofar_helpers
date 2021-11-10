@@ -28,7 +28,6 @@ then
   rm data_archive.tar.gz
   singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/sub-sources-outside-region.py -b ${TO}/boxes/box_${BOX}.reg --overwriteoutput -p box_${BOX}
   echo "Extracted box_${BOX}"
-  echo "Selfcal box_${BOX} finished" > ${TO}/finished/box_${BOX}.txt
 else
   :
 fi
