@@ -615,30 +615,5 @@ if __name__ == '__main__':
 
 
     if args.ds9:
-        """
-        With the following part you can move ds9 region files.
-        Save them under a new name in $PWD/boxes such that this script will recognize you made changes.
-        When closing, the new region files will be generated.
-        """
-        try:
-            from glob import glob
-            print('Opening ds9 to verify box selections and make manual changes if needed.'
-                  '\nIf you wish to make changes, please save the new full regions file under a new name in '+folder+'/boxes.')
-            current_boxes = glob(folder+'/boxes/*')
-            os.system("ds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=folder))
-            new_box = [b for b in glob(folder+'/boxes/*') if b not in current_boxes]
-            if len(new_box)==1:
-                os.system('mkdir '+folder+'/boxestemp')
-                for nb in new_box:
-                    with open(nb, 'r') as f:
-                        for line in f:
-                            if '{box' in line:
-                                g = open(folder+'/boxestemp/'+line.strip().split()[-1].replace('text={','').replace('}','')+'.reg', "a")
-                                g.write(line)
-                                g.close()
-                os.system('rm -rf '+folder+'/boxes && mv '+folder+'/boxestemp '+folder+'/boxes')
-
-            print('Closed ds9.')
-        except:
-            print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
-                  "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=args.file, DATALOC=folder))
+        from supporting_scripts.move_boxes import move_boxes
+        move_boxes(args.file, folder)
