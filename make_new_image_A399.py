@@ -33,7 +33,7 @@ command = 'cp -r '+FROM+'/image_full_ampphase_di_m.NS.mask01.fits '+TO+ ' && '+\
         'scp lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/A399/selfcal/all_directions*.h5 '+TO+' && wait'
         # 'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
 
-# os.system(command)
+os.system(command)
 print('Finished moving files')
 
 #----------------------------------------------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ print('Finished moving files')
 #FLAG TIME AND FREQUENCY
 
 # starting times fom measurement sets that have to be cutted for time
-CUTTIMES = [5019387068.011121, 5019387064.005561, 5017577408.011121, 5017577404.005561, 5020506668.011121, 5020506664.005561]
+# CUTTIMES = [5019387068.011121, 5019387064.005561, 5017577408.011121, 5017577404.005561, 5020506668.011121, 5020506664.005561]
 
 #starting times for measurement sets that have to be cutted for freq
 CUTFREQS = [5021107868.011121, 5021107864.005561]
@@ -50,19 +50,23 @@ for MS in glob(FROM+'/*.ms.archive'):
     t = ct.table(MS)
     time = t.getcol('TIME')[0]
     t.close()
-    if time in CUTTIMES:
-        print('Cutting time for '+MS)
+    if not (time in CUTFREQS and '127' in MS):
+        print('Making goodtimes for'+MS)
         os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
-    elif time in CUTFREQS:
-        print('Cutting freq for ' + MS)
-        if '127' not in MS:
-            os.system("cp -r " + MS + " " + TO)
-    else:
-        print('Copying for ' + MS)
-        os.system("cp -r " + MS + " " + TO)
+            # os.system("cp -r " + MS + " " + TO)
+    # else:
+    #     print('Cutting time for '+MS)
+    #     os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+    # elif time in CUTFREQS:
+    #     print('Cutting freq for ' + MS)
+    #     if '127' not in MS:
+    #         os.system("cp -r " + MS + " " + TO)
+    # else:
+    #     print('Copying for ' + MS)
+    #     os.system("cp -r " + MS + " " + TO)
 
 # important to wait until everything is ready before moving on
-while len(glob(FROM+'/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*'))+1:
+while len(glob(FROM+'/*.ms.archive')) != len(glob(TO+'/*.pre-cal.ms.archive*.goodtimes'))+1:
     print('TIME AND FREQUENCY FLAGGING')
 #----------------------------------------------------------------------------------------------------------------------
 
