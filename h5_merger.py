@@ -424,8 +424,9 @@ class MergeH5:
 
             for dir_idx in range(num_dirs):#loop over all directions
 
-                if len(self.filtered_dir)>0 and dir_idx not in self.filtered_dir:
-                    continue
+                if self.filtered_dir!=None:
+                    if len(self.filtered_dir)>0 and dir_idx not in self.filtered_dir:
+                        continue
 
                 shape = list(table_values.shape)
                 shape[init_dir_index] = 1
