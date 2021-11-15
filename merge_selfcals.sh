@@ -12,4 +12,5 @@ SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers
 SELFCAL=/project/lofarvwf/Share/jdejong/output/${SOURCE}/selfcal
 
-cd ${SELFCAL} && singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/merge_correct.py -d ${SELFCAL} -a ${SLURM_ARRAY_TASK_ID}
+cd ${SELFCAL} && singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/merge_selfcals.py -d ${SELFCAL} -a ${SLURM_ARRAY_TASK_ID}
+singularity exec -B ${SING_BIND} ${SING_IMAGE} losoto ${SELFCAL}/all_direction${SLURM_ARRAY_TASK_ID}.h5 ~/scripts/lofar_helpers/supporting_scripts/parsets/plot${SLURM_ARRAY_TASK_ID}.parset
