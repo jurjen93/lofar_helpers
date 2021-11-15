@@ -1,0 +1,21 @@
+soltab = [sol000/*]
+Ncpu = 0
+
+
+[plotamp]
+operation = PLOT
+soltab = [sol000/amplitude000]
+axesInPlot = [time,freq]
+axisInTable = ant
+minmax = [0.2,2.]
+prefix = plotdir3/amp
+
+
+[plotphase]
+operation = PLOT
+soltab = [sol000/phase000]
+axesInPlot = [time,freq]
+axisInTable = ant
+minmax = [-3.14,3.14]
+prefix = plotdir3/phase
+refAnt = CS003HBA0
