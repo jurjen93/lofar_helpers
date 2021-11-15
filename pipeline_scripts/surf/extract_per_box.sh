@@ -4,7 +4,9 @@
 #SBATCH --ntasks-per-node=1
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-#SBATCH --constraint="skylake|rome"
+#SBATCH --job-name=extract
+#SBATCH --output=%j.out
+#SBATCH --error=%j.err
 
 FIELD=$1
 BOX=$2

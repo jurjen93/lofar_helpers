@@ -11,3 +11,4 @@ cd /net/nieuwerijn/data2/jurjendejong/A399_extracted
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/sub-sources-outside-region.py -b extracted.reg --overwriteoutput --noconcat --nophaseshift --adjustboxrotation=False -p extr
 rm -rf /net/nieuwerijn/data2/jurjendejong/A399_extracted/L6*.ms
 rm -rf /net/nieuwerijn/data2/jurjendejong/A399_extracted/L6*.ms.archive
+#run("MaskDicoModel.py --MaskName=%s --InDicoModel=%s --OutDicoModel=%s"%(outmask,indico,outdico))
