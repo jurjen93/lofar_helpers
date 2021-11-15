@@ -57,7 +57,7 @@ if sys.version_info.major == 2:
 class MergeH5:
     """Merge multiple h5 tables"""
 
-    def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False, solset='sol000'):
+    def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False, solset='sol000', filtered_dir=None):
         """
         :param h5_out: name of merged output h5 table
         :param files: h5 tables to merge, can be both list and string
@@ -138,6 +138,10 @@ class MergeH5:
 
         self.convert_tec = convert_tec  # convert tec or not
         self.merge_all_in_one = merge_all_in_one
+        if filtered_dir:
+            self.filtered_dir = filtered_dir
+        else:
+            self.filtered_dir = None
 
         self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time']  # standard solax order to do our manipulations
 
@@ -419,6 +423,9 @@ class MergeH5:
             table_values, time_axes, freq_axes = self.get_and_check_values(st, solset, soltab)
 
             for dir_idx in range(num_dirs):#loop over all directions
+
+                if len(self.filtered_dir)>0 and dir_idx not in self.filtered_dir:
+                    continue
 
                 shape = list(table_values.shape)
                 shape[init_dir_index] = 1
@@ -1303,7 +1310,7 @@ def test_h5_output(h5_out, tables_to_merge):
 
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
-             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000'):
+             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000', filtered_dir=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
     :param h5_out (string): h5 table name out
@@ -1333,7 +1340,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
         os.system('rm {}'.format(h5_out))
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
-                    merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq)
+                    merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir)
 
     merge.get_allkeys()
 
@@ -1449,11 +1456,25 @@ if __name__ == '__main__':
     parser.add_argument('--no_pol', action='store_true', default=None, help='Remove polarization axis if both polarizations are the same.')
     parser.add_argument('--combine_h5', action='store_true', default=None, help='Combine h5 with different time axis into 1.')
     parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input h5 files.')
+    parser.add_argument('--filter_directions', type=str, default=None, help='Filter a specific list of directions from h5 file. Only lists allowed.')
     args = parser.parse_args()
 
     # check if solset name is accepted
     if 'sol' not in args.usesolset or sum([c.isdigit() for c in args.usesolset])!=3:
         sys.exit(args.usesolse+' not an accepted name. Only sol000, sol001, sol002, ... are accepted names for solsets.')
+
+    if args.filter_directions:
+        if (args.filter_directions.startswith("[") and args.filter_directions.endswith("]")):
+            filtered_dir = args.filter_directions.replace(' ', '').replace('[', '').replace(']', '').split(',')
+            for n, v in enumerate(filtered_dir):
+                if not v.isdigit():
+                    sys.exit('--filter_directions can only have integers in the list.')
+                else:
+                    filtered_dir[n] = int(v)
+        else:
+            sys.exit('--filter_directions given but no list format. Please pass a list to --filter_directions.')
+    else:
+        filtered_dir = []
 
     # make sure h5 tables in right format
     if '[' in args.h5_tables:
@@ -1492,4 +1513,5 @@ if __name__ == '__main__':
              add_directions=add_direction,
              single_pol=args.single_pol,
              no_pol=args.no_pol,
-             use_solset=args.usesolset)
+             use_solset=args.usesolset,
+             filtered_dir=filtered_dir)
