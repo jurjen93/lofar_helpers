@@ -32,7 +32,7 @@ if args.exclude_boxes:
 else:
     excluded_boxes = []
 
-boxes_h5_list = glob('{directory}/box_*'.format(directory=args.directory))
+boxes_h5_list = [b for b in glob('{directory}/box_*'.format(directory=args.directory)) if (b[-1].isdigit() and len(b.split('_'))==2)]
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 
 merged_boxes = []
