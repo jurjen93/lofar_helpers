@@ -54,7 +54,7 @@ def mask_except_region(infilename,ds9region,outfilename):
 
     return
 
-mask='dicoregion.fits'
+mask='dicoMask.fits'
 
 mask_except_region('image_full_ampphase_di_m.NS.mask01.fits', 'extracted.reg', mask)
 
