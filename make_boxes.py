@@ -587,6 +587,7 @@ if __name__ == '__main__':
                 plt.title('Repositioned')
                 plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
                               cmap='CMRmap')
+                plt.subplots_adjust(left=0.2, bottom=0.3, right=0.7, top=0.5, wspace=0.1, hspace=0.1)
                 if replace:
                     fig.savefig(f'{folder}/box_images/box_{M+1}.png')
                 else:
@@ -603,7 +604,7 @@ if __name__ == '__main__':
             image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
 
         if m == args.max_boxes: # finish if max boxes reached
-            break # break for loop
+            break # break for loopd
 
     print('-------------------------------------------------')
     print(f'Made succesfully {m} boxes.')
