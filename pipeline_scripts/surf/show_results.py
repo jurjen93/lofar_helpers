@@ -32,4 +32,7 @@ if __name__ == '__main__':
             fig.suptitle(box.split('/')[-1])
             [axi.set_axis_off() for axi in axs.ravel()]
             plt.savefig('{path}/results/{box}.png'.format(path=path, box=box.split('/')[-1]))
+            scalarcomplexgainplots = glob(box+'/plotlosoto*/scalarcomplexgain*007*.png')
+            for plot in scalarcomplexgainplots:
+                os.system('cp '+plot+' '+path+'/results/'+box.split('/')[-1]+'_'+plot)
             plt.close()
