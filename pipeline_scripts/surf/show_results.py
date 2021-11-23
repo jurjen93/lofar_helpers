@@ -34,5 +34,5 @@ if __name__ == '__main__':
             plt.savefig('{path}/results/{box}.png'.format(path=path, box=box.split('/')[-1]))
             scalarcomplexgainplots = glob(box+'/plotlosoto*/scalarcomplexgain*007*.png')
             for plot in scalarcomplexgainplots:
-                os.system('cp '+plot+' '+path+'/results/'+box.split('/')[-1]+'_'+plot)
+                os.system('cp '+plot+' '+path+'/results/'+box.split('/')[-1]+'_'+plot.split('/')[-1])
             plt.close()
