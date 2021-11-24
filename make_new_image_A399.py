@@ -117,9 +117,9 @@ os.system('ls -1d '+TO+'/*.pre-cal.ms* > '+TO+'/big-mslist.txt'.format(LOCATION=
 with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
     lines+=['--Data-MS='+TO+'/big-mslist.txt']
-    lines+=['--Predict-InitDicoModel='+TO+'/image_full_ampphase_di_m.NS.DicoModel']
+    lines+=['--Predict-InitDicoModel='+TO+'/extr.DicoModel']
     lines+=['--DDESolutions-DDSols='+TO+'/complete_merged*.h5:sol000/amplitude000+phase000']
-    lines+=['--Mask-External='+TO+'/image_full_ampphase_di_m.NS.mask01.fits']
+    lines+=['--Mask-External='+TO+'/dicoMask.fits']
 
 #RUN DDF COMMAND
 print('Running DDF COMMAND')
