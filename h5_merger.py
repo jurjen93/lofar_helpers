@@ -45,7 +45,7 @@ import tables
 from collections import OrderedDict
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort, power, sum, argmin
 
-__all__ = ['merge_h5', 'str2bool']
+__all__ = ['merge_h5']
 
 def remove_numbers(inp):
     return "".join(re.findall("[a-zA-z]+", inp))

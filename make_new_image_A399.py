@@ -29,8 +29,8 @@ os.system('CleanSHM.py')
 #MOVE FILES
 print('Moving files to '+TO)
 command = 'cp -r '+FROM+'/dicoMask.fits '+TO+ ' && '+\
-        'cp -r '+FROM+'/extr.DicoModel '+TO#+' && '+\
-        # 'scp lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/A399/selfcal/all_directions*.h5 '+TO+' && wait'
+        'cp -r '+FROM+'/extr.DicoModel '+TO+' && '+\
+        'scp lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/A399/selfcal/all_directions*.h5 '+TO+' && wait'
         # 'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
 
 os.system(command)
@@ -52,18 +52,7 @@ for MS in glob(FROM+'/extr*.ms'):
     t.close()
     if not (time in CUTFREQS and '127' in MS):
         print('Making goodtimes for'+MS)
-        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
-    if ct.table(MS).getcol('TIME')[0] in CUTFREQS:
-        print('Cutting freq for ' + MS)
-        os.system(
-            "python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
-        os.system(
-            "python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + TO + '/' + MS.split('/')[-1] + '.goodfreq' + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq.goodtimes')
-        os.system("rm -rf " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
-    else:
-        print('Cutting time for ' + MS)
-        os.system(
-            "python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + "/" + MS.split('/')[-1] + '.goodtimes')
+        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
 
 # important to wait until everything is ready before moving on
 while len(glob(FROM+'/*.ms.*')) != len(glob(TO+'/*.pre-cal.ms*.goodtimes'))+1:
