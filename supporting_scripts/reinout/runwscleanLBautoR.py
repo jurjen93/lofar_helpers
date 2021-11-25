@@ -4,14 +4,13 @@
 # do not use os.system for DP3/WSClean to catch errors properly
 # decrease niter if multiscale is triggered, smart move?
 # make ms backups (also deals with NaNs issues)
-# waterfall full merged solution plots
 # linear to circular solution conversion
 # do not predict sky second time in pertubation solve?
 # only do scalarphasediff solve once?
 # to do: log command into the FITS header
 # solnorm fulljones fix? is very tricky....
 # fulljones flagging and medamps not working correctly
-# avg to units of herz and seconds? (for input data that hass different averaging)
+# avg to units of Hertz and seconds? (for input data that hass different averaging)
 # BLsmooth not for gain solves opttion
 # BLsmooth constant smooth for gain solves
 # Look into Wiener/Kalman smoothing
@@ -19,8 +18,8 @@
 # add 1 Jy source in phase center option
 # stop selfcal if MODEL_DATA / noise is too low
 # if noise goes up stop selfcal
-# fix 0.0 sourcess coordinates with Jurjen
 # for phaseup option add back core stations in solution file via https://github.com/lmorabit/lofar-vlbi/blob/master/bin/gains_toCS_h5parm.py
+# make Ateam plot
 
 
 # example:
@@ -156,7 +155,6 @@ def logbasicinfo(args, fitsmask, mslist, version, inputsysargs):
    logger.info('User specified clean mask: ' + str(fitsmask))
    logger.info('Threshold for MakeMask:    ' + str(args['maskthreshold']))
    logger.info('Briggs robust:             ' + str(args['robust']))
-   #logger.info('Imagename prefix:          ' + args['imagename'] + '_')
 
     
    return    
@@ -608,25 +606,25 @@ def average(mslist, freqstep, timestep=None, start=0, msinnchan=None, phaseshift
     
     return outmslist
 
-def makeh5templates(mslist, parmdb, phasesoltype, slowsoltype, solint_phase, solint_ap, nchan_phase, nchan_ap):
-  for msnumber, ms in enumerate(mslist):
-    if phasesoltype == 'scalarphase':
-       runDPPP(ms, np.int(solint_ap[msnumber]), np.int(solint_phase[msnumber]), \
-               np.int(nchan_phase[msnumber]), np.int(nchan_ap[msnumber]), \
-               ms + parmdb + str(0).zfill(3) + '_polversion.h5' ,args['phase_soltype'], \
-               preapplyphase=False, TEC=TEC, puretec=args['pure_tec'], maxiter=1)
-    if slowsoltype != 'fulljones':
-       runDPPP(ms, np.int(solint_ap[msnumber]), np.int(solint_phase[msnumber]), \
-               np.int(nchan_phase[msnumber]), np.int(nchan_ap[msnumber]), \
-               ms + parmdb + str(0).zfill(3) + '_slowgainversion.h5' ,'complexgain', \
-               preapplyphase=False, TEC=False, puretec=False, maxiter=1)
-    else:  
-       runDPPP(ms, np.int(solint_ap[msnumber]), np.int(solint_phase[msnumber]), \
-               np.int(nchan_phase[msnumber]), np.int(nchan_ap[msnumber]), \
-               ms + parmdb + str(0).zfill(3) + '_slowgainversion.h5' ,'fulljones', \
-               preapplyphase=False, TEC=False, puretec=False, maxiter=1)
-    resetgains(ms + parmdb + str(0).zfill(3) + '_slowgainversion.h5')
-  return
+#def makeh5templates(mslist, parmdb, phasesoltype, slowsoltype, solint_phase, solint_ap, nchan_phase, nchan_ap):
+  #for msnumber, ms in enumerate(mslist):
+    #if phasesoltype == 'scalarphase':
+       #runDPPP(ms, np.int(solint_ap[msnumber]), np.int(solint_phase[msnumber]), \
+               #np.int(nchan_phase[msnumber]), np.int(nchan_ap[msnumber]), \
+               #ms + parmdb + str(0).zfill(3) + '_polversion.h5' ,args['phase_soltype'], \
+               #preapplyphase=False, TEC=TEC, puretec=args['pure_tec'], maxiter=1)
+    #if slowsoltype != 'fulljones':
+       #runDPPP(ms, np.int(solint_ap[msnumber]), np.int(solint_phase[msnumber]), \
+               #np.int(nchan_phase[msnumber]), np.int(nchan_ap[msnumber]), \
+               #ms + parmdb + str(0).zfill(3) + '_slowgainversion.h5' ,'complexgain', \
+               #preapplyphase=False, TEC=False, puretec=False, maxiter=1)
+    #else:  
+       #runDPPP(ms, np.int(solint_ap[msnumber]), np.int(solint_phase[msnumber]), \
+               #np.int(nchan_phase[msnumber]), np.int(nchan_ap[msnumber]), \
+               #ms + parmdb + str(0).zfill(3) + '_slowgainversion.h5' ,'fulljones', \
+               #preapplyphase=False, TEC=False, puretec=False, maxiter=1)
+    #resetgains(ms + parmdb + str(0).zfill(3) + '_slowgainversion.h5')
+  #return
 
 
 def tecandphaseplotter(h5, ms, outplotname='plot.png'):
@@ -897,19 +895,37 @@ def get_uvwmax(ms):
     t.close()
     return np.max(ssq)    
 
-def makeBBSmodelforTGSS(boxfile, fitsimage=None, pixelscale=None, imsize=None):
-    r = pyregion.open(boxfile)
-    if len(r[:]) > 1:
-       print('Composite region file, not allowed') 
-       sys.exit()
-    tgsspixsize = 6.2
-    xs = np.ceil((r[0].coord_list[2])*3600./tgsspixsize)
-    ys = np.ceil((r[0].coord_list[3])*3600./tgsspixsize)
-        
+def makeBBSmodelforTGSS(boxfile=None, fitsimage=None, pixelscale=None, imsize=None, ms=None):
 
-    phasecenter = getregionboxcenter(boxfile)
-    phasecenterc = phasecenter.replace('deg','')
-    print(xs, phasecenterc)
+    tgsspixsize = 6.2    
+    if boxfile == None and imsize == None:
+        print('Wring input detected, boxfile or imsize needs to be set')
+        sys.exit()
+    if boxfile != None:
+       r = pyregion.open(boxfile)
+       if len(r[:]) > 1:
+          print('Composite region file, not allowed') 
+          sys.exit()
+       phasecenter = getregionboxcenter(boxfile)
+       phasecenterc = phasecenter.replace('deg','')
+       xs = np.ceil((r[0].coord_list[2])*3600./tgsspixsize)
+       ys = np.ceil((r[0].coord_list[3])*3600./tgsspixsize)
+    else:
+       t2 = pt.table(ms + '::FIELD')
+       phasedir = t2.getcol('PHASE_DIR').squeeze()
+       t2.close()
+       phasecenterc =  ('{:12.8f}'.format(180.*np.mod(phasedir[0], 2.*np.pi)/np.pi) + ',' + '{:12.8f}'.format(180.*phasedir[1]/np.pi)).replace(' ','')
+       
+       #phasecenterc = str() + ', ' + str()
+       xs = np.ceil(imsize*pixelscale/tgsspixsize)
+       ys = np.ceil(imsize*pixelscale/tgsspixsize)
+    
+    print('TGSS imsize:', xs)
+    print('TGSS image center:', phasecenterc)
+    logger.info('TGSS imsize:' + str(xs))
+    logger.info('TGSS image center:' + str(phasecenterc))
+    
+    #sys.exit()
  
     if fitsimage == None:
         filename = SkyView.get_image_list(position=phasecenterc,survey='TGSS ADR1', pixels=np.int(xs), cache=False)
@@ -977,6 +993,11 @@ def bandwidthsmearing(chanw, freq, imsize, verbose=True):
   return R
 
 def number_freqchan_h5(h5parm):
+    '''
+    Function to get the number of freqcencies in H5 solution file
+    Input: H5 file
+    Return: Number of freqcencies in the H5 file
+    '''
     H=tables.open_file(h5parm)
     
     try:
@@ -3244,10 +3265,11 @@ def makeimage(mslist, imageout, pixsize, imsize, channelsout, niter, robust, \
         os.system(cmd)
 
 
-def calibrateandapplycal(mslist, selfcalcycle, args, solint_list, nchan_list, soltype_list, soltypecycles_list, \
+def calibrateandapplycal(mslist, selfcalcycle, args, solint_list, nchan_list, \
+              soltype_list, soltypecycles_list, \
               smoothnessconstraint_list, smoothnessreffrequency_list, antennaconstraint_list, uvmin=0, normamps=False, skymodel=None, predictskywithbeam=False, restoreflags=False, \
               flagging=False, longbaseline=False, BLsmooth=False, flagslowphases=True, flagslowamprms=7.0, flagslowphaserms=7.0, skymodelsource=None, skymodelpointsource=None, wscleanskymodel=None, \
-              ionfactor=0.01, blscalefactor=1.0):
+              ionfactor=0.01, blscalefactor=1.0, dejumpFR=False):
 
    soltypecycles_list_array = np.array(soltypecycles_list) # needed to slice (slicing does not work in nested l
    incol = [] # len(mslist)
@@ -3292,7 +3314,7 @@ def calibrateandapplycal(mslist, selfcalcycle, args, solint_list, nchan_list, so
                      flagslowphaserms=flagslowphaserms, incol=incol[msnumber], \
                      predictskywithbeam=predictskywithbeam, BLsmooth=BLsmooth, skymodelsource=skymodelsource, \
                      skymodelpointsource=skymodelpointsource, wscleanskymodel=wscleanskymodel,\
-                     ionfactor=ionfactor, blscalefactor=blscalefactor)
+                     ionfactor=ionfactor, blscalefactor=blscalefactor, dejumpFR=dejumpFR)
          parmdbmslist.append(parmdb)
          parmdbmergelist[msnumber].append(parmdb) # for h5_merge
        
@@ -3347,9 +3369,16 @@ def calibrateandapplycal(mslist, selfcalcycle, args, solint_list, nchan_list, so
        print(parmdbmergename,parmdbmergelist[msnumber],ms)
        h5_merger.merge_h5(h5_out=parmdbmergename,h5_tables=parmdbmergelist[msnumber],ms_files=ms,\
                           convert_tec=True, merge_all_in_one=True)
+       if False:
+         #testing only to check if merged H5 file is correct and makes a good image
+         applycal(ms, parmdbmergename, msincol='DATA',msoutcol='CORRECTED_DATA')
        
-       #testing only
-       #applycal(ms, parmdbmergename, msincol='DATA',msoutcol='CORRECTED_DATA')
+       # plot merged solution file
+       losotoparset = create_losoto_flag_apgridparset(ms, flagging=False, \
+                            medamp=medianamp(parmdbmergename), \
+                            outplotname=parmdbmergename.split('_' + ms + '.h5')[0], \
+                            refant=findrefant(parmdbmergename))  
+       os.system('losoto ' + parmdbmergename + ' ' + losotoparset)
    #except:
    #  pass 
  
@@ -3382,11 +3411,13 @@ def predictsky(ms, skymodel, modeldata='MODEL_DATA', predictskywithbeam=False, s
    return    
 
 def runDPPPbase(ms, solint, nchan, parmdb, soltype, longbaseline=False, uvmin=0, \
-                SMconstraint=0.0, SMconstraintreffreq=0.0, antennaconstraint=None, restoreflags=False, \
+                SMconstraint=0.0, SMconstraintreffreq=0.0, antennaconstraint=None, \
+                restoreflags=False, \
                 maxiter=100, flagging=False, skymodel=None, flagslowphases=True, \
                 flagslowamprms=7.0, flagslowphaserms=7.0, incol='DATA', \
                 predictskywithbeam=False, BLsmooth=False, skymodelsource=None, \
-                skymodelpointsource=None, wscleanskymodel=None, ionfactor=0.01, blscalefactor=1.0):
+                skymodelpointsource=None, wscleanskymodel=None, ionfactor=0.01, \
+                blscalefactor=1.0, dejumpFR=False):
     
     soltypein = soltype # save the input soltype is as soltype could be modified (for example by scalarphasediff)
     
@@ -3394,6 +3425,8 @@ def runDPPPbase(ms, solint, nchan, parmdb, soltype, longbaseline=False, uvmin=0,
     
     modeldata = 'MODEL_DATA' # the default, update if needed for scalarphasediff and phmin solves
     if BLsmooth:
+      print('python BLsmooth.py -n 8 -i '+ incol + ' -o SMOOTHED_DATA -f ' + str(ionfactor) + \
+                ' -s ' + str(blscalefactor) + ' ' + ms)
       os.system('python BLsmooth.py -n 8 -i '+ incol + ' -o SMOOTHED_DATA -f ' + str(ionfactor) + \
                 ' -s ' + str(blscalefactor) + ' ' + ms)        
       incol = 'SMOOTHED_DATA'    
@@ -3517,6 +3550,10 @@ def runDPPPbase(ms, solint, nchan, parmdb, soltype, longbaseline=False, uvmin=0,
     print('DPPP solve:', cmd)
     logger.info('DPPP solve: ' + cmd)    
     os.system(cmd)
+    
+    if has0coordinates(parmdb):
+       logger.warning('Direction coordinates are zero in: ' + parmdb)
+    
     if np.int(maxiter) == 1: # this is a template solve only
       print('Template solve, not going to make plots or do solution flagging')
       return    
@@ -3530,9 +3567,9 @@ def runDPPPbase(ms, solint, nchan, parmdb, soltype, longbaseline=False, uvmin=0,
       print('Fiting for Faraday Rotation with losoto on the phase differences')
       # work with copies H5 because losoto changes the format splitting off the length 1 direction axis creating issues with H5merge (also add additional solution talbes which we do not want)
       os.system('cp -f ' + parmdb + ' ' + 'FRcopy' + parmdb) 
-      losoto_parsetFR = create_losoto_FRparset(ms, refant=findrefant(parmdb), outplotname=outplotname)
+      losoto_parsetFR = create_losoto_FRparset(ms, refant=findrefant(parmdb), outplotname=outplotname,dejump=dejumpFR)
       os.system('losoto ' + 'FRcopy' + parmdb + ' ' + losoto_parsetFR)
-      rotationmeasure_to_phase('FRcopy' + parmdb, parmdb)
+      rotationmeasure_to_phase('FRcopy' + parmdb, parmdb, dejump=dejumpFR)
       os.system('losoto ' + parmdb + ' ' + create_losoto_FRparsetplotfit(ms, refant=findrefant(parmdb), outplotname=outplotname))
 
       
@@ -3619,18 +3656,21 @@ def runDPPPbase(ms, solint, nchan, parmdb, soltype, longbaseline=False, uvmin=0,
        os.system(cmdlosoto)
     return 
 
-def rotationmeasure_to_phase(H5filein, H5fileout): 
+def rotationmeasure_to_phase(H5filein, H5fileout, dejump=False): 
     #note for scalarphase/phaseonly solve, does not work for tecandphase as freq axis is missing there for phase000
     H5in = tables.open_file(H5filein,mode='r')
     H5out = tables.open_file(H5fileout,mode='a')
     c = 2.99792458e8
-    rotationmeasure = H5in.root.sol000.rotationmeasure000.val[:]
+    
+    if dejump:
+       rotationmeasure = H5in.root.sol000.rotationmeasure001.val[:]
+    else:
+       rotationmeasure = H5in.root.sol000.rotationmeasure000.val[:]    
     phase = H5in.root.sol000.phase000.val[:] # time, freq, ant, dir, pol
     freq  =  H5in.root.sol000.phase000.freq[:]
-    #phase_tmp = np.copy(phase)
     wav = c/freq
 
-    print('FR step: Shape rotationmeasure000', rotationmeasure.shape)
+    print('FR step: Shape rotationmeasure000/1', rotationmeasure.shape)
     print('FR step: Shape phase000', phase.shape)
     
     for antenna_id,antennatmp in enumerate(H5in.root.sol000.phase000.ant[:]):
@@ -3646,6 +3686,15 @@ def rotationmeasure_to_phase(H5filein, H5fileout):
     H5in.close()
     return
 
+def has0coordinates(h5):
+    h5 = tables.open_file(h5)
+    for c in h5.root.sol000.source[:]:
+        x, y = c[1]
+        if x==0. and y==0.:
+            h5.close()
+            return True
+    h5.close()
+    return False
 
 
 def findrefant(H5file):
@@ -3698,7 +3747,7 @@ def create_losoto_FRparsetplotfit(ms, refant='CS001LBA', outplotname='FR'):
     f.close()
     return parset
 
-def create_losoto_FRparset(ms, refant='CS001LBA', freqminfitFR=20e6, outplotname='FR', onlyplotFRfit=False):
+def create_losoto_FRparset(ms, refant='CS001LBA', freqminfitFR=20e6, outplotname='FR', onlyplotFRfit=False, dejump=False):
     """
     Create a losoto parset to fit Faraday Rotation on the phase difference'.
     """
@@ -3734,6 +3783,7 @@ def create_losoto_FRparset(ms, refant='CS001LBA', freqminfitFR=20e6, outplotname
     f.write('refAnt = %s\n' % refant)
     f.write('maxResidual = 2\n')
     f.write('freq.minmaxstep = [%s,1e9]\n\n\n' % str(freqminfitFR))
+    f.write('soltabOut = rotationmeasure000\n')
 
     f.write('[plotFR]\n')
     f.write('operation = PLOT\n')
@@ -3742,10 +3792,29 @@ def create_losoto_FRparset(ms, refant='CS001LBA', freqminfitFR=20e6, outplotname
     f.write('axisInTable = ant\n')
     f.write('prefix = plotlosoto%s/%s\n\n\n' % (ms,outplotname + 'FR'))
 
+    if dejump:
+       f.write('[frdejump]\n')
+       f.write('operation = FRJUMP\n')
+       f.write('soltab = sol000/rotationmeasure000\n')
+       f.write('soltabOut = rotationmeasure001\n')
+       f.write('clipping = [%s,1e9]\n\n\n' % str(freqminfitFR))
+
+       f.write('[plotFR_dejump]\n')
+       f.write('operation = PLOT\n')
+       f.write('soltab = sol000/rotationmeasure001\n')
+       f.write('axesInPlot = [time]\n')
+       f.write('axisInTable = ant\n')
+       f.write('prefix = plotlosoto%s/%s\n\n\n' % (ms,outplotname + 'FRdejumped'))
+
+
+
     f.write('[residuals]\n')
     f.write('operation = RESIDUALS\n')
     f.write('soltab = sol000/phase000\n')
-    f.write('soltabsToSub = rotationmeasure000\n\n\n')
+    if dejump:
+       f.write('soltabsToSub = rotationmeasure001\n\n\n')
+    else:
+       f.write('soltabsToSub = rotationmeasure000\n\n\n')
 
     f.write('[plotRES]\n')
     f.write('operation = PLOT\n')
@@ -3882,6 +3951,8 @@ def main():
    parser.add_argument("--BLsmooth", help='Employ BLsmooth for low S/N data', action='store_true')
    parser.add_argument("--ionfactor", help='BLsmooth inonfactor (default=0.01, larger is more smoothing, see BLsmooth documentation)', type=float, default=0.01)
    parser.add_argument("--blscalefactor", help='BLsmooth blscalefactor (default=1.0, see BLsmooth documentation)', type=float, default=1.0)
+   parser.add_argument('--dejumpFR', help='Dejump Faraday solutions when using scalarphasediffFR', action='store_true')
+   
    parser.add_argument('--usemodeldataforsolints', help='Determine solints from MODEL_DATA', action='store_true')
    parser.add_argument('--tecfactorsolint', help='Experts only', type=float, default=1.0)
    parser.add_argument('--gainfactorsolint', help='Experts only', type=float, default=1.0)
@@ -3927,7 +3998,7 @@ def main():
    options = parser.parse_args() # start of replacing args dictionary with objects options
    #print (options.preapplyH5_list)
 
-   version = '3.1.2'
+   version = '3.1.4'
    print_title(version)
 
    os.system('cp ' + args['helperscriptspath'] + '/lib_multiproc.py .')
@@ -4136,12 +4207,12 @@ def main():
 
 
    if args['startfromtgss'] and args['start'] == 0:
-     if args['boxfile'] != None and args['skymodel'] == None:
+     if args['skymodel'] == None:
        args['skymodel'] = makeBBSmodelforTGSS(args['boxfile'],fitsimage = args['tgssfitsimage'], \
-                                              pixelscale=args['pixelscale'], imsize=args['imsize'])
+                                              pixelscale=args['pixelscale'], imsize=args['imsize'], ms=mslist[0])
      else:
-       print('You need to provide a boxfile to use --startfromtgss')
-       print('And you cannot provide a skymodel file manually')
+       #print('You need to provide a boxfile to use --startfromtgss')
+       print('You cannot provide a skymodel file manually while using --startfromtgss')
        sys.exit(1)
 
 
@@ -4225,7 +4296,7 @@ def main():
                              flagslowamprms=args['flagslowamprms'], flagslowphaserms=args['flagslowphaserms'],\
                              skymodelsource=args['skymodelsource'], skymodelpointsource=args['skymodelpointsource'],\
                              wscleanskymodel=args['wscleanskymodel'], ionfactor=args['ionfactor'], \
-                             blscalefactor=args['blscalefactor']) 
+                             blscalefactor=args['blscalefactor'], dejumpFR=args['dejumpFR']) 
 
 
   
@@ -4235,13 +4306,11 @@ def main():
      else:
        multiscale = False  
 
-     # IMAGE WITH WSCLEAN OR DDF.py
-     logger.info('-----  Doing SELFCAL CYCLE: '+str(i) + '  -----')
-
-     makeimage(mslist, args['imagename'] + str(i).zfill(3), args['pixelscale'], args['imsize'], args['channelsout'], \
-               args['niter'], args['robust'], \
+     makeimage(mslist, args['imagename'] + str(i).zfill(3), args['pixelscale'], args['imsize'], \
+               args['channelsout'], args['niter'], args['robust'], \
                uvtaper=False, multiscale=multiscale, idg=args['idg'], fitsmask=fitsmask, \
-               deepmultiscale=args['deepmultiscale'], uvminim=args['uvminim'], fitspectralpol=args['fitspectralpol'], \
+               deepmultiscale=args['deepmultiscale'], uvminim=args['uvminim'], \
+               fitspectralpol=args['fitspectralpol'], \
                imager=args['imager'], restoringbeam=restoringbeam, automask=automask, \
                removenegativecc=args['removenegativefrommodel'], fitspectralpolorder=args['fitspectralpolorder'], \
                usewgridder=args['usewgridder'], paralleldeconvolution=args['paralleldeconvolution'],\
@@ -4286,7 +4355,8 @@ def main():
                            flagging=args['doflagging'], longbaseline=longbaseline, \
                            BLsmooth=args['BLsmooth'], flagslowphases=args['doflagslowphases'], \
                            flagslowamprms=args['flagslowamprms'], flagslowphaserms=args['flagslowphaserms'],\
-                           ionfactor=args['ionfactor'], blscalefactor=args['blscalefactor'])
+                           ionfactor=args['ionfactor'], blscalefactor=args['blscalefactor'],\
+                           dejumpFR=args['dejumpFR'])
 
 
  
@@ -4339,7 +4409,7 @@ def main():
      #     for msnumber, ms in enumerate(mslist): 
      #         flagms_startend(ms, 'phaseonly' + ms + parmdb + str(i) + '.h5', np.int(solint_phase[msnumber]))
   
-  
+   # ARCHIVE DATA AFTER SELFCAL if requested 
    if not longbaseline and not args['noarchive'] :
      if not LBA:   
       archive(mslist, outtarname, args['boxfile'], fitsmask, imagename)    
