@@ -54,9 +54,6 @@ for MS in glob(FROM+'/extr_L626678*.ms'):
         print('Making goodtimes for'+MS)
         os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
 
-# important to wait until everything is ready before moving on
-while len(glob(FROM+'/*.ms.*')) != len(glob(TO+'/*.pre-cal.ms*.goodtimes'))+1:
-    print('TIME AND FREQUENCY FLAGGING')
 #----------------------------------------------------------------------------------------------------------------------
 
 #MERGE LOTSS OUTER EDGE
@@ -103,12 +100,12 @@ os.system('ls -1d '+TO+'/extr_L626678*.pre-cal.ms* > '+TO+'/big-mslist.txt'.form
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE DDF COMMAND
-with open('DDF_scripts/ddf.txt') as f:
+with open('/'.join(__file__.split('/')[0:-1])+'/DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
     lines+=['--Data-MS='+TO+'/big-mslist.txt']
-    # lines+=['--Predict-InitDicoModel='+TO+'/extr.DicoModel']
+    lines+=['--Predict-InitDicoModel='+TO+'/extr.DicoModel']
     lines+=['--DDESolutions-DDSols='+TO+'/all_directions0.h5:sol000/amplitude000+phase000']
-    # lines+=['--Mask-External='+TO+'/dicoMask.fits']
+    lines+=['--Mask-External='+TO+'/dicoMask.fits']
     lines+=['--Weight-ColName=WEIGHT_SPECTRUM']
 
 #RUN DDF COMMAND
