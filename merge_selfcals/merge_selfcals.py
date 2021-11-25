@@ -6,7 +6,7 @@ We therefore make a final_merge_[N].h5 that we will merge.
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
-from h5_merger import merge_h5
+from ..h5_merger import merge_h5
 from glob import glob
 from argparse import ArgumentParser
 import tables
