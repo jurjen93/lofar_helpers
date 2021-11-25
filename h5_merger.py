@@ -381,6 +381,10 @@ class MergeH5:
         else:
             return 1
 
+    def add_direction(self, source):
+        self.directions.update(source)
+        self.directions = OrderedDict(sorted(self.directions.items()))
+
     def merge_files(self, solset, soltab):
         """
         Merge the h5 files
@@ -453,21 +457,19 @@ class MergeH5:
                         self.axes_new = ['pol'] + self.axes_new
 
                 # get source coordinates
-                d = ss.getSou()
-                if 'dir' in list(d.keys())[0].lower() and list(d.keys())[0][-1].isnumeric():
-                    d = OrderedDict(sorted(d.items()))
-                elif len(d)>1 and (sys.version_info.major==2 or (sys.version_info.major==3 and sys.version_info.minor<6)):
+                dirs = ss.getSou()
+                if 'dir' in list(dirs.keys())[0].lower() and list(dirs.keys())[0][-1].isnumeric():
+                    dirs = OrderedDict(sorted(dirs.items()))
+                elif len(dirs)>1 and (sys.version_info.major==2 or (sys.version_info.major==3 and sys.version_info.minor<6)):
                     print('WARNING: Order of source directions from h5 table might not be ordered. This is a Python 2 issue.'
                           '\nSuggest to switch to Python 3')
-                source_coords = d[list(d.keys())[dir_idx]]
-
-                d = 'Dir{:02d}'.format(self.n)
+                source_coords = dirs[list(dirs.keys())[dir_idx]]
 
                 if self.merge_all_in_one and self.n == 1:
                     idx = 0
                     print('Merging direction {:f},{:f} with previous direction'.format(*source_coords))
                     if abs(self.directions['Dir00'][0])>0 and abs(self.directions['Dir00'][1])>0:
-                        self.directions.update({'Dir00': source_coords}) # 0.0 coordinate bug
+                        self.add_direction({'Dir00': source_coords}) # 0.0 coordinate bug
                         print('Adding new direction {:f},{:f}'.format(*source_coords))
                 elif any([array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
                     # Direction already exists, add to the existing solutions.
@@ -479,7 +481,7 @@ class MergeH5:
                     if abs(source_coords[0]) > 0 and abs(source_coords[1]) > 0:
                         print('Adding new direction {:f},{:f}'.format(*source_coords))
                     idx = self.n
-                    self.directions.update({d: source_coords})
+                    self.add_direction({'Dir{:02d}'.format(self.n): source_coords})
                     if not self.merge_all_in_one:
                         self.n += 1
                     if self.n > 1:  # for self.n==1 we dont have to do anything

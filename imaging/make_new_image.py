@@ -63,7 +63,7 @@ os.system('mv {LOCATION_FROM}/{H5} {LOCATION}'.format(H5=H5, LOCATION=LOCATION, 
 #MAKE LIST WITH MEASUREMENT SETS
 os.system('ls -1d {LOCATION}/*.goodtimes > {LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION))
 
-with open('DDF_scripts/ddf.txt') as f:
+with open('/'.join(__file__.split('/')[0:-1])+'/DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
     lines+=['--Data-MS={LOCATION}/big-mslist.txt'.format(LOCATION=LOCATION)]
     lines+=['--Predict-InitDicoModel={LOCATION}/image_full_ampphase_di_m.NS.DicoModel'.format(LOCATION=LOCATION)]

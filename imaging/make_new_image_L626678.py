@@ -67,7 +67,7 @@ CUTFREQS = [5021107868.011121, 5021107864.005561]
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE DDF COMMAND
-with open('DDF_scripts/ddf.txt') as f:
+with open('/'.join(__file__.split('/')[0:-1])+'/DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
     lines+=['--Data-MS=/net/nieuwerijn/data2/jurjendejong/L626678/big-mslist.txt']
     lines+=['--Predict-InitDicoModel=/net/nieuwerijn/data2/jurjendejong/L626678/image_full_ampphase_di_m.NS.DicoModel']
