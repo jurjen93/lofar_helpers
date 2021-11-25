@@ -49,7 +49,7 @@ def mask_except_region(infilename,ds9region,outfilename):
 
     r = pyregion.open(ds9region)
     manualmask = r.get_mask(hdu=hduflat)
-    hdu[0].data[0][0][np.where(manualmask == False)] = 1.0
+    hdu[0].data[0][0][np.where(manualmask == True)] = 0.0
     hdu.writeto(outfilename,overwrite=True)
 
     return
@@ -61,4 +61,5 @@ mask_except_region('image_full_ampphase_di_m.NS.mask01.fits', 'extracted.reg', m
 indico='image_full_ampphase_di_m.NS.DicoModel'
 outdico='extr.DicoModel'
 
+os.system('rm extr.DicoModel')
 os.system("MaskDicoModel.py --MaskName=%s --InDicoModel=%s --OutDicoModel=%s"%(mask, indico, outdico))
