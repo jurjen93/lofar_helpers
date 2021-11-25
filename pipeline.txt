@@ -1,6 +1,6 @@
 ----PIPELINE STEPS----
 
-1) MAKE BOXES with make_boxes.py (including interactive adaptation)
+1) MAKE BOXES with make_boxes.py (including interactive)
 
 2) EXTRACT sources with supporting_scripts/reinout/sub-sources-outside-region.py
 
@@ -9,13 +9,16 @@
 4) SELFCAL sources with supporting_scripts/reinout/runwscleanLBautoR.py
 (needs to be done whenever a box is extracted)
 
-5) MERGE SOLUTIONS with merge_selfcals.sh
+5) Check solutions selfcal manually
+(especially plotlosoto images)
+
+6) MERGE SOLUTIONS with merge_selfcals.sh
 (needs to be done when all solutions are there)
 
-6) DECIDE WHICH SOLUTIONS ARE GOOD ENOUGH
+7) DECIDE WHICH SOLUTIONS ARE GOOD ENOUGH
 (currently manually)
 
-7) MAKE IMAGE with make_new_image.py
+8) MAKE IMAGE with make_new_image.py
 
 EXTRA: Use database in between to check which boxes are done
 
