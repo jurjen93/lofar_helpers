@@ -44,19 +44,19 @@ print('Finished moving files')
 # CUTTIMES = [5019387068.011121, 5019387064.005561, 5017577408.011121, 5017577404.005561, 5020506668.011121, 5020506664.005561]
 
 #starting times for measurement sets that have to be cutted for freq
-# CUTFREQS = [5021107868.011121, 5021107864.005561]
-#
-# for MS in glob(FROM+'/extr*.ms'):
-#     t = ct.table(MS)
-#     time = t.getcol('TIME')[0]
-#     t.close()
-#     if not (time in CUTFREQS and '127' in MS):
-#         print('Making goodtimes for'+MS)
-#         os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
-#
-# # important to wait until everything is ready before moving on
-# while len(glob(FROM+'/*.ms.*')) != len(glob(TO+'/*.pre-cal.ms*.goodtimes'))+1:
-#     print('TIME AND FREQUENCY FLAGGING')
+CUTFREQS = [5021107868.011121, 5021107864.005561]
+
+for MS in glob(FROM+'/extr_L626678*.ms'):
+    t = ct.table(MS)
+    time = t.getcol('TIME')[0]
+    t.close()
+    if not (time in CUTFREQS and '127' in MS):
+        print('Making goodtimes for'+MS)
+        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+
+# important to wait until everything is ready before moving on
+while len(glob(FROM+'/*.ms.*')) != len(glob(TO+'/*.pre-cal.ms*.goodtimes'))+1:
+    print('TIME AND FREQUENCY FLAGGING')
 #----------------------------------------------------------------------------------------------------------------------
 
 #MERGE LOTSS OUTER EDGE
@@ -98,18 +98,18 @@ print('Finished moving files')
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE LIST WITH MEASUREMENT SETS
-os.system('ls -1d '+TO+'/*.pre-cal.ms* > '+TO+'/big-mslist.txt'.format(LOCATION=TO))
+os.system('ls -1d '+TO+'/extr_L626678*.pre-cal.ms* > '+TO+'/big-mslist.txt'.format(LOCATION=TO))
 
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE DDF COMMAND
-with open('/home/jurjendejong/scripts/lofar_helpers/DDF_scripts/ddf.txt') as f:
+with open('DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
     lines+=['--Data-MS='+TO+'/big-mslist.txt']
-    lines+=['--Predict-InitDicoModel='+TO+'/extr.DicoModel']
-    lines+=['--DDESolutions-DDSols='+TO+'/all_directions*.h5:sol000/amplitude000+phase000']
-    lines+=['--Mask-External='+TO+'/dicoMask.fits']
-    # lines+=['--Weight-ColName=IMAGING_WEIGHT']
+    # lines+=['--Predict-InitDicoModel='+TO+'/extr.DicoModel']
+    lines+=['--DDESolutions-DDSols='+TO+'/all_directions0.h5:sol000/amplitude000+phase000']
+    # lines+=['--Mask-External='+TO+'/dicoMask.fits']
+    lines+=['--Weight-ColName=WEIGHT_SPECTRUM']
 
 #RUN DDF COMMAND
 print('Running DDF COMMAND')
