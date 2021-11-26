@@ -11,8 +11,6 @@ SCRIPT_FOLDER=/home/jurjendejong/scripts/lofar_helpers
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ~/scripts/lofar_helpers/supporting_scripts/reinout/sub-sources-outside-region_noconcat.py --boxfile extracted.reg --freqavg=1 --timeavg=1 --overwriteoutput --noconcat --nophaseshift --adjustboxrotation=False --prefixname extr
 rm -rf /net/nieuwerijn/data2/jurjendejong/A399_extracted/L6*.ms
 rm -rf /net/nieuwerijn/data2/jurjendejong/A399_extracted/L6*.ms.archive
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/make_new_dicomodel.py
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/make_new_dicomodel.py
 
-SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latest.simg
-
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/jurjendejong/scripts/lofar_helpers/imaging/make_new_image_A399_test.py
+singularity exec -B ${SING_BIND} /net/rijn/data2/rvweeren/data/pill-latest.simg python ~/scripts/lofar_helpers/imaging/make_new_image_A399_test.py
