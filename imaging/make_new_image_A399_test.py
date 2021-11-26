@@ -52,7 +52,7 @@ for MS in glob(FROM+'/extr_L626678*.ms'):
     t.close()
     if not (time in CUTFREQS and '127' in MS):
         print('Making goodtimes for'+MS)
-        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 1500 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
 
 #----------------------------------------------------------------------------------------------------------------------
 
