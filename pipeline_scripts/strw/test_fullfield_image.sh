@@ -15,4 +15,4 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/jurjendejong/scripts
 
 SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latest.simg
 
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/jurjendejong/scripts/lofar_helpers/make_new_image_A399_test.py
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/jurjendejong/scripts/lofar_helpers/imaging/make_new_image_A399_test.py
