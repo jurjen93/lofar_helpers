@@ -8,6 +8,7 @@ SCRIPT_FOLDER=/home/jurjendejong/scripts/lofar_helpers
 
 #singularity exec -B ${SING_BIND} /net/rijn/data2/rvweeren/data/pill-latest.simg python ${SCRIPT_FOLDER}/move_files/move_extract_files.py --frm /net/rijn/data2/jdejong/A399_DEEP --to /net/nieuwerijn/data2/jurjendejong/A399_extracted
 #cd /net/nieuwerijn/data2/jurjendejong/A399_extracted
+cp -r /net/rijn/data2/jdejong/A399_DEEP/*ms.archive /net/nieuwerijn/data2/jurjendejong/A399_extracted/
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ~/scripts/lofar_helpers/supporting_scripts/reinout/sub-sources-outside-region_noconcat.py --boxfile extracted.reg --freqavg=1 --timeavg=1 --overwriteoutput --noconcat --nophaseshift --adjustboxrotation=False --prefixname extr
 rm -rf /net/nieuwerijn/data2/jurjendejong/A399_extracted/L6*.ms
 rm -rf /net/nieuwerijn/data2/jurjendejong/A399_extracted/L6*.ms.archive
