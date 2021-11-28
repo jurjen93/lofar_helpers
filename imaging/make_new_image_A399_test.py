@@ -103,9 +103,9 @@ os.system('ls -1d '+TO+'/extr_L626678*.pre-cal.ms* > '+TO+'/big-mslist.txt'.form
 with open('/'.join(__file__.split('/')[0:-1])+'/DDF_scripts/ddf.txt') as f:
     lines = [l.replace('\n','') for l in f.readlines()]
     lines+=['--Data-MS='+TO+'/big-mslist.txt']
-    # lines+=['--Predict-InitDicoModel='+TO+'/extr.DicoModel']
+    lines+=['--Predict-InitDicoModel='+TO+'/extr.DicoModel']
     lines+=['--DDESolutions-DDSols='+TO+'/all_directions0.h5:sol000/amplitude000+phase000']
-    # lines+=['--Mask-External='+TO+'/dicoMask.fits']
+    lines+=['--Mask-External='+TO+'/dicoMask.fits']
     lines+=['--Weight-ColName=WEIGHT_SPECTRUM']
 
 #RUN DDF COMMAND
