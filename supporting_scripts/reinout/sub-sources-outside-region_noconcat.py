@@ -873,7 +873,7 @@ if args['noconcat']:
         else:
             cmd += 'steps=[average] '
         cmd += 'average.timestep=' + str(timestepavg) + ' average.freqstep=' + str(freqstepavg) + ' '
-        cmd += 'msin.weightcolumn=WEIGHT_SPECTRUM_FROM_IMAGING_WEIGHTS msout.storagemanager=dysco '
+        cmd += 'msin.weightcolumn=WEIGHT_SPECTRUM_FROM_IMAGING_WEIGHT msout.storagemanager=dysco '
         cmd += 'msout=' + msout + ' msout.storagemanager.databitrate=4 msout.storagemanager.weightbitrate=8 '
         cmd += 'msin.datacolumn=%s ' % colname
         print(cmd)
