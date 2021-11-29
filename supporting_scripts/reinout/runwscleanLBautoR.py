@@ -2934,6 +2934,9 @@ def flagbadamps(parmdb, setweightsphases=True):
     '''
     H5 = h5parm.h5parm(parmdb, readonly=False) 
     amps =H5.getSolset('sol000').getSoltab('amplitude000').getValues()[0]
+    idx = np.where(amps <= 0.0)
+    amps[idx] = 1.0
+    
     idx = np.where(amps == 1.0)
     weights = H5.getSolset('sol000').getSoltab('amplitude000').getValues(weight=True)[0]
     
@@ -2957,6 +2960,10 @@ def flagbadamps(parmdb, setweightsphases=True):
 def medianamp(parmdb):
     H5 = h5parm.h5parm(parmdb, readonly=True) 
     amps =H5.getSolset('sol000').getSoltab('amplitude000').getValues()[0]
+    
+    idx = np.where(amps <= 0.0) # to catch bad amps (should not be there but apparently sometimes a zero slips through
+    amps[idx] = 1.0
+    
     weights = H5.getSolset('sol000').getSoltab('amplitude000').getValues(weight=True)[0]
     idx = np.where(weights != 0.0)
     medamps = 10**(np.nanmedian(np.log10(amps[idx])))
@@ -3590,6 +3597,7 @@ def runDPPPbase(ms, solint, nchan, parmdb, soltype, longbaseline=False, uvmin=0,
     if soltype in ['scalarcomplexgain','complexgain','amplitudeonly','scalaramplitude','fulljones','rotation+diagonal']:
       flagbadamps(parmdb, setweightsphases=includesphase)
       if soltype != 'fulljones':
+        removenans(parmdb, 'amplitude000')
         medamp = medianamp(parmdb) # fu
       else:
         print('Not implemented, medamp of fulljones')
