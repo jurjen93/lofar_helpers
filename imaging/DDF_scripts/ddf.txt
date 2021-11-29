@@ -6,7 +6,7 @@ DDF.py
 --Output-Name=image_final
 --Output-RestoringBeam=6.0
 --Output-Also=onNeds
---Image-NPix=14000
+--Image-NPix=20000
 --Image-Cell=1.5
 --Facets-NFacets=11
 --Facets-DiamMax=1.5
