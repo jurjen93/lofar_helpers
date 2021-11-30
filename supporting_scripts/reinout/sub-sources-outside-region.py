@@ -1000,7 +1000,3 @@ for observation in range(number_of_unique_obsids(msfiles)):
             cmd += 'msin.nchan=' + str(nchanperblock) + ' ' + 'msout=' + msout + ' '
             print(cmd)
             run(cmd)
-
-    
-    
-    
