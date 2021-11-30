@@ -851,9 +851,11 @@ if dosubtract:
             print('Warning, ', ms, ' does not contain PREDICT_SUB and/or ' + args['column'] + ', skipping.....')
 
         t.close()
-    if not args['noconcat']:
-        if not args['keeplongbaselines']:
-            addextraweights(msfiles)
+    if not args['onlyuseweightspectrum']:
+        addextraweights(msfiles)
+    # if not args['noconcat']:
+    # if not args['keeplongbaselines']:
+    # addextraweights(msfiles)
 
 if composite:
     print('Since you are using a composite DS9 region file I am not going to phaseshift')
