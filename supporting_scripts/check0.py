@@ -13,10 +13,20 @@ def has0coordinates(h5):
 if __name__ == '__main__':
     from argparse import ArgumentParser
     parser = ArgumentParser()
-    parser.add_argument('--h5', type=str, help='h5 file name')
+    parser.add_argument('--h5', type=str, help='h5 file name', default=None)
+    parser.add_argument('--folder', type=str, help='folder name with boxes', default=None)
     args = parser.parse_args()
 
-    if has0coordinates(args.h5):
-        print(args.h5+' has 0.0 coordinates')
-    else:
-        print(args.h5+' has no 0.0 coordinates')
+    if args.h5:
+        if has0coordinates(args.h5):
+            print(args.h5+' has 0.0 coordinates')
+        else:
+            print(args.h5+' has no 0.0 coordinates')
+    if args.folder:
+        from glob import glob
+        folder = glob(str(args.folder)+'/box_*')
+        for box in folder:
+            h5files = glob(box+'/*.h5')
+            for h5 in h5files:
+                if has0coordinates(h5):
+                    print(args.h5 + ' has 0.0 coordinates')
