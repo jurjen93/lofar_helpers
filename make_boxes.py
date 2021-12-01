@@ -419,7 +419,7 @@ class SetBoxes(Imaging):
                       self.wcs.pixel_to_world(self.pix_x, self.pix_y).to_string('hmsdms').split()]
         arcsec_size = round(np.max(self.wcs.pixel_scale_matrix) * self.after.shape[0] * 3600, 3)
         f = open(box_name, "a")
-        f.write(f'box({position_h[0]},{position_h[1]},{str(arcsec_size)}\",{str(arcsec_size)}\",0) # text={{{box_name.split("/")[-1].split(".reg")[0]}}}')
+        f.write(f'fk5\nbox({position_h[0]},{position_h[1]},{str(arcsec_size)}\",{str(arcsec_size)}\",0) # text={{{box_name.split("/")[-1].split(".reg")[0]}}}')
         f.close()
 
         return self
@@ -553,21 +553,23 @@ if __name__ == '__main__':
         other_sources, _ = image.other_sources_in_image
 
         # check if boxes contain multiple times the same source. If so, we replace this box with a better new one.
-        found=False
-        for source in other_sources:
-            if source in sources_done:
-                sources = read_csv('source_file.csv')['sources']
-                for M, source_list in enumerate(sources):
-                    if len(source_list.replace('[','').replace(']',''))>0:
-                        source_list = [int(s) for s in source_list.replace('[','').replace(']','').replace(' ','').split(';')]
-                        if bool(set(other_sources) & set(source_list)):
-                            if not args.no_images:
-                                os.system(f'rm {folder}/box_images/box_{M+1}.png')
-                            os.system(f'rm {folder}/boxes/box_{M+1}.reg')
-                            replace, found = True, True
-                            break
-            if found:
-                break
+        #TODO: Fix double source issues
+
+        # found=False
+        # for source in other_sources:
+        #     if source in sources_done:
+        #         sources = read_csv('source_file.csv')['sources']
+        #         for M, source_list in enumerate(sources):
+        #             if len(source_list.replace('[','').replace(']',''))>0:
+        #                 source_list = [int(s) for s in source_list.replace('[','').replace(']','').replace(' ','').split(';')]
+        #                 if bool(set(other_sources) & set(source_list)):
+        #                     if not args.no_images:
+        #                         os.system(f'rm {folder}/box_images/box_{M+1}.png')
+        #                     os.system(f'rm {folder}/boxes/box_{M+1}.reg')
+        #                     replace, found = True, True
+        #                     break
+        #     if found:
+        #         break
 
         sources_done += other_sources
         image.source_to_csv(other_sources)
@@ -588,20 +590,20 @@ if __name__ == '__main__':
                 plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
                               cmap='CMRmap')
                 plt.subplots_adjust(left=0.2, bottom=0.3, right=0.7, top=0.5, wspace=0.1, hspace=0.1)
-                if replace:
-                    fig.savefig(f'{folder}/box_images/box_{M+1}.png')
-                else:
-                    fig.savefig(f'{folder}/box_images/box_{m}.png')
+                # if replace:
+                #     fig.savefig(f'{folder}/box_images/box_{M+1}.png')
+                # else:
+                fig.savefig(f'{folder}/box_images/box_{m}.png')
             except:
                 print('Error making images with matplotlib. Images will not be made.')
                 args.no_images = True
 
-        if replace:
-            print(f'Replace box {M+1}.')
-            image.save_box(box_name=f'{folder}/boxes/box_{M+1}.reg')
-        else:
-            print(f'Create box {m}.')
-            image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
+        # if replace:
+        #     print(f'Replace box {M+1}.')
+        #     image.save_box(box_name=f'{folder}/boxes/box_{M+1}.reg')
+        # else:
+        print(f'Create box {m}.')
+        image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
 
         if m == args.max_boxes: # finish if max boxes reached
             break # break for loopd
