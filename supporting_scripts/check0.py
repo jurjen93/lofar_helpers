@@ -28,5 +28,8 @@ if __name__ == '__main__':
         for box in folder:
             h5files = glob(box+'/*.h5')
             for h5 in h5files:
-                if has0coordinates(h5):
-                    print(args.h5 + ' has 0.0 coordinates')
+                try:
+                    if has0coordinates(h5):
+                        print(h5 + ' has 0.0 coordinates')
+                except:
+                    print('Cannot open '+h5)
