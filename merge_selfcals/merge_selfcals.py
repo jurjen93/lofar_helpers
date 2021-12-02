@@ -13,7 +13,7 @@ import tables
 import numpy as np
 import os
 import sys
-sys.path.append('~/scripts/lofar_helpers')
+sys.path.append('/home/lofarvwf-jdejong/scripts/lofar_helpers')
 from h5_merger import merge_h5
 
 parser = ArgumentParser()
