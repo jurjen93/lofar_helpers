@@ -808,7 +808,7 @@ if args['noconcat']:
   print('You requested the noconcat option, phaseshift and average only')
   for ms in msfiles:
   
-    msout   = obsid + '_' + ms + '.sub.shift.avg.ms'
+    msout1   = obsid + '_' + ms + '.sub.shift.avg.ms'
 
     cmd =  'DPPP msin="' + str(ms) + '" msout.writefullresflag=False '
     if dophaseshift:
@@ -817,13 +817,55 @@ if args['noconcat']:
     else:
        cmd +=  'steps=[average] ' 
     cmd += 'average.timestep=' + str(timestepavg) + ' average.freqstep=' + str(freqstepavg) + ' '   
-    cmd += 'msin.weightcolumn=WEIGHT_SPECTRUM msout.storagemanager=dysco '
-    cmd += 'msout=' + msout + ' msout.storagemanager.databitrate=4 msout.storagemanager.weightbitrate=8 '
+    if args['onlyuseweightspectrum']:
+      cmd += 'msin.weightcolumn=WEIGHT_SPECTRUM '              
+    else:    
+      cmd += 'msin.weightcolumn=WEIGHT_SPECTRUM_FROM_IMAGING_WEIGHT '  
+    cmd += 'msout.storagemanager=dysco '
+    cmd += 'msout=' + msout1 + ' '
     cmd += 'msin.datacolumn=%s '%colname
     print(cmd)
     run(cmd)
+
+    if not args['onlyuseweightspectrum']: # run DP3 again to copy over other weights
+      msout2   = obsid + '_' + ms + '.sub.shift.avg.ms.tmpweight'
+
+      cmd =  'DPPP msin="' + str(ms) + '" msout.writefullresflag=False '
+      if dophaseshift:
+         cmd +=  'steps=[phaseshift,average] '
+         cmd += 'phaseshift.type=phaseshift phaseshift.phasecenter=' + phasecenter + ' '
+      else:
+         cmd +=  'steps=[average] ' 
+      cmd += 'average.timestep=' + str(timestepavg) + ' average.freqstep=' + str(freqstepavg) + ' '   
+      cmd += 'msin.weightcolumn=WEIGHT_SPECTRUM msout.storagemanager=dysco '
+      cmd += 'msout=' + msout2 + ' '
+      cmd += 'msin.datacolumn=%s '%colname
+      print(cmd)
+      run(cmd)
+      # Make a WEIGHT_SPECTRUM from WEIGHT_SPECTRUM_SOLVE
+      t  = pt.table(msout1, readonly=False)
+      print('Adding WEIGHT_SPECTRUM_SOLVE') 
+      desc = t.getcoldesc('WEIGHT_SPECTRUM')
+      desc['name']='WEIGHT_SPECTRUM_SOLVE'
+      t.addcols(desc)
+
+      t2 = pt.table(msout2, readonly=True)
+      imweights = t2.getcol('WEIGHT_SPECTRUM')
+      t.putcol('WEIGHT_SPECTRUM_SOLVE', imweights)
+      # Fill WEIGHT_SPECTRUM with WEIGHT_SPECTRUM from second ms
+      t2.close()
+      t.close() 
+
+      # clean up
+      os.system('rm -rf ' + msout2)
+      print(' ')
+      print(' ')
+      print('Ouput column WEIGHT_SPECTRUM used for imaging (contains IMAGING_WEIGHT from DR2)')
+      print('Ouput column WEIGHT_SPECTRUM_SOLVE used for calibration (contains WEIGHT_SPECTRUM from DR2)')      
+
+
   
-  sys.exit() 
+  sys.exit() # done, no more steps needed
 
 if dokmscal:
   outmask_target = 'inregionmask.fits'
@@ -908,7 +950,6 @@ for observation in range(number_of_unique_obsids(msfiles)):
         cmd += 'average.type=averager '
         cmd += 'average.timestep=' + str(timestepavg) + ' average.freqstep=' + str(freqstepavg) + ' ' 
 
-    
         print(cmd)
         run(cmd)
 
@@ -1000,3 +1041,7 @@ for observation in range(number_of_unique_obsids(msfiles)):
             cmd += 'msin.nchan=' + str(nchanperblock) + ' ' + 'msout=' + msout + ' '
             print(cmd)
             run(cmd)
+
+    
+    
+    
