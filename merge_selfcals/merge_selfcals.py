@@ -6,13 +6,15 @@ We therefore make a final_merge_[N].h5 that we will merge.
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
-from ..h5_merger import merge_h5
+
 from glob import glob
 from argparse import ArgumentParser
 import tables
 import numpy as np
 import os
 import sys
+sys.path.append('~/scripts/lofar_helpers')
+from h5_merger import merge_h5
 
 parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
