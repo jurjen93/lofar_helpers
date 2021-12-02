@@ -18,21 +18,34 @@ parser = ArgumentParser()
 parser.add_argument('-d', '--directory', type=str, help='directory path')
 parser.add_argument('-a', '--archive', type=str, help='archive number', default='0')
 parser.add_argument('-del', '--exclude_boxes', help='Exclude the following boxes (numbers only)')
+parser.add_argument('-in', '--include_boxes', help='Include only the following boxes (numbers only)')
 args = parser.parse_args()
 
 def get_digits(x):
     return int(''.join([d for d in x if d.isdigit()]))
 
-if args.exclude_boxes:
+excluded_boxes, included_boxes = [], []
+
+if args.exclude_boxes and args.include_boxes:
+    sys.exit('You need to choose between --exclude_boxes or --include_boxes')
+elif args.exclude_boxes:
     excluded_boxes=args.exclude_boxes
     if type(excluded_boxes)==str:
         excluded_boxes = excluded_boxes.split(',')
-
     excluded_boxes = ['box_'+n for n in excluded_boxes]
-else:
-    excluded_boxes = []
+elif args.include_boxes:
+    included_boxes=args.include_boxes
+    if type(included_boxes)==str:
+        included_boxes = included_boxes.split(',')
+    included_boxes = ['box_'+n for n in included_boxes]
 
 boxes_h5_list = [b for b in glob('{directory}/box_*'.format(directory=args.directory)) if (b[-1].isdigit() and len(b.split('_'))==2)]
+
+if included_boxes:
+    boxes_h5_list = [b for b in boxes_h5_list if b.split('/')[-1] in included_boxes]
+elif excluded_boxes:
+    boxes_h5_list = [b for b in boxes_h5_list if not b.split('/')[-1] in excluded_boxes]
+
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 
 merged_boxes = []
