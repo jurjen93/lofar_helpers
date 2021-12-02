@@ -27,14 +27,14 @@ if not path.exists(TO):
 os.system('CleanSHM.py')
 
 #MOVE FILES
-print('Moving files to '+TO)
-command = 'cp -r '+FROM+'/dicoMask.fits '+TO+ ' && '+\
-        'cp -r '+FROM+'/extr.DicoModel '+TO+' && wait'#+\
+# print('Moving files to '+TO)
+# command = 'cp -r '+FROM+'/dicoMask.fits '+TO+ ' && '+\
+#         'cp -r '+FROM+'/extr.DicoModel '+TO+' && wait'#+\
         # 'scp lofarvwf-jdejong@spider.surfsara.nl:/project/lofarvwf/Share/jdejong/output/A399/selfcal/all_directions*.h5 '+TO+' && wait'
         # 'cp -r '+FROM+'/*_uv.pre-cal_*.pre-cal.ms.archive '+TO+' && wait'
 
-os.system(command)
-print('Finished moving files')
+# os.system(command)
+# print('Finished moving files')
 
 #----------------------------------------------------------------------------------------------------------------------
 
