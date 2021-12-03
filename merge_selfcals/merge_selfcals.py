@@ -13,6 +13,7 @@ import tables
 import numpy as np
 import os
 import sys
+import re
 sys.path.append('/home/lofarvwf-jdejong/scripts/lofar_helpers')
 from h5_merger import merge_h5
 
@@ -25,6 +26,9 @@ args = parser.parse_args()
 
 def get_digits(x):
     return int(''.join([d for d in x if d.isdigit()]))
+
+def filter_box_N(boxnumber):
+    return bool(re.match('^box_[0-9]+$', boxnumber))
 
 excluded_boxes, included_boxes = [], []
 
@@ -41,7 +45,7 @@ elif args.include_boxes:
         included_boxes = included_boxes.split(',')
     included_boxes = ['box_'+n for n in included_boxes]
 
-boxes_h5_list = [b for b in glob('{directory}/box_*'.format(directory=args.directory)) if (b[-1].isdigit() and len(b.split('_'))==2)]
+boxes_h5_list = [b for b in glob('{directory}/box_*'.format(directory=args.directory)) if filter_box_N(b.split('/')[-1])]
 
 if included_boxes:
     boxes_h5_list = [b for b in boxes_h5_list if b.split('/')[-1] in included_boxes]
@@ -51,12 +55,13 @@ elif excluded_boxes:
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 
 merged_boxes = []
-
+final_merge = []
 for box in boxes_h5_list:
     print(box)
     h5out = '{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive))
     h5merge = sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]
     merged_boxes.append(h5merge)
+    final_merge.append(h5out)
     os.system('rm '+h5out)
     os.system('cp '+h5merge+' '+h5out)
 
@@ -81,7 +86,6 @@ for box in boxes_h5_list:
         T.create_table(T.root.sol000, 'source', new_source, "Source names and directions")
     T.close()
 
-final_merge = glob('box_*/final_merge_{n}.h5'.format(n=str(args.archive)))
 final_merge.sort(key=lambda x: get_digits(x))
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
          h5_tables=final_merge)
@@ -92,6 +96,6 @@ for n, h5 in enumerate(merged_boxes):
     T = tables.open_file(h5)
     if H.root.sol000.phase000.val[0,0,0,n,0]!=T.root.sol000.phase000.val[0,0,0,0,0] or \
         H.root.sol000.amplitude000.val[0,0,0,n,0]!=T.root.sol000.amplitude000.val[0,0,0,0,0]:
-        sys.exit('check direction '+str(n))
+        sys.exit('ERROR: CHECK DIRECTION '+str(n))
     T.close()
 H.close()
