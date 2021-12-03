@@ -21,7 +21,7 @@ def move_boxes(file, folder):
                     for line in f:
                         if '{box' in line:
                             g = open(folder + '/boxestemp/' + line.strip().split()[-1].replace('text={', '').replace('}', '') + '.reg', "a")
-                            g.write(line)
+                            g.write("fk5\n"+line)
                             g.close()
             os.system('rm -rf ' + folder + '/boxes && mv ' + folder + '/boxestemp ' + folder + '/boxes')
 
