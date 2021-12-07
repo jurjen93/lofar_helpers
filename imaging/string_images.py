@@ -32,8 +32,8 @@ for b in boxes:
     x, y = wcs.world_to_pixel(wcs_box.pixel_to_world(0, 0))
     shape = box_data.shape
     imdata = hdu.data[0, 0, :, :]
-    imdata[int(y+shape[1]/10):int(y+0.9*shape[1]), int(x+shape[0]/10):int(x+0.9*shape[0])] = \
-        box_data[int(box_data.shape[1]/10):int(box_data.shape[1]*0.9), int(box_data.shape[0]/10):int(box_data.shape[0]*0.9)]
+    imdata[int(y+shape[1]):int(y+shape[1]), int(x+shape[0]):int(x+shape[0])] = \
+        box_data[int(box_data.shape[1]):int(box_data.shape[1]), int(box_data.shape[0]):int(box_data.shape[0])]
     hdu.data[0, 0, :, :] = imdata
 
 
