@@ -94,8 +94,17 @@ merged_boxes.sort(key=lambda x: get_digits(x))
 H = tables.open_file('all_directions{n}.h5'.format(n=str(args.archive)))
 for n, h5 in enumerate(merged_boxes):
     T = tables.open_file(h5)
-    if H.root.sol000.phase000.val[0,0,0,n,0]!=T.root.sol000.phase000.val[0,0,0,0,0] or \
-        H.root.sol000.amplitude000.val[0,0,0,n,0]!=T.root.sol000.amplitude000.val[0,0,0,0,0]:
+    num_elements = 1
+    for i in T.root.sol000.phase000.val.shape:
+        num_elements*=i
+    phase_elements = H.root.sol000.phase000.val[:,:,:,n,:]==T.root.sol000.phase000.val[:,:,:,0,:]
+    amplitude_elements = H.root.sol000.amplitude000.val[:,:,:,n,:]==T.root.sol000.amplitude000.val[:,:,:,0,:]
+    if np.sum(phase_elements)!=num_elements:
+        print('Problems with following phase elements in direction '+str(n)+':\n'+str(np.argwhere(np.invert(phase_elements))))
         sys.exit('ERROR: CHECK DIRECTION '+str(n))
+    if np.sum(amplitude_elements) != num_elements:
+        print('Problems with following phase elements '+str(n)+':\n' + str(np.argwhere(np.invert(amplitude_elements))))
+        sys.exit('ERROR: CHECK DIRECTION '+str(n))
+
     T.close()
 H.close()
