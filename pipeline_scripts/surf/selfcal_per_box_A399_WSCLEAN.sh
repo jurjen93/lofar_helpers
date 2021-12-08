@@ -6,6 +6,7 @@
 #SBATCH --job-name=selfcal
 #SBATCH --output=%j.out
 #SBATCH --error=%j.err
+#SBATCH --exclude=wn-hb-02
 
 BOX=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf_fixed.sif
