@@ -27,4 +27,4 @@ echo $CPU_ALLOC
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/pipeline_scripts/surf/prepare_data_L626678.py --box ${BOX}
 cd /project/lofarvwf/Share/jdejong/output/A399/selfcal/box_${BOX}
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b /project/lofarvwf/Share/jdejong/output/A399/boxes/box_${BOX}.reg --auto --imager=WSCLEAN --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup --useaoflagger --uvmin=750 --tecfactorsolint=1.5 --no-beamcor --gainfactorsolint=2.0 *box_${BOX}.dysco.sub.shift.avg.weights.ms.archive*
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/lofarvwf-jdejong/scripts/runwscleanLBautoR.py -b /project/lofarvwf/Share/jdejong/output/A399/boxes/box_${BOX}.reg --auto --imager=WSCLEAN --helperscriptspath=/home/lofarvwf-jdejong/scripts --autofrequencyaverage-calspeedup --useaoflagger --uvmin=750 --tecfactorsolint=1.5 --no-beamcor --gainfactorsolint=2.0 *box_${BOX}.dysco.sub.shift.avg.weights.ms.archive0
