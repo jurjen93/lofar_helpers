@@ -14,8 +14,8 @@ import casacore.tables as ct
 import tables
 import numpy as np
 
-TO='/net/nieuwerijn/data2/jurjendejong/A399_extracted'
-FROM='/net/nieuwerijn/data2/jurjendejong/A399_extracted'
+TO='/net/nieuwerijn/data2/jurjendejong/L626678_WSCLEAN'
+FROM='/net/nieuwerijn/data2/jurjendejong/L626678_WSCLEAN'
 
 #CREATE DESTINATION DIRECTORY IF NOT EXISTS
 if not path.exists(TO):
