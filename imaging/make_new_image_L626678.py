@@ -15,6 +15,7 @@ import casacore.tables as ct
 
 TO='/net/nieuwerijn/data2/jurjendejong/L626678'
 FROM='/net/rijn/data2/jdejong/A399_DEEP'
+IMAGER='DDF'
 
 #CREATE DESTINATION DIRECTORY IF NOT EXISTS
 if not path.exists(TO):
@@ -66,15 +67,20 @@ CUTFREQS = [5021107868.011121, 5021107864.005561]
 
 #----------------------------------------------------------------------------------------------------------------------
 
-#MAKE DDF COMMAND
-with open('/'.join(__file__.split('/')[0:-1])+'/DDF_scripts/ddf.txt') as f:
-    lines = [l.replace('\n','') for l in f.readlines()]
-    lines+=['--Data-MS=/net/nieuwerijn/data2/jurjendejong/L626678/big-mslist.txt']
-    lines+=['--Predict-InitDicoModel=/net/nieuwerijn/data2/jurjendejong/L626678/image_full_ampphase_di_m.NS.DicoModel']
-    lines+=['--DDESolutions-DDSols=/net/nieuwerijn/data2/jurjendejong/L626678/all_directions*.h5:sol000/amplitude000+phase000']
-    lines+=['--Mask-External=/net/nieuwerijn/data2/jurjendejong/L626678/image_full_ampphase_di_m.NS.mask01.fits']
+if IMAGER=='DDF':
 
-#RUN DDF COMMAND
-print('Running DDF COMMAND')
-os.system(' '.join(['cd', TO, '&&'] + lines))
+    #MAKE DDF COMMAND
+    with open('/'.join(__file__.split('/')[0:-1])+'/DDF_scripts/ddf.txt') as f:
+        lines = [l.replace('\n','') for l in f.readlines()]
+        lines+=['--Data-MS=/net/nieuwerijn/data2/jurjendejong/L626678/big-mslist.txt']
+        lines+=['--Predict-InitDicoModel=/net/nieuwerijn/data2/jurjendejong/L626678/image_full_ampphase_di_m.NS.DicoModel']
+        lines+=['--DDESolutions-DDSols=/net/nieuwerijn/data2/jurjendejong/L626678/all_directions*.h5:sol000/amplitude000+phase000']
+        lines+=['--Mask-External=/net/nieuwerijn/data2/jurjendejong/L626678/image_full_ampphase_di_m.NS.mask01.fits']
+
+    #RUN DDF COMMAND
+    print('Running DDF COMMAND')
+    os.system(' '.join(['cd', TO, '&&'] + lines))
+elif IMAGER=='WSCLEAN':
+    pass
+
 print('Finished making new image')

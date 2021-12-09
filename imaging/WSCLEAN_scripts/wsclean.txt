@@ -1,0 +1,31 @@
+wsclean
+-size 14000 14000
+-data-column DATA
+-use-wgridder
+-update-model-required
+-reorder
+-weight briggs -0.5
+-weighting-rank-filter 3
+-clean-border 1
+-parallel-reordering 5
+-padding 1.2
+-auto-mask 2.5
+-auto-threshold 0.5
+-pol i
+-name image_test_L626678
+-scale 1.5arcsec
+-niter 150000
+-mgain 0.7
+-fit-beam
+-multiscale
+-channels-out 6
+-join-channels
+-multiscale-max-scales 8
+-nmiter 14
+-facet-regions /net/nieuwerijn/data2/jurjendejong/L626678_WSCLEAN/tess.reg
+-apply-facet-solutions /net/nieuwerijn/data2/jurjendejong/L626678_WSCLEAN/all_directions0.h5 amplitude000,phase000
+-log-time
+-multiscale-scale-bias 0.7
+-parallel-de convolution 1600
+-parallel-gridding 5
+/net/nieuwerijn/data2/jurjendejong/L626678_WSCLEAN/L626678_concat.ms.goodtimes
