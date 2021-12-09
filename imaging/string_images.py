@@ -10,13 +10,18 @@ import re
 parser = ArgumentParser()
 parser.add_argument('-f', '--fits', type=str, help='fitsfile name')
 parser.add_argument('--path', type=str, help='data path', default='.')
+parser.add_argument('-in', '--include_boxes', help='Include only the following boxes (numbers only)')
 args = parser.parse_args()
 
 def filter_box_N(boxnumber):
     return bool(re.match('^box_[0-9]+$', boxnumber))
 
 fits_file = args.fits
+
 boxes = [b for b in glob(args.path+'/box_*') if filter_box_N(b.split('/')[-1])]
+
+if args.include_boxes:
+    boxes = [b for b in boxes if b.split('/')[-1] in args.include_boxes.split(',')]
 
 os.system('cp ' + fits_file + ' ' + fits_file.replace('.fits', '_new.fits') + ' && wait')
 fits_file = fits_file.replace('.fits', '_new.fits')
