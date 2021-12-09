@@ -38,6 +38,7 @@ for b in boxes:
         im = sorted(glob(b + '/image_00*-MFS-image.fits'))[-1]
     else:
         sys.exit('ERROR: Choose --imager=WSCLEAN or --imager=DDFACET')
+    print('Merge:\n'+im)
     hdu_box = fits.open(im)[0]
     box_data = hdu_box.data[0][0]
     wcs_box = WCS(hdu_box.header, naxis=2)
