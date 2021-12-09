@@ -35,6 +35,7 @@ for b in boxes:
     if args.imager=='DDFACET':
         im = sorted(glob(b+'/image_00*.app.restored.fits'))[-1]
     elif args.imager=='WSCLEAN':
+        print(b + '/image_00*-MFS-image.fits')
         im = sorted(glob(b + '/image_00*-MFS-image.fits'))[-1]
     else:
         sys.exit('ERROR: Choose --imager=WSCLEAN or --imager=DDFACET')
