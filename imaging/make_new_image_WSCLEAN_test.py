@@ -14,7 +14,7 @@ import casacore.tables as ct
 import tables
 import numpy as np
 
-TO='/net/nieuwerijn/data2/jurjendejong/A399/extracted'
+TO='/net/nieuwerijn/data2/jurjendejong/A399_extracted'
 FROM='/net/nieuwerijn/data2/jurjendejong/A399_extracted'
 
 #CREATE DESTINATION DIRECTORY IF NOT EXISTS
