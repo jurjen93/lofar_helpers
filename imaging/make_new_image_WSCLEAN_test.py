@@ -26,15 +26,15 @@ if not path.exists(TO):
 os.system('CleanSHM.py')
 
 #----------------------------------------------------------------------------------------------------------------------
-CUTFREQS = [5021107868.011121, 5021107864.005561]
-
-for MS in glob(FROM+'/L626678_concat.ms'):
-    t = ct.table(MS)
-    time = t.getcol('TIME')[0]
-    t.close()
-    if not (time in CUTFREQS and '127' in MS):
-        print('Making goodtimes for'+MS)
-        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+# CUTFREQS = [5021107868.011121, 5021107864.005561]
+#
+# for MS in glob(FROM+'/L626678_concat.ms'):
+#     t = ct.table(MS)
+#     time = t.getcol('TIME')[0]
+#     t.close()
+#     if not (time in CUTFREQS and '127' in MS):
+#         print('Making goodtimes for'+MS)
+#         os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
 
 #----------------------------------------------------------------------------------------------------------------------
 
@@ -49,5 +49,6 @@ with open('/'.join(__file__.split('/')[0:-1])+'/WSCLEAN_scripts/wsclean.txt') as
 
 #RUN DDF COMMAND
 print('Running WSCLEAN COMMAND')
+print(' '.join(['cd', TO, '&&'] + lines))
 os.system(' '.join(['cd', TO, '&&'] + lines))
 print('Finished making new image')
