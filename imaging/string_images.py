@@ -5,12 +5,14 @@ from astropy.io import fits
 from argparse import ArgumentParser
 from glob import glob
 import re
+import sys
 
 
 parser = ArgumentParser()
 parser.add_argument('-f', '--fits', type=str, help='fitsfile name')
 parser.add_argument('--path', type=str, help='data path', default='.')
 parser.add_argument('-in', '--include_boxes', help='Include only the following boxes (numbers only)')
+parser.add_argument('--imager', default='DDFACET')
 args = parser.parse_args()
 
 def filter_box_N(boxnumber):
@@ -30,7 +32,12 @@ hdu = fits.open(fits_file, mode='update')[0]
 hdu.data[0, 0, :, :] = np.zeros(hdu.data.shape)
 wcs = WCS(hdu.header, naxis=2)
 for b in boxes:
-    im = sorted(glob(b+'/image_00*.app.restored.fits'))[-1]
+    if args.imager=='DDFACET':
+        im = sorted(glob(b+'/image_00*.app.restored.fits'))[-1]
+    elif args.imager=='WSCLEAN':
+        im = sorted(glob(b + '/image_00*-MFS-image.fits'))[-1]
+    else:
+        sys.exit('ERROR: Choose --imager=WSCLEAN or --imager=DDFACET')
     hdu_box = fits.open(im)[0]
     box_data = hdu_box.data[0][0]
     wcs_box = WCS(hdu_box.header, naxis=2)
