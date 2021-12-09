@@ -32,10 +32,9 @@ hdu = fits.open(fits_file, mode='update')[0]
 hdu.data[0, 0, :, :] = np.zeros(hdu.data.shape)
 wcs = WCS(hdu.header, naxis=2)
 for b in boxes:
-    if args.imager=='DDFACET':
+    if args.imager.lower()=='ddfacet':
         im = sorted(glob(b+'/image_00*.app.restored.fits'))[-1]
-    elif args.imager=='WSCLEAN':
-        print(b + '/image_00*-MFS-image.fits')
+    elif args.imager.lower()=='wsclean':
         im = sorted(glob(b + '/image_00*-MFS-image.fits'))[-1]
     else:
         sys.exit('ERROR: Choose --imager=WSCLEAN or --imager=DDFACET')
