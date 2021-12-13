@@ -1,5 +1,5 @@
 wsclean
--size 14000 14000
+-size 6000 6000
 -data-column DATA
 -use-wgridder
 -update-model-required
