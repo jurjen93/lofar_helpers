@@ -5,8 +5,8 @@ SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederr
 SCRIPT_FOLDER=/home/jurjendejong/scripts/lofar_helpers
 EXTRACT_TO=/net/tussenrijn/data2/jurjendejong/A399_extracted
 
-#mkdir ${EXTRACT_TO}
-#singularity exec -B ${SING_BIND} /net/rijn/data2/rvweeren/data/pill-latest.simg python ${SCRIPT_FOLDER}/move_files/move_extract_files.py --frm /net/rijn/data2/jdejong/A399_DEEP --to ${EXTRACT_TO}
+mkdir ${EXTRACT_TO}
+singularity exec -B ${SING_BIND} /net/rijn/data2/rvweeren/data/pill-latest.simg python ${SCRIPT_FOLDER}/move_files/move_extract_files.py --frm /net/rijn/data2/jdejong/A399_DEEP --to ${EXTRACT_TO}
 cd ${EXTRACT_TO}
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/sub-sources-outside-region.py --boxfile extractedregion.reg --freqavg=1 --timeavg=1 --overwriteoutput --nophaseshift --adjustboxrotation=False --prefixname extr
 rm -rf ${EXTRACT_TO}/L6*.ms

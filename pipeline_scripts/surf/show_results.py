@@ -9,6 +9,7 @@ from glob import glob
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-p', '--path', type=str, help='output folder')
+    parser.add_argument('-in', '--include_boxes', help='Include only the following boxes (numbers only)')
     args = parser.parse_args()
     if args.path:
         path = args.path
@@ -17,6 +18,10 @@ if __name__ == '__main__':
 
     results = os.system('mkdir {path}/results'.format(path=path))
     boxes = glob('{path}/box_*'.format(path=path))
+
+    if args.include_boxes:
+        included_boxes = ['box_' + n for n in args.include_boxes.split(',')]
+        boxes = [b for b in boxes if b.split('/')[-1] in included_boxes]
 
     for box in boxes:
         images = sorted(glob('{box_path}/image_*.png'.format(box_path=box)))
