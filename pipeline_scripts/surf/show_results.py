@@ -8,8 +8,8 @@ from glob import glob
 
 if __name__ == '__main__':
     parser = ArgumentParser()
-    parser.add_argument('-p', '--path', type=str, help='output folder')
-    parser.add_argument('-in', '--include_boxes', help='Include only the following boxes (numbers only)')
+    parser.add_argument('-p', '--path', type=str, help='output folder', default='.')
+    parser.add_argument('-in', '--include_boxes', help='Include only the following boxes (numbers only)', default=None)
     args = parser.parse_args()
     if args.path:
         path = args.path
@@ -27,7 +27,7 @@ if __name__ == '__main__':
         images = sorted(glob('{box_path}/image_*.png'.format(box_path=box)))
         if len(images)>0:
             first_image, last_image = images[0], images[-1]
-            fig, axs = plt.subplots(1, 2, figsize=(18,6))
+            fig, axs = plt.subplots(1, 2, figsize=(18, 6))
             im_0 = mpimg.imread(first_image)
             axs[0].imshow(im_0)
             axs[0].title.set_text(first_image.split('/')[-1])

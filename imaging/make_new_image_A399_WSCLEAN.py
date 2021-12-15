@@ -26,17 +26,19 @@ os.system('CleanSHM.py')
 #starting times for measurement sets that have to be cutted for freq
 CUTFREQS = [5021107868.011121, 5021107864.005561]
 
-for n, L6 in ['L626678', 'L626692', 'L626706', 'L632229', 'L632511', 'L632525']:
-    os.system('cd '+TO+' && python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py --h5 all_directions0.h5 --DS9regionout '+
-              TO+'/tess.reg --imsize 14000 --plottesselation '+'--ms '+glob(FROM+'/extr*.ms')[0])
+os.system('cd '+TO+' && python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py --h5 all_directions0.h5 --DS9regionout '+
+          TO+'/tess.reg --imsize 14000 --plottesselation '+'--ms '+FROM+'/Abell399-401_extr*.ms.archive0')
 
-for MS in glob(FROM+'/extr*.ms'):
-    t = ct.table(MS)
-    time = t.getcol('TIME')[0]
-    t.close()
-    if not (time in CUTFREQS and '127' in MS):
-        print('Making goodtimes for'+MS)
-        os.system("python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
+
+for MS in glob(FROM+'/Abell399-401_extr*.ms.archive*'):
+    if ct.table(MS).getcol('TIME')[0] in CUTFREQS:
+        print('Cutting freq for ' + MS)
+        os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_freq.py -ff='[15..19]' -msin " + MS+" -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
+        os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodfreq.goodtimes')
+        os.system("rm -rf " + TO + '/' + MS.split('/')[-1] + '.goodfreq')
+    else:
+        print('Cutting time for '+MS)
+        os.system("python /home/lofarvwf-jdejong/scripts/lofar_helpers/supporting_scripts/flag_time.py -tf 0 3000 -msin " + MS + " -msout " + TO + '/' + MS.split('/')[-1] + '.goodtimes')
 
 #----------------------------------------------------------------------------------------------------------------------
 
