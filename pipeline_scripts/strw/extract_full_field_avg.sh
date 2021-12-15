@@ -7,7 +7,7 @@ EXTRACT_TO=/net/tussenrijn/data2/jurjendejong/A399_extracted
 
 mkdir ${EXTRACT_TO}
 cp /net/tussenrijn/data2/jurjendejong/extractedregion.reg ${EXTRACT_TO}
-singularity exec -B ${SING_BIND} /net/rijn/data2/rvweeren/data/pill-latest.simg python ${SCRIPT_FOLDER}/move_files/move_extract_files.py --frm /net/rijn/data2/jdejong/A399_DEEP --to ${EXTRACT_TO}
+singularity exec -B ${SING_BIND} /net/rijn/data2/rvweeren/data/pill-latest.simg python ${SCRIPT_FOLDER}/move_files/move_extract_files.py --frm /disks/paradata/shimwell/LoTSS-DR2/archive_other/A399_DEEP --to ${EXTRACT_TO}
 cd ${EXTRACT_TO}
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/sub-sources-outside-region.py --boxfile extractedregion.reg --freqavg=2 --timeavg=2 --overwriteoutput --nophaseshift --adjustboxrotation=False --prefixname extr
 rm -rf ${EXTRACT_TO}/L6*.ms

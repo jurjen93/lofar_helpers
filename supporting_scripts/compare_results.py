@@ -1,9 +1,9 @@
 """
 python ~/scripts/lofar_helpers/supporting_scripts/compare_results.py
 --surf_im='/net/tussenrijn/data2/jurjendejong/A399/box_images/*.fits'
---int_restored='/net/rijn/data2/jdejong/A399_DEEP/image_full_ampphase_di_m.NS.int.restored.fits'
+--int_restored='/disks/paradata/shimwell/LoTSS-DR2/archive_other/A399_DEEP/image_full_ampphase_di_m.NS.int.restored.fits'
 --image_final='/net/tussenrijn/data2/jurjendejong/A399/result/image_final.int.restored.fits'
---app_restored='/net/rijn/data2/jdejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits'
+--app_restored='/disks/paradata/shimwell/LoTSS-DR2/archive_other/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits'
 --region_files='A399/boxes/*.reg'
 """
 
