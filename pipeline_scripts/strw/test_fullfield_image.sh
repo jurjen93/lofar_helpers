@@ -7,8 +7,8 @@ SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederr
 SCRIPT_FOLDER=/home/jurjendejong/scripts/lofar_helpers
 
 #PREPARE
-singularity exec -B ${SING_BIND} /net/rijn/data2/rvweeren/data/pill-latest.simg python ${SCRIPT_FOLDER}/move_files/move_extract_files.py --frm /net/rijn/data2/jdejong/A399_DEEP --to /net/nieuwerijn/data2/jurjendejong/A399_extracted
-cp -r /net/rijn/data2/jdejong/A399_DEEP/*ms.archive /net/nieuwerijn/data2/jurjendejong/A399_extracted/
+singularity exec -B ${SING_BIND} /net/rijn/data2/rvweeren/data/pill-latest.simg python ${SCRIPT_FOLDER}/move_files/move_extract_files.py --frm /disks/paradata/shimwell/LoTSS-DR2/archive_other/A399_DEEP --to /net/nieuwerijn/data2/jurjendejong/A399_extracted
+cp -r /disks/paradata/shimwell/LoTSS-DR2/archive_other/A399_DEEP/*ms.archive /net/nieuwerijn/data2/jurjendejong/A399_extracted/
 cp /net/nieuwerijn/data2/jurjendejong/extracted.reg /net/nieuwerijn/data2/jurjendejong/A399_extracted/
 cd /net/nieuwerijn/data2/jurjendejong/A399_extracted
 

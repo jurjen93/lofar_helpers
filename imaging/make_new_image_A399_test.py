@@ -85,7 +85,7 @@ for MS in glob(FROM+'/extr_L626678*.ms'):
 #     closest_value = min(list(soltable_times.keys()), key=diff)  # get closest value with lambda function
 #     h5 = soltable_times[closest_value]
 #     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out final_lotss_' + str(closest_value) + '.h5 -in ' + ' '.join(new_h5) + '--convert_tec 0')
-#     command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /net/rijn/data2/jdejong/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_' + str(closest_value) + '.h5 -h5in final_lotss_' + str(closest_value) + '.h5')
+#     command.append('python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/h5_filter.py -f /disks/paradata/shimwell/LoTSS-DR2/archive_other/A399_DEEP/image_full_ampphase_di_m.NS.app.restored.fits -ac 2.5 -in false -h5out lotss_full_merged_filtered_' + str(closest_value) + '.h5 -h5in final_lotss_' + str(closest_value) + '.h5')
 #     command.append('python /home/jurjendejong/scripts/lofar_helpers/h5_merger.py -out complete_merged_' + str(closest_value)+'.h5 -in ' + soltable_times[closest_value] + ' lotss_full_merged_filtered_' + str(closest_value) + '.h5 --convert_tec 0')
 # print('cd ' + TO + '/H5files' + ' && ' + '\n'.join(command))
 # os.system('cd ' + TO + '/H5files' + ' && '+' && '.join(command))
