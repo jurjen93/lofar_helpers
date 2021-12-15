@@ -61,6 +61,7 @@ CUTFREQS = [5021107868.011121, 5021107864.005561]
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE WSCLEAN COMMAND
+#TODO: SINGULARITY: /net/lofar1/data1/sweijen/software/LOFAR/singularity/test/test_wsclean_facet_fix_sep30.sif
 with open('/'.join(__file__.split('/')[0:-1])+'/WSCLEAN_scripts/wsclean.txt') as f:
     lines = [l.replace('\n', '') for l in f.readlines()]
     lines += ['-facet-regions '+TO+'/tess.reg']
