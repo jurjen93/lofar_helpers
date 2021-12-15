@@ -12,7 +12,6 @@ wsclean
 -auto-mask 2.5
 -auto-threshold 0.5
 -pol i
--name image_test_L626678
 -scale 1.5arcsec
 -niter 150000
 -mgain 0.7
