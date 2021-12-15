@@ -14,7 +14,7 @@ from os import path
 import casacore.tables as ct
 
 TO='/net/nieuwerijn/data2/jurjendejong/L626678'
-FROM='/net/rijn/data2/jdejong/A399_DEEP'
+FROM='/disks/paradata/shimwell/LoTSS-DR2/archive_other/A399_DEEP'
 IMAGER='DDF'
 
 #CREATE DESTINATION DIRECTORY IF NOT EXISTS
