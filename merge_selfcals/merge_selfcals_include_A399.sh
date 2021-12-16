@@ -4,7 +4,7 @@
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 #SBATCH --job-name=merge
-#SBATCH --array=0-5%1
+#SBATCH --array=0-5
 
 BOXES=$1
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
@@ -13,4 +13,4 @@ SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts/lofar_helpers/merge_selfcals
 SELFCAL=/project/lofarvwf/Share/jdejong/output/A399/selfcal
 
 cd ${SELFCAL} && singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/merge_selfcals.py -d ${SELFCAL} -a ${SLURM_ARRAY_TASK_ID} --include_boxes ${BOXES}
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} losoto ${SELFCAL}/all_directions${SLURM_ARRAY_TASK_ID}.h5 ~/scripts/lofar_helpers/supporting_scripts/parsets/plot${SLURM_ARRAY_TASK_ID}.parset
+singularity exec -B ${SING_BIND} ${SING_IMAGE} losoto ${SELFCAL}/all_directions${SLURM_ARRAY_TASK_ID}.h5 ~/scripts/lofar_helpers/supporting_scripts/parsets/plot${SLURM_ARRAY_TASK_ID}.parset
