@@ -32,7 +32,7 @@ os.system('CleanSHM.py')
 #           TO+'/tess.reg --imsize 6000 '+'--ms '+FROM+'/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg')
 
 os.system('cp ' + FROM + '/tess.reg ' + TO)
-os.system('cp ' + FROM + '/all_directions0.h5' + TO + ' && wait')
+os.system('cp ' + FROM + '/all_directions0.h5 ' + TO + ' && wait')
 os.system('cp -r '+FROM+'/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes ' + TO + ' && wait')
 
 CUTFREQS = [5021107868.011121, 5021107864.005561]
