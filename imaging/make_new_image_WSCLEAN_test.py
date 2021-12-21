@@ -73,7 +73,7 @@ with open('/'.join(__file__.split('/')[0:-1])+'/WSCLEAN_scripts/wsclean.txt') as
     lines += ['-name image_test_L626678']
     lines += [TO+'/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes']
 
-lines = ['aoflagger '+TO+'/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes']+lines
+os.system('aoflagger '+TO+'/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes && wait')
 
 cmd = ' '.join(['cd', TO, '&&'] + lines)
 #RUN DDF COMMAND
