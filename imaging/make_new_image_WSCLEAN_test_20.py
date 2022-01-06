@@ -27,7 +27,7 @@ else:
     MS = 'Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive' + N + '.avg.goodfreq.goodtimes'
 H5 = 'all_directions'+N+'.h5'
 
-TO='/net/nieuwerijn/data2/jurjendejong/Abell399-401_' + N
+TO='/net/nieuwerijn/data2/jurjendejong/Abell399-401_' + N+'_20arcsec'
 FROM='/net/tussenrijn/data2/jurjendejong/A399_extracted_avg'
 
 #CREATE DESTINATION DIRECTORY IF NOT EXISTS
@@ -66,8 +66,8 @@ with open('/'.join(__file__.split('/')[0:-1])+'/WSCLEAN_scripts/wsclean.txt') as
     lines += ['-facet-regions '+TO+'/tess.reg']
     lines += ['-apply-facet-solutions '+TO+'/'+H5+' amplitude000,phase000']
     lines += ['-name image_test_L626678']
-    lines += ['-size 6000 6000']
-    lines += ['-scale 1.5arcsec']
+    lines += ['-size 3000 3000']
+    lines += ['-scale 3arcsec']
     lines += [TO+'/'+MS]
 
 os.system('aoflagger '+TO+'/'+MS+' && wait')
