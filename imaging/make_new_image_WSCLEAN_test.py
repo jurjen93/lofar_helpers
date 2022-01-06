@@ -1,19 +1,8 @@
-"""
-Example:
-    python ~/scripts/lofar_helpers/make_new_image.py
-        -from /disks/paradata/shimwell/LoTSS-DR2/archive_other/L626678
-        -to /net/tussenrijn/data2/jurjendejong/L626678/result
-"""
-
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
 import os
 import sys
-from glob import glob
-from os import path
-import casacore.tables as ct
 import tables
-import numpy as np
 from argparse import ArgumentParser
 
 parser = ArgumentParser()
@@ -27,20 +16,6 @@ H5 = 'all_directions'+N+'.h5'
 TO='/net/nieuwerijn/data2/jurjendejong/Abell399-401_' + N
 FROM='/net/tussenrijn/data2/jurjendejong/A399_extracted_avg'
 
-#CREATE DESTINATION DIRECTORY IF NOT EXISTS
-# if not path.exists(TO):
-#     os.system('mkdir {LOCATION}'.format(LOCATION=TO))
-#     print('Created {LOCATION}'.format(LOCATION=TO))
-
-#----------------------------------------------------------------------------------------------------------------------
-
-
-# os.system('cd '+TO+' && singularity exec -B ' + SING_BIND + ' ' + SING_IMAGE + ' python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py --h5 ' + H5 + ' --DS9regionout '+
-#           TO+'/tess.reg --imsize 6000 '+'--ms '+FROM+'/'+MS)
-
-# os.system('cp ' + FROM + '/tess.reg ' + TO)
-os.system('cp ' + FROM + '/'+H5+' ' + TO + ' && wait')
-os.system('cp -r '+FROM+'/'+MS+' ' + TO + ' && wait')
 
 f = open(TO+'/tess.reg')
 tess = f.read()
@@ -48,8 +23,6 @@ f.close()
 H = tables.open_file(TO+'/'+H5)
 if len(H.root.sol000.phase000.dir[:])!=len(tess.split('polygon'))-1:
     sys.exit('ERROR: H5 and tess.reg do not match')
-
-CUTFREQS = [5021107868.011121, 5021107864.005561]
 
 #----------------------------------------------------------------------------------------------------------------------
 
