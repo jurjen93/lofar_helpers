@@ -1051,19 +1051,20 @@ class MergeH5:
         "Make template for phase000 and/or amplitude000 if missing"
 
         H = tables.open_file(self.h5name_out, 'r+')
-        if 'amplitude000' not in list(H.root.sol000._v_groups.keys()):
+        soltabs = list(H.root.sol000._v_groups.keys())
+        H.close()
+        if 'amplitude000' not in soltabs:
             self.gains = ones((2, len(self.directions.keys()), len(self.antennas), len(self.ax_freq), len(self.ax_time)))
             self.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
             self.polarizations = ['XX', 'YY']
             self.gains = reorderAxes(self.gains, self.solaxnames, self.axes_new)
             self.create_new_dataset('sol000', 'amplitude')
-        if 'phase000' not in list(H.root.sol000._v_groups.keys()):
+        if 'phase000' not in soltabs:
             self.phases = zeros((2, len(self.directions.keys()), len(self.antennas), len(self.ax_freq), len(self.ax_time)))
             self.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
             self.polarizations = ['XX', 'YY']
             self.phases = reorderAxes(self.phases, self.solaxnames, self.axes_new)
             self.create_new_dataset('sol000', 'phase')
-        H.close()
 
         return self
 
