@@ -12,25 +12,11 @@ merge_h5(h5_out='test.h5',
         h5_tables='*.h5',
         ms_files='*.ms',
         convert_tec=True)
-
-Following input parameters are possible:
-h5_out ---> the output name of the h5 table
-h5_tables ---> h5 tables that have to be merged
-ms_files ---> read time and frequency from measurement set
-h5_time_freq ---> read time and frequency from h5
-convert_tec ---> convert tec to phase
-merge_all_in_one ---> merge all in one direction (default is False), if True it adds everything in one direction
-lin2circ ---> convert linear to circular polarization (default is False)
-circ2lin ---> convert circular to linear polarization (default is False)
-add_directions ---> add default directions by giving a list of directions (coordinates)
-single_pol ---> only one polarization
-use_solset ---> use specific solset number, default: sol000
 """
 
 # TODO: test rotation (fulljones)
 # TODO: test convert_tec==False  ---> now they are deleted if convert_tec==false
 # TODO: test circ2lin and vice versa
-# TODO: work with _f_get_child('amplitude000'), _v_children.keys(), _v_groups.keys() in all functions [CHECK .root.phase000.
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
