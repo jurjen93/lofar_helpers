@@ -149,6 +149,8 @@ class MergeH5:
                             print(antennas_ref)
                             print('Antennas from '+h5_name2+':')
                             print(antennas)
+                            H.close()
+                            H_ref.close()
                             return False
                     H.close()
             H_ref.close()
