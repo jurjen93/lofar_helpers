@@ -1389,6 +1389,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
                 merge.create_new_dataset('sol000', 'phase')
             else:
                 merge.create_new_dataset('sol000', st)
+    tables.file._open_files.close_all()
 
     #If amplitude000 or phase000 are missing, we can add a template for these
     merge.make_missing_template()
