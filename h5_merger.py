@@ -724,7 +724,7 @@ class MergeH5:
 
     def DPPP_style(self, soltab):
         """
-        Reorder the axes in DPPP style because that is needed in other LOFAR pipeline (parts)
+        Reorder the axes in DPPP style because that is needed in most LOFAR software
         :param soltab: solution table
         """
         if 'pol' in self.axes_new and len(self.axes_new) == 5:
@@ -869,7 +869,7 @@ class MergeH5:
         self.h5_out.close()
         return self
 
-    def add_directions(self, add_directions=None):
+    def add_empty_directions(self, add_directions=None):
         """
         Add default directions (phase all zeros, amplitude all ones)
         :param add_directions: list with directions
@@ -1392,7 +1392,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         merge.add_h5_antennas()
 
     if add_directions:
-        merge.add_directions(add_directions)
+        merge.add_empty_directions(add_directions)
 
     if lin2circ and circ2lin:
         sys.exit('Both polarization conversions are given, please choose 1.')
