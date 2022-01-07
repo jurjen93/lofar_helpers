@@ -1049,8 +1049,8 @@ class MergeH5:
 
     def create_missing_template(self):
         "Make template for phase000 and/or amplitude000 if missing"
-        tables.file._open_files.close_all()
-        H = tables.open_file(self.h5name_out)
+
+        H = tables.open_file(self.h5name_out, 'r+')
         if 'amplitude000' not in list(H.root.sol000._v_groups.keys()):
             self.gains = ones((2, len(self.directions.keys()), len(self.antennas), len(self.ax_freq), len(self.ax_time)))
             self.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
