@@ -42,5 +42,5 @@ cmd = ' '.join(['cd', TO, '&&'] + lines)
 #RUN DDF COMMAND
 print('Running WSCLEAN COMMAND')
 print(cmd)
-os.system(cmd + ' > log.txt')
+os.system(cmd + ' > '+TO+'/log.txt')
 print('Finished making new image')
