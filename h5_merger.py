@@ -1339,7 +1339,8 @@ def test_h5_output(h5_out, tables_to_merge):
 
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
-             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000', filtered_dir=None):
+             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
+             filtered_dir=None, add_CS=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
     :param h5_out (string): h5 table name out
@@ -1401,7 +1402,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     # pass
 
     #Add antennas
-    if len(merge.ms)>0:
+    if add_CS:
+        if len(merge.ms) == 0:
+            sys.exit('ERROR: --add_CS needs MS, given with --ms')
         merge.add_ms_antennas()
     else:
         merge.add_h5_antennas()
@@ -1485,6 +1488,7 @@ if __name__ == '__main__':
     parser.add_argument('--combine_h5', action='store_true', default=None, help='Combine h5 with different time axis into 1.')
     parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input h5 files.')
     parser.add_argument('--filter_directions', type=str, default=None, help='Filter a specific list of directions from h5 file. Only lists allowed.')
+    parser.add_argument('--add_CS', action='store_true', default=None, help='Add core stations to antenna output')
     args = parser.parse_args()
 
     # check if solset name is accepted
@@ -1542,4 +1546,5 @@ if __name__ == '__main__':
              single_pol=args.single_pol,
              no_pol=args.no_pol,
              use_solset=args.usesolset,
-             filtered_dir=filtered_dir)
+             filtered_dir=filtered_dir,
+             add_CS=args.add_CS)
