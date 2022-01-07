@@ -37,10 +37,6 @@ __all__ = ['merge_h5']
 def remove_numbers(inp):
     return "".join(re.findall("[a-zA-z]+", inp))
 
-if sys.version_info.major == 2:
-    print('WARINING: This code is optimized for Python 3. Please switch to Python 3 if possible.')
-
-
 class MergeH5:
     """Merge multiple h5 tables"""
 
@@ -74,14 +70,14 @@ class MergeH5:
             self.h5_tables = glob('*.h5')
         if h5_time_freq:
             if len(self.ms)>0:
-                print('--h5_time and/or --h5_freq are given, so measurement sets will not be used.')
+                print('Take the time and freq from the following h5 solution file:\n'+h5_time_freq)
             T = tables.open_file(h5_time_freq)
             self.ax_time = T.root.sol000.phase000.time[:]
             self.ax_freq = T.root.sol000.phase000.freq[:]
             T.close()
 
         elif len(self.ms)>0: # if there are multiple ms files
-            print('Will take the time and freq from the following measurement sets:\n'+'\n'.join(self.ms))
+            print('Take the time and freq from the following measurement sets:\n'+'\n'.join(self.ms))
             self.ax_time = array([])
             self.ax_freq = array([])
             for m in self.ms:
@@ -96,7 +92,7 @@ class MergeH5:
             self.ax_freq = array(sorted(unique(self.ax_freq)))
 
         else:  # if we dont have ms files, we use the time and frequency axis of the longest h5 table
-            print('No MS file given, will use h5 table for frequency and time axis')
+            print('No MS or h5 file given for time/freq axis, will use h5 table for frequency and time axis')
             self.ax_time = array([])
             self.ax_freq = array([])
             for h5_name in self.h5_tables:
@@ -961,9 +957,9 @@ class MergeH5:
                 if T.root._f_get_child(solset)._f_get_child(soltab).val[0,0,0,0,0] == T.root._f_get_child(solset)._f_get_child(soltab).val[0,0,0,0,-1] and \
                     T.root._f_get_child(solset)._f_get_child(soltab).val[-1, 0, 0, 0, 0] == T.root._f_get_child(solset)._f_get_child(soltab).val[-1, 0, 0, 0, -1]:
                     if single:
-                        print(soltab[0:-3].title()+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
+                        print(soltab+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
                     else:
-                        print(soltab[0:-3].title()+' has same values for XX and YY polarization.\nRemoving Polarization.')
+                        print(soltab+' has same values for XX and YY polarization.\nRemoving Polarization.')
                     if single:
                         newval = T.root._f_get_child(solset)._f_get_child(soltab).val[:, :, :, :, 0:1]
                     else:
@@ -1058,6 +1054,25 @@ class MergeH5:
                 H.root._f_get_child(solset)._f_get_child(soltab).val._f_remove()
                 H.create_array(H.root._f_get_child(solset)._f_get_child(soltab), 'val', new_values)
 
+        H.close()
+
+        return self
+
+    def make_missing_template(self):
+        "Make template for phase000 and/or amplitude000 if missing"
+        H = tables.open_file(self.h5name_out)
+        if 'amplitude000' not in list(H.root.sol000_v_groups.keys()):
+            self.gains = ones((2, len(self.directions.keys()), len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
+            self.polarizations = ['XX', 'YY']
+            self.gains = reorderAxes(self.gains, self.solaxnames, self.axes_new)
+            self.create_new_dataset('sol000', 'amplitude')
+        if 'phase000' not in list(H.root.sol000._v_groups.keys()):
+            self.phases = zeros((2, len(self.directions.keys()), len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
+            self.polarizations = ['XX', 'YY']
+            self.phases = reorderAxes(self.phases, self.solaxnames, self.axes_new)
+            self.create_new_dataset('sol000', 'phase')
         H.close()
 
         return self
@@ -1372,23 +1387,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
                 merge.create_new_dataset('sol000', 'phase')
             else:
                 merge.create_new_dataset('sol000', st)
-    # try:#add amplitude and phase if not available in h5 table
-    if 'amplitude000' not in [item for sublist in merge.all_soltabs for item in sublist]:
-        merge.gains = ones(
-            (2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
-        merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
-        merge.polarizations = ['XX', 'YY']
-        merge.gains = reorderAxes(merge.gains, merge.solaxnames, merge.axes_new)
-        merge.create_new_dataset('sol000', 'amplitude')
-        # if 'phase000' not in [item for sublist in merge.all_soltabs for item in sublist] and \
-        # 'tec000' not in [item for sublist in merge.all_soltabs for item in sublist]:
-        # merge.phases = zeros((2, len(merge.directions.keys()), len(merge.antennas), len(merge.ax_freq), len(merge.ax_time)))
-        # merge.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
-        # merge.polarizations = ['XX', 'YY']
-        # merge.phases = reorderAxes(merge.phases, merge.solaxnames, merge.axes_new)
-        # merge.create_new_dataset(ss, 'phase')
-    # except:#add try to except to be sure that adding extra phase and amplitude is not going to break the code
-    # pass
+
+    #If amplitude000 or phase000 are missing, we can add a template for these
+    merge.make_missing_template()
 
     #Add antennas
     if add_cs:
@@ -1464,6 +1465,9 @@ if __name__ == '__main__':
             return False
         else:
             return True
+
+    if sys.version_info.major == 2:
+        print('WARNING: This code is optimized for Python 3. Please switch to Python 3 if possible.')
 
     parser = ArgumentParser()
     parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output.', required=True)
