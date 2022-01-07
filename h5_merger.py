@@ -816,20 +816,7 @@ class MergeH5:
         else:
             solsetout = self.h5_out.makeSolset(solset)
 
-        # validate if new source directions are not already existing
-        # current_sources_dir = [source[0].decode('UTF-8') for source in solsetout.obj.source[:]]
-        # current_sources_coor = [source[1] for source in solsetout.obj.source[:]]
-        # new_sources = [source for source in sources if
-        #                (source[0] not in current_sources) and (float(source[1][0])>0 and float(source[1][1])>0)]
-        # new_sources = [source for source in sources if (source[0] not in current_sources_dir) and (source[1] not in current_sources_coor)]
-
         new_sources = self.keep_new_sources(solsetout.obj.source[:], list(self.directions.items()))
-
-        # antennas = st.getAxisvalues('ant')
-        # ss_antennas = ss.obj.antennas.read()
-        # antennasout = solsetout.getAnt()
-        # antennatable=solsetout.obj._f_get_child('antenna')
-        # antennatable.append(ss_antennas)
 
         if len(new_sources) > 0:
             solsetout.obj.source.append(new_sources)
@@ -1060,8 +1047,9 @@ class MergeH5:
 
         return self
 
-    def make_missing_template(self):
+    def create_missing_template(self):
         "Make template for phase000 and/or amplitude000 if missing"
+        tables.file._open_files.close_all()
         H = tables.open_file(self.h5name_out)
         if 'amplitude000' not in list(H.root.sol000._v_groups.keys()):
             self.gains = ones((2, len(self.directions.keys()), len(self.antennas), len(self.ax_freq), len(self.ax_time)))
@@ -1080,7 +1068,7 @@ class MergeH5:
         return self
 
 
-def make_h5_name(h5_name):
+def create_h5_name(h5_name):
     if '.h5' != h5_name[-3:]:
         h5_name += '.h5'
     return h5_name
@@ -1179,7 +1167,7 @@ class PolChange:
         return values_temp
 
 
-    def make_template(self, soltab):
+    def create_template(self, soltab):
         """
         Make template of the Gain matrix with only ones
         :param soltab: solution table (phase, amplitude)
@@ -1233,7 +1221,7 @@ class PolChange:
                          sorted(axes_vals_tec.items(), key=lambda pair: self.axes_names.index(pair[0]))]
         self.solsetout.makeSoltab('tec', axesNames=tec_axes_names, axesVals=axes_vals_tec, vals=tec, weights=ones(tec.shape))
 
-    def make_new_gains(self, lin2circ, circ2lin):
+    def create_new_gains(self, lin2circ, circ2lin):
         """
         :param lin2circ: boolean for linear to circular conversion
         :param circ2lin: boolean for circular to linear conversion
@@ -1362,7 +1350,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param add_cs: use MS to replace super station with core station
     """
 
-    h5_out = make_h5_name(h5_out)
+    h5_out = create_h5_name(h5_out)
 
     #if alternative solset number is given, we will make a temp h5 file that has the alternative solset number because the code runs on sol000
     if use_solset!='sol000':
@@ -1392,7 +1380,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     tables.file._open_files.close_all()
 
     #If amplitude000 or phase000 are missing, we can add a template for these
-    merge.make_missing_template()
+    merge.create_missing_template()
 
     #Add antennas
     if add_cs:
@@ -1420,11 +1408,11 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
         Pol = PolChange(h5_in=h5_out, h5_out=h5_polchange)
 
-        Pol.make_template('phase')
+        Pol.create_template('phase')
         if len(Pol.G.shape) > 1:
-            Pol.make_template('amplitude')
+            Pol.create_template('amplitude')
 
-        Pol.make_new_gains(lin2circ, circ2lin)
+        Pol.create_new_gains(lin2circ, circ2lin)
         print('{file} has been created'.format(file=h5_polchange))
 
     if sys.version_info.major == 2:
