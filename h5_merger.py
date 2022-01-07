@@ -792,7 +792,7 @@ class MergeH5:
         T = tables.open_file(self.h5name_out, 'r+')
         for solset in T.root._v_groups.keys():
             if T.root._f_get_child(solset).source[:][0].nbytes > 140:
-                print('We change the dtype to reduce memory size in '+solset)
+                print('Changing the dtype to reduce memory size in '+solset+'.source[:]')
                 new_source = array(T.root._f_get_child(solset).source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
                 T.root._f_get_child(solset).source._f_remove()
                 T.create_table(T.root._f_get_child(solset), 'source', new_source, "Source names and directions")
@@ -1436,7 +1436,10 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         print('{file} has been created'.format(file=h5_polchange))
 
     if sys.version_info.major == 2:
-        print('You are using python 2. For this version we need to do an extra reordering step.')
+        print('WARNING: You are using Python 2, which has source ordering issues.'
+              ' Extra reordering step applied but issues might remain.'
+              ' Please verify if sol000.source[:] corresponds with sol000.phase000.dir[:] and sol000.amplitude000.dir[:] '
+              'in '+merge.h5name_out+'\nOr switch to Python 3.')
         merge.order_directions()
 
     #Check table source size
