@@ -997,7 +997,7 @@ class MergeH5:
 
     def add_h5_antennas(self):
         "Add antennas to output table from H5 list"
-        print('Add antenna table.')
+        print('Add antenna table from '+self.h5_tables[0])
         T = tables.open_file(self.h5_tables[0])
         antennas = T.root.sol000.antenna[:]
         T.close()
@@ -1010,6 +1010,7 @@ class MergeH5:
 
     def add_ms_antennas(self):
         """Add antennas from MS"""
+        print('Add antenna table from '+self.ms[0])
         if len(self.ms)==0:
             sys.exit("ERROR: Measurement set needed to add antennas. Use --ms.")
 
@@ -1458,7 +1459,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             if 'temp.h5' in h5:
                 os.system('rm '+h5)
 
-    print('END: see: '+h5_out)
+    print('END: see output file --> '+h5_out)
 
 
 if __name__ == '__main__':
