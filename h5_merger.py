@@ -116,7 +116,7 @@ class MergeH5:
             sys.exit('ERROR: Cannot read frequency axis from input MS set or input H5.')
         if len(self.ax_time) == 0:
             sys.exit('ERROR: Cannot read time axis from input MS or input H5.')
-        if not self.same_antennas:
+        if not self.have_same_antennas:
             sys.exit('ERROR: Antenna tables are not the same')
 
         self.convert_tec = convert_tec  # convert tec or not
@@ -131,7 +131,7 @@ class MergeH5:
         self.directions = OrderedDict()  # directions in a dictionary
 
     @property
-    def same_antennas(self):
+    def have_same_antennas(self):
         """
         Compare antenna tables with each other.
         These should be the same.
@@ -162,9 +162,12 @@ class MergeH5:
         """
         Get the values from the h5 table to merge.
         Also do some checks on the time and frequency axis.
+
         :param st: solution table
         :param solset: solset name
         :param soltab: soltab name
+
+        :return: values, time axis, frequency axis
         """
 
         if 'pol' in st.getAxesNames():
@@ -209,6 +212,7 @@ class MergeH5:
         Sort solution tables.
         This is import to run the steps and add directions according to our algorithm.
         Dont touch if you dont have to.
+
         :param soltabs: solutions tables
         """
 
@@ -269,6 +273,7 @@ class MergeH5:
     def get_clean_values(self, soltab, st):
         """
         Get default values, based on model h5 table
+
         :param soltab: solution table name
         :param st: solution table itself
         """
@@ -306,8 +311,10 @@ class MergeH5:
     def tecphase_conver(tec, freqs):
         """
         convert tec to phase
+
         :param tec: TEC
         :param freqs: frequencies
+
         :return tec phase converted values
         """
         return -8.4479745e9 * tec / freqs
@@ -316,10 +323,12 @@ class MergeH5:
     def interp_along_axis(x, interp_from, interp_to, axis):
         """
         Interpolate along axis
+
         :param x: frequency or time axis. Must be equal to the length of interp_from.
         :param interp_from: interpolate from this axis.
         :param interp_to: interpolate to this axis
         :param axis: interpolation axis
+
         :return return the interpolated result
         """
 
@@ -330,6 +339,7 @@ class MergeH5:
     def get_model_h5(self, solset, soltab):
         """
         Get model (clean) h5 table
+
         :param solset: solution set name (sol000)
         :param soltab: solution table name
         """
@@ -367,6 +377,7 @@ class MergeH5:
     def get_number_of_directions(st):
         """
         Get number of directions in solution table
+
         :param st: solution table
         """
 
@@ -383,6 +394,7 @@ class MergeH5:
     def merge_files(self, solset, soltab):
         """
         Merge the h5 files
+
         :param solset: solution set name
         :param soltab: solution table name
         """
@@ -725,9 +737,10 @@ class MergeH5:
 
         return self
 
-    def DPPP_style(self, soltab):
+    def _DPPP_style(self, soltab):
         """
         Reorder the axes in DPPP style because that is needed in most LOFAR software
+
         :param soltab: solution table
         """
 
@@ -793,9 +806,11 @@ class MergeH5:
     def keep_new_sources(current_sources, new_sources):
         """
         Remove sources from new_sources that are already in current_sources
+
         :param current_sources: current sources that we need to compare with new_sources
         :param new_sources: new sources to be add
-        :return ---> New unique sources
+
+        :return: New unique sources
         """
 
         current_sources_dir = [source[0].decode('UTF-8') for source in current_sources]
@@ -811,6 +826,7 @@ class MergeH5:
     def create_new_dataset(self, solset, soltab):
         """
         Create a new dataset in the h5 table
+
         :param solset: solution set name
         :param soltab: solution table name
         """
@@ -834,7 +850,7 @@ class MergeH5:
                      'freq': self.ax_freq,
                      'time': self.ax_time}
 
-        DPPP_axes = self.DPPP_style(soltab)  # reorder the axis to DPPP style
+        DPPP_axes = self._DPPP_style(soltab)  # reorder the axis to DPPP style
 
         if 'pol' in self.axes_new:
             if len(self.polarizations) > 1:
@@ -874,12 +890,15 @@ class MergeH5:
                                  vals=self.phases, weights=weights)
 
         print('DONE: {solset}/{soltab}'.format(solset=solset, soltab=soltab))
+
         self.h5_out.close()
+
         return self
 
     def add_empty_directions(self, add_directions=None):
         """
         Add default directions (phase all zeros, amplitude all ones)
+
         :param add_directions: list with directions
         """
 
@@ -963,9 +982,18 @@ class MergeH5:
                         newval = T.root._f_get_child(solset)._f_get_child(soltab).val[:, :, :, :, 0:1]
                     else:
                         newval = T.root._f_get_child(solset)._f_get_child(soltab).val[:, :, :, :, 0]
+                    valtype = str(T.root._f_get_child(solset)._f_get_child(soltab).val.dtype)
+                    if '16' in valtype:
+                        atomtype = tables.Float16Atom()
+                    elif '32' in valtype:
+                        atomtype = tables.Float32Atom()
+                    elif '64' in valtype:
+                        atomtype = tables.Float64Atom()
+                    else:
+                        atomtype = tables.Float64Atom()
                     T.root._f_get_child(solset)._f_get_child(soltab).val._f_remove()
                     T.root._f_get_child(solset)._f_get_child(soltab).pol._f_remove()
-                    T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), 'val', newval)
+                    T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), 'val', newval.astype(valtype), atom=atomtype)
                     if single:
                         T.root._f_get_child(solset)._f_get_child(soltab).val.attrs['AXES'] = b'time,freq,ant,dir,pol'
                         T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), 'pol', newpol)
@@ -1058,8 +1086,18 @@ class MergeH5:
                             elif antenna_index==4:
                                 new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, superstation_index, ...]
 
+                    valtype = str(H.root._f_get_child(solset)._f_get_child(soltab).val.dtype)
+                    if '16' in valtype:
+                        atomtype = tables.Float16Atom()
+                    elif '32' in valtype:
+                        atomtype = tables.Float32Atom()
+                    elif '64' in valtype:
+                        atomtype = tables.Float64Atom()
+                    else:
+                        atomtype = tables.Float64Atom()
+
                     H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)._f_remove()
-                    H.create_array(H.root._f_get_child(solset)._f_get_child(soltab), axes, new_values.astype(float64), atom=tables.Float64Atom())
+                    H.create_array(H.root._f_get_child(solset)._f_get_child(soltab), axes, new_values.astype(valtype), atom=atomtype)
                     H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
 
         H.close()
@@ -1090,12 +1128,12 @@ class MergeH5:
         return self
 
 
-def create_h5_name(h5_name):
+def _create_h5_name(h5_name):
     if '.h5' != h5_name[-3:]:
         h5_name += '.h5'
     return h5_name
 
-def change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
+def _change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
     """
     This function is to change the solset numbers.
 
@@ -1128,7 +1166,14 @@ class PolChange:
 
     @staticmethod
     def lin2circ(G):
-        """Convert linear polarization to circular polarization"""
+        """
+        Convert linear polarization to circular polarization
+
+        :param G: Linear polarized Gain
+
+        :return: Circular polarized Gain
+        """
+
         RR = (G[..., 0] + G[..., -1]).astype(complex128)
         LL = (G[..., 0] + G[..., -1]).astype(complex128)
         RL = (G[..., 0] - G[..., -1]).astype(complex128)
@@ -1154,7 +1199,14 @@ class PolChange:
 
     @staticmethod
     def circ2lin(G):
-        """Convert circular polarization to linear polarization"""
+        """
+        Convert circular polarization to linear polarization
+
+        :param G: Circular polarized Gain
+
+        :return: linear polarized Gain
+        """
+
         XX = (G[..., 0] + G[..., -1]).astype(complex128)
         YY = (G[..., 0] + G[..., -1]).astype(complex128)
         XY = 1j * (G[..., 0] - G[..., -1]).astype(complex128)
@@ -1176,6 +1228,7 @@ class PolChange:
         G_new[..., 1] += XY
         G_new[..., 2] += YX
         G_new[..., 3] += YY
+
         return G_new
 
     @staticmethod
@@ -1184,13 +1237,15 @@ class PolChange:
         Add extra polarization if there is no polarization
         :param values: values which need to get a polarization
         :param dim_pol: number of dimensions
+
+        :return: input values with extra polarization axis
         """
 
-        values_temp = ones(values.shape+(dim_pol,))
+        values_new = ones(values.shape+(dim_pol,))
         for i in range(dim_pol):
-            values_temp[..., i] = values
+            values_new[..., i] = values
 
-        return values_temp
+        return values_new
 
 
     def create_template(self, soltab):
@@ -1222,6 +1277,7 @@ class PolChange:
                     break
 
         print('Shape of input {shape}'.format(shape=self.G.shape))
+
         return self
 
     def add_tec(self, solutiontable):
@@ -1248,6 +1304,8 @@ class PolChange:
         axes_vals_tec = [v[1] for v in
                          sorted(axes_vals_tec.items(), key=lambda pair: self.axes_names.index(pair[0]))]
         self.solsetout.makeSoltab('tec', axesNames=tec_axes_names, axesVals=axes_vals_tec, vals=tec, weights=ones(tec.shape))
+
+        return self
 
     def create_new_gains(self, lin2circ, circ2lin):
         """
@@ -1313,7 +1371,7 @@ class PolChange:
 
         return self
 
-def test_h5_output(h5_out, tables_to_merge):
+def _test_h5_output(h5_out, tables_to_merge):
     """
     With this function we test if the output has the expected output by going through source coordinates and compare in and output H5.
     This only works when the phase000 and amplitude000 haven't changed. So, when tec000 is not merged with phase000,
@@ -1380,7 +1438,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param add_cs: use MS to replace super station with core station
     """
 
-    h5_out = create_h5_name(h5_out)
+    h5_out = _create_h5_name(h5_out)
 
     #if alternative solset number is given, we will make a temp h5 file that has the alternative solset number because the code runs on sol000
     if use_solset!='sol000':
@@ -1388,7 +1446,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             temph5 = h5.replace('.h5', 'temp.h5')
             print('Using different solset. Make temporary h5 file: '+temph5)
             os.system('cp '+h5+' '+temph5)
-            change_solset(temph5, use_solset, 'sol000')
+            _change_solset(temph5, use_solset, 'sol000')
             h5_tables[h5_ind] = temph5
 
     if h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
@@ -1465,7 +1523,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     # brief test of output
     # if not merge_all_in_one:
-    #     test_h5_output(h5_out, h5_tables)
+    #     _test_h5_output(h5_out, h5_tables)
 
     if use_solset!='sol000':
         for h5 in h5_tables:
