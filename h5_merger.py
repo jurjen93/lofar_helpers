@@ -780,8 +780,10 @@ class MergeH5:
                         if 'dir' == ax:
                             H = tables.open_file(self.h5name_out, 'r+')
                             for solset in H.root._v_groups.keys():
-                                for soltab in H.root._f_get_child(solset)._v_groups.keys():
-                                    H.root._f_get_child(solset)._f_get_child(soltab).dir[:] = [c[0] for c in H.root._f_get_child(solset)._f_get_child(soltab).source[:]]
+                                ss = H.root._f_get_child(solset)
+                                for soltab in ss._v_groups.keys():
+                                    st = ss._f_get_child(soltab)
+                                    st.dir[:] = [c[0] for c in st.source[:]]
                             H.close()
         T.close()
         return self
@@ -794,11 +796,12 @@ class MergeH5:
 
         T = tables.open_file(self.h5name_out, 'r+')
         for solset in T.root._v_groups.keys():
-            if T.root._f_get_child(solset).source[:][0].nbytes > 140:
+            ss = T.root._f_get_child(solset)
+            if ss.source[:][0].nbytes > 140:
                 print('Changing the dtype to reduce memory size in '+solset+'.source[:]')
-                new_source = array(T.root._f_get_child(solset).source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
-                T.root._f_get_child(solset).source._f_remove()
-                T.create_table(T.root._f_get_child(solset), 'source', new_source, "Source names and directions")
+                new_source = array(ss.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+                ss.source._f_remove()
+                T.create_table(ss, 'source', new_source, "Source names and directions")
         T.close()
         return self
 
@@ -821,6 +824,7 @@ class MergeH5:
             for n, source in enumerate(new_sources):
                 if round(coor[0], 4) == round(new_sources[1][0], 4) and round(coor[1], 4) == round(new_sources[1][1], 4):
                     del_index.append(n)
+
         return [source for i, source in enumerate(new_sources) if i not in del_index]
 
     def create_new_dataset(self, solset, soltab):
@@ -971,23 +975,25 @@ class MergeH5:
         if single:
             newpol = array([b'I'], dtype='|S2')
         for solset in T.root._v_groups.keys():
-            for soltab in T.root._f_get_child(solset)._v_groups.keys():
+            ss = T.root._f_get_child(solset)
+            for soltab in ss._v_groups.keys():
+                st = ss._f_get_child(soltab)
+                st.pol._f_remove()
                 for axes in ['val', 'weight']:
-                    T.root._f_get_child(solset)._f_get_child(soltab).pol._f_remove()
-                    if T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[0,0,0,0,0] ==\
-                            T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[0,0,0,0,-1] and \
-                        T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[-1, 0, 0, 0, 0] == \
-                            T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[-1, 0, 0, 0, -1]:
+                    if st._f_get_child(axes)[0,0,0,0,0] ==\
+                            st._f_get_child(axes)[0,0,0,0,-1] and \
+                        st._f_get_child(axes)[-1, 0, 0, 0, 0] == \
+                            st._f_get_child(axes)[-1, 0, 0, 0, -1]:
                         if single:
                             print(soltab+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
                         else:
                             print(soltab+' has same values for XX and YY polarization.\nRemoving Polarization.')
                         if single:
-                            newval = T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[:, :, :, :, 0:1]
+                            newval = st._f_get_child(axes)[:, :, :, :, 0:1]
                         else:
-                            newval = T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[:, :, :, :, 0]
+                            newval = st._f_get_child(axes)[:, :, :, :, 0]
 
-                        valtype = str(T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).dtype)
+                        valtype = str(st._f_get_child(axes).dtype)
                         if '16' in valtype:
                             atomtype = tables.Float16Atom()
                         elif '32' in valtype:
@@ -997,16 +1003,17 @@ class MergeH5:
                         else:
                             atomtype = tables.Float64Atom()
 
-                        T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)._f_remove()
-                        T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), axes, newval.astype(valtype), atom=atomtype)
+                        st._f_get_child(axes)._f_remove()
+                        T.create_array(st, axes, newval.astype(valtype), atom=atomtype)
                         if single:
-                            T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
-                            T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), 'pol', newpol)
+                            st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
+                            T.create_array(st, 'pol', newpol)
                         else:
-                            T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir'
+                            st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir'
                     else:
                         sys.exit('ERROR: ' + soltab.replace('000','').title() + ' has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
         T.close()
+
         return self
 
     def add_h5_antennas(self):
@@ -1023,6 +1030,7 @@ class MergeH5:
             H.root._f_get_child(solset).antenna._f_remove()
             H.create_table(H.root._f_get_child(solset), 'antenna', antennas, "Antenna names and positions")
         H.close()
+
         return self
 
     def add_ms_antennas(self):
@@ -1042,16 +1050,17 @@ class MergeH5:
         H = tables.open_file(self.h5name_out, 'r+')
 
         for solset in H.root._v_groups.keys():
-
-            H.root._f_get_child(solset).antenna._f_remove()
+            ss = H.root._f_get_child(solset)
+            ss.antenna._f_remove()
             antennas = array([list(zip(*(new_antlist, new_antpos)))], dtype=[('name', 'S16'), ('position', '<f4', (3,))])
-            H.create_table(H.root._f_get_child(solset), 'antenna', antennas, "Antenna names and positions")
+            H.create_table(ss, 'antenna', antennas, "Antenna names and positions")
 
-            for soltab in H.root._f_get_child(solset)._v_groups.keys():
-                antenna_index = H.root._f_get_child(solset)._f_get_child(soltab).val.attrs['AXES'].decode('utf8').split(',').index('ant')
-                old_antlist = [v.decode('utf8') for v in list(H.root._f_get_child(solset)._f_get_child(soltab).ant[:])]
-                H.root._f_get_child(solset)._f_get_child(soltab).ant._f_remove()
-                H.create_array(H.root._f_get_child(solset)._f_get_child(soltab), 'ant', array(list(new_antlist), dtype='|S16'))
+            for soltab in ss._v_groups.keys():
+                st = ss._f_get_child(soltab)
+                antenna_index = st.val.attrs['AXES'].decode('utf8').split(',').index('ant')
+                old_antlist = [v.decode('utf8') for v in list(st.ant[:])]
+                st.ant._f_remove()
+                H.create_array(st, 'ant', array(list(new_antlist), dtype='|S16'))
                 if b'ST001' in old_antlist:
                     superstation_index = old_antlist.index(b'ST001')
                 elif 'ST001' in old_antlist:
@@ -1060,8 +1069,8 @@ class MergeH5:
                     sys.exit('ERROR: No super station in antennas or other type of bug')
 
                 for axes in ['val', 'weight']:
-                    assert axes in list(H.root._f_get_child(solset)._f_get_child(soltab)._v_children.keys()), axes+' not in .root.'+solset+'.'+soltab+' (not in axes)'
-                    old_values = H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[:]
+                    assert axes in list(st._v_children.keys()), axes+' not in .root.'+solset+'.'+soltab+' (not in axes)'
+                    old_values = st._f_get_child(axes)[:]
                     shape = list(old_values.shape)
                     shape[antenna_index] = len(new_antlist)
                     new_values = zeros(shape)
@@ -1091,7 +1100,7 @@ class MergeH5:
                             elif antenna_index==4:
                                 new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, superstation_index, ...]
 
-                    valtype = str(H.root._f_get_child(solset)._f_get_child(soltab).val.dtype)
+                    valtype = str(st.val.dtype)
                     if '16' in valtype:
                         atomtype = tables.Float16Atom()
                     elif '32' in valtype:
@@ -1101,9 +1110,9 @@ class MergeH5:
                     else:
                         atomtype = tables.Float64Atom()
 
-                    H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)._f_remove()
-                    H.create_array(H.root._f_get_child(solset)._f_get_child(soltab), axes, new_values.astype(valtype), atom=atomtype)
-                    H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
+                    st._f_get_child(axes)._f_remove()
+                    H.create_array(st, axes, new_values.astype(valtype), atom=atomtype)
+                    st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
 
         H.close()
 
