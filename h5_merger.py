@@ -1010,38 +1010,42 @@ class MergeH5:
                 else:
                     sys.exit('ERROR: No super station in antennas or other type of bug')
 
-                old_values = H.root._f_get_child(solset)._f_get_child(soltab).val[:]
-                shape = list(old_values.shape)
-                shape[antenna_index] = len(new_antlist)
-                new_values = zeros(shape)
+                for axes in ['val', 'weight']:
+                    if axes not in list(H.root._f_get_child(solset)._f_get_child(soltab)._v_children.keys()):
+                        sys.exit('ERROR: '+axes+' not in .root.'+solset+'.'+soltab+' (not in axes)')
+                    old_values = H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[:]
+                    shape = list(old_values.shape)
+                    shape[antenna_index] = len(new_antlist)
+                    new_values = zeros(shape)
 
-                for idx, a in enumerate(new_antlist):
-                    if a in old_antlist:
-                        idx_old = old_antlist.index(a)
-                        if antenna_index==0:
-                            new_values[idx, ...] += old_values[idx_old, ...]
-                        elif antenna_index==1:
-                            new_values[:, idx, ...] += old_values[:, idx_old, ...]
-                        elif antenna_index==2:
-                            new_values[:, :, idx, ...] += old_values[:, :, idx_old, ...]
-                        elif antenna_index==3:
-                            new_values[:, :, :, idx, ...] += old_values[:, :, :, idx_old, ...]
-                        elif antenna_index==4:
-                            new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, idx_old, ...]
-                    elif 'CS' in a: # core stations
-                        if antenna_index==0:
-                            new_values[idx, ...] += old_values[superstation_index, ...]
-                        elif antenna_index==1:
-                            new_values[:, idx, ...] += old_values[:, superstation_index, ...]
-                        elif antenna_index==2:
-                            new_values[:, :, idx, ...] += old_values[:, :, superstation_index, ...]
-                        elif antenna_index==3:
-                            new_values[:, :, :, idx, ...] += old_values[:, :, :, superstation_index, ...]
-                        elif antenna_index==4:
-                            new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, superstation_index, ...]
+                    for idx, a in enumerate(new_antlist):
+                        if a in old_antlist:
+                            idx_old = old_antlist.index(a)
+                            if antenna_index==0:
+                                new_values[idx, ...] += old_values[idx_old, ...]
+                            elif antenna_index==1:
+                                new_values[:, idx, ...] += old_values[:, idx_old, ...]
+                            elif antenna_index==2:
+                                new_values[:, :, idx, ...] += old_values[:, :, idx_old, ...]
+                            elif antenna_index==3:
+                                new_values[:, :, :, idx, ...] += old_values[:, :, :, idx_old, ...]
+                            elif antenna_index==4:
+                                new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, idx_old, ...]
+                        elif 'CS' in a: # core stations
+                            if antenna_index==0:
+                                new_values[idx, ...] += old_values[superstation_index, ...]
+                            elif antenna_index==1:
+                                new_values[:, idx, ...] += old_values[:, superstation_index, ...]
+                            elif antenna_index==2:
+                                new_values[:, :, idx, ...] += old_values[:, :, superstation_index, ...]
+                            elif antenna_index==3:
+                                new_values[:, :, :, idx, ...] += old_values[:, :, :, superstation_index, ...]
+                            elif antenna_index==4:
+                                new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, superstation_index, ...]
 
-                H.root._f_get_child(solset)._f_get_child(soltab).val._f_remove()
-                H.create_array(H.root._f_get_child(solset)._f_get_child(soltab), 'val', new_values)
+                    H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)._f_remove()
+                    H.create_array(H.root._f_get_child(solset)._f_get_child(soltab), axes, new_values)
+                    H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
 
         H.close()
 
