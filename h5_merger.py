@@ -968,6 +968,7 @@ class MergeH5:
     def remove_pol(self, single=False):
         """
         Reduce table to one single polarization
+
         :param single: if single==True we leave a single pole such that values have shape=(..., 1), if False we remove pol-axis entirely
         """
 
@@ -1057,7 +1058,8 @@ class MergeH5:
 
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
-                antenna_index = st.val.attrs['AXES'].decode('utf8').split(',').index('ant')
+                attrsaxes = st.val.attrs['AXES']
+                antenna_index = attrsaxes.decode('utf8').split(',').index('ant')
                 old_antlist = [v.decode('utf8') for v in list(st.ant[:])]
                 st.ant._f_remove()
                 H.create_array(st, 'ant', array(list(new_antlist), dtype='|S16'))
@@ -1112,7 +1114,7 @@ class MergeH5:
 
                     st._f_get_child(axes)._f_remove()
                     H.create_array(st, axes, new_values.astype(valtype), atom=atomtype)
-                    st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
+                    st._f_get_child(axes).attrs['AXES'] = attrsaxes
 
         H.close()
 
@@ -1391,6 +1393,7 @@ def _test_h5_output(h5_out, tables_to_merge):
     With this function we test if the output has the expected output by going through source coordinates and compare in and output H5.
     This only works when the phase000 and amplitude000 haven't changed. So, when tec000 is not merged with phase000,
     otherwise only amplitude000 are compared.
+
     :param h5_out: the output H5
     :param tables_to_merge: list of tables that have been merged together
     """
@@ -1438,6 +1441,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
              filtered_dir=None, add_cs=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
+
     :param h5_out (string): h5 table name out
     :param h5_tables (string or list): h5 tables to merge
     :param ms_files (string or list): ms files to take freq and time axis from
