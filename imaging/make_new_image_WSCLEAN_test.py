@@ -7,9 +7,15 @@ from argparse import ArgumentParser
 
 parser = ArgumentParser()
 parser.add_argument('--N', type=str, help='archive number', required=True)
+parser.add_argument('--nmiter', type=str, default=None, help='max major iterations')
 args = parser.parse_args()
 
 N = args.N
+if not args.nmiter:
+    nmiter = '8'
+else:
+    nmiter = args.nmiter
+
 MS = 'Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive' + N + '.avg.goodtimes'
 H5 = 'all_directions'+N+'.h5'
 
@@ -34,6 +40,7 @@ with open('/'.join(__file__.split('/')[0:-1])+'/WSCLEAN_scripts/wsclean.txt') as
     lines += ['-name image_test_L626678']
     lines += ['-size 6000 6000']
     lines += ['-scale 1.5arcsec']
+    lines += ['-nmiter '+nmiter]
     lines += [TO+'/'+MS]
 
 os.system('aoflagger '+TO+'/'+MS+' && wait')
