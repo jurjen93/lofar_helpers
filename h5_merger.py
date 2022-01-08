@@ -982,6 +982,7 @@ class MergeH5:
                         newval = T.root._f_get_child(solset)._f_get_child(soltab).val[:, :, :, :, 0:1]
                     else:
                         newval = T.root._f_get_child(solset)._f_get_child(soltab).val[:, :, :, :, 0]
+
                     valtype = str(T.root._f_get_child(solset)._f_get_child(soltab).val.dtype)
                     if '16' in valtype:
                         atomtype = tables.Float16Atom()
@@ -991,6 +992,7 @@ class MergeH5:
                         atomtype = tables.Float64Atom()
                     else:
                         atomtype = tables.Float64Atom()
+
                     T.root._f_get_child(solset)._f_get_child(soltab).val._f_remove()
                     T.root._f_get_child(solset)._f_get_child(soltab).pol._f_remove()
                     T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), 'val', newval.astype(valtype), atom=atomtype)
