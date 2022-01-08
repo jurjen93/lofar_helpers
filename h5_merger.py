@@ -158,7 +158,7 @@ class MergeH5:
 
         return True
 
-    def get_and_check_values(self, st, solset, soltab):
+    def _get_and_check_values(self, st, solset, soltab):
         """
         Get the values from the h5 table to merge.
         Also do some checks on the time and frequency axis.
@@ -207,10 +207,10 @@ class MergeH5:
 
         return values, time_axes, freq_axes
 
-    def sort_soltabs(self, soltabs):
+    def _sort_soltabs(self, soltabs):
         """
         Sort solution tables.
-        This is import to run the steps and add directions according to our algorithm.
+        This is important to run the steps and add directions according to our algorithm.
         Dont touch if you dont have to.
 
         :param soltabs: solutions tables
@@ -265,12 +265,12 @@ class MergeH5:
                     elif list(self.antennas) != list(st.getAxisValues('ant')):
                         sys.exit('ERROR: antennas not the same')
             h5.close()
-        self.all_soltabs = self.sort_soltabs(self.all_soltabs)
+        self.all_soltabs = self._sort_soltabs(self.all_soltabs)
         self.all_solsets = set(self.all_solsets)
         self.all_axes = set(self.all_axes)
         return self
 
-    def get_clean_values(self, soltab, st):
+    def _get_clean_values(self, soltab, st):
         """
         Get default values, based on model h5 table
 
@@ -315,7 +315,7 @@ class MergeH5:
         :param tec: TEC
         :param freqs: frequencies
 
-        :return tec phase converted values
+        :return: tec phase converted values
         """
         return -8.4479745e9 * tec / freqs
 
@@ -329,7 +329,7 @@ class MergeH5:
         :param interp_to: interpolate to this axis
         :param axis: interpolation axis
 
-        :return return the interpolated result
+        :return: the interpolated result
         """
 
         interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value='extrapolate')
@@ -362,12 +362,12 @@ class MergeH5:
                     st = ss.getSoltab(soltab)
 
                 if not self.convert_tec or (self.convert_tec and 'tec' not in soltab):
-                    self.get_clean_values(soltab, st)
+                    self._get_clean_values(soltab, st)
                     self.axes_new = [an for an in self.solaxnames if an in st.getAxesNames()]
                 elif 'tec' in soltab and self.convert_tec:
                     for st_group in self.all_soltabs:
                         if soltab in st_group and ('phase000' not in st_group and 'phase{n}'.format(n=soltab[-3:])):
-                            self.get_clean_values(soltab, st)
+                            self._get_clean_values(soltab, st)
                             self.axes_new = [an for an in self.solaxnames if an in st.getAxesNames()]
 
                 h5_to_merge.close()
@@ -432,7 +432,7 @@ class MergeH5:
             print('This table has {numdirection} direction(s)'.format(numdirection=num_dirs))
 
             # get values, time, and freq axis
-            table_values, time_axes, freq_axes = self.get_and_check_values(st, solset, soltab)
+            table_values, time_axes, freq_axes = self._get_and_check_values(st, solset, soltab)
 
             for dir_idx in range(num_dirs):#loop over all directions
 
@@ -1039,7 +1039,7 @@ class MergeH5:
         """
 
         print('Add antenna table from '+self.ms[0])
-        if len(self.ms)==0:
+        if len(self.ms) == 0:
             sys.exit("ERROR: Measurement set needed to add antennas. Use --ms.")
 
         t = ct.table(self.ms[0] + "::ANTENNA", ack=False)
@@ -1249,6 +1249,7 @@ class PolChange:
     def add_polarization(values, dim_pol):
         """
         Add extra polarization if there is no polarization
+
         :param values: values which need to get a polarization
         :param dim_pol: number of dimensions
 
