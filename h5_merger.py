@@ -972,37 +972,40 @@ class MergeH5:
             newpol = array([b'I'], dtype='|S2')
         for solset in T.root._v_groups.keys():
             for soltab in T.root._f_get_child(solset)._v_groups.keys():
-                if T.root._f_get_child(solset)._f_get_child(soltab).val[0,0,0,0,0] == T.root._f_get_child(solset)._f_get_child(soltab).val[0,0,0,0,-1] and \
-                    T.root._f_get_child(solset)._f_get_child(soltab).val[-1, 0, 0, 0, 0] == T.root._f_get_child(solset)._f_get_child(soltab).val[-1, 0, 0, 0, -1]:
-                    if single:
-                        print(soltab+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
-                    else:
-                        print(soltab+' has same values for XX and YY polarization.\nRemoving Polarization.')
-                    if single:
-                        newval = T.root._f_get_child(solset)._f_get_child(soltab).val[:, :, :, :, 0:1]
-                    else:
-                        newval = T.root._f_get_child(solset)._f_get_child(soltab).val[:, :, :, :, 0]
-
-                    valtype = str(T.root._f_get_child(solset)._f_get_child(soltab).val.dtype)
-                    if '16' in valtype:
-                        atomtype = tables.Float16Atom()
-                    elif '32' in valtype:
-                        atomtype = tables.Float32Atom()
-                    elif '64' in valtype:
-                        atomtype = tables.Float64Atom()
-                    else:
-                        atomtype = tables.Float64Atom()
-
-                    T.root._f_get_child(solset)._f_get_child(soltab).val._f_remove()
+                for axes in ['val', 'weight']:
                     T.root._f_get_child(solset)._f_get_child(soltab).pol._f_remove()
-                    T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), 'val', newval.astype(valtype), atom=atomtype)
-                    if single:
-                        T.root._f_get_child(solset)._f_get_child(soltab).val.attrs['AXES'] = b'time,freq,ant,dir,pol'
-                        T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), 'pol', newpol)
+                    if T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[0,0,0,0,0] ==\
+                            T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[0,0,0,0,-1] and \
+                        T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[-1, 0, 0, 0, 0] == \
+                            T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[-1, 0, 0, 0, -1]:
+                        if single:
+                            print(soltab+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
+                        else:
+                            print(soltab+' has same values for XX and YY polarization.\nRemoving Polarization.')
+                        if single:
+                            newval = T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[:, :, :, :, 0:1]
+                        else:
+                            newval = T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[:, :, :, :, 0]
+
+                        valtype = str(T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).dtype)
+                        if '16' in valtype:
+                            atomtype = tables.Float16Atom()
+                        elif '32' in valtype:
+                            atomtype = tables.Float32Atom()
+                        elif '64' in valtype:
+                            atomtype = tables.Float64Atom()
+                        else:
+                            atomtype = tables.Float64Atom()
+
+                        T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)._f_remove()
+                        T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), axes, newval.astype(valtype), atom=atomtype)
+                        if single:
+                            T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
+                            T.create_array(T.root._f_get_child(solset)._f_get_child(soltab), 'pol', newpol)
+                        else:
+                            T.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir'
                     else:
-                        T.root._f_get_child(solset)._f_get_child(soltab).val.attrs['AXES'] = b'time,freq,ant,dir'
-                else:
-                    sys.exit('ERROR: ' + soltab.replace('000','').title() + ' has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
+                        sys.exit('ERROR: ' + soltab.replace('000','').title() + ' has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
         T.close()
         return self
 
