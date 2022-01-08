@@ -1100,7 +1100,7 @@ class MergeH5:
                             elif antenna_index==4:
                                 new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, superstation_index, ...]
 
-                    valtype = str(st.val.dtype)
+                    valtype = str(st._f_get_child(axes).dtype)
                     if '16' in valtype:
                         atomtype = tables.Float16Atom()
                     elif '32' in valtype:
