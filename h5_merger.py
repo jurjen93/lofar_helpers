@@ -30,7 +30,7 @@ import sys
 import re
 import tables
 from collections import OrderedDict
-from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort, power, sum, argmin
+from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort, power, sum, argmin, float64
 
 __all__ = ['merge_h5']
 
@@ -136,6 +136,7 @@ class MergeH5:
         Compare antenna tables with each other.
         These should be the same.
         """
+
         for h5_name1 in self.h5_tables:
             H_ref = tables.open_file(h5_name1)
             for solset1 in H_ref.root._v_groups.keys():
@@ -165,6 +166,7 @@ class MergeH5:
         :param solset: solset name
         :param soltab: soltab name
         """
+
         if 'pol' in st.getAxesNames():
             print("polarization is in {solset}/{soltab}".format(solset=solset, soltab=soltab))
         else:
@@ -209,6 +211,7 @@ class MergeH5:
         Dont touch if you dont have to.
         :param soltabs: solutions tables
         """
+
         soltabs = set(soltabs)
         if self.convert_tec:
             tp_phasetec = [li for li in soltabs if 'tec' in li or 'phase' in li]
@@ -241,6 +244,7 @@ class MergeH5:
         """
         Get all solution sets, solutions tables, and ax names in lists.
         """
+
         self.all_soltabs, self.all_solsets, self.all_axes, self.antennas = [], [], [], []
 
         for h5_name in self.h5_tables:
@@ -318,6 +322,7 @@ class MergeH5:
         :param axis: interpolation axis
         :return return the interpolated result
         """
+
         interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value='extrapolate')
         new_vals = interp_vals(interp_to)
         return new_vals
@@ -346,10 +351,6 @@ class MergeH5:
                 else:
                     st = ss.getSoltab(soltab)
 
-                # if '/'.join([solset, soltab, 'pol']) in self.all_axes and 'pol' not in st.getAxesNames():
-                # continue  # use h5 which has the polarizations as model file
-
-                # make new clean values for new soltabs (ending on 000)
                 if not self.convert_tec or (self.convert_tec and 'tec' not in soltab):
                     self.get_clean_values(soltab, st)
                     self.axes_new = [an for an in self.solaxnames if an in st.getAxesNames()]
@@ -368,6 +369,7 @@ class MergeH5:
         Get number of directions in solution table
         :param st: solution table
         """
+
         if 'dir' in st.getAxesNames():
             dir_index = st.getAxesNames().index('dir')
             return st.getValues()[0].shape[dir_index]
@@ -384,6 +386,7 @@ class MergeH5:
         :param solset: solution set name
         :param soltab: solution table name
         """
+
         for h5_name in self.h5_tables:
 
             print(h5_name, len(self.h5_tables))
@@ -727,6 +730,7 @@ class MergeH5:
         Reorder the axes in DPPP style because that is needed in most LOFAR software
         :param soltab: solution table
         """
+
         if 'pol' in self.axes_new and len(self.axes_new) == 5:
             DPPP_axes = ['time', 'freq', 'ant', 'dir', 'pol']
         elif 'pol' not in self.axes_new and len(self.axes_new) == 4:
@@ -749,6 +753,7 @@ class MergeH5:
         with this extra step.
         Yes, this function is ugly and should be rewritten ;-)
         """
+
         import h5py
 
         T = h5py.File(self.h5name_out, 'r+')
@@ -773,6 +778,7 @@ class MergeH5:
         We need to store the data in 136 bytes per directions.
         Python 3 saves it automatically in more than that number.
         """
+
         T = tables.open_file(self.h5name_out, 'r+')
         for solset in T.root._v_groups.keys():
             if T.root._f_get_child(solset).source[:][0].nbytes > 140:
@@ -791,6 +797,7 @@ class MergeH5:
         :param new_sources: new sources to be add
         :return ---> New unique sources
         """
+
         current_sources_dir = [source[0].decode('UTF-8') for source in current_sources]
         current_sources_coor = [source[1] for source in current_sources]
         new_sources = [source for source in new_sources if source[0] not in current_sources_dir]
@@ -807,6 +814,7 @@ class MergeH5:
         :param solset: solution set name
         :param soltab: solution table name
         """
+
         if len(self.directions.keys()) == 0:  # return if no directions
             return self
 
@@ -874,6 +882,7 @@ class MergeH5:
         Add default directions (phase all zeros, amplitude all ones)
         :param add_directions: list with directions
         """
+
         if not add_directions:
             return self
 
@@ -938,6 +947,7 @@ class MergeH5:
         Reduce table to one single polarization
         :param single: if single==True we leave a single pole such that values have shape=(..., 1), if False we remove pol-axis entirely
         """
+
         T = tables.open_file(self.h5name_out, 'r+')
         if single:
             newpol = array([b'I'], dtype='|S2')
@@ -967,7 +977,10 @@ class MergeH5:
         return self
 
     def add_h5_antennas(self):
-        "Add antennas to output table from H5 list"
+        """
+        Add antennas to output table from H5 list
+        """
+
         print('Add antenna table from '+self.h5_tables[0])
         T = tables.open_file(self.h5_tables[0])
         antennas = T.root.sol000.antenna[:]
@@ -980,7 +993,10 @@ class MergeH5:
         return self
 
     def add_ms_antennas(self):
-        """Add antennas from MS"""
+        """
+        Add antennas from MS
+        """
+
         print('Add antenna table from '+self.ms[0])
         if len(self.ms)==0:
             sys.exit("ERROR: Measurement set needed to add antennas. Use --ms.")
@@ -1011,8 +1027,7 @@ class MergeH5:
                     sys.exit('ERROR: No super station in antennas or other type of bug')
 
                 for axes in ['val', 'weight']:
-                    if axes not in list(H.root._f_get_child(solset)._f_get_child(soltab)._v_children.keys()):
-                        sys.exit('ERROR: '+axes+' not in .root.'+solset+'.'+soltab+' (not in axes)')
+                    assert axes in list(H.root._f_get_child(solset)._f_get_child(soltab)._v_children.keys()), axes+' not in .root.'+solset+'.'+soltab+' (not in axes)'
                     old_values = H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[:]
                     shape = list(old_values.shape)
                     shape[antenna_index] = len(new_antlist)
@@ -1044,7 +1059,7 @@ class MergeH5:
                                 new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, superstation_index, ...]
 
                     H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)._f_remove()
-                    H.create_array(H.root._f_get_child(solset)._f_get_child(soltab), axes, new_values)
+                    H.create_array(H.root._f_get_child(solset)._f_get_child(soltab), axes, new_values.astype(float64), atom=tables.Float64Atom())
                     H.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
 
         H.close()
@@ -1052,7 +1067,9 @@ class MergeH5:
         return self
 
     def create_missing_template(self):
-        "Make template for phase000 and/or amplitude000 if missing"
+        """
+        Make template for phase000 and/or amplitude000 if missing
+        """
 
         H = tables.open_file(self.h5name_out, 'r+')
         soltabs = list(H.root.sol000._v_groups.keys())
@@ -1085,6 +1102,7 @@ def change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
     1) Copy solset_in to solset_out (overwriting if overwrite==True)
     2) Delete solset_in if delete==True
     """
+
     H = tables.open_file(h5, 'r+')
     H.root._f_get_child(solset_in)._f_copy(H.root, newname=solset_out, overwrite=overwrite, recursive=True)
     print('Succesfully copied ' + solset_in + ' to ' + solset_out)
@@ -1097,11 +1115,13 @@ class PolChange:
     """
     This Python class helps to convert polarization from linear to circular or vice versa.
     """
+
     def __init__(self, h5_in, h5_out):
         """
         :param h5_in: h5 input name
         :param h5_out: h5 output name
         """
+
         self.h5_in = h5parm(h5_in, readonly=True)
         self.h5_out = h5parm(h5_out, readonly=False)
         self.axes_names = ['time', 'freq', 'ant', 'dir', 'pol']
@@ -1165,6 +1185,7 @@ class PolChange:
         :param values: values which need to get a polarization
         :param dim_pol: number of dimensions
         """
+
         values_temp = ones(values.shape+(dim_pol,))
         for i in range(dim_pol):
             values_temp[..., i] = values
@@ -1177,6 +1198,7 @@ class PolChange:
         Make template of the Gain matrix with only ones
         :param soltab: solution table (phase, amplitude)
         """
+
         self.G, self.axes_vals = array([]), OrderedDict()
         for ss in self.h5_in.getSolsetNames():
             for st in self.h5_in.getSolset(ss).getSoltabNames():
@@ -1206,6 +1228,7 @@ class PolChange:
         """
         :param solutiontable: the solution table for the TEC
         """
+
         tec_axes_names = [ax for ax in self.axes_names if solutiontable.getAxesNames()]
         tec = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), tec_axes_names)
         if 'freq' in solutiontable.getAxesNames():
@@ -1231,6 +1254,7 @@ class PolChange:
         :param lin2circ: boolean for linear to circular conversion
         :param circ2lin: boolean for circular to linear conversion
         """
+
         for ss in self.h5_in.getSolsetNames():
 
             self.solsetout = self.h5_out.makeSolset(ss)
@@ -1297,6 +1321,7 @@ def test_h5_output(h5_out, tables_to_merge):
     :param h5_out: the output H5
     :param tables_to_merge: list of tables that have been merged together
     """
+
     H5out = tables.open_file(h5_out)
     sources_out = array([s[1] for s in H5out.root.sol000.source[:]])
     source_count=0
