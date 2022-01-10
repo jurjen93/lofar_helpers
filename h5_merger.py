@@ -980,12 +980,12 @@ class MergeH5:
                 st = ss._f_get_child(soltab)
                 st.pol._f_remove()
                 for axes in ['val', 'weight']:
-                    if st._f_get_child(axes)[:,:,:,:,0] !=\
-                            st._f_get_child(axes)[:,:,:,:,-1]:
+                    if not all(st._f_get_child(axes)[:,:,:,:,0] ==\
+                            st._f_get_child(axes)[:,:,:,:,-1]):
                         sys.exit('WARNING: ' + '\\'.join([soltab, axes]) +
                                  ' has not the same values for XX and YY polarization.'
                                  '\nERROR: No polarization reduction will be done.'
-                                 '\nERROR: do not use --no_pol or --single_pol')
+                                 '\nERROR: Do not use --no_pol or --single_pol')
                     if single:
                         print(soltab+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
                     else:
