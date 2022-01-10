@@ -145,10 +145,19 @@ class MergeH5:
                     H = tables.open_file(h5_name2)
                     for solset2 in H_ref.root._v_groups.keys():
                         antennas = H_ref.root._f_get_child(solset2).antenna[:]
-                        if not all(antennas_ref == antennas):
-                            print('Antennas from '+h5_name1+':')
+                        try:
+                            if not all(antennas_ref['name'] == antennas['name']):
+                                print('Antennas from '+h5_name1+':')
+                                print(antennas_ref)
+                                print('Antennas from '+h5_name2+':')
+                                print(antennas)
+                                H.close()
+                                H_ref.close()
+                                return False
+                        except ValueError:
+                            print('Antennas from ' + h5_name1 + ':')
                             print(antennas_ref)
-                            print('Antennas from '+h5_name2+':')
+                            print('Antennas from ' + h5_name2 + ':')
                             print(antennas)
                             H.close()
                             H_ref.close()
