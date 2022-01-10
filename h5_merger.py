@@ -979,6 +979,8 @@ class MergeH5:
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
                 st.pol._f_remove()
+                if single:
+                    T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
                 for axes in ['val', 'weight']:
                     if not all(st._f_get_child(axes)[:,:,:,:,0] ==\
                             st._f_get_child(axes)[:,:,:,:,-1]):
@@ -1008,11 +1010,10 @@ class MergeH5:
                     st._f_get_child(axes)._f_remove()
                     T.create_array(st, axes, newval.astype(valtype), atom=atomtype)
 
-                if single:
-                    st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
-                    T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
-                else:
-                    st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir'
+                    if single:
+                        st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
+                    else:
+                        st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir'
         T.close()
 
         return self
