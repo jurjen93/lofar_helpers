@@ -249,7 +249,7 @@ class MergeH5:
         Get all solution sets, solutions tables, and ax names in lists.
         """
 
-        self.all_soltabs, self.all_solsets, self.all_axes, self.antennas = [], [], [], []
+        self.all_soltabs, self.all_solsets, self.all_axes, self.ant = [], [], [], []
 
         for h5_name in self.h5_tables:
             h5 = h5parm(h5_name)
@@ -261,8 +261,8 @@ class MergeH5:
                     st = ss.getSoltab(soltab)
                     self.all_axes += ['/'.join([solset, soltab, an]) for an in st.getAxesNames()]
                     if n == 0:
-                        self.antennas = st.getAxisValues('ant')  # check if same for all h5
-                    elif list(self.antennas) != list(st.getAxisValues('ant')):
+                        self.ant = st.getAxisValues('ant')  # check if same for all h5
+                    elif list(self.ant) != list(st.getAxisValues('ant')):
                         sys.exit('ERROR: antennas not the same')
             h5.close()
         self.all_soltabs = self._sort_soltabs(self.all_soltabs)
@@ -287,21 +287,21 @@ class MergeH5:
 
         if 'amplitude' in soltab and 'pol' in st.getAxesNames():
             self.gains = ones(
-                (len(self.polarizations), num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+                (len(self.polarizations), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
         else:
-            self.gains = ones((1, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.gains = ones((1, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
         if 'phase' in soltab and 'pol' in st.getAxesNames():
             self.phases = zeros(
-                (max(len(self.polarizations), 1), num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+                (max(len(self.polarizations), 1), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
         elif 'rotation' in soltab:
-            self.phases = zeros((num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.phases = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
         elif 'tec' in soltab:
-            self.phases = zeros((2, num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.phases = zeros((2, num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
         else:
-            self.phases = zeros((num_dir, len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.phases = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
         self.n = 0  # direction number reset
 
@@ -850,7 +850,7 @@ class MergeH5:
             solsetout.obj.source.append(new_sources)
 
         axes_vals = {'dir': list(self.directions.keys()),
-                     'ant': self.antennas,
+                     'ant': self.ant,
                      'freq': self.ax_freq,
                      'time': self.ax_time}
 
@@ -890,7 +890,7 @@ class MergeH5:
             weights = ones(self.phases.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
             solsetout.makeSoltab('tec', axesNames=['dir', 'ant', 'time'],
-                                 axesVals=[self.ax_time, self.antennas, list(self.directions.keys())],
+                                 axesVals=[self.ax_time, self.ant, list(self.directions.keys())],
                                  vals=self.phases, weights=weights)
 
         print('DONE: {solset}/{soltab}'.format(solset=solset, soltab=soltab))
@@ -984,7 +984,7 @@ class MergeH5:
                 for axes in ['val', 'weight']:
                     if not all(st._f_get_child(axes)[:,:,:,:,0] ==\
                             st._f_get_child(axes)[:,:,:,:,-1]):
-                        sys.exit('WARNING: ' + '\\'.join([soltab, axes]) +
+                        sys.exit('WARNING: ' + '/'.join([soltab, axes]) +
                                  ' has not the same values for XX and YY polarization.'
                                  '\nERROR: No polarization reduction will be done.'
                                  '\nERROR: Do not use --no_pol or --single_pol')
@@ -1130,13 +1130,13 @@ class MergeH5:
         soltabs = list(H.root.sol000._v_groups.keys())
         H.close()
         if 'amplitude000' not in soltabs:
-            self.gains = ones((2, len(self.directions.keys()), len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.gains = ones((2, len(self.directions.keys()), len(self.ant), len(self.ax_freq), len(self.ax_time)))
             self.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
             self.polarizations = ['XX', 'YY']
             self.gains = reorderAxes(self.gains, self.solaxnames, self.axes_new)
             self.create_new_dataset('sol000', 'amplitude')
         if 'phase000' not in soltabs:
-            self.phases = zeros((2, len(self.directions.keys()), len(self.antennas), len(self.ax_freq), len(self.ax_time)))
+            self.phases = zeros((2, len(self.directions.keys()), len(self.ant), len(self.ax_freq), len(self.ax_time)))
             self.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
             self.polarizations = ['XX', 'YY']
             self.phases = reorderAxes(self.phases, self.solaxnames, self.axes_new)
@@ -1165,6 +1165,79 @@ def _change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
         H.root._f_get_child(solset_in)._f_remove(recursive=True)
         print('Removed ' + solset_in)
     H.close()
+
+def output_check(h5):
+
+    H = tables.open_file(h5)
+
+    #check number of solset
+    assert len(list(H.root._v_groups.keys()))==1, \
+        'More than 1 solset in '+str(list(H.root._v_groups.keys()))+'. Only 1 is allowed for h5_merger.py.'
+
+    for solset in H.root._v_groups.keys():
+
+        #check sol00.. name
+        assert 'sol' in solset, solset+' is a wrong solset name, should be sol***'
+        ss = H.root._f_get_child(solset)
+
+        #check antennas
+        antennas = ss.antenna
+        assert antennas.attrs.FIELD_0_NAME == 'name', 'No name in '+'/'.join([solset,'antenna'])
+        assert antennas.attrs.FIELD_1_NAME == 'position', 'No coordinate in '+'/'.join([solset,'antenna'])
+
+        #check sources
+        sources = ss.source
+        assert sources.attrs.FIELD_0_NAME == 'name', 'No name in '+'/'.join([solset,'source'])
+        assert sources.attrs.FIELD_1_NAME == 'dir', 'No coordinate in '+'/'.join([solset,'source'])
+
+        for soltab in ss._v_groups.keys():
+            st = ss._f_get_child(soltab)
+            assert st.val.shape == st.weight.shape, \
+                'weight '+str(st.weight.shape)+' and values '+str(st.val.shape)+' do not have same shape'
+
+            #check if pol and/or dir are not missing
+            for pd in ['pol', 'dir']:
+                assert not (len(st.val.shape)==5 and pd not in list(st._v_children.keys())), \
+                    '/'.join([solset, soltab, pd])+' is missing'
+
+            #check if freq, time, and ant arrays are not missing
+            for fta in ['freq', 'time', 'ant']:
+                assert fta in list(st._v_children.keys()), \
+                    '/'.join([solset, soltab, fta])+' is missing'
+
+            #check if val and weight have AXES
+            for vw in ['val', 'weight']:
+                assert 'AXES' in st._f_get_child(vw).attrs._f_list("user"), \
+                    'AXES missing in '+'/'.join([solset, soltab, vw])
+
+            #check if dimensions of values match with length of arrays
+            for ax_index, ax in enumerate(st.val.attrs['AXES'].decode('utf8').split(',')):
+                assert st.val.shape[ax_index]==len(st._f_get_child(ax)[:]), \
+                    ax+' length is not matching with dimension from val in ' + '/'.join([solset, soltab, ax])
+
+                #check if ant and antennas have equal sizes
+                if ax == 'ant':
+                    assert len(antennas[:]) == len(st._f_get_child(ax)[:]), \
+                        '/'.join([solset, 'antenna'])+' and '+'/'.join([solset, soltab, ax])+ ' do not have same length'
+
+                # check if dir and sources have equal sizes
+                if ax == 'dir':
+                    assert len(sources[:]) == len(st._f_get_child(ax)[:]), \
+                        '/'.join([solset, 'source'])+' and '+'/'.join([solset, soltab, ax])+ ' do not have same length'
+
+            #check if phase and amplitude have same shapes
+            for soltab1 in ss._v_groups.keys():
+                if ('phase' in soltab or 'amplitude' in soltab) and ('phase' in soltab1 or 'amplitude' in soltab1):
+                    st1 = ss._f_get_child(soltab1)
+                    assert st.val.shape == st1.val.shape, \
+                        '/'.join([solset, soltab, 'val']) + ' shape: '+str(st.weight.shape)+\
+                        '/'.join([solset, soltab1, 'val']) + ' shape: '+str(st1.weight.shape)
+
+    H.close()
+
+    print('Output has all necessary information and correct dimensions')
+
+    return True
 
 class PolChange:
     """
@@ -1439,7 +1512,7 @@ def _test_h5_output(h5_out, tables_to_merge):
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
-             filtered_dir=None, add_cs=None):
+             filtered_dir=None, add_cs=None, check_output=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -1456,6 +1529,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param use_solset: use specific solset number
     :param filtered_dir: filter a specific list of directions from h5 file. Only lists allowed.
     :param add_cs: use MS to replace super station with core station
+    :param check_output: check if output has all correct output information
     """
 
     h5_out = _create_h5_name(h5_out)
@@ -1550,6 +1624,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             if 'temp.h5' in h5:
                 os.system('rm '+h5)
 
+    if check_output:
+        output_check(h5_out)
+
     print('END: see output file --> '+h5_out)
 
 
@@ -1584,6 +1661,7 @@ if __name__ == '__main__':
     parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input h5 files.')
     parser.add_argument('--filter_directions', type=str, default=None, help='Filter a specific list of directions from h5 file. Only lists allowed.')
     parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output')
+    parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     args = parser.parse_args()
 
     # check if solset name is accepted
@@ -1642,4 +1720,5 @@ if __name__ == '__main__':
              no_pol=args.no_pol,
              use_solset=args.usesolset,
              filtered_dir=filtered_dir,
-             add_cs=args.add_cs)
+             add_cs=args.add_cs,
+             check_output=args.check_output)
