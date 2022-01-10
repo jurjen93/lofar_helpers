@@ -973,46 +973,46 @@ class MergeH5:
         """
 
         T = tables.open_file(self.h5name_out, 'r+')
-        if single:
-            newpol = array([b'I'], dtype='|S2')
+
         for solset in T.root._v_groups.keys():
             ss = T.root._f_get_child(solset)
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
                 st.pol._f_remove()
                 for axes in ['val', 'weight']:
-                    if st._f_get_child(axes)[0,0,0,0,0] ==\
-                            st._f_get_child(axes)[0,0,0,0,-1] and \
-                        st._f_get_child(axes)[-1, 0, 0, 0, 0] == \
-                            st._f_get_child(axes)[-1, 0, 0, 0, -1]:
-                        if single:
-                            print(soltab+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
-                        else:
-                            print(soltab+' has same values for XX and YY polarization.\nRemoving Polarization.')
-                        if single:
-                            newval = st._f_get_child(axes)[:, :, :, :, 0:1]
-                        else:
-                            newval = st._f_get_child(axes)[:, :, :, :, 0]
-
-                        valtype = str(st._f_get_child(axes).dtype)
-                        if '16' in valtype:
-                            atomtype = tables.Float16Atom()
-                        elif '32' in valtype:
-                            atomtype = tables.Float32Atom()
-                        elif '64' in valtype:
-                            atomtype = tables.Float64Atom()
-                        else:
-                            atomtype = tables.Float64Atom()
-
-                        st._f_get_child(axes)._f_remove()
-                        T.create_array(st, axes, newval.astype(valtype), atom=atomtype)
-                        if single:
-                            st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
-                            T.create_array(st, 'pol', newpol)
-                        else:
-                            st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir'
+                    if st._f_get_child(axes)[:,:,:,:,0] !=\
+                            st._f_get_child(axes)[:,:,:,:,-1]:
+                        sys.exit('WARNING: ' + '\\'.join([soltab, axes]) +
+                                 ' has not the same values for XX and YY polarization.'
+                                 '\nERROR: No polarization reduction will be done.'
+                                 '\nERROR: do not use --no_pol or --single_pol')
+                    if single:
+                        print(soltab+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
                     else:
-                        sys.exit('ERROR: ' + soltab.replace('000','').title() + ' has not the same values for XX and YY polarization.\nERROR: No polarization reduction will be done.')
+                        print(soltab+' has same values for XX and YY polarization.\nRemoving Polarization.')
+                    if single:
+                        newval = st._f_get_child(axes)[:, :, :, :, 0:1]
+                    else:
+                        newval = st._f_get_child(axes)[:, :, :, :, 0]
+
+                    valtype = str(st._f_get_child(axes).dtype)
+                    if '16' in valtype:
+                        atomtype = tables.Float16Atom()
+                    elif '32' in valtype:
+                        atomtype = tables.Float32Atom()
+                    elif '64' in valtype:
+                        atomtype = tables.Float64Atom()
+                    else:
+                        atomtype = tables.Float64Atom()
+
+                    st._f_get_child(axes)._f_remove()
+                    T.create_array(st, axes, newval.astype(valtype), atom=atomtype)
+
+                if single:
+                    st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
+                    T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
+                else:
+                    st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir'
         T.close()
 
         return self
