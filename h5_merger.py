@@ -786,30 +786,35 @@ class MergeH5:
 
     def order_directions(self):
         """
-        This method will be called when the user is using python 2, as there is a bug in the direction that we can resolve
+        This method will be called when the user is using Python 2, as there was a bug in the direction that we can resolve
         with this extra step.
-        Yes, this function is ugly and should be rewritten ;-)
         """
 
-        import h5py
-
-        T = h5py.File(self.h5name_out, 'r+')
-        for ss in T.keys():
-            T[ss+'/source'][:] = sort(T[ss+'/source'][:])
-            if '00' in ss: # for some reason it sorts randomly ascending or descending, this extra step is a fix for that
-                T[ss + '/source'][:] = sort(T[ss + '/source'][:])
-            for st in T[ss].keys():
-                if self.has_integer(st):
-                    for ax in T['/'.join([ss, st])]:
-                        if 'dir' == ax:
-                            H = tables.open_file(self.h5name_out, 'r+')
-                            for solset in H.root._v_groups.keys():
-                                ss = H.root._f_get_child(solset)
-                                for soltab in ss._v_groups.keys():
-                                    st = ss._f_get_child(soltab)
-                                    st.dir[:] = [c[0] for c in ss.source[:]]
-                            H.close()
-        T.close()
+        H = tables.open_file(self.h5name_out, 'r+')
+        for solset in H.root._v_groups.keys():
+            ss = H.root._f_get_child(solset)
+            #Not needed if only 1 source
+            if len(ss.source[:]) == 1:
+                H.close()
+                return self
+            #Problem when source table is empty
+            elif len(ss.source[:]) == 0:
+                H.close()
+                sys.exit('ERROR: No sources in output table '+'/'.join([solset, 'source']))
+            #No reordering needed
+            elif all(ss.source[:]['name'] == ss._f_get_child(list(ss._v_groups.keys())[0]).dir[:]):
+                H.close()
+                return self
+            #Reordering needed
+            else:
+                sources = sort(ss.source[:])
+                ss.source._f_remove()
+                H.create_table(ss, 'source', array(sources, dtype=[('name', 'S128'), ('dir', '<f4', (2,))]), title='Source names and directions')
+                for soltab in ss._v_groups.keys():
+                    st = ss._f_get_child(soltab)
+                    st.dir._f_remove()
+                    H.create_array(st, 'dir', array(sources['name'], dtype='|S5'))
+        H.close()
         return self
 
     def reduce_memory_source(self):
@@ -825,7 +830,7 @@ class MergeH5:
                 print('Changing the dtype to reduce memory size in '+solset+'.source[:]')
                 new_source = array(ss.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
                 ss.source._f_remove()
-                T.create_table(ss, 'source', new_source, "Source names and directions")
+                T.create_table(ss, 'source', new_source, title='Source names and directions')
         T.close()
         return self
 
@@ -1054,7 +1059,7 @@ class MergeH5:
         H = tables.open_file(self.h5name_out, 'r+')
         for solset in H.root._v_groups.keys():
             H.root._f_get_child(solset).antenna._f_remove()
-            H.create_table(H.root._f_get_child(solset), 'antenna', antennas, "Antenna names and positions")
+            H.create_table(H.root._f_get_child(solset), 'antenna', antennas, title='Antenna names and positions')
         H.close()
 
         return self
@@ -1079,7 +1084,7 @@ class MergeH5:
             ss = H.root._f_get_child(solset)
             ss.antenna._f_remove()
             antennas = array([list(zip(*(new_antlist, new_antpos)))], dtype=[('name', 'S16'), ('position', '<f4', (3,))])
-            H.create_table(ss, 'antenna', antennas, "Antenna names and positions")
+            H.create_table(ss, 'antenna', antennas, title="Antenna names and positions")
 
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
@@ -1622,10 +1627,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         print('{file} has been created'.format(file=h5_polchange))
 
     if sys.version_info.major == 2:
-        print('WARNING: You are using Python 2, which has source ordering issues.'
-              ' Extra reordering step applied but issues might remain.'
-              ' Please verify if sol000.source[:] corresponds with sol000.phase000.dir[:] and sol000.amplitude000.dir[:] '
-              'in '+merge.h5name_out+'\nOr switch to Python 3.')
         merge.order_directions()
 
     #Check table source size
