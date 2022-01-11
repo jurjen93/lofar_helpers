@@ -142,8 +142,8 @@ class MergeH5:
             for solset1 in H_ref.root._v_groups.keys():
                 antennas_ref = H_ref.root._f_get_child(solset1).antenna[:]
                 for soltab1 in H_ref.root._f_get_child(solset1)._v_groups.keys():
-                    if (len(antennas_ref['name'])!=len(H_ref.root.f_get_child(solset1)._f_get_child(soltab1).ant[:])) or \
-                            (not all(antennas_ref['name']==H_ref.root.f_get_child(solset1)._f_get_child(soltab1).ant[:])):
+                    if (len(antennas_ref['name'])!=len(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])) or \
+                            (not all(antennas_ref['name']==H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])):
                         print('Mismatch between antenna tables from '+h5_name1+' and '+'/'.join([solset1,soltab1,'ant']))
                         print('Antennas from '+h5_name1+':')
                         print(antennas_ref['name'])
