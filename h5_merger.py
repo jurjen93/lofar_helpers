@@ -807,9 +807,9 @@ class MergeH5:
                 return self
             #Reordering needed
             else:
-                sources = sort(ss.source[:])
+                sources = array(sort(ss.source[:]), dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
                 ss.source._f_remove()
-                H.create_table(ss, 'source', array(sources, dtype=[('name', 'S128'), ('dir', '<f4', (2,))]), title='Source names and directions')
+                H.create_table(ss, 'source', sources, title='Source names and directions')
                 for soltab in ss._v_groups.keys():
                     st = ss._f_get_child(soltab)
                     st.dir._f_remove()
@@ -822,7 +822,6 @@ class MergeH5:
         We need to store the data in 136 bytes per directions.
         Python 3 saves it automatically in more than that number.
         """
-
         T = tables.open_file(self.h5name_out, 'r+')
         for solset in T.root._v_groups.keys():
             ss = T.root._f_get_child(solset)
