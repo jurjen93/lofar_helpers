@@ -151,6 +151,18 @@ class MergeH5:
                         print(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])
                         H_ref.close()
                         return False
+                    for soltab2 in H_ref.root._f_get_child(solset1)._v_groups.keys():
+                        if (len(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:]) !=
+                            len(H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])) or \
+                                (not all(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:] ==
+                                         H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])):
+                            print('\nMismatch in antenna tables in ' + h5_name1)
+                            print('Antennas from ' + '/'.join([solset1, soltab1, 'ant']))
+                            print(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])
+                            print('Antennas from ' + '/'.join([solset1, soltab2, 'ant']))
+                            print(H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])
+                            H_ref.close()
+                            return False
                 for h5_name2 in self.h5_tables:
                     H = tables.open_file(h5_name2)
                     for solset2 in H.root._v_groups.keys():
