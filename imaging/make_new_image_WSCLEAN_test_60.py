@@ -46,8 +46,8 @@ if len(H.root.sol000.phase000.dir[:])!=len(tess.split('polygon'))-1:
 
 lines = ['wsclean -size 1500 1500 -use-wgridder -no-update-model-required -reorder -weight briggs -0.5 -weighting-rank-filter 3 ' \
         '-clean-border 1 -parallel-reordering  6 -padding 1.2 -auto-mask 2.5 -auto-threshold 0.5 -pol i -name image_test_L626678_rvw20 ' \
-        '-scale 6arcsec -niter 50000 -mgain 0.8 -fit-beam -multiscale -channels-out 6 -join-channels -multiscale-max-scales 7 -nmiter 7 ' \
-        '-log-time -multiscale-scale-bias 0.7 -facet-regions '+TO+'/' \
+        '-scale 6arcsec -niter 50000 -mgain 0.8 -fit-beam -multiscale -channels-out 6 -join-channels -multiscale-max-scales 7 -nmiter ' + nmiter + \
+        ' -log-time -multiscale-scale-bias 0.7 -facet-regions '+TO+'/' \
         'tess.reg ' \
         '-parallel-gridding 6 -fit-spectral-pol 3 -taper-gaussian 60arcsec ' \
         '-apply-facet-solutions '+TO+'/all_directions0.h5 amplitude000,phase000 '+ TO + \
