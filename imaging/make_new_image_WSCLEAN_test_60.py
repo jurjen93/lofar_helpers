@@ -33,16 +33,25 @@ if len(H.root.sol000.phase000.dir[:])!=len(tess.split('polygon'))-1:
 #----------------------------------------------------------------------------------------------------------------------
 
 #MAKE WSCLEAN COMMAND
-with open('/'.join(__file__.split('/')[0:-1])+'/WSCLEAN_scripts/wsclean.txt') as f:
-    lines = [l.replace('\n', '') for l in f.readlines()]
-    lines += ['-facet-regions '+TO+'/tess.reg']
-    lines += ['-apply-facet-solutions '+TO+'/'+H5+' amplitude000,phase000']
-    lines += ['-name image_test_L626678']
-    lines += ['-size 1500 1500']
-    lines += ['-scale 6arcsec']
-    lines += ['-nmiter '+nmiter]
-    lines += ['-taper-gaussian 60 arcsec']
-    lines += [TO+'/'+MS]
+# with open('/'.join(__file__.split('/')[0:-1])+'/WSCLEAN_scripts/wsclean.txt') as f:
+#     lines = [l.replace('\n', '') for l in f.readlines()]
+#     lines += ['-facet-regions '+TO+'/tess.reg']
+#     lines += ['-apply-facet-solutions '+TO+'/'+H5+' amplitude000,phase000']
+#     lines += ['-name image_test_L626678']
+#     lines += ['-size 1500 1500']
+#     lines += ['-scale 6arcsec']
+#     lines += ['-nmiter '+nmiter]
+#     lines += ['-taper-gaussian 60 arcsec']
+#     lines += [TO+'/'+MS]
+
+lines = 'wsclean -size 1500 1500 -use-wgridder -no-update-model-required -reorder -weight briggs -0.5 -weighting-rank-filter 3 ' \
+        '-clean-border 1 -parallel-reordering  6 -padding 1.2 -auto-mask 2.5 -auto-threshold 0.5 -pol i -name image_test_L626678_rvw20 ' \
+        '-scale 6arcsec -niter 50000 -mgain 0.8 -fit-beam -multiscale -channels-out 6 -join-channels -multiscale-max-scales 7 -nmiter 7 ' \
+        '-log-time -multiscale-scale-bias 0.7 -facet-regions '+TO+'/' \
+        'tess.reg ' \
+        '-parallel-gridding 6 -fit-spectral-pol 3 -taper-gaussian 60arcsec ' \
+        '-apply-facet-solutions '+TO+'/all_directions0.h5 amplitude000,phase000 '+ TO + \
+        '/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes'
 
 os.system('aoflagger '+TO+'/'+MS+' && wait')
 
