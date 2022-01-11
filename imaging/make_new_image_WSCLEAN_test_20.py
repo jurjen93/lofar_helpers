@@ -39,8 +39,8 @@ lines = ['wsclean -size 3000 3000 -use-wgridder -no-update-model-required -reord
         '-log-time -multiscale-scale-bias 0.7 -facet-regions '+TO+'/' \
         'tess.reg ' \
         '-parallel-gridding 6 -fit-spectral-pol 3 -taper-gaussian 20arcsec -parallel-deconvolution 1600 ' \
-        '-apply-facet-solutions '+TO+'/all_directions0.h5 amplitude000,phase000 '+ TO + \
-        '/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes']
+        '-apply-facet-solutions '+TO+'/'+H5+' amplitude000,phase000 '+ TO + \
+        '/'+MS]
 
 os.system('aoflagger '+TO+'/'+MS+' && wait')
 
