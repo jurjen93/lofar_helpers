@@ -784,7 +784,7 @@ class MergeH5:
 
         return DPPP_axes
 
-    def order_directions(self):
+    def reorder_directions(self):
         """
         This method will be called when the user is using Python 2, as there was a bug in the direction that we can resolve
         with this extra step.
@@ -1627,7 +1627,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         print('{file} has been created'.format(file=h5_polchange))
 
     if sys.version_info.major == 2:
-        merge.order_directions()
+        merge.reorder_directions()
 
     #Check table source size
     merge.reduce_memory_source()
