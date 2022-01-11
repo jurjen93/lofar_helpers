@@ -19,7 +19,7 @@ else:
 MS = 'Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive' + N + '.avg.goodtimes'
 H5 = 'all_directions'+N+'.h5'
 
-TO='/net/nieuwerijn/data2/jurjendejong/Abell399-401_' + N+ '_60'
+TO='/net/nieuwerijn/data2/jurjendejong/Abell399-401_' + N + '_60'
 FROM='/net/tussenrijn/data2/jurjendejong/A399_extracted_avg'
 
 
