@@ -15,5 +15,5 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 mkdir -p ${TO}
 cp ${FROM}/${H5} ${TO} && wait
 cp -r ${FROM}/${MS} ${TO} && wait
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py --h5 ${TO}/${H5} --DS9regionout ${TO}/tess.reg --imsize 3000 --ms ${TO}/${MS}
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py --h5 ${TO}/${H5} --DS9regionout ${TO}/tess.reg --imsize 6000 --ms ${TO}/${MS}
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} python ~/scripts/lofar_helpers/imaging/make_new_image_WSCLEAN_test_20.py --N ${N} --nmiter ${NMITER}
