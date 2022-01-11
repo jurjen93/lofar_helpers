@@ -807,7 +807,7 @@ class MergeH5:
                                 ss = H.root._f_get_child(solset)
                                 for soltab in ss._v_groups.keys():
                                     st = ss._f_get_child(soltab)
-                                    st.dir[:] = [c[0] for c in st.source[:]]
+                                    st.dir[:] = [c[0] for c in ss.source[:]]
                             H.close()
         T.close()
         return self
