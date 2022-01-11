@@ -142,12 +142,12 @@ class MergeH5:
             for solset1 in H_ref.root._v_groups.keys():
                 antennas_ref = H_ref.root._f_get_child(solset1).antenna[:]
                 for soltab1 in H_ref.root._f_get_child(solset1)._v_groups.keys():
-                    if (len(antennas_ref['name'])!=len(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])) or \
-                            (not all(antennas_ref['name']==H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])):
+                    if (len(antennas_ref['name']) != len(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])) or \
+                            (not all(antennas_ref['name'] == H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])):
                         print('Mismatch between antenna tables from '+h5_name1+' and '+'/'.join([solset1,soltab1,'ant']))
-                        print('Antennas from '+h5_name1+':')
+                        print('Antennas from '+'/'.join([solset1, 'antenna']))
                         print(antennas_ref['name'])
-                        print('Antennas from '+'/'.join([solset1,soltab1,'ant']))
+                        print('Antennas from '+'/'.join([solset1, soltab1, 'ant']))
                         print(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])
                         H_ref.close()
                         return False
@@ -155,7 +155,7 @@ class MergeH5:
                     H = tables.open_file(h5_name2)
                     for solset2 in H.root._v_groups.keys():
                         antennas = H.root._f_get_child(solset2).antenna[:]
-                        if (len(antennas_ref['name'])!=len(antennas['name'])) \
+                        if (len(antennas_ref['name']) != len(antennas['name'])) \
                                 or (not all(antennas_ref['name'] == antennas['name'])):
                             print('Mismatch between antenna tables from '+h5_name1+' and '+h5_name2)
                             print('Antennas from '+h5_name1+':')
@@ -207,7 +207,7 @@ class MergeH5:
             if av in st.getAxesNames() and st.getAxisLen(av) == 0:
                 print("No {av} in {solset}/{soltab}".format(av=av, solset=solset, soltab=soltab))
 
-        if len(st.getAxesNames())!=len(st.getValues()[0].shape):
+        if len(st.getAxesNames()) != len(st.getValues()[0].shape):
             sys.exit('ERROR: Axes ({axlen}) and Value dimensions ({vallen}) are not equal'.format(axlen=len(st.getAxesNames()), vallen=len(st.getValues()[0].shape)))
 
         if 'dir' in st.getAxesNames():
@@ -448,7 +448,7 @@ class MergeH5:
 
             for dir_idx in range(num_dirs):#loop over all directions
 
-                if self.filtered_dir!=None:
+                if self.filtered_dir != None:
                     if len(self.filtered_dir)>0 and dir_idx not in self.filtered_dir:
                         continue
 
@@ -480,7 +480,7 @@ class MergeH5:
                 dirs = ss.getSou()
                 if 'dir' in list(dirs.keys())[0].lower() and list(dirs.keys())[0][-1].isnumeric():
                     dirs = OrderedDict(sorted(dirs.items()))
-                elif len(dirs)>1 and (sys.version_info.major==2 or (sys.version_info.major==3 and sys.version_info.minor<6)):
+                elif len(dirs)>1 and (sys.version_info.major == 2 or (sys.version_info.major == 3 and sys.version_info.minor<6)):
                     print('WARNING: Order of source directions from h5 table might not be ordered. This is a Python 2 issue.'
                           '\nSuggest to switch to Python 3')
                 source_coords = dirs[list(dirs.keys())[dir_idx]]
@@ -526,7 +526,7 @@ class MergeH5:
                 if st.getType() == 'tec':
 
                     # add frequencies
-                    if 'freq' not in st.getAxesNames() and len(st.getAxesNames())==3:
+                    if 'freq' not in st.getAxesNames() and len(st.getAxesNames()) == 3:
                         ax = self.axes_new.index('freq') - len(self.axes_new)
                         values = expand_dims(values, axis=ax)
                         if 'pol' not in st.getAxesNames():
@@ -926,7 +926,7 @@ class MergeH5:
         h5_temp = h5parm(filetemp, readonly=False)
         solset = h5.getSolset(self.solset)
         solsettemp = h5_temp.makeSolset(self.solset)
-        if type(add_directions[0])==list:
+        if type(add_directions[0]) == list:
             sources = list([source[1] for source in solset.obj.source[:]]) + add_directions
         else:
             sources = list([source[1] for source in solset.obj.source[:]]) + [add_directions]
@@ -994,7 +994,7 @@ class MergeH5:
                 if single:
                     T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
                 for axes in ['val', 'weight']:
-                    if not all(st._f_get_child(axes)[:,:,:,:,0] ==\
+                    if not all(st._f_get_child(axes)[:,:,:,:,0] == \
                             st._f_get_child(axes)[:,:,:,:,-1]):
                         sys.exit('WARNING: ' + '/'.join([soltab, axes]) +
                                  ' has not the same values for XX and YY polarization.'
@@ -1093,26 +1093,26 @@ class MergeH5:
                     for idx, a in enumerate(new_antlist):
                         if a in old_antlist:
                             idx_old = old_antlist.index(a)
-                            if antenna_index==0:
+                            if antenna_index == 0:
                                 new_values[idx, ...] += old_values[idx_old, ...]
-                            elif antenna_index==1:
+                            elif antenna_index == 1:
                                 new_values[:, idx, ...] += old_values[:, idx_old, ...]
-                            elif antenna_index==2:
+                            elif antenna_index == 2:
                                 new_values[:, :, idx, ...] += old_values[:, :, idx_old, ...]
-                            elif antenna_index==3:
+                            elif antenna_index == 3:
                                 new_values[:, :, :, idx, ...] += old_values[:, :, :, idx_old, ...]
-                            elif antenna_index==4:
+                            elif antenna_index == 4:
                                 new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, idx_old, ...]
                         elif 'CS' in a: # core stations
-                            if antenna_index==0:
+                            if antenna_index == 0:
                                 new_values[idx, ...] += old_values[superstation_index, ...]
-                            elif antenna_index==1:
+                            elif antenna_index == 1:
                                 new_values[:, idx, ...] += old_values[:, superstation_index, ...]
-                            elif antenna_index==2:
+                            elif antenna_index == 2:
                                 new_values[:, :, idx, ...] += old_values[:, :, superstation_index, ...]
-                            elif antenna_index==3:
+                            elif antenna_index == 3:
                                 new_values[:, :, :, idx, ...] += old_values[:, :, :, superstation_index, ...]
-                            elif antenna_index==4:
+                            elif antenna_index == 4:
                                 new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, superstation_index, ...]
 
                     valtype = str(st._f_get_child(axes).dtype)
@@ -1183,7 +1183,7 @@ def output_check(h5):
     H = tables.open_file(h5)
 
     #check number of solset
-    assert len(list(H.root._v_groups.keys()))==1, \
+    assert len(list(H.root._v_groups.keys())) == 1, \
         'More than 1 solset in '+str(list(H.root._v_groups.keys()))+'. Only 1 is allowed for h5_merger.py.'
 
     for solset in H.root._v_groups.keys():
@@ -1209,7 +1209,7 @@ def output_check(h5):
 
             #check if pol and/or dir are not missing
             for pd in ['pol', 'dir']:
-                assert not (len(st.val.shape)==5 and pd not in list(st._v_children.keys())), \
+                assert not (len(st.val.shape) == 5 and pd not in list(st._v_children.keys())), \
                     '/'.join([solset, soltab, pd])+' is missing'
 
             #check if freq, time, and ant arrays are not missing
@@ -1224,7 +1224,7 @@ def output_check(h5):
 
             #check if dimensions of values match with length of arrays
             for ax_index, ax in enumerate(st.val.attrs['AXES'].decode('utf8').split(',')):
-                assert st.val.shape[ax_index]==len(st._f_get_child(ax)[:]), \
+                assert st.val.shape[ax_index] == len(st._f_get_child(ax)[:]), \
                     ax+' length is not matching with dimension from val in ' + '/'.join([solset, soltab, ax])
 
                 #check if ant and antennas have equal sizes
@@ -1491,8 +1491,8 @@ def _test_h5_output(h5_out, tables_to_merge):
         H5in = tables.open_file(h5)
         source_count+=len(H5in.root.sol000.source[:])
         H5in.close()
-    if len(sources_out)==source_count:
-        if type(tables_to_merge)!=list:
+    if len(sources_out) == source_count:
+        if type(tables_to_merge) != list:
             sys.exit('h5_tables type is not list. Might be bug in code.')
         for h5 in tables_to_merge:
             H5in = tables.open_file(h5)
@@ -1504,14 +1504,14 @@ def _test_h5_output(h5_out, tables_to_merge):
                         H5out.root.sol000._f_get_child('tec000')
                     except:
                         # No tec000, so it hasn't been merged with phase000 and changed the values
-                        if H5out.root.sol000.phase000.val[0, 0, 0, m, 0]!=H5in.root.sol000.phase000.val[0, 0, 0, n, 0] or \
-                            H5out.root.sol000.phase000.val[-1, 0, 0, m, 0]!=H5in.root.sol000.phase000.val[-1, 0, 0, n, 0]:
+                        if H5out.root.sol000.phase000.val[0, 0, 0, m, 0] != H5in.root.sol000.phase000.val[0, 0, 0, n, 0] or \
+                            H5out.root.sol000.phase000.val[-1, 0, 0, m, 0] != H5in.root.sol000.phase000.val[-1, 0, 0, n, 0]:
                             print('ERROR: Merge bug. Source table does not correspond with index for phase000. Please check.')
                 except:
                     pass
                 try:
-                    if H5out.root.sol000.ampltiude000.val[0, 0, 0, m, 0]!=H5in.root.sol000.ampltiude000.val[0, 0, 0, n, 0] or \
-                        H5out.root.sol000.ampltiude000.val[-1, 0, 0, m, 0]!=H5in.root.sol000.ampltiude000.val[-1, 0, 0, n, 0]:
+                    if H5out.root.sol000.ampltiude000.val[0, 0, 0, m, 0] != H5in.root.sol000.ampltiude000.val[0, 0, 0, n, 0] or \
+                        H5out.root.sol000.ampltiude000.val[-1, 0, 0, m, 0] != H5in.root.sol000.ampltiude000.val[-1, 0, 0, n, 0]:
                         print('ERROR: Merge bug. Source table does not correspond with index for ampltiude000. Please check.')
                 except:
                     pass
@@ -1547,7 +1547,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     h5_out = _create_h5_name(h5_out)
 
     #if alternative solset number is given, we will make a temp h5 file that has the alternative solset number because the code runs on sol000
-    if use_solset!='sol000':
+    if use_solset != 'sol000':
         for h5_ind, h5 in enumerate(h5_tables):
             temph5 = h5.replace('.h5', 'temp.h5')
             print('Using different solset. Make temporary h5 file: '+temph5)
@@ -1631,7 +1631,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     # if not merge_all_in_one:
     #     _test_h5_output(h5_out, h5_tables)
 
-    if use_solset!='sol000':
+    if use_solset != 'sol000':
         for h5 in h5_tables:
             if 'temp.h5' in h5:
                 os.system('rm '+h5)
@@ -1677,7 +1677,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # check if solset name is accepted
-    if 'sol' not in args.usesolset or sum([c.isdigit() for c in args.usesolset])!=3:
+    if 'sol' not in args.usesolset or sum([c.isdigit() for c in args.usesolset]) != 3:
         sys.exit(args.usesolse+' not an accepted name. Only sol000, sol001, sol002, ... are accepted names for solsets.')
 
     if args.filter_directions:
@@ -1701,11 +1701,11 @@ if __name__ == '__main__':
     else:
         h5tables = args.h5_tables
 
-    if type(h5tables)==str:
+    if type(h5tables) == str:
         h5tables = glob(h5tables)
-    elif type(h5tables)==list and len(h5tables)==1:
+    elif type(h5tables) == list and len(h5tables) == 1:
         h5tables = glob(h5tables[0])
-    elif type(h5tables)==list:
+    elif type(h5tables) == list:
         h5tablestemp=[]
         for h5 in h5tables:
             h5tablestemp+=glob(h5)
