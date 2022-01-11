@@ -141,15 +141,27 @@ class MergeH5:
             H_ref = tables.open_file(h5_name1)
             for solset1 in H_ref.root._v_groups.keys():
                 antennas_ref = H_ref.root._f_get_child(solset1).antenna[:]
+                for soltab1 in H_ref.root._f_get_child(solset1)._v_groups.keys():
+                    if (len(antennas_ref['name'])!=len(H_ref.root.f_get_child(solset1)._f_get_child(soltab1).ant[:])) or \
+                            (not all(antennas_ref['name']==H_ref.root.f_get_child(solset1)._f_get_child(soltab1).ant[:])):
+                        print('Mismatch between antenna tables from '+h5_name1+' and '+'/'.join([solset1,soltab1,'ant']))
+                        print('Antennas from '+h5_name1+':')
+                        print(antennas_ref['name'])
+                        print('Antennas from '+'/'.join([solset1,soltab1,'ant']))
+                        print(H_ref.root.f_get_child(solset1)._f_get_child(soltab1).ant[:])
+                        H_ref.close()
+                        return False
                 for h5_name2 in self.h5_tables:
                     H = tables.open_file(h5_name2)
-                    for solset2 in H_ref.root._v_groups.keys():
-                        antennas = H_ref.root._f_get_child(solset2).antenna[:]
-                        if not all(antennas_ref['name'] == antennas['name']):
+                    for solset2 in H.root._v_groups.keys():
+                        antennas = H.root._f_get_child(solset2).antenna[:]
+                        if (len(antennas_ref['name'])!=len(antennas['name'])) \
+                                or (not all(antennas_ref['name'] == antennas['name'])):
+                            print('Mismatch between antenna tables from '+h5_name1+' and '+h5_name2)
                             print('Antennas from '+h5_name1+':')
-                            print(antennas_ref)
+                            print(antennas_ref['name'])
                             print('Antennas from '+h5_name2+':')
-                            print(antennas)
+                            print(antennas['name'])
                             H.close()
                             H_ref.close()
                             return False
