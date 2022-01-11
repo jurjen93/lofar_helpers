@@ -148,7 +148,7 @@ class MergeH5:
                         print('Antennas from '+h5_name1+':')
                         print(antennas_ref['name'])
                         print('Antennas from '+'/'.join([solset1,soltab1,'ant']))
-                        print(H_ref.root.f_get_child(solset1)._f_get_child(soltab1).ant[:])
+                        print(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])
                         H_ref.close()
                         return False
                 for h5_name2 in self.h5_tables:
