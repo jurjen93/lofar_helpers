@@ -45,6 +45,7 @@ with open('/'.join(__file__.split('/')[0:-1])+'/WSCLEAN_scripts/wsclean.txt') as
     lines += ['-size 6000 6000']
     lines += ['-scale 1.5arcsec']
     lines += ['-nmiter '+nmiter]
+    lines += ['-minuv-l 80.0']
     lines += [TO+'/'+MS]
 
 os.system('aoflagger '+TO+'/'+MS+' && wait')
