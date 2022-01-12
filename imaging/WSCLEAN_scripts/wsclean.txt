@@ -23,4 +23,3 @@ wsclean
 -multiscale-scale-bias 0.7
 -parallel-deconvolution 1600
 -parallel-gridding 5
--minuv-l 80.0
