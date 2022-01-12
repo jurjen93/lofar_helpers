@@ -18,7 +18,7 @@ wsclean
 -channels-out 6
 -fit-spectral-pol 3
 -join-channels
--multiscale-max-scales 8
+-multiscale-max-scales 10
 -log-time
 -multiscale-scale-bias 0.7
 -parallel-deconvolution 1600

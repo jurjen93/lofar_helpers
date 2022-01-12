@@ -32,10 +32,46 @@ import tables
 from collections import OrderedDict
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort, power, sum, argmin, float64
 
-__all__ = ['merge_h5']
+__all__ = ['merge_h5', 'output_check']
 
 def remove_numbers(inp):
     return "".join(re.findall("[a-zA-z]+", inp))
+
+def overwrite_table(T, solset, table, values, title=None):
+    """
+    Create table for given table, opened with the package tables.
+    Best to use for antenna or source table.
+
+    :param T: Table opeend with tables
+    :param solset: solution set of the table (f.ex. sol000)
+    :param table: table name (f.ex. antenna or source)
+    :param values: new values
+    :param title: title of new table
+    """
+
+    try:
+        T.root
+    except:
+        sys.exit('ERROR: Create table failed. Given table not opened with the package "tables".')
+
+    if 'sol' not in solset:
+        print('WARNING: Usual input have sol*** as solset name.')
+
+    ss = T.root._f_get_child(solset)
+    ss._f_get_child(table)._f_remove()
+    if table == 'source':
+        values = array(values, dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+        title = 'Source names and directions'
+    elif table == 'antenna':
+        title = 'Antenna names and positions'
+        values = array(values, dtype=[('name', 'S16'), ('position', '<f4', (3,))])
+    else:
+        try:
+            values.shape
+        except:
+            values = array(values)
+    T.create_table(ss, table, values, title=title)
+
 
 class MergeH5:
     """Merge multiple h5 tables"""
@@ -808,8 +844,7 @@ class MergeH5:
             #Reordering needed
             else:
                 sources = array(sort(ss.source[:]), dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
-                ss.source._f_remove()
-                H.create_table(ss, 'source', sources, title='Source names and directions')
+                overwrite_table(H, solset, 'source', sources)
                 for soltab in ss._v_groups.keys():
                     st = ss._f_get_child(soltab)
                     st.dir._f_remove()
@@ -826,10 +861,7 @@ class MergeH5:
         for solset in T.root._v_groups.keys():
             ss = T.root._f_get_child(solset)
             if ss.source[:][0].nbytes > 140:
-                print('Changing the dtype to reduce memory size in '+solset+'.source[:]')
-                new_source = array(ss.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
-                ss.source._f_remove()
-                T.create_table(ss, 'source', new_source, title='Source names and directions')
+                overwrite_table(T, solset, 'source', ss.source[:])
         T.close()
         return self
 
@@ -1017,9 +1049,9 @@ class MergeH5:
                                  '\nERROR: No polarization reduction will be done.'
                                  '\nERROR: Do not use --no_pol or --single_pol')
                     if single:
-                        print(soltab+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
+                        print('/'.join([soltab, axes])+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
                     else:
-                        print(soltab+' has same values for XX and YY polarization.\nRemoving Polarization.')
+                        print('/'.join([soltab, axes])+' has same values for XX and YY polarization.\nRemoving Polarization.')
                     if single:
                         newval = st._f_get_child(axes)[:, :, :, :, 0:1]
                     else:
@@ -1042,6 +1074,7 @@ class MergeH5:
                         st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
                     else:
                         st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir'
+                    print('Value shape after --> '+str(st._f_get_child(axes)[:].shape))
         T.close()
 
         return self
@@ -1057,8 +1090,7 @@ class MergeH5:
         T.close()
         H = tables.open_file(self.h5name_out, 'r+')
         for solset in H.root._v_groups.keys():
-            H.root._f_get_child(solset).antenna._f_remove()
-            H.create_table(H.root._f_get_child(solset), 'antenna', antennas, title='Antenna names and positions')
+            overwrite_table(H, solset, 'antenna', antennas)
         H.close()
 
         return self
@@ -1081,9 +1113,8 @@ class MergeH5:
 
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
-            ss.antenna._f_remove()
             antennas = array([list(zip(*(new_antlist, new_antpos)))], dtype=[('name', 'S16'), ('position', '<f4', (3,))])
-            H.create_table(ss, 'antenna', antennas, title="Antenna names and positions")
+            overwrite_table(H, solset, 'antenna', antennas)
 
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
@@ -1196,6 +1227,8 @@ def _change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
 
 def output_check(h5):
 
+    print('\nChecking output...')
+
     H = tables.open_file(h5)
 
     #check number of solset
@@ -1263,7 +1296,7 @@ def output_check(h5):
 
     H.close()
 
-    print('Output has all necessary information and correct dimensions')
+    print('...Output has all necessary information and correct dimensions')
 
     return True
 
@@ -1492,6 +1525,9 @@ class PolChange:
 
 def _test_h5_output(h5_out, tables_to_merge):
     """
+
+    ##########      NEEDS UPDATE!!       ##########
+
     With this function we test if the output has the expected output by going through source coordinates and compare in and output H5.
     This only works when the phase000 and amplitude000 haven't changed. So, when tec000 is not merged with phase000,
     otherwise only amplitude000 are compared.
@@ -1536,7 +1572,27 @@ def _test_h5_output(h5_out, tables_to_merge):
         print('Received at least once the same source coordinates of two directions, which have been merged together.')
     H5out.close()
 
+def _degree_to_radian(d):
+    return pi*d/180
 
+def change_sourcetable(h5, overwrite=False, dir_idx=None, dec_degrees=0, ra_degrees=0):
+    """
+    Change source table for specific direction
+
+    :param overwrite: overwrite input file. If False -> add replace .h5 with _update.h5
+    :param dir_idx: directions index
+    :param y_degrees: change y_degrees
+    :param x_degrees: change x_degrees
+    """
+    if not overwrite:
+        os.system('cp '+h5+' '+h5.replace('.h5', '_upd.h5'))
+        h5 = h5.replace('.h5', '_upd.h5')
+    H = tables.open_file(h5, 'r+')
+    sources = H.root.sol000.source[:]
+    sources[dir_idx][1][0] += _degree_to_radian(ra_degrees)
+    sources[dir_idx][1][1] += _degree_to_radian(dec_degrees)
+    overwrite_table(H, 'sol000', 'source', sources)
+    H.close()
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
@@ -1559,6 +1615,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param add_cs: use MS to replace super station with core station
     :param check_output: check if output has all correct output information
     """
+
+    print('\n#####################\nSTART MERGE H5 TABLES\n#####################\n\nMerging the following tables:\n'+'\n'.join(h5_tables)+'\n')
 
     h5_out = _create_h5_name(h5_out)
 
@@ -1651,7 +1709,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if check_output:
         output_check(h5_out)
 
-    print('END: see output file --> '+h5_out)
+    print('\nSee output file --> '+h5_out+'\n\n###################\nEND MERGE H5 TABLES \n###################\n')
 
 
 if __name__ == '__main__':
