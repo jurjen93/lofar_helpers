@@ -26,7 +26,7 @@ TO='/net/nieuwerijn/data2/jurjendejong/Abell399-401_' + N + '_60'
 FROM='/net/tussenrijn/data2/jurjendejong/A399_extracted_avg'
 
 
-f = open(TO+'/tessupdate60.reg')
+f = open(TO+'/tess.reg')
 tess = f.read()
 f.close()
 H = tables.open_file(TO+'/'+H5)
