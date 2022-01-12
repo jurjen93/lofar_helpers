@@ -8,7 +8,7 @@ SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/test_wsclean_facet_fix_sep30.sif
 TO=/net/nieuwerijn/data2/jurjendejong/Abell399-401_${N}_60
 FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
-H5=all_directions${N}_update60.h5
+H5=all_directions${N}.h5
 MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive${N}.avg.goodtimes
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
