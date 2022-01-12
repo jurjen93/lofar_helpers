@@ -41,7 +41,7 @@ with open('/'.join(__file__.split('/')[0:-1])+'/WSCLEAN_scripts/wsclean.txt') as
     lines = [l.replace('\n', '') for l in f.readlines()]
     lines += ['-facet-regions '+TO+'/'+FACET]
     lines += ['-apply-facet-solutions '+TO+'/'+H5+' amplitude000,phase000']
-    lines += ['-name image_test_L626678']
+    lines += ['-name image_test_A399']
     lines += ['-size 6000 6000']
     lines += ['-scale 1.5arcsec']
     lines += ['-nmiter '+nmiter]
