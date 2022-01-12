@@ -8,7 +8,7 @@ SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/test_wsclean_facet_fix_sep30.sif
 TO=/net/nieuwerijn/data2/jurjendejong/Abell399-401_${N}_60
 FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
-H5=all_directions${N}.h5
+H5=all_directions${N}_update60.h5
 MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive${N}.avg.goodtimes
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
@@ -16,4 +16,4 @@ mkdir -p ${TO}
 cp ${FROM}/${H5} ${TO} && wait
 cp -r ${FROM}/${MS} ${TO} && wait
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py --h5 ${TO}/${H5} --DS9regionout ${TO}/tess.reg --imsize 6000 --ms ${TO}/${MS}
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} python ~/scripts/lofar_helpers/imaging/make_new_image_WSCLEAN_test_60.py --N ${N} --nmiter ${NMITER}
+singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} python ~/scripts/lofar_helpers/imaging/make_new_image_WSCLEAN_test_60.py --N ${N} --nmiter ${NMITER} --h5 ${H5} --ms ${MS}
