@@ -39,7 +39,7 @@ def remove_numbers(inp):
 
 def overwrite_table(T, solset, table, values, title=None):
     """
-    Create table for given table, opened with the package tables.
+    Create table for given solset, opened with the package tables.
     Best to use for antenna or source table.
 
     :param T: Table opeend with tables
@@ -52,7 +52,7 @@ def overwrite_table(T, solset, table, values, title=None):
     try:
         T.root
     except:
-        sys.exit('ERROR: Create table failed. Given table not opened with the package "tables".')
+        sys.exit('ERROR: Create table failed. Given table not opened with the package "tables" (https://pypi.org/project/tables/).')
 
     if 'sol' not in solset:
         print('WARNING: Usual input have sol*** as solset name.')
@@ -66,7 +66,7 @@ def overwrite_table(T, solset, table, values, title=None):
         title = 'Antenna names and positions'
         values = array(values, dtype=[('name', 'S16'), ('position', '<f4', (3,))])
     else:
-        try:
+        try: # check if numpy structure
             values.shape
         except:
             values = array(values)
@@ -108,8 +108,8 @@ class MergeH5:
             if len(self.ms)>0:
                 print('Take the time and freq from the following h5 solution file:\n'+h5_time_freq)
             T = tables.open_file(h5_time_freq)
-            self.ax_time = T.root.sol000.phase000.time[:]
-            self.ax_freq = T.root.sol000.phase000.freq[:]
+            self.ax_time = T.root.sol000.phase000.time[:] # hard coded --> could be written more generally
+            self.ax_freq = T.root.sol000.phase000.freq[:] # hard coded --> could be written more generally
             T.close()
 
         elif len(self.ms)>0: # if there are multiple ms files
