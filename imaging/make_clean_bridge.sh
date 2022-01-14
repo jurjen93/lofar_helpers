@@ -72,7 +72,7 @@ wsclean \
 -multiscale \
 -join-channels \
 -multiscale-max-scales 10 \
--nmiter ${NMITER} \
+-nmiter 9 \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions tess.reg \
@@ -117,7 +117,7 @@ wsclean \
 -multiscale \
 -join-channels \
 -multiscale-max-scales 10 \
--nmiter ${NMITER} \
+-nmiter 9 \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions tess.reg \
