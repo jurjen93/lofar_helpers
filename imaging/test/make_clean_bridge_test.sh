@@ -1,53 +1,37 @@
 #!/bin/bash
 
-#input
-H5=$1
-MS=$2
+N=$1
+NMITER=$2
 
 NAME=image_test_A399_cleanbridge
 
 SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn4,/net/rijn3,/net/rijn2
 SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/test_wsclean_facet_fix_sep30.sif
-TO=/net/nieuwerijn/data2/jurjendejong/Abell399-401_cleanbridge
+TO=/net/nieuwerijn/data2/jurjendejong/Abell399-401_${N}_cleanbridge
 FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
+H5=all_directions${N}.h5
+MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive${N}.avg.goodtimes
+MSTEST=${MS}.test
 
-#check if directory exists
-if [[ -f ${TO} ]]
-then
-  echo "${TO} exists. Exit script"
-  exit 0
-fi
-
-#cache
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
-
-#make directory
 mkdir -p ${TO}
-
-#copy files
-for H in ${H5}
-do
-  cp ${FROM}/${H} ${TO}
-done
-
-#aoflagger
-for M in ${MS}
-do
-  cp ${FROM}/${M} ${TO}
-  aoflagger ${TO}/${M}
-done
-
+#cp ${FROM}/${H5} ${TO} && wait
+#cp -r ${FROM}/${MS} ${TO} && wait
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} \
+# python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py \
+# --time_flag 0 300 \
+# -msin ${FROM}/${MS} \
+# -msout ${TO}/${MSTEST}
+#aoflagger ${TO}/${MSTEST} && wait
 cd ${TO}
 
-#make facet
-cp ${FROM}/tess.reg ${TO} && wait
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
-#--h5 ${TO}/${H5} \
-#--DS9regionout ${TO}/tess.reg \
-#--imsize 6000 \
-#--ms ${TO}/${MS_1}
-
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} \
+# python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
+# --h5 ${TO}/${H5} \
+# --DS9regionout ${TO}/tess.reg \
+# --imsize 6000 \
+# --ms ${TO}/${MSTEST}
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
@@ -75,12 +59,12 @@ wsclean \
 -nmiter ${NMITER} \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions tess.reg \
+-facet-regions ${TO}/tess.reg \
 -minuv-l 2000.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
--apply-facet-solutions ${H5} amplitude000,phase000 \
-${MS}
+-apply-facet-solutions ${TO}/${H5} amplitude000,phase000 \
+${TO}/${MSTEST}
 
 #predict
 wsclean \
@@ -91,7 +75,7 @@ wsclean \
 -name ${NAME}
 
 #subtract
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS} --colname DIFFUSE_SUB
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${TO}/${MSTEST} --colname DIFFUSE_SUB
 
 #make final image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -120,11 +104,11 @@ wsclean \
 -nmiter ${NMITER} \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions tess.reg \
+-facet-regions ${TO}/tess.reg \
 -minuv-l 80.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \
 -data-column DIFFUSE_SUB \
--apply-facet-solutions ${H5} amplitude000,phase000 \
-${MS}
+-apply-facet-solutions ${TO}/${H5} amplitude000,phase000 \
+${TO}/${MSTEST}

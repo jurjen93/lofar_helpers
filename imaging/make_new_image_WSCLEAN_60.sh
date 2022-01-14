@@ -74,19 +74,10 @@ wsclean \
 -nmiter 11 \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions ${TO}/tessupdate.reg \
+-facet-regions tessupdate.reg \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \
 -apply-facet-solutions ${H5} amplitude000,phase000 \
 -minuv-l 80.0 \
-${TO}/${MS}
-
-lines = ['wsclean -size 1500 1500 -use-wgridder -no-update-model-required -reorder -weight briggs -0.5 -weighting-rank-filter 3 ' \
-        '-clean-border 1 -parallel-reordering 6 -padding 1.2 -auto-mask 2.5 -auto-threshold 0.5 -pol i -name image_test_A399_60 ' \
-        '-scale 6arcsec -niter 50000 -mgain 0.8 -fit-beam -multiscale -channels-out 6 -join-channels -multiscale-max-scales 10 -nmiter ' + nmiter + \
-        ' -log-time -multiscale-scale-bias 0.7 -facet-regions '+TO+'/'+FACET+ \
-        ' -minuv-l 80.0' \
-        '-parallel-gridding 6 -fit-spectral-pol 3 -taper-gaussian 60arcsec ' \
-        '-apply-facet-solutions '+TO+'/'+H5+' amplitude000,phase000 '+ TO + \
-        '/'+MS]
+${MS}

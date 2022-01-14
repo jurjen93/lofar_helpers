@@ -74,11 +74,11 @@ wsclean \
 -nmiter 11 \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions ${TO}/tessupdate.reg \
+-facet-regions tessupdate.reg \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -taper-gaussian 20arcsec \
 -parallel-deconvolution 1600 \
 -apply-facet-solutions ${H5} amplitude000,phase000 \
 -minuv-l 80.0 \
-${TO}/${MS}
+${MS}
