@@ -71,7 +71,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -multiscale-scale-bias 0.7 \
 -parallel-deconvolution 1600 \
 -parallel-gridding 5 \
--facet-regions ${TO}/tessupdate.reg \
+-facet-regions tessupdate.reg \
 -apply-facet-solutions ${H5} amplitude000,phase000 \
 -name image_test_A399 \
 -size 6000 6000 \
