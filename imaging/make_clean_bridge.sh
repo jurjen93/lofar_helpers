@@ -18,11 +18,20 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 mkdir -p ${TO}
 #cp ${FROM}/${H5} ${TO} && wait
 #cp -r ${FROM}/${MS} ${TO} && wait
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py --time_flag 0 300 -msin ${FROM}/${MS} -msout ${TO}/${MSTEST}
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} \
+# python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py \
+# --time_flag 0 300 \
+# -msin ${FROM}/${MS} \
+# -msout ${TO}/${MSTEST}
 #aoflagger ${TO}/${MSTEST} && wait
 cd ${TO}
 
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py --h5 ${TO}/${H5} --DS9regionout ${TO}/tess.reg --imsize 6000 --ms ${TO}/${MSTEST}
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} \
+# python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
+# --h5 ${TO}/${H5} \
+# --DS9regionout ${TO}/tess.reg \
+# --imsize 6000 \
+# --ms ${TO}/${MSTEST}
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
@@ -54,7 +63,6 @@ wsclean \
 -minuv-l 2000.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
--taper-gaussian 60arcsec \
 -apply-facet-solutions ${TO}/${H5} amplitude000,phase000 \
 ${TO}/${MSTEST}
 
@@ -66,3 +74,41 @@ wsclean \
 -predict \
 -name ${NAME}
 
+#subtract
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${TO}/${MSTEST} --colname DIFFUSE_SUB
+
+#make final image
+singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
+wsclean \
+-size 1500 1500 \
+-use-wgridder \
+-no-update-model-required \
+-reorder \
+-channels-out 2 \
+-weight briggs -0.5 \
+-weighting-rank-filter 3 \
+-clean-border 1 \
+-parallel-reordering 6 \
+-padding 1.2 \
+-auto-mask 2.5 \
+-auto-threshold 0.5 \
+-pol i \
+-name ${NAME} \
+-scale 6arcsec \
+-niter 50000 \
+-mgain 0.8 \
+-fit-beam \
+-multiscale \
+-join-channels \
+-multiscale-max-scales 10 \
+-nmiter ${NMITER} \
+-log-time \
+-multiscale-scale-bias 0.7 \
+-facet-regions ${TO}/tess.reg \
+-minuv-l 80.0 \
+-parallel-gridding 6 \
+-fit-spectral-pol 3 \
+-taper-gaussian 60arcsec \
+-data-column DIFFUSE_SUB \
+-apply-facet-solutions ${TO}/${H5} amplitude000,phase000 \
+${TO}/${MSTEST}
