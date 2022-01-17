@@ -683,6 +683,8 @@ class MergeH5:
                 elif st.getType() == 'phase' or st.getType() == 'rotation':
 
                     # check and correct pol axis
+                    print(self.axes_current)
+                    print(self.axes_final)
                     if 'pol' in self.axes_current and 'pol' in self.axes_final:
                         if st.getAxisLen('pol') > self.phases.shape[0]:
                             self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
