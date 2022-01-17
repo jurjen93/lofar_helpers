@@ -393,19 +393,15 @@ class MergeH5:
         :return: the interpolated result
         """
 
+        # bug fix in python 2 for time axis with length 1
         if len(interp_from) == 1 and sys.version_info.major == 2:
-            print(axis)
-            print(interp_to)
-            print(x.shape)
-            tmp = x
+            new_vals = x
             for _ in range(len(interp_to)-1):
-                x = append(x, tmp, axis=axis)
-            print(x.shape)
-            return x
+                new_vals = append(new_vals, x, axis=axis)
         else:
             interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value='extrapolate')
             new_vals = interp_vals(interp_to)
-            return new_vals
+        return new_vals
 
     def get_model_h5(self, solset, soltab):
         """
