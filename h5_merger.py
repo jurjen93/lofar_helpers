@@ -252,19 +252,20 @@ class MergeH5:
             print("WARNING: Frequency axes of h5 and MS are not overlapping.")
         if float(soltab[-3:]) > 0:
             print("WARNING: {soltab} does not end on 000".format(soltab=soltab))
-        for av in self.axes_new:
+        for av in self.axes_final:
             if av in st.getAxesNames() and st.getAxisLen(av) == 0:
                 print("No {av} in {solset}/{soltab}".format(av=av, solset=solset, soltab=soltab))
 
         if len(st.getAxesNames()) != len(st.getValues()[0].shape):
             sys.exit('ERROR: Axes ({axlen}) and Value dimensions ({vallen}) are not equal'.format(axlen=len(st.getAxesNames()), vallen=len(st.getValues()[0].shape)))
 
+        axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
         if 'dir' in st.getAxesNames():
-            values = reorderAxes(st.getValues()[0], st.getAxesNames(), self.axes_current)
+            values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_current)
         else:
             print('No direction axis, we will add this.')
             origin_values = st.getValues()[0]
-            values = reorderAxes(origin_values.reshape(origin_values.shape+(1,)), st.getAxesNames()+['dir'], self.axes_current)
+            values = reorderAxes(origin_values.reshape(origin_values.shape+(1,)), st.getAxesNames()+['dir'], axes_current)
 
         return values, time_axes, freq_axes
 
@@ -331,7 +332,7 @@ class MergeH5:
         self.all_axes = set(self.all_axes)
         return self
 
-    def _get_clean_values(self, soltab, st):
+    def _get_template_values(self, soltab, st):
         """
         Get default values, based on model h5 table
 
@@ -339,12 +340,12 @@ class MergeH5:
         :param st: solution table itself
         """
 
-        num_dir = max(len(self.directions), 1)  # number of directions already existing
+        num_dir = max(len(self.directions), 1)
 
         if 'pol' in st.getAxesNames():
             self.polarizations = st.getAxisValues('pol')
         else:
-            self.polarizations = []  # most cases you want to have 5 dimensions but no polarization is still an option
+            self.polarizations = []
 
         if 'amplitude' in soltab and 'pol' in st.getAxesNames():
             self.gains = ones(
@@ -381,7 +382,7 @@ class MergeH5:
         return -8.4479745e9 * tec / freqs
 
     @staticmethod
-    def interp_along_axis(x, interp_from, interp_to, axis):
+    def _interp_along_axis(x, interp_from, interp_to, axis):
         """
         Interpolate along axis
 
@@ -429,13 +430,20 @@ class MergeH5:
                     st = ss.getSoltab(soltab)
 
                 if not self.convert_tec or (self.convert_tec and 'tec' not in soltab):
-                    self._get_clean_values(soltab, st)
-                    self.axes_new = [an for an in self.solaxnames if an in st.getAxesNames()]
+                    self._get_template_values(soltab, st)
+                    self.axes_final = [an for an in self.solaxnames if an in st.getAxesNames()]
                 elif 'tec' in soltab and self.convert_tec:
                     for st_group in self.all_soltabs:
                         if soltab in st_group and ('phase000' not in st_group and 'phase{n}'.format(n=soltab[-3:])):
-                            self._get_clean_values(soltab, st)
-                            self.axes_new = [an for an in self.solaxnames if an in st.getAxesNames()]
+                            self._get_template_values(soltab, st)
+                            self.axes_final = [an for an in self.solaxnames if an in st.getAxesNames()]
+
+                # add dir if missing
+                if 'dir' not in self.axes_final:
+                    if 'pol' in self.axes_final:
+                        self.axes_final.insert(1, 'dir')
+                    else:
+                        self.axes_final.inser(0, 'dir')
 
                 h5_to_merge.close()
                 break
@@ -458,6 +466,50 @@ class MergeH5:
         self.directions.update(source)
         self.directions = OrderedDict(sorted(self.directions.items()))
 
+
+    @staticmethod
+    def _expand_poldim(values, dim_pol, type, haspol):
+        """
+        Add extra polarization dimensions
+
+        :param values: values which need to get a polarization
+        :param dim_pol: number of dimensions
+        :param type: phase or amplitude
+        :param hasnopol: has polarization
+
+        :return: input values with extra polarization axis
+        """
+
+        if dim_pol == 4:
+            print("Make fulljones type with 4 polarizations")
+
+        if len(values.shape) < 5 and not haspol:
+            if type == 'amplitude':
+                values_new = ones((dim_pol,) + values.shape)
+            elif type == 'phase':
+                values_new = zeros((dim_pol,) + values.shape)
+            else:
+                sys.exit('ERROR: Only type in [amplitude, phase] allowed')
+            for i in range(dim_pol):
+                values_new[i, ...] = values
+        elif values.shape[0] in [1, 2] and dim_pol in [2, 4] and haspol:
+            if type == 'amplitude':
+                values_new = ones((dim_pol,) + values.shape[1:])
+            elif type == 'phase':
+                values_new = zeros((dim_pol,) + values.shape[1:])
+            else:
+                sys.exit('ERROR: Only type in [amplitude, phase] allowed')
+            values_new[0, ...] = values[0, ...]
+            if values.shape[0] == 2:
+                values_new[-1, ...] = values[1, ...]
+            elif values.shape[0] == 1:
+                values_new[-1, ...] = values[0, ...]
+        else:
+            print('WARNING: No pol ax dimension changed.')
+            return values
+
+        return values_new
+
     def merge_files(self, solset, soltab):
         """
         Merge the h5 files
@@ -468,7 +520,7 @@ class MergeH5:
 
         for h5_name in self.h5_tables:
 
-            print(h5_name, len(self.h5_tables))
+            print(h5_name)
 
             h5 = h5parm(h5_name)
             if solset not in h5.getSolsetNames():
@@ -483,61 +535,48 @@ class MergeH5:
 
             st = ss.getSoltab(soltab)
 
-            # current axes for reordering of axes
-            self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
-
-            # add dir if missing
-            if 'dir' not in self.axes_new:
-                self.axes_new.insert(1, 'dir')
-            if 'dir' not in self.axes_current:
-                self.axes_current.insert(1, 'dir')
-
-            init_dir_index = self.axes_current.index('dir')  # index of direction
-
             print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
             num_dirs = self.get_number_of_directions(st)  # number of directions
-            print('This table has {numdirection} direction(s)'.format(numdirection=num_dirs))
+            print('This table has {dircount} direction(s)'.format(dircount=num_dirs))
 
-            # get values, time, and freq axis
+            # get values, time, and freq axis from h5 file
             table_values, time_axes, freq_axes = self._get_and_check_values(st, solset, soltab)
 
-            for dir_idx in range(num_dirs):#loop over all directions
+            for dir_idx in range(num_dirs): # loop over all directions in h5
 
                 if self.filtered_dir != None:
-                    if len(self.filtered_dir)>0 and dir_idx not in self.filtered_dir:
+                    if len(self.filtered_dir) > 0 and dir_idx not in self.filtered_dir:
                         continue
 
-                shape = list(table_values.shape)
-                shape[init_dir_index] = 1
-                values = zeros(shape)
+                if 'pol' not in st.getAxesNames():
+                    values = table_values[dir_idx, ...]
+                    # adding direction dimension
+                    values = expand_dims(values, axis=0)
+                else:
+                    values = table_values[:, dir_idx, ...]
+                    # adding direction dimension
+                    values = expand_dims(values, axis=1)
 
-                if init_dir_index == 0:
-                    values[0, ...] = table_values[dir_idx, ...]
-                elif init_dir_index == 1:
-                    values[:, 0, ...] = table_values[:, dir_idx, ...]
-                elif init_dir_index == 2:
-                    values[:, :, 0, ...] = table_values[:, :, dir_idx, ...]
-                elif init_dir_index == 3:
-                    values[:, :, :, 0, ...] = table_values[:, :, :, dir_idx, ...]
-                elif init_dir_index == 4:
-                    values[:, :, :, :, 0, ...] = table_values[:, :, :, :, dir_idx, ...]
+                # current axes for reordering of axes
+                self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
 
-                # update current and new axes if missing pol axes
-                if len(self.axes_current) == 4 and ((len(self.phases.shape) == 5
-                                                     and (st.getType() in ['phase', 'rotation'] or (
-                                st.getType() == 'tec' and self.convert_tec)))
-                                                    or st.getType() == 'amplitude' and len(self.gains.shape) == 5):
-                    self.axes_current = ['pol'] + self.axes_current
-                    if len(self.axes_new) == 4:
-                        self.axes_new = ['pol'] + self.axes_new
+                if 'dir' not in self.axes_current:
+                    if 'pol' in self.axes_current:
+                        self.axes_current.insert(1, 'dir')
+                    else:
+                        self.axes_current.insert(0, 'dir')
+                    values = expand_dims(values, axis=self.axes_current.index('dir'))
+
+                idxnan = where((~isfinite(values)))
+                values[idxnan] = 0.0
 
                 # get source coordinates
                 dirs = ss.getSou()
                 if 'dir' in list(dirs.keys())[0].lower() and list(dirs.keys())[0][-1].isnumeric():
                     dirs = OrderedDict(sorted(dirs.items()))
                 elif len(dirs)>1 and (sys.version_info.major == 2 or (sys.version_info.major == 3 and sys.version_info.minor<6)):
-                    print('WARNING: Order of source directions from h5 table might not be ordered. This is a Python 2 issue.'
-                          '\nSuggest to switch to Python 3')
+                    print('WARNING: Order of source directions from h5 table might not be ordered. This is an old Python issue.'
+                          '\nSuggest to switch to Python 3.6 or higher')
                 source_coords = dirs[list(dirs.keys())[dir_idx]]
 
                 if self.merge_all_in_one and self.n == 1:
@@ -578,227 +617,128 @@ class MergeH5:
                                 shape[dir_index] = 1
                                 self.gains = append(self.gains, ones(shape),
                                                        axis=dir_index)  # add clean gain to merge with
+
+                # Now we will add the solution table axis --> tec, phase, rotation, or amplitude
+
                 if st.getType() == 'tec':
 
                     # add frequencies
-                    if 'freq' not in st.getAxesNames() and len(st.getAxesNames()) == 3:
-                        ax = self.axes_new.index('freq') - len(self.axes_new)
+                    if 'freq' not in st.getAxesNames():
+                        ax = self.axes_final.index('freq') - len(self.axes_final)
                         values = expand_dims(values, axis=ax)
-                        if 'pol' not in st.getAxesNames():
-                            self.axes_current = ['dir', 'ant', 'freq', 'time']
-                        else:
-                            self.axes_current = ['pol', 'dir', 'ant', 'freq', 'time']
+                        self.axes_current.insert(-1, 'freq')
                         valuestmp = values
                         for _ in range(len(self.ax_freq)-1):
                             values = append(values, valuestmp, axis=-2)
 
-                    if self.convert_tec:  # Convert tec to phase.
-                        if len(self.polarizations) > 0 and len(self.phases.shape) == 5 and 'pol' not in self.axes_current:
-                            valtmp = ones((len(self.polarizations),) + values.shape)
-                            valtmp[0, ...] = values
-                            valtmp[-1, ...] = values
-                            values = valtmp
+                    # convert tec to phase
+                    if self.convert_tec:
 
-                            freqs = self.ax_freq.reshape(1, 1, 1, -1, 1)
-                            tecphase = self.tecphase_conver(values, freqs)
-                            tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
-                                                        self.axes_new.index('time'))
-                        elif len(self.phases.shape) == 4:
-                            freqs = self.ax_freq.reshape(1, 1, -1, 1)
-                            tecphase = self.tecphase_conver(values, freqs)
-                            tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
-                                                        self.axes_current.index('time'))
-                        elif len(self.phases.shape) == 5:
-                            freqs = self.ax_freq.reshape(1, 1, 1, -1, 1)
-                            tecphase = self.tecphase_conver(values, freqs)
-                            tp = self.interp_along_axis(tecphase, time_axes, self.ax_time,
-                                                        self.axes_current.index('time'))
-                        else:
-                            sys.exit('ERROR: Something went wrong with reshaping. Shouldnt end up here..')
-                        # Make tp shape same as phases
+                        shape = [1 for _ in range(len(self.phases.shape))]
+                        shape[-1] = -1
+                        values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
 
-                        if len(self.phases.shape) == 5 and tp.shape[0] == 1:
-                            phasetmp = zeros(self.phases.shape)
-                            phasetmp[0, ...] = tp[0, ...]
-                            phasetmp[1, ...] = tp[0, ...]
-                            tp = phasetmp
+                        # check and correct pol axis
+                        if 'pol' in self.axes_current and 'pol' in self.axes_final:
+                            if st.getAxisLen('pol') > self.phases.shape[0]:
+                                self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
+                            elif self.phases.shape[0] > st.getAxisLen('pol'):
+                                values = self._expand_poldim(values, self.phases.shape[0], 'phase', True)
+                        elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
+                            values = self._expand_poldim(values, self.phases.shape[0], 'phase', False)
+                            self.axes_current.insert(0, 'pol')
+                        elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
+                            self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
+                            self.axes_final.insert(0, 'pol')
+                        elif 'pol' not in self.axes_current and 'pol' not in self.axes_final:
+                            self.phases = self._expand_poldim(self.phases, 2, 'phase', False)
+                            values = self._expand_poldim(values, 2, 'phase', False)
+                            self.axes_current.insert(0, 'pol')
+                            self.axes_final.insert(0, 'pol')
 
-                        # Add phases together
-                        if len(tp.shape) - len(self.phases.shape) == 1:
-                            self.phases[idx, ...] += tp[0, 0, ...]
-                            phasetmp = zeros((2,) + self.phases.shape[:])
-                            phasetmp[0, ...] = self.phases
-                            phasetmp[-1, ...] = self.phases
-                            self.phases = phasetmp
-                            if 'pol' not in self.axes_new:
-                                self.axes_new = ['pol'] + self.axes_new
+                        # interpolate time axis
+                        newvals = self._interp_along_axis(values, time_axes, self.ax_time,
+                                                          self.axes_current.index('time'))
 
-                        elif len(self.phases.shape) - len(tp.shape) == 1:  # probably never reaches here
-                            self.phases[0, idx, ...] += tp[0, ...]
-                            self.phases[1, idx, ...] += tp[0, ...]
+                        # add values
+                        self.phases[:, idx, ...] += newvals[:, 0, ...]
 
-                        elif len(self.phases.shape) == len(tp.shape):
-                            if len(self.phases.shape) == 5:
-                                self.phases[:, idx, ...] += tp[:, 0, ...]
-                            elif len(self.phases.shape) == 4:
-                                self.phases[idx, ...] += tp[0, ...]
-
-                        elif len(self.phases.shape) == 5 and len(tp.shape) == 5:
-                            if self.phases.shape[0] == 2 and tp.shape[0] == 1:
-                                self.phases[0, idx, ...] += tp[0, 0, ...]
-                                self.phases[1, idx, ...] += tp[1, 0, ...]
-
+                    # TODO: this part needs an update
                     else:
                         if 'dir' in self.axes_current:  # this line is trivial and could maybe be removed
                             values = values[0, :, 0, :]
 
-                        tp = self.interp_along_axis(values, time_axes, self.ax_time, -1)
-                        tp = tp.reshape((1, tp.shape[0], 1, tp.shape[1]))
+                        newvals = self._interp_along_axis(values, time_axes, self.ax_time, -1)
+                        newvals = newvals.reshape((1, newvals.shape[0], 1, newvals.shape[1]))
                         # Now add the tecs to the total phase correction for this direction.
                         if 'dir' in self.axes_current:  # this line is trivial and could be removed
-                            self.phases[idx, ...] += tp[0, ...]
+                            self.phases[idx, ...] += newvals[0, ...]
                         else:
-                            self.phases[idx, :, :] += tp
+                            self.phases[idx, :, :] += newvals
 
                 elif st.getType() == 'phase' or st.getType() == 'rotation':
-                    if 'pol' in self.axes_current and 'pol' in st.getAxesNames():
-                        if st.getAxisLen('pol') == 4:
-                            print("Add fulljones type with 4 polarizations")
-                            print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
-                            if self.phases.shape[0] == 2:
-                                phasetmp = zeros((4,) + self.phases.shape[1:])
-                                phasetmp[0, ...] = self.phases[0, ...]
-                                phasetmp[-1, ...] = self.phases[1, ...]
-                                self.phases = phasetmp
-                            elif len(self.phases.shape) < 5:
-                                phasetmp = zeros((4,) + self.phases.shape)
-                                phasetmp[0, ...] = self.phases
-                                phasetmp[-1, ...] = self.phases
-                                self.phases = phasetmp
-                        elif st.getAxisLen('pol') == 2 and self.phases.shape[0] == 4:
-                            print("Add to fulljones type with 4 polarizations")
-                            print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
-                            phasetmp = zeros((4,) + values.shape[1:])
-                            phasetmp[0, ...] = values[0, ...]
-                            phasetmp[-1, ...] = values[1, ...]
-                            values = phasetmp
-                    elif 'pol' in self.axes_current and 'pol' not in st.getAxesNames() and len(self.phases.shape) == 5:
-                        phasetmp = zeros((self.phases.shape[0],) + values.shape)
-                        phasetmp[0, ...] = values
-                        phasetmp[-1, ...] = values
-                        values = phasetmp
 
-                    idxnan = where((~isfinite(values)))
-                    values[idxnan] = 0.0
+                    # check and correct pol axis
+                    if 'pol' in self.axes_current and 'pol' in self.axes_final:
+                        if st.getAxisLen('pol') > self.phases.shape[0]:
+                            self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
+                        elif self.phases.shape[0] > st.getAxisLen('pol'):
+                            values = self._expand_poldim(values, self.phases.shape[0], 'phase', True)
+                    elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
+                        values = self._expand_poldim(values, self.phases.shape[0], 'phase', False)
+                        self.axes_current.insert(0, 'pol')
+                    elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
+                        self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
+                        self.axes_final.insert(0, 'pol')
+                    elif 'pol' not in self.axes_current and 'pol' not in self.axes_final:
+                        self.phases = self._expand_poldim(self.phases, 2, 'phase', False)
+                        values = self._expand_poldim(values, 2, 'phase', False)
+                        self.axes_current.insert(0, 'pol')
+                        self.axes_final.insert(0, 'pol')
 
-                    tp = self.interp_along_axis(values, time_axes, self.ax_time,
+                    # interpolate time axis
+                    newvals = self._interp_along_axis(values, time_axes, self.ax_time,
                                                 self.axes_current.index('time'))
 
-                    if tp.shape[-2] == 1:
-                        tptmp = tp
-                        for _ in self.ax_freq[:-1]:
-                            tp = append(tp, tptmp, axis=-2)
-                    else:
-                        tp = self.interp_along_axis(tp, freq_axes, self.ax_freq,
-                                                    self.axes_current.index('freq'))
+                    # interpolate freq axis
+                    newvals = self._interp_along_axis(newvals, freq_axes, self.ax_freq,
+                                                self.axes_current.index('freq'))
 
-                    if len(self.phases.shape) == 5 and self.phases.shape[0] == 1:
-                        phasetmp = zeros((2,) + self.phases.shape[1:])
-                        phasetmp[0, ...] = self.phases[0, ...]
-                        phasetmp[-1, ...] = self.phases[0, ...]
-                        self.phases = phasetmp
+                    # add values
+                    self.phases[:, idx, ...] += newvals[:, 0, ...]
 
-                    if len(tp.shape) == len(self.phases.shape):
-                        if len(self.phases.shape) == 5:
-                            self.phases[:, idx, ...] += tp[:, 0, ...]
-                        elif len(self.phases.shape) == 4:
-                            self.phases[idx, ...] += tp[0, ...]
-                            phasetmp = zeros((2,) + self.phases.shape[:])
-                            phasetmp[0, ...] = self.phases
-                            phasetmp[-1, ...] = self.phases
-                            self.phases = phasetmp
-                            if 'pol' not in self.axes_new:
-                                self.axes_new = ['pol'] + self.axes_new
-                    elif len(tp.shape) - len(self.phases.shape) == 1:
-                        self.phases[idx, ...] += tp[0, 0, ...]
-                        phasetmp = zeros((2,) + self.phases.shape[:])
-                        phasetmp[0, ...] = self.phases
-                        phasetmp[-1, ...] = self.phases
-                        self.phases = phasetmp
-                        if 'pol' not in self.axes_new:
-                            self.axes_new = ['pol'] + self.axes_new
-                    elif len(self.phases.shape) - len(tp.shape) == 1:
-                        self.phases[0, idx, ...] += tp
-                        self.phases[-1, idx, ...] += tp
 
                 elif st.getType() == 'amplitude':
-                    if 'pol' in self.axes_current and 'pol' in st.getAxesNames():
-                        if st.getAxisLen('pol') == 4:
-                            print("Add fulljones type with 4 polarizations")
-                            print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
-                            if self.gains.shape[0] == 2:
-                                gaintmp = zeros((4,) + self.gains.shape[1:])
-                                gaintmp[0, ...] = self.gains[0, ...]
-                                gaintmp[-1, ...] = self.gains[1, ...]
-                                self.gains = gaintmp
-                            elif len(self.gains.shape) < 5:
-                                gaintmp = zeros((4,) + self.gains.shape)
-                                gaintmp[0, ...] = self.gains
-                                gaintmp[-1, ...] = self.gains
-                                self.gains = gaintmp
-                        elif st.getAxisLen('pol') == 2 and self.gains.shape[0] == 4:
-                            print("Add to fulljones type with 4 polarizations")
-                            print("WARNING: this part hasn't been properly tested yet. Please check if output is correct.")
-                            gaintmp = zeros((4,) + values.shape[1:])
-                            gaintmp[0, ...] = values[0, ...]
-                            gaintmp[-1, ...] = values[1, ...]
-                            values = gaintmp
-                    elif 'pol' in self.axes_current and 'pol' not in st.getAxesNames() and len(self.gains.shape) == 5:
-                        phasetmp = zeros((self.gains.shape[0],) + values.shape)
-                        phasetmp[0, ...] = values
-                        phasetmp[-1, ...] = values
-                        values = phasetmp
 
-                    idxnan = where((~isfinite(values)))
-                    values[idxnan] = 1.0
-                    tp = self.interp_along_axis(values, time_axes, self.ax_time,
-                                                self.axes_current.index('time'))
+                    # check and correct pol axis
+                    if 'pol' in self.axes_current and 'pol' in self.axes_final:
+                        if st.getAxisLen('pol') > self.gains.shape[0]:
+                            self.gains = self._expand_poldim(self.gains, st.getAxisLen('pol'), 'amplitude', True)
+                        elif self.gains.shape[0] > st.getAxisLen('pol'):
+                            values = self._expand_poldim(values, self.gains.shape[0], 'amplitude', True)
+                    elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
+                        values = self._expand_poldim(values, self.gains.shape[0], 'amplitude', False)
+                        self.axes_current.insert(0, 'pol')
+                    elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
+                        self.gains = self._expand_poldim(self.gains, st.getAxisLen('pol'), 'amplitude', False)
+                        self.axes_final.insert(0, 'pol')
+                    elif 'pol' not in self.axes_current and 'pol' not in self.axes_final:
+                        self.gains = self._expand_poldim(self.gains, 2, 'amplitude', False)
+                        values = self._expand_poldim(values, 2, 'amplitude', False)
+                        self.axes_current.insert(0, 'pol')
+                        self.axes_final.insert(0, 'pol')
 
-                    if tp.shape[-2] == 1:
-                        tptmp = tp
-                        for _ in self.ax_freq[:-1]:
-                            tp = append(tp, tptmp, axis=-2)
-                    else:
-                        tp = self.interp_along_axis(tp, freq_axes, self.ax_freq,
-                                                    self.axes_current.index('freq'))
+                    # interpolate time axis
+                    newvals = self._interp_along_axis(values, time_axes, self.ax_time,
+                                                      self.axes_current.index('time'))
 
-                    if len(self.gains.shape) == 5 and self.gains.shape[0] == 1:
-                        gaintmp = zeros((2,) + self.gains.shape[1:])
-                        gaintmp[0, ...] = self.gains[0, ...]
-                        gaintmp[-1, ...] = self.gains[0, ...]
-                        self.gains = gaintmp
+                    # interpolate freq axis
+                    newvals = self._interp_along_axis(newvals, freq_axes, self.ax_freq,
+                                                      self.axes_current.index('freq'))
 
-                    if len(self.gains.shape) == 5 and len(tp.shape) == 5:
-                        self.gains[:, idx, ...] *= tp[:, 0, ...]
-                    elif len(self.gains.shape) == 4 and len(tp.shape) == 4:
-                        self.gains[idx, ...] *= tp[0, ...]
-                        gaintmp = zeros((2,) + self.gains.shape)
-                        gaintmp[0, ...] = self.gains
-                        gaintmp[-1, ...] = self.gains
-                        self.gains = gaintmp
-                        if 'pol' not in self.axes_new:
-                            self.axes_new = ['pol'] + self.axes_new
-                    elif len(self.gains.shape) == 5 and len(tp.shape) == 4:
-                        self.gains[0, idx, ...] *= tp[0, ...]
-                        self.gains[-1, idx, ...] *= tp[0, ...]
-                    elif len(self.gains.shape) == 4 and len(tp.shape) == 5:
-                        gaintmp = zeros((2,) + self.gains.shape)
-                        gaintmp[0, ...] = self.gains
-                        gaintmp[-1, ...] = self.gains
-                        self.gains = gaintmp
-                        self.gains[:, idx, ...] *= tp[:, 0, ...]
-                        if 'pol' not in self.axes_new:
-                            self.axes_new = ['pol'] + self.axes_new
+                    # add values
+                    self.gains[:, idx, ...] *= newvals[:, 0, ...]
+
 
             h5.close()
 
@@ -811,9 +751,9 @@ class MergeH5:
         :param soltab: solution table
         """
 
-        if 'pol' in self.axes_new and len(self.axes_new) == 5:
+        if 'pol' in self.axes_final and len(self.axes_final) == 5:
             DPPP_axes = ['time', 'freq', 'ant', 'dir', 'pol']
-        elif 'pol' not in self.axes_new and len(self.axes_new) == 4:
+        elif 'pol' not in self.axes_final and len(self.axes_final) == 4:
             DPPP_axes = ['time', 'ant', 'dir', 'freq']
             if len(self.phases.shape) == 5:
                 self.phases = self.phases[0]
@@ -821,9 +761,9 @@ class MergeH5:
             DPPP_axes = []
 
         if 'phase' in soltab or 'tec' in soltab or 'rotation' in soltab:
-            self.phases = reorderAxes(self.phases, self.axes_new, DPPP_axes)
+            self.phases = reorderAxes(self.phases, self.axes_final, DPPP_axes)
         elif 'amplitude' in soltab:
-            self.gains = reorderAxes(self.gains, self.axes_new, DPPP_axes)
+            self.gains = reorderAxes(self.gains, self.axes_final, DPPP_axes)
 
         return DPPP_axes
 
@@ -864,6 +804,7 @@ class MergeH5:
         We need to store the data in 136 bytes per directions.
         Python 3 saves it automatically in more than that number.
         """
+
         T = tables.open_file(self.h5name_out, 'r+')
         for solset in T.root._v_groups.keys():
             ss = T.root._f_get_child(solset)
@@ -923,34 +864,34 @@ class MergeH5:
 
         DPPP_axes = self._DPPP_style(soltab)  # reorder the axis to DPPP style
 
-        if 'pol' in self.axes_new:
+        if 'pol' in self.axes_final:
             if len(self.polarizations) > 1:
                 axes_vals.update({'pol': self.polarizations})
             else:
                 axes_vals.update({'pol': ['XX', 'YY']})  # need to be updated for rotation where len(pol)==4
-            self.axes_new = DPPP_axes
-        elif len(self.axes_new) == 4 and len(DPPP_axes) > 0:
-            self.axes_new = DPPP_axes
+            self.axes_final = DPPP_axes
+        elif len(self.axes_final) == 4 and len(DPPP_axes) > 0:
+            self.axes_final = DPPP_axes
 
         # right order vals
-        axes_vals = [v[1] for v in sorted(axes_vals.items(), key=lambda pair: self.axes_new.index(pair[0]))]
+        axes_vals = [v[1] for v in sorted(axes_vals.items(), key=lambda pair: self.axes_final.index(pair[0]))]
 
         # make new solution table
         if 'phase' in soltab:
             weights = ones(self.phases.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
-            solsetout.makeSoltab('phase', axesNames=self.axes_new, axesVals=axes_vals, vals=self.phases,
+            solsetout.makeSoltab('phase', axesNames=self.axes_final, axesVals=axes_vals, vals=self.phases,
                                  weights=weights)
         if 'amplitude' in soltab:
             weights = ones(self.gains.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
-            solsetout.makeSoltab('amplitude', axesNames=self.axes_new, axesVals=axes_vals, vals=self.gains,
+            solsetout.makeSoltab('amplitude', axesNames=self.axes_final, axesVals=axes_vals, vals=self.gains,
                                  weights=weights)
         if 'tec' in soltab:
             print('ADD TEC')
-            if self.axes_new.index('freq') == 1:
+            if self.axes_final.index('freq') == 1:
                 self.phases = self.phases[:, 0, :, :]
-            elif self.axes_new.index('freq') == 3:
+            elif self.axes_final.index('freq') == 3:
                 self.phases = self.phases[:, :, :, 0]
             else:
                 self.phases = self.phases[:, :, 0, :]
@@ -1197,15 +1138,15 @@ class MergeH5:
         H.close()
         if 'amplitude000' not in soltabs:
             self.gains = ones((2, len(self.directions.keys()), len(self.ant), len(self.ax_freq), len(self.ax_time)))
-            self.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
+            self.axes_final = ['time', 'freq', 'ant', 'dir', 'pol']
             self.polarizations = ['XX', 'YY']
-            self.gains = reorderAxes(self.gains, self.solaxnames, self.axes_new)
+            self.gains = reorderAxes(self.gains, self.solaxnames, self.axes_final)
             self.create_new_dataset('sol000', 'amplitude')
         if 'phase000' not in soltabs:
             self.phases = zeros((2, len(self.directions.keys()), len(self.ant), len(self.ax_freq), len(self.ax_time)))
-            self.axes_new = ['time', 'freq', 'ant', 'dir', 'pol']
+            self.axes_final = ['time', 'freq', 'ant', 'dir', 'pol']
             self.polarizations = ['XX', 'YY']
-            self.phases = reorderAxes(self.phases, self.solaxnames, self.axes_new)
+            self.phases = reorderAxes(self.phases, self.solaxnames, self.axes_final)
             self.create_new_dataset('sol000', 'phase')
 
         return self
@@ -1623,7 +1564,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param check_output: check if output has all correct output information
     """
 
-    print('\n#####################\nSTART MERGE H5 TABLES\n#####################\n\nMerging the following tables:\n'+'\n'.join(h5_tables)+'\n')
+    print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################\n\nMerging the following tables:\n'+'\n'.join(h5_tables)+'\n')
 
     h5_out = _create_h5_name(h5_out)
 
@@ -1722,15 +1663,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 if __name__ == '__main__':
     from argparse import ArgumentParser
 
-    def str2bool(v):
-        v = str(v)
-        if v.lower() in ('yes', 'true', 't', 'y', '1'):
-            return True
-        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
-            return False
-        else:
-            return True
-
     if sys.version_info.major == 2:
         print('WARNING: This code is optimized for Python 3. Please switch to Python 3 if possible.')
 
@@ -1739,7 +1671,7 @@ if __name__ == '__main__':
     parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge.', required=True)
     parser.add_argument('-ms', '--ms', type=str, help='ms files to use time and frequency arrays from.')
     parser.add_argument('--h5_time_freq', type=str, help='h5 file to use time and frequency arrays from.')
-    parser.add_argument('-ct', '--convert_tec', type=str2bool, nargs='?', const=True, default=True, help='convert tec to phase.')
+    parser.add_argument('--not_convert_tec', action='store_true', help='convert tec to phase.')
     parser.add_argument('--merge_all_in_one', action='store_true', help='merge all solutions in one direction.')
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular.')
     parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear.')
@@ -1795,12 +1727,13 @@ if __name__ == '__main__':
     else:
         add_direction = None
 
+    converttec = not args.not_convert_tec
 
     merge_h5(h5_out=args.h5_out,
              h5_tables=h5tables,
              ms_files=args.ms,
              h5_time_freq=args.h5_time_freq,
-             convert_tec=args.convert_tec,
+             convert_tec=converttec,
              merge_all_in_one=args.merge_all_in_one,
              lin2circ=args.lin2circ,
              circ2lin=args.circ2lin,
