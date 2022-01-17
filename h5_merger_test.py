@@ -393,6 +393,18 @@ class MergeH5:
         :return: the interpolated result
         """
 
+        print(interp_from)
+        print(x)
+        print(axis)
+
+        # if tp.shape[-2] == 1:
+        #   print('Length 1 freq axis, scipy interpol1d does not like that, do an append to extend to', len(ax_freq))
+        #   #print (tp.shape, phase.shape, 'HERE')
+        #   tptmp = tp
+        #   for ff in ax_freq[:-1]:
+        #     tp = np.append(tp, tptmp, axis=-2)
+        #     #print (tp.shape)
+
         interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value='extrapolate')
         new_vals = interp_vals(interp_to)
         return new_vals
