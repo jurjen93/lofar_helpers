@@ -399,6 +399,7 @@ class MergeH5:
             print(x.shape)
             tmp = x
             for _ in range(len(interp_to)):
+                print('hoi')
                 x = append(x, tmp, axis=axis)
             print(x.shape)
             return x
