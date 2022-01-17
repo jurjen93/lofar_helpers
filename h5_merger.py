@@ -641,7 +641,8 @@ class MergeH5:
                         shape = [1 for _ in range(len(self.phases.shape))]
                         shape[-2] = -1
                         values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
-
+                        print(self.axes_current)
+                        print(self.axes_final)
                         # check and correct pol axis
                         if 'pol' in self.axes_current and 'pol' in self.axes_final:
                             if st.getAxisLen('pol') > self.phases.shape[0]:
@@ -683,8 +684,6 @@ class MergeH5:
                 elif st.getType() == 'phase' or st.getType() == 'rotation':
 
                     # check and correct pol axis
-                    print(self.axes_current)
-                    print(self.axes_final)
                     if 'pol' in self.axes_current and 'pol' in self.axes_final:
                         if st.getAxisLen('pol') > self.phases.shape[0]:
                             self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
