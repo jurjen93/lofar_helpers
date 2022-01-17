@@ -380,8 +380,7 @@ class MergeH5:
         """
         return -8.4479745e9 * tec / freqs
 
-    @staticmethod
-    def interp_along_axis(x, interp_from, interp_to, axis):
+    def interp_along_axis(self, x, interp_from, interp_to, axis):
         """
         Interpolate along axis
 
@@ -393,21 +392,15 @@ class MergeH5:
         :return: the interpolated result
         """
 
-        print(interp_from)
-        print(x)
-        print(axis)
-
-        # if tp.shape[-2] == 1:
-        #   print('Length 1 freq axis, scipy interpol1d does not like that, do an append to extend to', len(ax_freq))
-        #   #print (tp.shape, phase.shape, 'HERE')
-        #   tptmp = tp
-        #   for ff in ax_freq[:-1]:
-        #     tp = np.append(tp, tptmp, axis=-2)
-        #     #print (tp.shape)
-
-        interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value='extrapolate')
-        new_vals = interp_vals(interp_to)
-        return new_vals
+        if len(interp_from) == 1 and sys.version_info.major == 2:
+            tmp = x
+            for ff in self.ax_freq[:-1]:
+                x = append(x, tmp, axis=axis)
+            return x
+        else:
+            interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value='extrapolate')
+            new_vals = interp_vals(interp_to)
+            return new_vals
 
     def get_model_h5(self, solset, soltab):
         """
