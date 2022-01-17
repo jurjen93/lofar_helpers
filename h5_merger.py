@@ -622,7 +622,8 @@ class MergeH5:
                                 shape[dir_index] = 1
                                 self.gains = append(self.gains, ones(shape),
                                                        axis=dir_index)  # add clean gain to merge with
-
+                print(self.axes_current)
+                print(values.shape)
                 # Now we will add the solution table axis --> tec, phase, rotation, or amplitude
 
                 if st.getType() == 'tec':
