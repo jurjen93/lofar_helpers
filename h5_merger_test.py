@@ -394,7 +394,7 @@ class MergeH5:
 
         if len(interp_from) == 1 and sys.version_info.major == 2:
             tmp = x
-            for ff in self.ax_freq[:-1]:
+            for _ in self.ax_freq[:-1]:
                 x = append(x, tmp, axis=axis)
             return x
         else:
