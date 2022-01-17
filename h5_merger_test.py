@@ -394,6 +394,7 @@ class MergeH5:
         """
 
         if len(interp_from) == 1 and sys.version_info.major == 2:
+            print(axis)
             print(x.shape)
             tmp = x
             for _ in range(len(interp_to)):
