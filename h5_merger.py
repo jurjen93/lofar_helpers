@@ -635,7 +635,7 @@ class MergeH5:
                     if self.convert_tec:
 
                         shape = [1 for _ in range(len(self.phases.shape))]
-                        shape[-1] = -1
+                        shape[-2] = -1
                         print(values.shape)
                         print(self.ax_freq.reshape(shape).shape)
                         values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
