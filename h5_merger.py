@@ -555,11 +555,9 @@ class MergeH5:
                 if 'pol' not in st.getAxesNames():
                     values = table_values[dir_idx, ...]
                     # adding direction dimension
-                    values = expand_dims(values, axis=0)
                 else:
                     values = table_values[:, dir_idx, ...]
                     # adding direction dimension
-                    values = expand_dims(values, axis=1)
 
                 # current axes for reordering of axes
                 self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
