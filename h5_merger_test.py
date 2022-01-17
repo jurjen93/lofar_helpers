@@ -394,9 +394,11 @@ class MergeH5:
         """
 
         if len(interp_from) == 1 and sys.version_info.major == 2:
+            print(x.shape)
             tmp = x
             for _ in range(len(interp_to)):
                 x = append(x, tmp, axis=axis)
+            print(x.shape)
             return x
         else:
             interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value='extrapolate')
