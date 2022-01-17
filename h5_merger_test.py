@@ -380,7 +380,8 @@ class MergeH5:
         """
         return -8.4479745e9 * tec / freqs
 
-    def interp_along_axis(self, x, interp_from, interp_to, axis):
+    @staticmethod
+    def interp_along_axis(x, interp_from, interp_to, axis):
         """
         Interpolate along axis
 
@@ -394,7 +395,7 @@ class MergeH5:
 
         if len(interp_from) == 1 and sys.version_info.major == 2:
             tmp = x
-            for _ in self.ax_freq[:-1]:
+            for _ in range(len(interp_to)):
                 x = append(x, tmp, axis=axis)
             return x
         else:
