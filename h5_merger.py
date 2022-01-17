@@ -483,7 +483,7 @@ class MergeH5:
         if dim_pol == 4:
             print("Make fulljones type with 4 polarizations")
 
-        if len(values.shape) < 5 and not haspol:
+        if values.ndim < 5 and not haspol:
             if type == 'amplitude':
                 values_new = ones((dim_pol,) + values.shape)
             elif type == 'phase':
@@ -505,10 +505,6 @@ class MergeH5:
             elif values.shape[0] == 1:
                 values_new[-1, ...] = values[0, ...]
         else:
-            print(values.shape)
-            print(dim_pol)
-            print(type)
-            print(haspol)
             print('WARNING: No pol ax dimension changed.')
             return values
 
@@ -563,8 +559,6 @@ class MergeH5:
 
                 # current axes for reordering of axes
                 self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
-                print(self.axes_current)
-                print(values.shape)
 
                 if 'dir' not in self.axes_current:
                     if 'pol' in self.axes_current:
@@ -606,7 +600,7 @@ class MergeH5:
                     if self.n > 1:  # for self.n==1 we dont have to do anything
                         if st.getType() in ['tec', 'phase', 'rotation']:
                             shape = list(self.phases.shape)
-                            dir_index = len(self.phases.shape) - 4
+                            dir_index = self.phases.ndim - 4
                             if dir_index < 0:
                                 sys.exit('ERROR: Missing axes')
                             if self.n > shape[dir_index]:
@@ -615,15 +609,14 @@ class MergeH5:
                                                         axis=dir_index)  # add clean phase to merge with
                         elif st.getType() == 'amplitude':
                             shape = list(self.gains.shape)
-                            dir_index = len(self.gains.shape) - 4
+                            dir_index = self.gains.ndim - 4
                             if dir_index < 0:
                                 sys.exit('ERROR: Missing axes')
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
                                 self.gains = append(self.gains, ones(shape),
                                                        axis=dir_index)  # add clean gain to merge with
-                print(self.axes_current)
-                print(values.shape)
+
                 # Now we will add the solution table axis --> tec, phase, rotation, or amplitude
 
                 if st.getType() == 'tec':
@@ -640,30 +633,23 @@ class MergeH5:
                     # convert tec to phase
                     if self.convert_tec:
 
-                        shape = [1 for _ in range(len(self.phases.shape))]
+                        shape = [1 for _ in range(values.ndim)]
                         shape[-2] = -1
                         values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
 
                         # check and correct pol axis
                         if 'pol' in self.axes_current and 'pol' in self.axes_final:
-                            print('hier1')
                             if st.getAxisLen('pol') > self.phases.shape[0]:
                                 self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
                             elif self.phases.shape[0] > st.getAxisLen('pol'):
                                 values = self._expand_poldim(values, self.phases.shape[0], 'phase', True)
                         elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
-                            print('hier2')
-
                             values = self._expand_poldim(values, self.phases.shape[0], 'phase', False)
                             self.axes_current.insert(0, 'pol')
                         elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
-                            print('hier3')
-
                             self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
                             self.axes_final.insert(0, 'pol')
                         elif 'pol' not in self.axes_current and 'pol' not in self.axes_final:
-                            print('hier4')
-
                             self.phases = self._expand_poldim(self.phases, 2, 'phase', False)
                             values = self._expand_poldim(values, 2, 'phase', False)
                             self.axes_current.insert(0, 'pol')
@@ -768,7 +754,7 @@ class MergeH5:
             DPPP_axes = ['time', 'freq', 'ant', 'dir', 'pol']
         elif 'pol' not in self.axes_final and len(self.axes_final) == 4:
             DPPP_axes = ['time', 'ant', 'dir', 'freq']
-            if len(self.phases.shape) == 5:
+            if self.phases.ndim == 5:
                 self.phases = self.phases[0]
         else:
             DPPP_axes = []
@@ -1219,7 +1205,7 @@ def output_check(h5):
 
             #check if pol and/or dir are not missing
             for pd in ['pol', 'dir']:
-                assert not (len(st.val.shape) == 5 and pd not in list(st._v_children.keys())), \
+                assert not (st.val.ndim == 5 and pd not in list(st._v_children.keys())), \
                     '/'.join([solset, soltab, pd])+' is missing'
 
             #check if freq, time, and ant arrays are not missing
@@ -1638,7 +1624,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         Pol = PolChange(h5_in=h5_out, h5_out=h5_polchange)
 
         Pol.create_template('phase')
-        if len(Pol.G.shape) > 1:
+        if Pol.G.ndim > 1:
             Pol.create_template('amplitude')
 
         Pol.create_new_gains(lin2circ, circ2lin)
