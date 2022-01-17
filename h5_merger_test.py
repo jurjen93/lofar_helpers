@@ -109,7 +109,7 @@ class MergeH5:
             if len(self.ms)>0:
                 print('Take the time and freq from the following h5 solution file:\n'+h5_time_freq)
             T = tables.open_file(h5_time_freq)
-            self.ax_time = T.root.sol000.phase000.time[:] # hard coded --> could be written more generally
+            self.ax_time = T.root.sol000.phase000.time[:][0] # hard coded --> could be written more generally
             self.ax_freq = T.root.sol000.phase000.freq[:] # hard coded --> could be written more generally
             T.close()
 
