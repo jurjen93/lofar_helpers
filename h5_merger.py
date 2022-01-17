@@ -563,13 +563,14 @@ class MergeH5:
 
                 # current axes for reordering of axes
                 self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
+                print(self.axes_current)
+                print(values.shape)
 
                 if 'dir' not in self.axes_current:
                     if 'pol' in self.axes_current:
                         self.axes_current.insert(1, 'dir')
                     else:
                         self.axes_current.insert(0, 'dir')
-                    # values = expand_dims(values, axis=self.axes_current.index('dir'))
 
                 idxnan = where((~isfinite(values)))
                 values[idxnan] = 0.0
