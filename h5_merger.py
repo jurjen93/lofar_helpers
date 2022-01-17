@@ -555,9 +555,11 @@ class MergeH5:
                 if 'pol' not in st.getAxesNames():
                     values = table_values[dir_idx, ...]
                     # adding direction dimension
+                    values = expand_dims(values, axis=0)
                 else:
                     values = table_values[:, dir_idx, ...]
                     # adding direction dimension
+                    values = expand_dims(values, axis=1)
 
                 # current axes for reordering of axes
                 self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
@@ -567,7 +569,7 @@ class MergeH5:
                         self.axes_current.insert(1, 'dir')
                     else:
                         self.axes_current.insert(0, 'dir')
-                    values = expand_dims(values, axis=self.axes_current.index('dir'))
+                    # values = expand_dims(values, axis=self.axes_current.index('dir'))
 
                 idxnan = where((~isfinite(values)))
                 values[idxnan] = 0.0
@@ -639,8 +641,7 @@ class MergeH5:
                         shape = [1 for _ in range(len(self.phases.shape))]
                         shape[-2] = -1
                         values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
-                        print(self.axes_current)
-                        print(self.axes_final)
+
                         # check and correct pol axis
                         if 'pol' in self.axes_current and 'pol' in self.axes_final:
                             if st.getAxisLen('pol') > self.phases.shape[0]:
