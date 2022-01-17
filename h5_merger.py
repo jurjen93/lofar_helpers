@@ -646,17 +646,24 @@ class MergeH5:
 
                         # check and correct pol axis
                         if 'pol' in self.axes_current and 'pol' in self.axes_final:
+                            print('hier1')
                             if st.getAxisLen('pol') > self.phases.shape[0]:
                                 self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
                             elif self.phases.shape[0] > st.getAxisLen('pol'):
                                 values = self._expand_poldim(values, self.phases.shape[0], 'phase', True)
                         elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
+                            print('hier2')
+
                             values = self._expand_poldim(values, self.phases.shape[0], 'phase', False)
                             self.axes_current.insert(0, 'pol')
                         elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
+                            print('hier3')
+
                             self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
                             self.axes_final.insert(0, 'pol')
                         elif 'pol' not in self.axes_current and 'pol' not in self.axes_final:
+                            print('hier4')
+
                             self.phases = self._expand_poldim(self.phases, 2, 'phase', False)
                             values = self._expand_poldim(values, 2, 'phase', False)
                             self.axes_current.insert(0, 'pol')
