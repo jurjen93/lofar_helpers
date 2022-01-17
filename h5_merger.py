@@ -394,7 +394,7 @@ class MergeH5:
         :return: the interpolated result
         """
 
-        # bug fix in python 2 for time axis with length 1
+        # axis with length 1
         if len(interp_from) == 1:
             new_vals = x
             for _ in range(len(interp_to)-1):
@@ -636,6 +636,8 @@ class MergeH5:
 
                         shape = [1 for _ in range(len(self.phases.shape))]
                         shape[-1] = -1
+                        print(values.shape)
+                        print(self.ax_freq.reshape(shape).shape)
                         values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
 
                         # check and correct pol axis
