@@ -395,7 +395,7 @@ class MergeH5:
         """
 
         # bug fix in python 2 for time axis with length 1
-        if len(interp_from) == 1 and sys.version_info.major == 2:
+        if len(interp_from) == 1:
             new_vals = x
             for _ in range(len(interp_to)-1):
                 new_vals = append(new_vals, x, axis=axis)
