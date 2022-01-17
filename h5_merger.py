@@ -505,6 +505,10 @@ class MergeH5:
             elif values.shape[0] == 1:
                 values_new[-1, ...] = values[0, ...]
         else:
+            print(values.shape)
+            print(dim_pol)
+            print(type)
+            print(haspol)
             print('WARNING: No pol ax dimension changed.')
             return values
 
@@ -636,8 +640,6 @@ class MergeH5:
 
                         shape = [1 for _ in range(len(self.phases.shape))]
                         shape[-2] = -1
-                        print(values.shape)
-                        print(self.ax_freq.reshape(shape).shape)
                         values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
 
                         # check and correct pol axis
