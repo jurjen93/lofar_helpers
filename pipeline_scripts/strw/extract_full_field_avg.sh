@@ -12,4 +12,5 @@ cd ${EXTRACT_TO}
 singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/sub-sources-outside-region.py --boxfile extractedregion.reg --freqavg=2 --timeavg=2 --overwriteoutput --nophaseshift --adjustboxrotation=False --prefixname extr
 rm -rf ${EXTRACT_TO}/L6*.ms
 rm -rf ${EXTRACT_TO}/L6*.ms.archive
+echo "AVERAGED MS FILES ARE MADE, NOW DO MANUALLY TIME CUTTING"
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/make_new_dicomodel.py
