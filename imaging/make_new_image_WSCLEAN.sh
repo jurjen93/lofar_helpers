@@ -31,7 +31,7 @@ cd ${FROM}
 #aoflagger
 for M in ${MS}
 do
-  cp ${FROM}/${M} ${TO} && wait
+  cp -r ${FROM}/${M} ${TO} && wait
   aoflagger ${TO}/${M}
 done
 
