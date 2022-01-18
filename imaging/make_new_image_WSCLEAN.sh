@@ -20,6 +20,7 @@ FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
 
 #make directory
 mkdir -p ${TO}
+cd ${FROM}
 
 #copy files
 #for H in ${H5}
