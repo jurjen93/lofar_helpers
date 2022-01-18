@@ -33,8 +33,8 @@ done
 #aoflagger
 for M in ${MS}
 do
-  cp ${FROM}/${M} ${TO}
-  aoflagger ${TO}/${M}
+  cp -r ${FROM}/${M} ${TO} && wait
+  singularity exec -B ${SING_BIND} ${SING_IMAGE} aoflagger ${TO}/${M}
 done
 
 cd ${TO}
