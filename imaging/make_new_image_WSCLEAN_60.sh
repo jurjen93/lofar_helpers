@@ -78,6 +78,6 @@ wsclean \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \
--apply-facet-solutions ${H5} amplitude000,phase000 \
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
 -minuv-l 80.0 \
 ${MS}
