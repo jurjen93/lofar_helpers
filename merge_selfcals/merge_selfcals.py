@@ -54,45 +54,14 @@ elif excluded_boxes:
 
 boxes_h5_list.sort(key=lambda x: get_digits(x))
 
-merged_boxes = []
-final_merge = []
-for box in boxes_h5_list:
-    print(box)
-    h5out = '{box}/final_merge_{n}.h5'.format(box=box, n=str(args.archive))
-    h5merge = sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1]
-    merged_boxes.append(h5merge)
-    final_merge.append(h5out)
-    os.system('rm '+h5out)
-    os.system('cp '+h5merge+' '+h5out)
-
-    tecandphase1 = sorted(glob('{box}/tecandphase1*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))
-    tecandphase0 = sorted(glob('{box}/tecandphase0*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))
-    scalarcomplexgain2 = sorted(glob('{box}/scalarcomplexgain2*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))
-
-    T = tables.open_file(h5out, 'r+')
-    T.root.sol000.source._f_remove()
-    if len(tecandphase1)>1:
-        openfile = tecandphase1[0]
-    elif len(tecandphase0)>1:
-        openfile = tecandphase0[0]
-    elif len(scalarcomplexgain2)>1:
-        openfile = scalarcomplexgain2[0]
-    else:
-        openfile=''
-    if openfile!='':
-        H = tables.open_file(openfile, 'r+')
-        new_source = np.array(H.root.sol000.source[:], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
-        H.close()
-        T.create_table(T.root.sol000, 'source', new_source, "Source names and directions")
-    T.close()
+final_merge = [sorted(glob('{box}/merged_selfcalcyle*_*.ms.archive{n}*h5'.format(box=box, n=args.archive)))[-1] for box in boxes_h5_list]
 
 final_merge.sort(key=lambda x: get_digits(x))
 merge_h5(h5_out='all_directions{n}.h5'.format(n=str(args.archive)),
          h5_tables=final_merge)
 
-merged_boxes.sort(key=lambda x: get_digits(x))
 H = tables.open_file('all_directions{n}.h5'.format(n=str(args.archive)))
-for n, h5 in enumerate(merged_boxes):
+for n, h5 in enumerate(final_merge):
     T = tables.open_file(h5)
     num_elements = 1
     for i in T.root.sol000.phase000.val.shape:
