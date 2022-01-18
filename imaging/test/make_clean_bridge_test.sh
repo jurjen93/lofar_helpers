@@ -36,6 +36,7 @@ python ~/scripts/lofar_helpers/h5_merger.py \
 --ms ${MS}.test
 
 #aoflagger
+singularity exec -B ${SING_BIND} ${SING_IMAGE} \
 aoflagger ${TO}/${MS}.test && wait
 
 cd ${TO}
@@ -48,7 +49,7 @@ python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
 --imsize 6000 \
 --ms ${TO}/${MS}.test
 
-#make image to subtract
+# make first image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
 -size 1500 1500 \
@@ -64,34 +65,71 @@ wsclean \
 -auto-mask 2.5 \
 -auto-threshold 0.5 \
 -pol i \
--name ${NAME} \
+-name ${NAME}_compact \
+-scale 6arcsec \
+-niter 50000 \
+-mgain 0.8 \
+-fit-beam \
+-join-channels \
+-nmiter 3 \
+-log-time \
+-facet-regions tess.reg \
+-minuv-l 2000.0 \
+-parallel-gridding 6 \
+-fit-spectral-pol 3 \
+-apply-facet-solutions short_${H5} amplitude000,phase000 \
+${MS}.test
+
+#mask compact objects
+singularity exec -B ${SING_BIND} ${SING_IMAGE} \
+python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyModel/MakeMask.py \
+--Th=3.0 \
+--RestoredIm=${NAME}_compact-MFS-image.fits
+
+singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
+wsclean \
+-size 1500 1500 \
+-use-wgridder \
+-no-update-model-required \
+-reorder \
+-channels-out 2 \
+-weight briggs -0.5 \
+-weighting-rank-filter 3 \
+-clean-border 1 \
+-parallel-reordering 6 \
+-padding 1.2 \
+-fits-mask ${NAME}_compact-MFS-image.fits.mask.fits \
+-pol i \
+-name ${NAME}_compactmask \
 -scale 6arcsec \
 -niter 50000 \
 -mgain 0.8 \
 -fit-beam \
 -multiscale \
 -join-channels \
--multiscale-max-scales 10 \
--nmiter ${NMITER} \
+-multiscale-max-scales 4 \
+-nmiter 3 \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions ${TO}/tess.reg \
+-facet-regions tess.reg \
 -minuv-l 2000.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
--apply-facet-solutions ${TO}/short_${H5} amplitude000,phase000 \
-${TO}/${MS}.test
+-apply-facet-solutions short_${H5} amplitude000,phase000 \
+${MS}.test
 
 #predict
+singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
 -size 1500 1500 \
--channels-out 2 \
+-channels-out 6 \
 -padding 1.2 \
 -predict \
--name ${NAME}
+-name ${NAME}_compactmask
 
 #subtract
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${TO}/${MS}.test --colname DIFFUSE_SUB
+singularity exec -B ${SING_BIND} ${SING_IMAGE} \
+python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS} --colname DIFFUSE_SUB
 
 #make final image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -117,14 +155,13 @@ wsclean \
 -multiscale \
 -join-channels \
 -multiscale-max-scales 10 \
--nmiter ${NMITER} \
+-nmiter 3 \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions ${TO}/tess.reg \
--minuv-l 80.0 \
+-facet-regions tess.reg \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \
 -data-column DIFFUSE_SUB \
--apply-facet-solutions ${TO}/short_${H5} amplitude000,phase000 \
-${TO}/${MS}.test
+-apply-facet-solutions short_${H5} amplitude000,phase000 \
+${MS}.test

@@ -1,8 +1,11 @@
 ## LOFAR helper scripts
 
-Note that these scripts are still in development.
+These scripts are helper script for LOFAR data reduction.\
+Most scripts were used for imaging and recalibrating of A399-401, which are two pre-merging galaxy clusters.
 
-Clone this repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git```
+Clone this full repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git```
+
+Two standalone scripts are briefly discussed below:
 
 ### Make boxes for LOFAR self-calibration
 
@@ -11,7 +14,7 @@ Note that this script only works with Python 3.
 
 #### Usage
 
-Use ```make_boxes.py``` as a standalone script by running on the command line:\
+Use ```make_boxes.py``` as a standalone script with Python 3, by running on the command line:\
 ```python make_boxes.py <FLAGS>``` \
 You can use the following flags: \
 * ```--file``` --> followed by the fits file name (and path)
@@ -26,7 +29,7 @@ The script returns the following:
 
 #### Details
 The following steps are taken in the algorithm:
-* Determine peak fluxes (>0.07). Close flux peaks are considered from the same source.
+* Determine (surface brightness) pixels that go over the threshold >0.07.
 * Loop through all peak fluxes (sources) and check if these are already included in other images. If so, we stop here.
 * Check if the source is 'interesting' by comparing the outlier fluxes in the images with the outliers in a gaussian filtered version. If not, we stop here.
 * Reposition the image by taking into account the borders where we don't want to have high flux peaks or other sources. This is done by moving the center of the image and resizing.
@@ -70,6 +73,8 @@ Or you can run the script on the command line with
 * ```--lin2circ``` --> linear to circular polarization transformation
 * ```--circ2lin``` --> circular to linear polarization transformation
 * ```--add_direction``` --> add default direction (phase 0 and amplitude 1)
+
+More functionalities have been added recently, which can be all listed with the help function.
 
 #### Contact
 Let me know if you are using this script and have any issues or suggestions for improvements.

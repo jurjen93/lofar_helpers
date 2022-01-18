@@ -76,7 +76,7 @@ wsclean \
 -minuv-l 2000.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
--apply-facet-solutions ${H5} amplitude000,phase000 \
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
 ${MS}
 
 #mask compact objects
@@ -114,7 +114,7 @@ wsclean \
 -minuv-l 2000.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
--apply-facet-solutions ${H5} amplitude000,phase000 \
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
 ${MS}
 
 #predict
