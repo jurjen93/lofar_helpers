@@ -126,5 +126,5 @@ wsclean \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \
 -data-column DIFFUSE_SUB \
--apply-facet-solutions ${H5} amplitude000,phase000 \
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
 ${MS}
