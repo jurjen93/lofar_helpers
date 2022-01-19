@@ -1,5 +1,9 @@
 #!/bin/bash
 
+#EXAMPLE ~/scripts/lofar_helpers/imaging/make_new_image_WSCLEAN.sh \
+# 'all_directions0.h5 all_directions1.h5' \
+# 'Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive1.avg.goodtimes'
+
 #input
 H5=$1
 MS=$2
@@ -82,6 +86,6 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -name image_test_A399 \
 -size 6000 6000 \
 -scale 1.5arcsec \
--nmiter 11 \
+-nmiter 10 \
 -minuv-l 80.0 \
 ${MS}
