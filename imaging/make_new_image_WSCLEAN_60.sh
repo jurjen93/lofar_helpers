@@ -8,7 +8,7 @@ MS=$2
 SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn4,/net/rijn3,/net/rijn2
 SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/test_wsclean_facet_fix_sep30.sif
-TO=/net/nieuwerijn/data2/jurjendejong/Abell399-401_60
+TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_60
 FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
 
 #cache
@@ -43,7 +43,7 @@ cd ${TO}
 cp ${FROM}/tessupdate.reg ${TO} && wait
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
 #--h5 ${TO}/${H5} \
-#--DS9regionout ${TO}/tess.reg \
+#--DS9regionout ${TO}/tessupdate.reg \
 #--imsize 6000 \
 #--ms ${TO}/${MS_1}
 

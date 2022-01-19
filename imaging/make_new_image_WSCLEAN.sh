@@ -50,7 +50,7 @@ cd ${TO}
 cp ${FROM}/tessupdate.reg ${TO} && wait
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
 #--h5 ${TO}/${H5} \
-#--DS9regionout ${TO}/tess.reg \
+#--DS9regionout ${TO}/tessupdate.reg \
 #--imsize 6000 \
 #--ms ${TO}/${MS}
 
