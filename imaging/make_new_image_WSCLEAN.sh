@@ -20,6 +20,9 @@ then
   TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_new
 fi
 
+#cache
+singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
+
 #make directory
 mkdir -p ${TO}
 cd ${FROM}
