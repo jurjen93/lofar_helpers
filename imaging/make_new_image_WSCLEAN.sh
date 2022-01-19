@@ -87,5 +87,4 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 10 \
--minuv-l 80.0 \
 ${MS}

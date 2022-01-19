@@ -7,7 +7,7 @@ NAME=image_test_A399_cleanbridge
 
 SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn4,/net/rijn3,/net/rijn2
 SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
-SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/test_wsclean_facet_fix_sep30.sif
+SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest.sif
 TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_${N}_cleanbridge
 FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
 H5=all_directions${N}.h5
@@ -26,7 +26,7 @@ cp -r ${FROM}/${MS} ${TO} && wait
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
 python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py \
 --time_flag 0 300 \
--msin ${FROM}/${MS} \
+-msin ${TO}/${MS} \
 -msout ${TO}/${MS}.test && wait
 rm -rf ${TO}/${MS}
 
@@ -34,7 +34,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} \
 python ~/scripts/lofar_helpers/h5_merger.py \
 --h5_tables ${TO}/${H5} \
 --h5_out ${TO}/short_${H5} \
---ms ${MS}.test && wait
+--ms ${TO}/${MS}.test && wait
 rm -rf ${TO}/${H5}
 
 #aoflagger
