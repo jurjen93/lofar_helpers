@@ -71,7 +71,7 @@ wsclean \
 -channels-out 6 \
 -join-channels \
 -multiscale-max-scales 10 \
--nmiter 11 \
+-nmiter 10 \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions tessupdate.reg \
