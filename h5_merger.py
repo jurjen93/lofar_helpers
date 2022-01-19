@@ -107,10 +107,11 @@ class MergeH5:
             self.h5_tables = glob('*.h5')
         if h5_time_freq:
             if len(self.ms)>0:
-                print('Take the time and freq from the following h5 solution file:\n'+h5_time_freq)
+                print('Ignore MS for time and freq axis, as --h5_time_freq is given.')
+            print('Take the time and freq from the following h5 solution file:\n'+h5_time_freq)
             T = tables.open_file(h5_time_freq)
-            self.ax_time = T.root.sol000.phase000.time[:] # hard coded --> could be written more generally
-            self.ax_freq = T.root.sol000.phase000.freq[:] # hard coded --> could be written more generally
+            self.ax_time = T.root.sol000.phase000.time[:]
+            self.ax_freq = T.root.sol000.phase000.freq[:]
             T.close()
 
         elif len(self.ms)>0: # if there are multiple ms files
