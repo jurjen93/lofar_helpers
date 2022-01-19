@@ -79,4 +79,5 @@ wsclean \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \
 -apply-facet-solutions ${H5// /,} amplitude000,phase000 \
-${MS}
+${MS} \
+> log.txt
