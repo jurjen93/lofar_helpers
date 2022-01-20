@@ -13,7 +13,7 @@ NAME=image_test_A399_cleanbridge
 
 SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
-SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/test/idgtest.sif
+SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest.sif
 SING_IMAGE_P2=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
 
 TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_cleanbridge
