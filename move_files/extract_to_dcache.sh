@@ -1,7 +1,6 @@
 #!/bin/bash
 
-FOLDER=$1
-BOXES=${FOLDER}/box*
+BOXES=$1/box*
 NAME=$2
 
 REGEX='([^\/]+$)'
