@@ -18,7 +18,7 @@ SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest.sif
 
 TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401
-FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/jurjendejong/A399_extracted_avg
+FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
 
 echo "Running on ${HOSTNAME%%.*}"
 
