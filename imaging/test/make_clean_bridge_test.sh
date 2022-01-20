@@ -43,7 +43,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} \
 #aoflagger ${TO}/${MS}.test && wait
 #
-#cd ${TO}
+cd ${TO}
 #
 ##make tesselation
 #singularity exec -B ${SING_BIND} ${SING_IMAGE} \
