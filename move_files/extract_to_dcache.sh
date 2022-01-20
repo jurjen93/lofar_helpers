@@ -1,11 +1,12 @@
 #!/bin/bash
 
 FOLDER=$1
+BOXES=${FOLDER}/box*
 NAME=$2
 
 REGEX='([^\/]+$)'
-
-for BOXFOLDER in ${FOLDER}/box*
+echo ${BOXES}
+for BOXFOLDER in ${BOXES}
 do
   [[ ${BOXFOLDER} =~ ${REGEX} ]] # $pat must be unquoted
   BOX=${BASH_REMATCH[1]}
