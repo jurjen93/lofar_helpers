@@ -11,7 +11,7 @@ SOURCE=$1
 TO=/project/lofarvwf/Share/jdejong/output/${SOURCE}
 SCRIPT_FOLDER=/home/lofarvwf-jdejong/scripts
 
-SING_IMAGE=/project/lofarvwf/Software/lofar_sksp_fedora27_ddf_slurmfix.sif
+SING_IMAGE=/project/lofarvwf/Software/lofar_sksp_fedora31_ddf_fixed.sif
 SING_BIND=/project/lofarvwf/Share/jdejong
 
 #GET LAST BOX NUMBER
