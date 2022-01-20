@@ -17,7 +17,7 @@ SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest.sif
 SING_IMAGE_P2=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
 
 TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_cleanbridge
-FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/jurjendejong/A399_extracted_avg
+FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
 
 #check if directory exists
 if [[ -f ${TO} ]]
