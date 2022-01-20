@@ -1523,7 +1523,7 @@ def _test_h5_output(h5_out, tables_to_merge):
 def _degree_to_radian(d):
     return pi*d/180
 
-def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, ra_degrees=0, dec_degrees=0):
+def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0, ddec_degrees=0):
     """
     Change source table for specific direction
 
@@ -1537,8 +1537,8 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, ra_degrees=0, 
         h5 = h5.replace('.h5', '_upd.h5')
     H = tables.open_file(h5, 'r+')
     sources = H.root.sol000.source[:]
-    sources[dir_idx][1][0] += _degree_to_radian(ra_degrees)
-    sources[dir_idx][1][1] += _degree_to_radian(dec_degrees)
+    sources[dir_idx][1][0] += _degree_to_radian(dra_degrees)
+    sources[dir_idx][1][1] += _degree_to_radian(ddec_degrees)
     overwrite_table(H, 'sol000', 'source', sources)
     H.close()
 
