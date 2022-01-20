@@ -129,7 +129,8 @@ wsclean \
 -channels-out 6 \
 -padding 1.2 \
 -predict \
--name ${NAME}_compactmask
+-name ${NAME}_compactmask \
+${MS}.test
 
 #subtract
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
