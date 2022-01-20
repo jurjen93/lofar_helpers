@@ -32,7 +32,7 @@ import tables
 from collections import OrderedDict
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort, power, sum, argmin, float64
 
-__all__ = ['merge_h5', 'output_check']
+__all__ = ['merge_h5', 'output_check', 'move_source_in_sourcetable']
 
 def remove_numbers(inp):
     return "".join(re.findall("[a-zA-z]+", inp))
@@ -1523,14 +1523,14 @@ def _test_h5_output(h5_out, tables_to_merge):
 def _degree_to_radian(d):
     return pi*d/180
 
-def change_sourcetable(h5, overwrite=False, dir_idx=None, dec_degrees=0, ra_degrees=0):
+def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, ra_degrees=0, dec_degrees=0):
     """
     Change source table for specific direction
 
     :param overwrite: overwrite input file. If False -> add replace .h5 with _update.h5
     :param dir_idx: directions index
-    :param y_degrees: change y_degrees
-    :param x_degrees: change x_degrees
+    :param ra_degrees: change right ascension degrees
+    :param dec_degrees: change declination degrees
     """
     if not overwrite:
         os.system('cp '+h5+' '+h5.replace('.h5', '_upd.h5'))

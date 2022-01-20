@@ -1,57 +1,59 @@
 #!/bin/bash
+#SBATCH --partition=infinite
+#SBATCH -c 30
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 
-N=$1
-NMITER=$2
+
+#input
+H5=$1
+MS=$2
 
 NAME=image_test_A399_cleanbridge
 
-SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn4,/net/rijn3,/net/rijn2
-SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
-SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest.sif
-SING_IMAGE_P2=/net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fedora31_ddf.sif
+SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
+SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
+SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/test/idgtest.sif
+SING_IMAGE_P2=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
 
-TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_${N}_cleanbridge
-FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
-H5=all_directions${N}.h5
-MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive${N}.avg.goodtimes
+TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_cleanbridge
+FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/jurjendejong/A399_extracted_avg
 
+#check if directory exists
+if [[ -f ${TO} ]]
+then
+  echo "${TO} exists. Exit script"
+  exit 0
+fi
+
+#cache
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 
-#make dir
+#make directory
 mkdir -p ${TO}
 
 #copy files
-cp ${FROM}/${H5} ${TO} && wait
-cp -r ${FROM}/${MS} ${TO} && wait
-
-#make shorter time axis
-singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py \
---time_flag 0 300 \
--msin ${TO}/${MS} \
--msout ${TO}/${MS}.test && wait
-rm -rf ${TO}/${MS}
-
-singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-python ~/scripts/lofar_helpers/h5_merger.py \
---h5_tables ${TO}/${H5} \
---h5_out ${TO}/short_${H5} \
---ms ${TO}/${MS}.test && wait
-rm -rf ${TO}/${H5}
+for H in ${H5}
+do
+  cp ${FROM}/${H} ${TO}
+done
 
 #aoflagger
-singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-aoflagger ${TO}/${MS}.test && wait
+for M in ${MS}
+do
+  cp -r ${FROM}/${M} ${TO} && wait
+  singularity exec -B ${SING_BIND} ${SING_IMAGE} aoflagger ${TO}/${M}
+done
 
 cd ${TO}
 
-#make tesselation
-singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
---h5 ${TO}/short_${H5} \
---DS9regionout ${TO}/tess.reg \
---imsize 6000 \
---ms ${TO}/${MS}.test
+#make facet
+cp ${FROM}/tessupdate.reg ${TO} && wait
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
+#--h5 ${TO}/${H5} \
+#--DS9regionout ${TO}/tess.reg \
+#--imsize 6000 \
+#--ms ${TO}/${MS_1}
 
 # make first image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -75,14 +77,14 @@ wsclean \
 -mgain 0.8 \
 -fit-beam \
 -join-channels \
--nmiter ${NMITER} \
+-nmiter 7 \
 -log-time \
 -facet-regions tess.reg \
 -minuv-l 2000.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
--apply-facet-solutions short_${H5} amplitude000,phase000 \
-${MS}.test
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+${MS}
 
 #mask compact objects
 singularity exec -B ${SING_BIND} ${SING_IMAGE_P2} \
@@ -90,7 +92,6 @@ python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyMode
 --Th=3.0 \
 --RestoredIm=${NAME}_compact-MFS-image.fits
 
-#re-image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
 -size 1500 1500 \
@@ -113,15 +114,15 @@ wsclean \
 -multiscale \
 -join-channels \
 -multiscale-max-scales 4 \
--nmiter ${NMITER} \
+-nmiter 9 \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions tess.reg \
 -minuv-l 2000.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
--apply-facet-solutions short_${H5} amplitude000,phase000 \
-${MS}.test
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+${MS}
 
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -131,11 +132,11 @@ wsclean \
 -padding 1.2 \
 -predict \
 -name ${NAME}_compactmask \
-${MS}.test
+${MS}
 
 #subtract
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS}.test --colname DIFFUSE_SUB
+python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS} --colname DIFFUSE_SUB
 
 #make final image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -161,7 +162,7 @@ wsclean \
 -multiscale \
 -join-channels \
 -multiscale-max-scales 10 \
--nmiter ${NMITER} \
+-nmiter 10 \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions tess.reg \
@@ -169,5 +170,5 @@ wsclean \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \
 -data-column DIFFUSE_SUB \
--apply-facet-solutions short_${H5} amplitude000,phase000 \
-${MS}.test
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+${MS}
