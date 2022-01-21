@@ -16,8 +16,9 @@ SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest.sif
 SING_IMAGE_P2=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
 
-TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_cleanbridge
+TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_cleanbridge_$(echo "$H5" | tr -cd ' ' | wc -c)
 FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
+TESS=tess60.reg
 
 #check if directory exists
 if [[ -f ${TO} ]]
@@ -51,34 +52,36 @@ cd ${TO}
 cp ${FROM}/tess60.reg ${TO} && wait
 
 # make first image
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
-wsclean \
--size 6000 6000 \
+singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
+-data-column DATA \
 -use-wgridder \
--no-update-model-required \
+-update-model-required \
 -reorder \
--channels-out 6 \
--weight briggs -0.5 \
+-weight briggs \
+-0.5 \
 -weighting-rank-filter 3 \
 -clean-border 1 \
--parallel-reordering 6 \
+-parallel-reordering 5 \
 -padding 1.2 \
 -auto-mask 2.5 \
 -auto-threshold 0.5 \
 -pol i \
--name ${NAME}_compact \
--scale 1.5arcsec \
--niter 50000 \
--mgain 0.8 \
+-niter 150000 \
+-mgain 0.7 \
 -fit-beam \
--join-channels \
--nmiter 7 \
--log-time \
--facet-regions tess.reg \
--minuv-l 2100.0 \
--parallel-gridding 6 \
+-multiscale \
+-channels-out 6 \
 -fit-spectral-pol 3 \
+-join-channels \
+-log-time \
+-parallel-deconvolution 1600 \
+-parallel-gridding 5 \
+-facet-regions ${TESS} \
 -apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+-name ${NAME}_compact \
+-size 6000 6000 \
+-scale 1.5arcsec \
+-nmiter 7 \
 ${MS}
 
 #mask compact objects
@@ -87,42 +90,41 @@ python /home/lofarvwf-jdejong/scripts/MakeMask.py \
 --Th=3.0 \
 --RestoredIm=${NAME}_compact-MFS-image.fits
 
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
-wsclean \
--size 6000 6000 \
+singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
+-data-column DATA \
 -use-wgridder \
--no-update-model-required \
+-update-model-required \
 -reorder \
--channels-out 6 \
--weight briggs -0.5 \
+-weight briggs \
+-0.5 \
 -weighting-rank-filter 3 \
 -clean-border 1 \
--parallel-reordering 6 \
+-parallel-reordering 5 \
 -padding 1.2 \
 -fits-mask ${NAME}_compact-MFS-image.fits.mask.fits \
 -pol i \
--name ${NAME}_compactmask \
--scale 1.5arcsec \
--niter 50000 \
--mgain 0.8 \
+-niter 150000 \
+-mgain 0.7 \
 -fit-beam \
 -multiscale \
--join-channels \
--multiscale-max-scales 4 \
--nmiter 9 \
--log-time \
--multiscale-scale-bias 0.7 \
--facet-regions tess.reg \
--minuv-l 2100.0 \
--parallel-gridding 6 \
+-channels-out 6 \
 -fit-spectral-pol 3 \
+-join-channels \
+-log-time \
+-parallel-deconvolution 1600 \
+-parallel-gridding 5 \
+-facet-regions ${TESS} \
 -apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+-name ${NAME}_compactmask \
+-size 6000 6000 \
+-scale 1.5arcsec \
+-nmiter 10 \
 ${MS}
 
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
--size 1500 1500 \
+-size 6000 6000 \
 -channels-out 6 \
 -padding 1.2 \
 -predict \
@@ -160,7 +162,7 @@ wsclean \
 -nmiter 10 \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions tess.reg \
+-facet-regions ${TESS} \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \

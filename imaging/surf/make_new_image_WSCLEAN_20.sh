@@ -12,8 +12,9 @@ SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest.sif
 
-TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_20
+TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_20_$(echo "$H5" | tr -cd ' ' | wc -c)
 FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
+TESS=tess60.reg
 
 #check if directory exists
 if [[ -f ${TO} ]]
@@ -44,7 +45,7 @@ done
 cd ${TO}
 
 #make facet
-cp ${FROM}/tess60.reg ${TO} && wait
+cp ${FROM}/${TESS} ${TO} && wait
 
 #run wsclean
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -73,7 +74,7 @@ wsclean \
 -nmiter 10 \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions tessupdate.reg \
+-facet-regions ${TESS} \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -taper-gaussian 20arcsec \
