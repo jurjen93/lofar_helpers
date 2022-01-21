@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --partition=infinite
-#SBATCH -c 30
+#SBATCH -c 24
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 
