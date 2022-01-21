@@ -49,7 +49,7 @@ done
 cd ${TO}
 
 #make facet
-cp ${FROM}/tess60.reg ${TO} && wait
+cp ${FROM}/${TESS} ${TO} && wait
 
 # make first image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
