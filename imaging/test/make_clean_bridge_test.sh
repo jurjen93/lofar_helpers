@@ -14,6 +14,7 @@ TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_${N}_cleanbridge
 FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
 H5=all_directions${N}.h5
 MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive${N}.avg.goodtimes
+TESS=tessupdate.reg
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 
@@ -49,84 +50,84 @@ cd ${TO}
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
 python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
 --h5 ${TO}/short_${H5} \
---DS9regionout ${TO}/tess.reg \
+--DS9regionout ${TO}/${TESS} \
 --imsize 6000 \
 --ms ${TO}/${MS}.test
 
 # make first image
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
-wsclean \
--size 6000 6000 \
+singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
+-data-column DATA \
 -use-wgridder \
--no-update-model-required \
+-update-model-required \
 -reorder \
--channels-out 6 \
--weight briggs -0.5 \
+-weight briggs \
+-0.5 \
 -weighting-rank-filter 3 \
 -clean-border 1 \
--parallel-reordering 6 \
+-parallel-reordering 5 \
 -padding 1.2 \
 -auto-mask 2.5 \
 -auto-threshold 0.5 \
 -pol i \
--name ${NAME}_compact \
--scale 1.5arcsec \
--niter 50000 \
--mgain 0.8 \
+-niter 150000 \
+-mgain 0.7 \
 -fit-beam \
--join-channels \
--nmiter ${NMITER} \
--log-time \
--facet-regions tess.reg \
--minuv-l 2100.0 \
--parallel-gridding 6 \
+-multiscale \
+-channels-out 6 \
 -fit-spectral-pol 3 \
+-join-channels \
+-log-time \
+-parallel-deconvolution 1600 \
+-parallel-gridding 5 \
+-facet-regions ${TESS} \
 -apply-facet-solutions short_${H5} amplitude000,phase000 \
+-name ${NAME}_compact \
+-size 6000 6000 \
+-scale 1.5arcsec \
+-nmiter ${NMITER} \
 ${MS}.test
 
 #mask compact objects
 singularity exec -B ${SING_BIND} ${SING_IMAGE_P2} \
-python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyModel/MakeMask.py \
+python /home/lofarvwf-jdejong/scripts/MakeMask.py \
 --Th=3.0 \
 --RestoredIm=${NAME}_compact-MFS-image.fits
 
-#re-image
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
-wsclean \
--size 6000 6000 \
+singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
+-data-column DATA \
 -use-wgridder \
--no-update-model-required \
+-update-model-required \
 -reorder \
--channels-out 6 \
--weight briggs -0.5 \
+-weight briggs \
+-0.5 \
 -weighting-rank-filter 3 \
 -clean-border 1 \
--parallel-reordering 6 \
+-parallel-reordering 5 \
 -padding 1.2 \
 -fits-mask ${NAME}_compact-MFS-image.fits.mask.fits \
 -pol i \
--name ${NAME}_compactmask \
--scale 1.5arcsec \
--niter 50000 \
--mgain 0.8 \
+-niter 150000 \
+-mgain 0.7 \
 -fit-beam \
 -multiscale \
--join-channels \
--multiscale-max-scales 4 \
--nmiter ${NMITER} \
--log-time \
--multiscale-scale-bias 0.7 \
--facet-regions tess.reg \
--minuv-l 2100.0 \
--parallel-gridding 6 \
+-channels-out 6 \
 -fit-spectral-pol 3 \
+-join-channels \
+-log-time \
+-parallel-deconvolution 1600 \
+-parallel-gridding 5 \
+-facet-regions ${TESS} \
 -apply-facet-solutions short_${H5} amplitude000,phase000 \
+-name ${NAME}_compactmask \
+-size 6000 6000 \
+-scale 1.5arcsec \
+-nmiter ${NMITER} \
 ${MS}.test
 
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
--size 1500 1500 \
+-size 6000 6000 \
 -channels-out 6 \
 -padding 1.2 \
 -predict \
@@ -164,7 +165,7 @@ wsclean \
 -nmiter ${NMITER} \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions tess.reg \
+-facet-regions ${TESS} \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \

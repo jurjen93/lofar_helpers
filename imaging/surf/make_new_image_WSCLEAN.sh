@@ -17,8 +17,9 @@ SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest.sif
 
-TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401
+TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_$(echo "$H5" | tr -cd ' ' | wc -c)
 FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
+TESS=tess60.reg
 
 echo "Running on ${HOSTNAME%%.*}"
 
@@ -52,7 +53,7 @@ done
 cd ${TO}
 
 #make facet
-cp ${FROM}/tess60.reg ${TO} && wait
+cp ${FROM}/${TESS} ${TO} && wait
 
 #run wsclean
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
@@ -81,7 +82,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -multiscale-scale-bias 0.7 \
 -parallel-deconvolution 1600 \
 -parallel-gridding 5 \
--facet-regions tessupdate.reg \
+-facet-regions ${TESS} \
 -apply-facet-solutions ${H5// /,} amplitude000,phase000 \
 -name image_test_A399 \
 -size 6000 6000 \
