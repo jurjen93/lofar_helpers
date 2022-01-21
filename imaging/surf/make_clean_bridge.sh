@@ -48,12 +48,7 @@ done
 cd ${TO}
 
 #make facet
-cp ${FROM}/tessupdate.reg ${TO} && wait
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
-#--h5 ${TO}/${H5} \
-#--DS9regionout ${TO}/tess.reg \
-#--imsize 6000 \
-#--ms ${TO}/${MS_1}
+cp ${FROM}/tess60.reg ${TO} && wait
 
 # make first image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -80,7 +75,7 @@ wsclean \
 -nmiter 7 \
 -log-time \
 -facet-regions tess.reg \
--minuv-l 2000.0 \
+-minuv-l 2100.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -apply-facet-solutions ${H5// /,} amplitude000,phase000 \
@@ -88,7 +83,7 @@ ${MS}
 
 #mask compact objects
 singularity exec -B ${SING_BIND} ${SING_IMAGE_P2} \
-python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyModel/MakeMask.py \
+python /home/lofarvwf-jdejong/scripts/MakeMask.py \
 --Th=3.0 \
 --RestoredIm=${NAME}_compact-MFS-image.fits
 
@@ -118,7 +113,7 @@ wsclean \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions tess.reg \
--minuv-l 2000.0 \
+-minuv-l 2100.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -apply-facet-solutions ${H5// /,} amplitude000,phase000 \
