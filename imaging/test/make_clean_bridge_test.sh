@@ -78,7 +78,7 @@ wsclean \
 -nmiter ${NMITER} \
 -log-time \
 -facet-regions tess.reg \
--minuv-l 2000.0 \
+-minuv-l 2100.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -apply-facet-solutions short_${H5} amplitude000,phase000 \
@@ -117,7 +117,7 @@ wsclean \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions tess.reg \
--minuv-l 2000.0 \
+-minuv-l 2100.0 \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -apply-facet-solutions short_${H5} amplitude000,phase000 \
