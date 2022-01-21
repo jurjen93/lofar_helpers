@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --partition=infinite
-#SBATCH -c 30
+#SBATCH -c 24
 #SBATCH --mail-type=FAIL
 #SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
 
@@ -58,7 +58,7 @@ cp ${FROM}/tessupdate.reg ${TO} && wait
 # make first image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
--size 1500 1500 \
+-size 6000 6000 \
 -use-wgridder \
 -no-update-model-required \
 -reorder \
@@ -72,7 +72,7 @@ wsclean \
 -auto-threshold 0.5 \
 -pol i \
 -name ${NAME}_compact \
--scale 6arcsec \
+-scale 1.5arcsec \
 -niter 50000 \
 -mgain 0.8 \
 -fit-beam \
@@ -94,7 +94,7 @@ python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyMode
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
--size 1500 1500 \
+-size 6000 6000 \
 -use-wgridder \
 -no-update-model-required \
 -reorder \
@@ -107,7 +107,7 @@ wsclean \
 -fits-mask ${NAME}_compact-MFS-image.fits.mask.fits \
 -pol i \
 -name ${NAME}_compactmask \
--scale 6arcsec \
+-scale 1.5arcsec \
 -niter 50000 \
 -mgain 0.8 \
 -fit-beam \
