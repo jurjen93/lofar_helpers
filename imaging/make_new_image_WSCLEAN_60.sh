@@ -10,6 +10,7 @@ SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest.sif
 TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_60
 FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
+TESS=tessupdate.reg
 
 #cache
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
@@ -40,12 +41,7 @@ done
 cd ${TO}
 
 #make facet
-cp ${FROM}/tessupdate.reg ${TO} && wait
-#singularity exec -B ${SING_BIND} ${SING_IMAGE} python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
-#--h5 ${TO}/${H5} \
-#--DS9regionout ${TO}/tessupdate.reg \
-#--imsize 6000 \
-#--ms ${TO}/${MS_1}
+cp ${FROM}/${TESS} ${TO} && wait
 
 #run wsclean
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -74,7 +70,7 @@ wsclean \
 -nmiter 10 \
 -log-time \
 -multiscale-scale-bias 0.7 \
--facet-regions tessupdate.reg \
+-facet-regions ${TESS} \
 -parallel-gridding 6 \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \
