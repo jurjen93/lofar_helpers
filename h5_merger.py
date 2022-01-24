@@ -94,6 +94,7 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
         new_antennas = list(zip(ants_h5, [[0., 0., 0.]]*len(ants_h5)))
         print(new_antennas)
         for n, ant in enumerate(antennas_ms):
+            print(n)
             if type(ant[0])!=str:
                 a = ant[0].decode('utf8')
             else:
