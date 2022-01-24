@@ -209,10 +209,19 @@ class MergeH5:
             for solset1 in H_ref.root._v_groups.keys():
                 ss1 = H_ref.root._f_get_child(solset1)
                 if 'antenna' not in list(ss1._v_children.keys()):
-                    print(h5_name1)
                     H_ref.create_table(ss1, 'antenna',
                                        array([], dtype=[('name', 'S16'), ('position', '<f4', (3,))]),
                                        title='Antenna names and positions')
+                if len(ss1._f_get_child('antenna')[:])==0:
+                    print('Antenna table ('+'/'.join([solset1, 'antenna'])+') in '+h5_name1+' is empty')
+                    if len(self.ms)>0:
+                        print('WARNING: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
+                                                '\nWARNING: Trying to fill antenna table with measurement set')
+                        H_ref.close()
+                        copy_antennas_from_MS_to_h5(self.ms[0], h5_name1, solset1)
+                    else:
+                        sys.exit('ERROR: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
+                                                '\nAdd --ms to add a measurement set to fill up the antenna table')
             H_ref.close()
 
         for h5_name1 in self.h5_tables:
@@ -220,16 +229,6 @@ class MergeH5:
             for solset1 in H_ref.root._v_groups.keys():
                 ss1 = H_ref.root._f_get_child(solset1)
                 antennas_ref = ss1.antenna[:]
-                if len(antennas_ref[:])==0:
-                    print('Antenna table ('+'/'.join([solset1, 'antenna'])+') in '+h5_name1+' is empty')
-                    if len(self.ms)>0:
-                        H_ref.close()
-                        copy_antennas_from_MS_to_h5(self.ms[0], h5_name1, solset1)
-                        H_ref = tables.open_file(h5_name1)
-                        ss1 = H_ref.root._f_get_child(solset1)
-                        antennas_ref = ss1.antenna[:]
-                    else:
-                        print('Add --ms to add a measurement set to fill up the antenna table')
                 for soltab1 in ss1._v_groups.keys():
                     if (len(antennas_ref['name']) != len(ss1._f_get_child(soltab1).ant[:])) or \
                             (not all(antennas_ref['name'] == ss1._f_get_child(soltab1).ant[:])):
