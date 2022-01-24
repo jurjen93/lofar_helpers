@@ -21,18 +21,6 @@ TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_$(echo "$H5"
 FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
 TESS=tess60.reg
 
-echo "Running on ${HOSTNAME%%.*}"
-
-#check if directory exists
-if [[ -f ${TO} ]]
-then
-  echo "${TO} exists. Make Abell399-401_new"
-  TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_new
-fi
-
-#cache
-singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
-
 #make directory
 mkdir -p ${TO}
 cd ${FROM}
