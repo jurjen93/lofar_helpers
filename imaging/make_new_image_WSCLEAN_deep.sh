@@ -84,7 +84,7 @@ ${MS} \
 > log.txt
 
 mkdir ${TO}_backup
-cp -r ${TO}/*.fits ${TO}_backup/ && wait
+cp ${TO}/*.fits ${TO}_backup/ && cp ${TO}/log.txt ${TO}_backup && wait
 
 #run wsclean
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
