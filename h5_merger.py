@@ -1469,9 +1469,6 @@ class PolChange:
         for ss in self.h5_in.getSolsetNames():
 
             self.solsetout = self.h5_out.makeSolset(ss)
-            solsetin = self.h5_in.getSolset(ss)
-
-            # self.solsetout.obj.source.append(solsetin.obj.source[:])
 
             for st in self.h5_in.getSolset(ss).getSoltabNames():
                 solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
@@ -1523,6 +1520,20 @@ class PolChange:
         self.h5_out.close()
 
         return self
+
+    def create_extra_tables(self):
+
+        T = tables.open_file(self.h5in_name)
+        H = tables.open_file(self.h5out_name, 'r+')
+
+        for solset in T.root._v_groups.keys():
+            ss = T.root._f_get_child(solset)
+            overwrite_table(H, solset, 'antenna', ss.antenna[:])
+            overwrite_table(H, solset, 'source', ss.source[:])
+
+        T.close()
+        H.close()
+
 
 def _test_h5_output(h5_out, tables_to_merge):
     """
@@ -1697,6 +1708,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             Pol.create_template('amplitude')
 
         Pol.create_new_gains(lin2circ, circ2lin)
+        Pol.create_extra_tables()
 
         os.system('rm '+h5_out+' && cp '+h5_polchange+' '+h5_out)
 
