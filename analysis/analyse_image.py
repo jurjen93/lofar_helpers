@@ -22,12 +22,18 @@ def findrms(mIn, maskSup=1e-7):
         rmsold = rms
     return rms
 
-final_noise=0
-for i in range(6):
-    f = fits.open(f'/net/nieuwerijn/data2/jurjendejong/Abell399-401_indimages/archive{i}.fits')
-    noise = findrms(np.ndarray.flatten(f[0].data))
-    print(f'archive{i}')
-    print('Noise : '+str(round(noise*1000,2))+' mJy/beam')
-    final_noise+=noise**2
-    f.close()
-print('Final predicted noise : '+str(round(np.sqrt(final_noise)*1000/6, 2))+' mJy/beam')
+# final_noise=0
+# for i in range(6):
+#     f = fits.open(f'/net/nieuwerijn/data2/jurjendejong/Abell399-401_indimages/archive{i}.fits')
+#     noise = findrms(np.ndarray.flatten(f[0].data))
+#     print(f'archive{i}')
+#     print('Noise : '+str(round(noise*1000,2))+' mJy/beam')
+#     final_noise+=noise**2
+#     f.close()
+# print('Final predicted noise : '+str(round(np.sqrt(final_noise)*1000/6, 2))+' mJy/beam')
+
+f = fits.open(f'../image_test_A399-MFS-image.fits')
+noise = findrms(np.ndarray.flatten(f[0].data))
+print('Noise : ' + str(round(noise * 1000, 2)) + ' mJy/beam')
+
+

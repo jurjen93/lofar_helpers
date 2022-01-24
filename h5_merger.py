@@ -248,7 +248,6 @@ class MergeH5:
 
         if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1]:
             print("WARNING: Time axes of h5 and MS are not overlapping.")
-
         if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1]:
             print("WARNING: Frequency axes of h5 and MS are not overlapping.")
         if float(soltab[-3:]) > 0:
