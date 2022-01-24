@@ -1175,6 +1175,7 @@ class MergeH5:
                     st._f_get_child(axes)._f_remove()
                     H.create_array(st, axes, new_values.astype(valtype), atom=atomtype)
                     st._f_get_child(axes).attrs['AXES'] = attrsaxes
+                print('Value shape after --> '+str(st.val.shape))
 
         H.close()
 
@@ -1634,6 +1635,12 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     h5_out = _create_h5_name(h5_out)
 
+    if h5_out in h5_tables:
+        sys.exit('ERROR: output h5 file cannot be in the list of input h5 files.\n'
+                 'Change your --h5_out and --h5_tables parameters.')
+    elif h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
+        os.system('rm {}'.format(h5_out))
+
     #if alternative solset number is given, we will make a temp h5 file that has the alternative solset number because the code runs on sol000
     if use_solset != 'sol000':
         for h5_ind, h5 in enumerate(h5_tables):
@@ -1643,8 +1650,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             _change_solset(temph5, use_solset, 'sol000')
             h5_tables[h5_ind] = temph5
 
-    if h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
-        os.system('rm {}'.format(h5_out))
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
                     merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir)
 
