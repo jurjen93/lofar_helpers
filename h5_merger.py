@@ -87,6 +87,8 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
 
     T = tables.open_file(h5, 'r+')
     ss = T.root._f_get_child(solset)
+    print(ss._v_groups.keys())
+    print(list(ss._v_groups.keys())[0])
     ants_h5 = T.root._f_get_child(solset)._f_get_child(list(ss._v_groups.keys())[0])[:]
     print(ants_h5)
 
