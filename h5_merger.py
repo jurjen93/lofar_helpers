@@ -84,7 +84,7 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
     new_antpos = t.getcol('POSITION')
     print(new_antpos)
     print(new_antlist)
-    antennas_ms = list(zip(*(new_antlist, new_antpos)))
+    antennas_ms = array([list(zip(*(new_antlist, new_antpos)))], dtype=[('name', 'S16'), ('position', '<f4', (3,))])
     t.close()
 
     T = tables.open_file(h5, 'r+')
