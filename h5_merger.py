@@ -1470,13 +1470,14 @@ class PolChange:
             self.solsetout = self.h5_out.makeSolset(ss)
             solsetin = self.h5_in.getSolset(ss)
 
-            try:
-                new_sources = self.keep_new_sources(self.solsetout.obj.source[:], list(self.directions.items()))
+            # try:
 
-                if len(new_sources) > 0:
-                    self.solsetout.obj.source.append(new_sources)
-            except:
-                self.solsetout.obj.source.append(solsetin.obj.source[:])
+            new_sources = self.keep_new_sources(self.solsetout.obj.source[:], list(self.directions.items()))
+
+            if len(new_sources) > 0:
+                self.solsetout.obj.source.append(new_sources)
+            # except:
+            #     self.solsetout.obj.source.append(solsetin.obj.source[:])
 
             for st in self.h5_in.getSolset(ss).getSoltabNames():
                 solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
