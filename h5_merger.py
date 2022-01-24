@@ -93,7 +93,6 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
     else:
         new_antennas = list(zip(ants_h5, [[0., 0., 0.]]*len(ants_h5)))
         for n, ant in enumerate(antennas_ms):
-            print(n)
             if type(ant[0])!=str:
                 a = ant[0].decode('utf8')
             else:
@@ -161,7 +160,7 @@ class MergeH5:
             self.ax_freq = array(sorted(unique(self.ax_freq)))
 
         else:  # if we dont have ms files, we use the time and frequency axis of the longest h5 table
-            print('No MS or h5 file given for time/freq axis, will use h5 table for frequency and time axis')
+            print('No MS or h5 file given for time/freq axis.\nWill make a frequency and time axis by combining all input h5 tables.')
             self.ax_time = array([])
             self.ax_freq = array([])
             for h5_name in self.h5_tables:
