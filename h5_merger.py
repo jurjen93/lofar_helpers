@@ -1467,8 +1467,6 @@ class PolChange:
 
         for ss in self.h5_in.getSolsetNames():
 
-            print(ss)
-
             self.solsetout = self.h5_out.makeSolset(ss)
             solsetin = self.h5_in.getSolset(ss)
 
@@ -1699,7 +1697,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
         Pol.create_new_gains(lin2circ, circ2lin)
 
-        print('rm '+h5_out+' && cp '+h5_polchange+' '+h5_out)
+        os.system('rm '+h5_out+' && cp '+h5_polchange+' '+h5_out)
 
 
     # brief test of output
