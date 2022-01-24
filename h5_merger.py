@@ -91,7 +91,7 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
     if ants_h5 == new_antlist:
         overwrite_table(T, solset, 'antenna', antennas_ms, title=None)
     else:
-        new_antennas = list(zip((ants_h5, [[0., 0., 0.]]*len(ants_h5))))
+        new_antennas = list(zip(ants_h5, [[0., 0., 0.]]*len(ants_h5)))
         print(new_antennas)
         for n, ant in enumerate(antennas_ms):
             if type(ant[0])!=str:
