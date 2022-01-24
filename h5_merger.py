@@ -90,7 +90,7 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
     print(ss._v_groups.keys())
     print(list(ss._v_groups.keys())[0])
     print(T.root._f_get_child(solset)._f_get_child(list(ss._v_groups.keys())[0]))
-    ants_h5 = T.root._f_get_child(solset)._f_get_child(list(ss._v_groups.keys())[0])[:]
+    ants_h5 = T.root._f_get_child(solset)._f_get_child(list(ss._v_groups.keys())[0]).ant[:]
     print(ants_h5)
 
     if ants_h5 == new_antlist:
