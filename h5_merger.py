@@ -1310,7 +1310,8 @@ class PolChange:
         :param h5_in: h5 input name
         :param h5_out: h5 output name
         """
-
+        self.h5in_name = h5_in
+        self.h5out_name = h5_out
         self.h5_in = h5parm(h5_in, readonly=True)
         self.h5_out = h5parm(h5_out, readonly=False)
         self.axes_names = ['time', 'freq', 'ant', 'dir', 'pol']
@@ -1470,7 +1471,7 @@ class PolChange:
             self.solsetout = self.h5_out.makeSolset(ss)
             solsetin = self.h5_in.getSolset(ss)
 
-            self.solsetout.obj.source.append(list(solsetin.obj.source[:]))
+            # self.solsetout.obj.source.append(solsetin.obj.source[:])
 
             for st in self.h5_in.getSolset(ss).getSoltabNames():
                 solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
