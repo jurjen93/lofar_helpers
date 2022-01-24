@@ -79,7 +79,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -name image_test_A399 \
 -size 6000 6000 \
 -scale 1.5arcsec \
--nmiter 10 \
+-nmiter 3 \
 ${MS} \
 > log.txt
 
