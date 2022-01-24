@@ -100,7 +100,7 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
             else:
                 a = ant[0]
             if a in list(ants_h5):
-                new_antennas[n] = ant
+                new_antennas[ants_h5.index(a)] = ant
         ss.antenna._f_remove()
         T.create_table(ss, 'antenna', array(new_antennas, dtype=[('name', 'S16'), ('position', '<f4', (3,))]), title='Antenna names and positions')
     T.close()
