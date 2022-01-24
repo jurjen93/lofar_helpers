@@ -82,7 +82,7 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
     t = ct.table(MS + "::ANTENNA", ack=False)
     new_antlist = t.getcol('NAME')
     new_antpos = t.getcol('POSITION')
-    antennas_ms = array([list(zip(new_antlist, new_antpos))], dtype=[('name', 'S16'), ('position', '<f4', (3,))])
+    antennas_ms = list(zip(new_antlist, new_antpos))
     t.close()
 
     T = tables.open_file(h5, 'r+')
@@ -94,7 +94,7 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
         new_antennas = list(zip(*(ants_h5, [[0., 0., 0.]]*len(ants_h5))))
         for n, ant in enumerate(antennas_ms):
             print(ant[0])
-            if ant[0].decode('utf8') in list(ants_h5):
+            if ant[0] in list(ants_h5):
                 print(ant[0])
                 new_antennas[n] = ant
         ss.antenna._f_remove()
