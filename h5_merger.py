@@ -213,7 +213,7 @@ class MergeH5:
                     H_ref.create_table(ss1, 'antenna',
                                        array([], dtype=[('name', 'S16'), ('position', '<f4', (3,))]),
                                        title='Antenna names and positions')
-                if len(ss1._f_get_child('antenna')[:])==0:
+                if len(ss1._f_get_child('antenna')[:]) == 0:
                     print('Antenna table ('+'/'.join([solset1, 'antenna'])+') in '+h5_name1+' is empty')
                     if len(self.ms)>0:
                         print('WARNING: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
