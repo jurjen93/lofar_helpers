@@ -53,9 +53,8 @@ cp ${FROM}/${TESS} ${TO} && wait
 
 # make first image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
--data-column DATA \
 -use-wgridder \
--update-model-required \
+-no-update-model-required \
 -reorder \
 -weight briggs \
 -0.5 \
@@ -91,9 +90,8 @@ python /home/lofarvwf-jdejong/scripts/MakeMask.py \
 --RestoredIm=${NAME}_compact-MFS-image.fits
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
--data-column DATA \
 -use-wgridder \
--update-model-required \
+-no-update-model-required \
 -reorder \
 -weight briggs \
 -0.5 \
