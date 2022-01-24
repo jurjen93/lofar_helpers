@@ -217,12 +217,12 @@ class MergeH5:
                     print('Antenna table ('+'/'.join([solset1, 'antenna'])+') in '+h5_name1+' is empty')
                     if len(self.ms)>0:
                         print('WARNING: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
-                                                '\nWARNING: Trying to fill antenna table with measurement set')
+                                '\nWARNING: Trying to fill antenna table with measurement set')
                         H_ref.close()
                         copy_antennas_from_MS_to_h5(self.ms[0], h5_name1, solset1)
                     else:
                         sys.exit('ERROR: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
-                                                '\nAdd --ms to add a measurement set to fill up the antenna table')
+                                '\nAdd --ms to add a measurement set to fill up the antenna table')
             H_ref.close()
 
         for h5_name1 in self.h5_tables:
@@ -1429,7 +1429,7 @@ class PolChange:
                                  'pol': ['XX', 'XY', 'YX', 'YY']}
                     break
 
-        print('Shape of input {shape}'.format(shape=self.G.shape))
+        print('Value shape {soltab} before --> {shape}'.format(soltab=soltab, shape=self.G.shape))
 
         return self
 
@@ -1474,7 +1474,7 @@ class PolChange:
 
             for st in self.h5_in.getSolset(ss).getSoltabNames():
                 solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
-                print('Reading {st} from {ss}'.format(ss=ss, st=st))
+                print('{ss}/{st} from {h5}'.format(ss=ss, st=st, h5=self.h5in_name))
                 if 'phase' in st:
                     if 'pol' in solutiontable.getAxesNames():
                         values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
@@ -1505,7 +1505,7 @@ class PolChange:
                 G_new = self.circ2lin(self.G)
             else:
                 sys.exit('ERROR: No conversion given')
-            print('Shape of output for amplitude and phase: {shape}'.format(shape=G_new.shape))
+            print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
             phase = angle(G_new)
             amplitude = abs(G_new)
@@ -1698,14 +1698,12 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     elif lin2circ or circ2lin:
 
-        print('THIS FEATURE IS NOT PROPERLY TESTED YET, PLEASE GIVE FEEDBACK IF THE RESULT IS NOT AS EXPECTED (jurjendejong@strw.leidenuniv.nl)')
-
         if lin2circ:
             h5_polchange = h5_out[0:-3]+'_circ.h5'
-            print('Polarization will be converted from linear to circular')
+            print('\nPolarization will be converted from linear to circular')
         else:
             h5_polchange = h5_out[0:-3]+'_lin.h5'
-            print('Polarization will be converted from circular to linear')
+            print('\nPolarization will be converted from circular to linear')
 
         Pol = PolChange(h5_in=h5_out, h5_out=h5_polchange)
 
