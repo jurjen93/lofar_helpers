@@ -92,7 +92,6 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
         overwrite_table(T, solset, 'antenna', antennas_ms, title=None)
     else:
         new_antennas = list(zip(ants_h5, [[0., 0., 0.]]*len(ants_h5)))
-        print(new_antennas)
         for n, ant in enumerate(antennas_ms):
             print(n)
             if type(ant[0])!=str:
@@ -1662,8 +1661,23 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if add_directions:
         merge.add_empty_directions(add_directions)
 
+    if sys.version_info.major == 2:
+        merge.reorder_directions()
+
+    #Check table source size
+    merge.reduce_memory_source()
+
+    #remove polarization axis if double
+    if single_pol:
+        print('Make a single polarization')
+        merge.remove_pol(single=True)
+    elif no_pol:
+        print('Remove polarization')
+        merge.remove_pol()
+
     if lin2circ and circ2lin:
         sys.exit('Both polarization conversions are given, please choose 1.')
+
     elif lin2circ or circ2lin:
 
         print('THIS FEATURE IS NOT PROPERLY TESTED YET, PLEASE GIVE FEEDBACK IF THE RESULT IS NOT AS EXPECTED (jurjendejong@strw.leidenuniv.nl)')
@@ -1682,21 +1696,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             Pol.create_template('amplitude')
 
         Pol.create_new_gains(lin2circ, circ2lin)
-        print('{file} has been created'.format(file=h5_polchange))
 
-    if sys.version_info.major == 2:
-        merge.reorder_directions()
+        print('rm '+h5_out+' && cp '+h5_polchange+' '+h5_out)
 
-    #Check table source size
-    merge.reduce_memory_source()
-
-    #remove polarization axis if double
-    if single_pol:
-        print('Make a single polarization')
-        merge.remove_pol(single=True)
-    elif no_pol:
-        print('Remove polarization')
-        merge.remove_pol()
 
     # brief test of output
     # if not merge_all_in_one:
