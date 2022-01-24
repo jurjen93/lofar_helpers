@@ -88,6 +88,7 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
     T = tables.open_file(h5, 'r+')
     ss = T.root._f_get_child(solset)
     ants_h5 = T.root._f_get_child(solset)._f_get_child(list(ss._v_groups.keys())[0])[:]
+    print(ants_h5)
 
     if ants_h5 == new_antlist:
         overwrite_table(T, solset, 'antenna', antennas_ms, title=None)
@@ -96,7 +97,6 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
         for n, ant in enumerate(antennas_ms):
             if ant[0] in ants_h5:
                 new_antennas[n] = ant
-
             ss.antenna._f_remove()
             T.create_table(ss, 'antenna', array(new_antennas, dtype=[('name', 'S16'), ('position', '<f4', (3,))]), title='Antenna names and positions')
     T.close()
