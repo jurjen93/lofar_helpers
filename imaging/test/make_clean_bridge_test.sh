@@ -56,9 +56,8 @@ python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
 
 # make first image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
--data-column DATA \
 -use-wgridder \
--update-model-required \
+-no-update-model-required \
 -reorder \
 -weight briggs \
 -0.5 \
@@ -84,7 +83,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -name ${NAME}_compact \
 -size 6000 6000 \
 -scale 1.5arcsec \
--nmiter ${NMITER} \
+-nmiter 7 \
 ${MS}.test
 
 #mask compact objects
@@ -93,82 +92,81 @@ python /home/lofarvwf-jdejong/scripts/MakeMask.py \
 --Th=3.0 \
 --RestoredIm=${NAME}_compact-MFS-image.fits
 
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
--data-column DATA \
--use-wgridder \
--update-model-required \
--reorder \
--weight briggs \
--0.5 \
--weighting-rank-filter 3 \
--clean-border 1 \
--parallel-reordering 5 \
--padding 1.2 \
--fits-mask ${NAME}_compact-MFS-image.fits.mask.fits \
--pol i \
--niter 150000 \
--mgain 0.7 \
--fit-beam \
--multiscale \
--channels-out 6 \
--fit-spectral-pol 3 \
--join-channels \
--log-time \
--parallel-deconvolution 1600 \
--parallel-gridding 5 \
--facet-regions ${TESS} \
--apply-facet-solutions short_${H5} amplitude000,phase000 \
--name ${NAME}_compactmask \
--size 6000 6000 \
--scale 1.5arcsec \
--nmiter ${NMITER} \
-${MS}.test
-
-#predict
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
-wsclean \
--size 6000 6000 \
--channels-out 6 \
--padding 1.2 \
--predict \
--name ${NAME}_compactmask \
-${MS}.test
-
-#subtract
-singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS}.test --colname DIFFUSE_SUB
-
-#make final image
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
-wsclean \
--size 1500 1500 \
--use-wgridder \
--no-update-model-required \
--reorder \
--channels-out 6 \
--weight briggs -0.5 \
--weighting-rank-filter 3 \
--clean-border 1 \
--parallel-reordering 6 \
--padding 1.2 \
--auto-mask 2.5 \
--auto-threshold 0.5 \
--pol i \
--name ${NAME} \
--scale 6arcsec \
--niter 50000 \
--mgain 0.8 \
--fit-beam \
--multiscale \
--join-channels \
--multiscale-max-scales 10 \
--nmiter ${NMITER} \
--log-time \
--multiscale-scale-bias 0.7 \
--facet-regions ${TESS} \
--parallel-gridding 6 \
--fit-spectral-pol 3 \
--taper-gaussian 60arcsec \
--data-column DIFFUSE_SUB \
--apply-facet-solutions short_${H5} amplitude000,phase000 \
-${MS}.test
+#singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
+#-use-wgridder \
+#-no-update-model-required \
+#-reorder \
+#-weight briggs \
+#-0.5 \
+#-weighting-rank-filter 3 \
+#-clean-border 1 \
+#-parallel-reordering 5 \
+#-padding 1.2 \
+#-fits-mask ${NAME}_compact-MFS-image.fits.mask.fits \
+#-pol i \
+#-niter 150000 \
+#-mgain 0.7 \
+#-fit-beam \
+#-multiscale \
+#-channels-out 6 \
+#-fit-spectral-pol 3 \
+#-join-channels \
+#-log-time \
+#-parallel-deconvolution 1600 \
+#-parallel-gridding 5 \
+#-facet-regions ${TESS} \
+#-apply-facet-solutions short_${H5} amplitude000,phase000 \
+#-name ${NAME}_compactmask \
+#-size 6000 6000 \
+#-scale 1.5arcsec \
+#-nmiter ${NMITER} \
+#${MS}.test
+#
+##predict
+#singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
+#wsclean \
+#-size 6000 6000 \
+#-channels-out 6 \
+#-padding 1.2 \
+#-predict \
+#-name ${NAME}_compactmask \
+#${MS}.test
+#
+##subtract
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} \
+#python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS}.test --colname DIFFUSE_SUB
+#
+##make final image
+#singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
+#wsclean \
+#-size 1500 1500 \
+#-use-wgridder \
+#-no-update-model-required \
+#-reorder \
+#-channels-out 6 \
+#-weight briggs -0.5 \
+#-weighting-rank-filter 3 \
+#-clean-border 1 \
+#-parallel-reordering 6 \
+#-padding 1.2 \
+#-auto-mask 2.5 \
+#-auto-threshold 0.5 \
+#-pol i \
+#-name ${NAME} \
+#-scale 6arcsec \
+#-niter 50000 \
+#-mgain 0.8 \
+#-fit-beam \
+#-multiscale \
+#-join-channels \
+#-multiscale-max-scales 10 \
+#-nmiter ${NMITER} \
+#-log-time \
+#-multiscale-scale-bias 0.7 \
+#-facet-regions ${TESS} \
+#-parallel-gridding 6 \
+#-fit-spectral-pol 3 \
+#-taper-gaussian 60arcsec \
+#-data-column DIFFUSE_SUB \
+#-apply-facet-solutions short_${H5} amplitude000,phase000 \
+#${MS}.test
