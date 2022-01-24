@@ -1469,7 +1469,7 @@ class PolChange:
 
             self.solsetout = self.h5_out.makeSolset(ss)
             solsetin = self.h5_in.getSolset(ss)
-
+            print(solsetin.obj.source[:])
             self.solsetout.obj.source.append(solsetin.obj.source[:])
 
             for st in self.h5_in.getSolset(ss).getSoltabNames():
