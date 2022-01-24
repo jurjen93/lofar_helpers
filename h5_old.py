@@ -37,6 +37,7 @@ __all__ = ['merge_h5', 'output_check', 'move_source_in_sourcetable']
 def remove_numbers(inp):
     return "".join(re.findall("[a-zA-z]+", inp))
 
+
 def overwrite_table(T, solset, table, values, title=None):
     """
     Create table for given solset, opened with the package tables.
@@ -71,38 +72,6 @@ def overwrite_table(T, solset, table, values, title=None):
         except:
             values = array(values)
     T.create_table(ss, table, values, title=title)
-
-def copy_antennas_from_MS_to_h5(MS, h5, solset):
-    """
-    Copy the antennas from an MS to an h5 file
-
-    :param MS: measurement set
-    :param h5: h5 file
-    """
-    t = ct.table(MS + "::ANTENNA", ack=False)
-    new_antlist = t.getcol('NAME')
-    new_antpos = t.getcol('POSITION')
-    antennas_ms = list(zip(new_antlist, new_antpos))
-    t.close()
-
-    T = tables.open_file(h5, 'r+')
-    ss = T.root._f_get_child(solset)
-    ants_h5 = [a.decode('utf8') if type(a)!=str else a for a in T.root._f_get_child(solset)._f_get_child(list(ss._v_groups.keys())[0]).ant[:]]
-    if ants_h5 == new_antlist:
-        overwrite_table(T, solset, 'antenna', antennas_ms, title=None)
-    else:
-        new_antennas = list(zip(ants_h5, [[0., 0., 0.]]*len(ants_h5)))
-        for n, ant in enumerate(antennas_ms):
-            print(n)
-            if type(ant[0])!=str:
-                a = ant[0].decode('utf8')
-            else:
-                a = ant[0]
-            if a in list(ants_h5):
-                new_antennas[ants_h5.index(a)] = ant
-        ss.antenna._f_remove()
-        T.create_table(ss, 'antenna', array(new_antennas, dtype=[('name', 'S16'), ('position', '<f4', (3,))]), title='Antenna names and positions')
-    T.close()
 
 
 class MergeH5:
@@ -185,8 +154,8 @@ class MergeH5:
             sys.exit('ERROR: Cannot read frequency axis from input MS set or input H5.')
         if len(self.ax_time) == 0:
             sys.exit('ERROR: Cannot read time axis from input MS or input H5.')
-        # if not self.have_same_antennas:
-        #     sys.exit('ERROR: Antenna tables are not the same')
+        if not self.have_same_antennas:
+            sys.exit('ERROR: Antenna tables are not the same')
 
         self.convert_tec = convert_tec  # convert tec or not
         self.merge_all_in_one = merge_all_in_one
@@ -207,57 +176,35 @@ class MergeH5:
         """
 
         for h5_name1 in self.h5_tables:
-            H_ref = tables.open_file(h5_name1, 'r+')
-            for solset1 in H_ref.root._v_groups.keys():
-                ss1 = H_ref.root._f_get_child(solset1)
-                if 'antenna' not in list(ss1._v_children.keys()):
-                    H_ref.create_table(ss1, 'antenna',
-                                       array([], dtype=[('name', 'S16'), ('position', '<f4', (3,))]),
-                                       title='Antenna names and positions')
-                if len(ss1._f_get_child('antenna')[:]) == 0:
-                    print('Antenna table ('+'/'.join([solset1, 'antenna'])+') in '+h5_name1+' is empty')
-                    if len(self.ms)>0:
-                        print('WARNING: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
-                                                '\nWARNING: Trying to fill antenna table with measurement set')
-                        H_ref.close()
-                        copy_antennas_from_MS_to_h5(self.ms[0], h5_name1, solset1)
-                    else:
-                        sys.exit('ERROR: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
-                                                '\nAdd --ms to add a measurement set to fill up the antenna table')
-            H_ref.close()
-
-        for h5_name1 in self.h5_tables:
             H_ref = tables.open_file(h5_name1)
             for solset1 in H_ref.root._v_groups.keys():
-                ss1 = H_ref.root._f_get_child(solset1)
-                antennas_ref = ss1.antenna[:]
-                for soltab1 in ss1._v_groups.keys():
-                    if (len(antennas_ref['name']) != len(ss1._f_get_child(soltab1).ant[:])) or \
-                            (not all(antennas_ref['name'] == ss1._f_get_child(soltab1).ant[:])):
+                antennas_ref = H_ref.root._f_get_child(solset1).antenna[:]
+                for soltab1 in H_ref.root._f_get_child(solset1)._v_groups.keys():
+                    if (len(antennas_ref['name']) != len(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])) or \
+                            (not all(antennas_ref['name'] == H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])):
                         print('\nMismatch in antenna tables in '+h5_name1)
                         print('Antennas from '+'/'.join([solset1, 'antenna']))
                         print(antennas_ref['name'])
                         print('Antennas from '+'/'.join([solset1, soltab1, 'ant']))
-                        print(ss1._f_get_child(soltab1).ant[:])
+                        print(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])
                         H_ref.close()
                         return False
-                    for soltab2 in ss1._v_groups.keys():
-                        if (len(ss1._f_get_child(soltab1).ant[:]) !=
-                            len(ss1._f_get_child(soltab2).ant[:])) or \
-                                (not all(ss1._f_get_child(soltab1).ant[:] ==
-                                         ss1._f_get_child(soltab2).ant[:])):
+                    for soltab2 in H_ref.root._f_get_child(solset1)._v_groups.keys():
+                        if (len(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:]) !=
+                            len(H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])) or \
+                                (not all(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:] ==
+                                         H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])):
                             print('\nMismatch in antenna tables in ' + h5_name1)
                             print('Antennas from ' + '/'.join([solset1, soltab1, 'ant']))
-                            print(ss1._f_get_child(soltab1).ant[:])
+                            print(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])
                             print('Antennas from ' + '/'.join([solset1, soltab2, 'ant']))
-                            print(ss1._f_get_child(soltab2).ant[:])
+                            print(H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])
                             H_ref.close()
                             return False
                 for h5_name2 in self.h5_tables:
                     H = tables.open_file(h5_name2)
                     for solset2 in H.root._v_groups.keys():
-                        ss2 = H.root._f_get_child(solset2)
-                        antennas = ss2.antenna[:]
+                        antennas = H.root._f_get_child(solset2).antenna[:]
                         if (len(antennas_ref['name']) != len(antennas['name'])) \
                                 or (not all(antennas_ref['name'] == antennas['name'])):
                             print('\nMismatch between antenna tables from '+h5_name1+' and '+h5_name2)
@@ -301,6 +248,7 @@ class MergeH5:
 
         if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1]:
             print("WARNING: Time axes of h5 and MS are not overlapping.")
+
         if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1]:
             print("WARNING: Frequency axes of h5 and MS are not overlapping.")
         if float(soltab[-3:]) > 0:
@@ -1661,23 +1609,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if add_directions:
         merge.add_empty_directions(add_directions)
 
-    if sys.version_info.major == 2:
-        merge.reorder_directions()
-
-    #Check table source size
-    merge.reduce_memory_source()
-
-    #remove polarization axis if double
-    if single_pol:
-        print('Make a single polarization')
-        merge.remove_pol(single=True)
-    elif no_pol:
-        print('Remove polarization')
-        merge.remove_pol()
-
     if lin2circ and circ2lin:
         sys.exit('Both polarization conversions are given, please choose 1.')
-
     elif lin2circ or circ2lin:
 
         print('THIS FEATURE IS NOT PROPERLY TESTED YET, PLEASE GIVE FEEDBACK IF THE RESULT IS NOT AS EXPECTED (jurjendejong@strw.leidenuniv.nl)')
@@ -1696,9 +1629,21 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             Pol.create_template('amplitude')
 
         Pol.create_new_gains(lin2circ, circ2lin)
+        print('{file} has been created'.format(file=h5_polchange))
 
-        os.system('rm '+h5_out+' && cp '+h5_polchange+' '+h5_out)
+    if sys.version_info.major == 2:
+        merge.reorder_directions()
 
+    #Check table source size
+    merge.reduce_memory_source()
+
+    #remove polarization axis if double
+    if single_pol:
+        print('Make a single polarization')
+        merge.remove_pol(single=True)
+    elif no_pol:
+        print('Remove polarization')
+        merge.remove_pol()
 
     # brief test of output
     # if not merge_all_in_one:
