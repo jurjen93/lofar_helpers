@@ -1712,7 +1712,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         Pol.create_new_gains(lin2circ, circ2lin)
         Pol.create_extra_tables()
 
-        os.system('rm '+h5_out+' && cp '+h5_polchange+' '+h5_out)
+        os.system('rm '+h5_out+' && cp '+h5_polchange+' '+h5_out+' && rm '+h5_polchange)
 
 
     # brief test of output
