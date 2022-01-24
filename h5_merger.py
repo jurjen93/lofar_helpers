@@ -37,7 +37,6 @@ __all__ = ['merge_h5', 'output_check', 'move_source_in_sourcetable']
 def remove_numbers(inp):
     return "".join(re.findall("[a-zA-z]+", inp))
 
-
 def overwrite_table(T, solset, table, values, title=None):
     """
     Create table for given solset, opened with the package tables.
@@ -72,6 +71,35 @@ def overwrite_table(T, solset, table, values, title=None):
         except:
             values = array(values)
     T.create_table(ss, table, values, title=title)
+
+def copy_antennas_from_MS_to_h5(MS, h5, solset):
+    """
+    Copy the antennas from an MS to an h5 file
+
+    :param MS: measurement set
+    :param h5: h5 file
+    """
+    t = ct.table(MS + "::ANTENNA", ack=False)
+    new_antlist = t.getcol('NAME')
+    new_antpos = t.getcol('POSITION')
+    antennas_ms = array([list(zip(*(new_antlist, new_antpos)))])
+    t.close()
+
+    T = tables.open_file(h5, 'r+')
+    ss = T.root._f_get_child(solset)
+    ants_h5 = T.root._f_get_child(solset)._f_get_child(list(ss._v_groups.keys())[0])[:]
+
+    if ants_h5 == new_antlist:
+        overwrite_table(T, solset, 'antenna', antennas_ms, title=None)
+    else:
+        new_antennas = list(zip(*(ants_h5, [[0.,0.]]*len(ants_h5))))
+        for n, ant in enumerate(antennas_ms):
+            if ant[0] in ants_h5:
+                new_antennas[n] = ant
+
+            ss.antenna._f_remove()
+            T.create_table(ss, 'antenna', array(new_antennas, dtype=[('name', 'S16'), ('position', '<f4', (3,))]), title='Antenna names and positions')
+    T.close()
 
 
 class MergeH5:
@@ -178,42 +206,52 @@ class MergeH5:
         for h5_name1 in self.h5_tables:
             H_ref = tables.open_file(h5_name1)
             for solset1 in H_ref.root._v_groups.keys():
-                antennas_ref = H_ref.root._f_get_child(solset1).antenna[:]
+                ss1 = H_ref.root._f_get_child(solset1)
+                antennas_ref = ss1.antenna[:]
                 if len(antennas_ref[:])==0:
-                    print('Antenna table is empty')
-                for soltab1 in H_ref.root._f_get_child(solset1)._v_groups.keys():
-                    if (len(antennas_ref['name']) != len(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])) or \
-                            (not all(antennas_ref['name'] == H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])):
-                        print('\n'.join(['\nMismatch in antenna tables in '+h5_name1,
-                            'Antennas from '+'/'.join([solset1, 'antenna']),
-                            antennas_ref['name'],
-                            'Antennas from '+'/'.join([solset1, soltab1, 'ant']),
-                            H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:]]))
+                    print('Antenna table ('+'/'.join([solset1, 'antenna'])+') in '+h5_name1+' is empty')
+                    if len(self.ms)>0:
+                        H_ref.close()
+                        copy_antennas_from_MS_to_h5(self.ms[0], h5_name1, solset1)
+                        H_ref = tables.open_file(h5_name1)
+                        ss1 = H_ref.root._f_get_child(solset1)
+                        antennas_ref = ss1.antenna[:]
+                    else:
+                        print('Add --ms to add a measurement set to fill up the antenna table')
+                for soltab1 in ss1._v_groups.keys():
+                    if (len(antennas_ref['name']) != len(ss1._f_get_child(soltab1).ant[:])) or \
+                            (not all(antennas_ref['name'] == ss1._f_get_child(soltab1).ant[:])):
+                        print('\nMismatch in antenna tables in '+h5_name1)
+                        print('Antennas from '+'/'.join([solset1, 'antenna']))
+                        print(antennas_ref['name'])
+                        print('Antennas from '+'/'.join([solset1, soltab1, 'ant']))
+                        print(ss1._f_get_child(soltab1).ant[:])
                         H_ref.close()
                         return False
-                    for soltab2 in H_ref.root._f_get_child(solset1)._v_groups.keys():
-                        if (len(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:]) !=
-                            len(H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])) or \
-                                (not all(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:] ==
-                                         H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])):
-                            print('\n'.join(['\nMismatch in antenna tables in ' + h5_name1,
-                                'Antennas from ' + '/'.join([solset1, soltab1, 'ant']),
-                                H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:],
-                                'Antennas from ' + '/'.join([solset1, soltab2, 'ant']),
-                                H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:]]))
+                    for soltab2 in ss1._v_groups.keys():
+                        if (len(ss1._f_get_child(soltab1).ant[:]) !=
+                            len(ss1._f_get_child(soltab2).ant[:])) or \
+                                (not all(ss1._f_get_child(soltab1).ant[:] ==
+                                         ss1._f_get_child(soltab2).ant[:])):
+                            print('\nMismatch in antenna tables in ' + h5_name1)
+                            print('Antennas from ' + '/'.join([solset1, soltab1, 'ant']))
+                            print(ss1._f_get_child(soltab1).ant[:])
+                            print('Antennas from ' + '/'.join([solset1, soltab2, 'ant']))
+                            print(ss1._f_get_child(soltab2).ant[:])
                             H_ref.close()
                             return False
                 for h5_name2 in self.h5_tables:
                     H = tables.open_file(h5_name2)
                     for solset2 in H.root._v_groups.keys():
-                        antennas = H.root._f_get_child(solset2).antenna[:]
+                        ss2 = H.root._f_get_child(solset2)
+                        antennas = ss2.antenna[:]
                         if (len(antennas_ref['name']) != len(antennas['name'])) \
                                 or (not all(antennas_ref['name'] == antennas['name'])):
-                            print('\n'.join(['\nMismatch between antenna tables from '+h5_name1+' and '+h5_name2,
-                                'Antennas from '+h5_name1+':',
-                                antennas_ref['name'],
-                                'Antennas from '+h5_name2+':',
-                                antennas['name']]))
+                            print('\nMismatch between antenna tables from '+h5_name1+' and '+h5_name2)
+                            print('Antennas from '+h5_name1+':')
+                            print(antennas_ref['name'])
+                            print('Antennas from '+h5_name2+':')
+                            print(antennas['name'])
                             H.close()
                             H_ref.close()
                             return False
