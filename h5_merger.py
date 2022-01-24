@@ -1467,6 +1467,8 @@ class PolChange:
 
         for ss in self.h5_in.getSolsetNames():
 
+            print(ss)
+
             self.solsetout = self.h5_out.makeSolset(ss)
             solsetin = self.h5_in.getSolset(ss)
 
