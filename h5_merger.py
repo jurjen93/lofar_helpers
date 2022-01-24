@@ -179,14 +179,16 @@ class MergeH5:
             H_ref = tables.open_file(h5_name1)
             for solset1 in H_ref.root._v_groups.keys():
                 antennas_ref = H_ref.root._f_get_child(solset1).antenna[:]
+                if len(antennas_ref[:])==0:
+                    print('Antenna table is empty')
                 for soltab1 in H_ref.root._f_get_child(solset1)._v_groups.keys():
                     if (len(antennas_ref['name']) != len(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])) or \
                             (not all(antennas_ref['name'] == H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])):
-                        print('\nMismatch in antenna tables in '+h5_name1)
-                        print('Antennas from '+'/'.join([solset1, 'antenna']))
-                        print(antennas_ref['name'])
-                        print('Antennas from '+'/'.join([solset1, soltab1, 'ant']))
-                        print(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])
+                        print('\n'.join(['\nMismatch in antenna tables in '+h5_name1,
+                            'Antennas from '+'/'.join([solset1, 'antenna']),
+                            antennas_ref['name'],
+                            'Antennas from '+'/'.join([solset1, soltab1, 'ant']),
+                            H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:]]))
                         H_ref.close()
                         return False
                     for soltab2 in H_ref.root._f_get_child(solset1)._v_groups.keys():
@@ -194,11 +196,11 @@ class MergeH5:
                             len(H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])) or \
                                 (not all(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:] ==
                                          H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])):
-                            print('\nMismatch in antenna tables in ' + h5_name1)
-                            print('Antennas from ' + '/'.join([solset1, soltab1, 'ant']))
-                            print(H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:])
-                            print('Antennas from ' + '/'.join([solset1, soltab2, 'ant']))
-                            print(H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:])
+                            print('\n'.join(['\nMismatch in antenna tables in ' + h5_name1,
+                                'Antennas from ' + '/'.join([solset1, soltab1, 'ant']),
+                                H_ref.root._f_get_child(solset1)._f_get_child(soltab1).ant[:],
+                                'Antennas from ' + '/'.join([solset1, soltab2, 'ant']),
+                                H_ref.root._f_get_child(solset1)._f_get_child(soltab2).ant[:]]))
                             H_ref.close()
                             return False
                 for h5_name2 in self.h5_tables:
@@ -207,11 +209,11 @@ class MergeH5:
                         antennas = H.root._f_get_child(solset2).antenna[:]
                         if (len(antennas_ref['name']) != len(antennas['name'])) \
                                 or (not all(antennas_ref['name'] == antennas['name'])):
-                            print('\nMismatch between antenna tables from '+h5_name1+' and '+h5_name2)
-                            print('Antennas from '+h5_name1+':')
-                            print(antennas_ref['name'])
-                            print('Antennas from '+h5_name2+':')
-                            print(antennas['name'])
+                            print('\n'.join(['\nMismatch between antenna tables from '+h5_name1+' and '+h5_name2,
+                                'Antennas from '+h5_name1+':',
+                                antennas_ref['name'],
+                                'Antennas from '+h5_name2+':',
+                                antennas['name']]))
                             H.close()
                             H_ref.close()
                             return False
