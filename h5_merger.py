@@ -1637,7 +1637,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     if h5_out in h5_tables:
         sys.exit('ERROR: output h5 file cannot be in the list of input h5 files.\n'
-                 'Change your --h5_out and --h5_tables parameters.')
+                 'Change your --h5_out and --h5_tables input.')
     elif h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
         os.system('rm {}'.format(h5_out))
 
