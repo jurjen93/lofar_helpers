@@ -1,4 +1,9 @@
 #!/bin/bash
+#SBATCH --partition=infinite
+#SBATCH -c 24
+#SBATCH --mail-type=FAIL
+#SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
+
 
 #EXAMPLE ~/scripts/lofar_helpers/imaging/make_new_image_WSCLEAN.sh \
 # 'all_directions0.h5 all_directions1.h5' \
@@ -8,13 +13,13 @@
 H5=$1
 MS=$2
 
-#parameters
-SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn4,/net/rijn3,/net/rijn2
-SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
-SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest.sif
-TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_highMSbias
-FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
-TESS=tessupdate.reg
+SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
+SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
+SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest.sif
+
+TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_$(echo "$H5" | tr -cd ' ' | wc -c)
+FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
+TESS=tess60.reg
 
 echo "Running on ${HOSTNAME%%.*}"
 
@@ -65,16 +70,53 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -auto-mask 2.5 \
 -auto-threshold 0.5 \
 -pol i \
+-niter 30000 \
+-mgain 0.7 \
+-fit-beam \
+-channels-out 6 \
+-fit-spectral-pol 3 \
+-join-channels \
+-log-time \
+-parallel-deconvolution 1600 \
+-parallel-gridding 5 \
+-facet-regions ${TESS} \
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+-name image_test_A399 \
+-size 6000 6000 \
+-scale 1.5arcsec \
+-nmiter 3 \
+${MS} \
+> log.txt
+
+mkdir ${TO}_backup
+cp ${TO}/*.fits ${TO}_backup/ && cp ${TO}/log.txt ${TO}_backup && wait
+
+#run wsclean
+singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
+-data-column DATA \
+-use-wgridder \
+-update-model-required \
+-reorder \
+-weight briggs \
+-0.5 \
+-weighting-rank-filter 3 \
+-clean-border 1 \
+-parallel-reordering 5 \
+-padding 1.2 \
+-auto-mask 2.5 \
+-auto-threshold 0.5 \
+-pol i \
 -niter 150000 \
 -mgain 0.7 \
 -fit-beam \
 -multiscale \
+-continue \
 -channels-out 6 \
 -fit-spectral-pol 3 \
 -join-channels \
 -multiscale-max-scales 10 \
 -log-time \
--multiscale-scale-bias 0.9 \
+-multiscale-scale-bias 0.7 \
 -parallel-deconvolution 1600 \
 -parallel-gridding 5 \
 -facet-regions ${TESS} \
