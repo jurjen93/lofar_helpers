@@ -208,8 +208,7 @@ class MergeH5:
             H_ref = tables.open_file(h5_name1, 'r+')
             for solset1 in H_ref.root._v_groups.keys():
                 ss1 = H_ref.root._f_get_child(solset1)
-                if 'antenna' not in list(ss1._v_groups.keys()):
-                    print(list(ss1._v_groups.keys()))
+                if 'antenna' not in list(ss1._v_children.keys()):
                     H_ref.create_table(ss1, 'antenna',
                                        array([], dtype=[('name', 'S16'), ('position', '<f4', (3,))]),
                                        title='Antenna names and positions')
