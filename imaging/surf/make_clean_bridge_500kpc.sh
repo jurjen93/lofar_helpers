@@ -16,7 +16,7 @@ SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest.sif
 SING_IMAGE_P2=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
 
-TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_cleanbridge_$(echo "$H5" | tr -cd ' ' | wc -c)
+TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_cleanbridge_$(echo "$H5" | tr -cd ' ' | wc -c)_500kpc
 FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
 TESS=tess60.reg
 
@@ -81,7 +81,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 7 \
--minuv-l 2100.0 \
+-minuv-l 1250.0 \
 ${MS}
 
 #mask compact objects
@@ -118,7 +118,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 10 \
--minuv-l 2100.0 \
+-minuv-l 1250.0 \
 ${MS}
 
 #predict
