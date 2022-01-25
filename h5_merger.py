@@ -1094,9 +1094,11 @@ class MergeH5:
 
         return self
 
-    def add_ms_antennas(self):
+    def add_ms_antennas(self, keepLB=True):
         """
         Add antennas from MS
+
+        :param keepLB: keep long baseline stations from h5
         """
 
         print('Add antenna table from '+self.ms[0])
@@ -1104,62 +1106,71 @@ class MergeH5:
             sys.exit("ERROR: Measurement set needed to add antennas. Use --ms.")
 
         t = ct.table(self.ms[0] + "::ANTENNA", ack=False)
-        new_antlist = t.getcol('NAME')
-        new_antpos = t.getcol('POSITION')
+        ms_antlist = [n.decode('utf8') for n in t.getcol('NAME')]
+        ms_antpos = t.getcol('POSITION')
+        ms_antennas = list(zip(*(ms_antlist, ms_antpos)))
         t.close()
 
         H = tables.open_file(self.h5name_out, 'r+')
 
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
-            antennas = array([list(zip(*(new_antlist, new_antpos)))], dtype=[('name', 'S16'), ('position', '<f4', (3,))])
-            overwrite_table(H, solset, 'antenna', antennas)
+            h5_antennas = ss.antenna[:]
 
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
                 attrsaxes = st.val.attrs['AXES']
                 antenna_index = attrsaxes.decode('utf8').split(',').index('ant')
-                old_antlist = [v.decode('utf8') for v in list(st.ant[:])]
+                h5_antlist = [v.decode('utf8') for v in list(st.ant[:])]
+                if keepLB:  # keep international stations if these are not in MS
+                    new_antlist = [station for station in ms_antlist if 'CS' in station] + \
+                                  [station for station in h5_antlist if 'ST' not in station]
+                    all_antennas = [a for a in unique(append(ms_antennas, h5_antennas), axis=0) if a[0] != 'ST001']
+                    antennas_new = [all_antennas[[a[0] for a in all_antennas].index(a)] for a in new_antlist] # sorting
+                else:
+                    new_antlist = ms_antlist
+                    antennas_new = ms_antennas
                 st.ant._f_remove()
+                overwrite_table(H, solset, 'antenna', antennas_new)
                 H.create_array(st, 'ant', array(list(new_antlist), dtype='|S16'))
-                if b'ST001' in old_antlist:
-                    superstation_index = old_antlist.index(b'ST001')
-                elif 'ST001' in old_antlist:
-                    superstation_index = old_antlist.index('ST001')
+                if b'ST001' in h5_antlist:
+                    superstation_index = h5_antlist.index(b'ST001')
+                elif 'ST001' in h5_antlist:
+                    superstation_index = h5_antlist.index('ST001')
                 else:
                     sys.exit('ERROR: No super station in antennas or other type of bug')
 
                 for axes in ['val', 'weight']:
                     assert axes in list(st._v_children.keys()), axes+' not in .root.'+solset+'.'+soltab+' (not in axes)'
-                    old_values = st._f_get_child(axes)[:]
-                    shape = list(old_values.shape)
+                    h5_values = st._f_get_child(axes)[:]
+                    shape = list(h5_values.shape)
                     shape[antenna_index] = len(new_antlist)
-                    new_values = zeros(shape)
+                    ms_values = zeros(shape)
 
                     for idx, a in enumerate(new_antlist):
-                        if a in old_antlist:
-                            idx_old = old_antlist.index(a)
+                        if a in h5_antlist:
+                            idx_h5 = h5_antlist.index(a)
                             if antenna_index == 0:
-                                new_values[idx, ...] += old_values[idx_old, ...]
+                                ms_values[idx, ...] += h5_values[idx_h5, ...]
                             elif antenna_index == 1:
-                                new_values[:, idx, ...] += old_values[:, idx_old, ...]
+                                ms_values[:, idx, ...] += h5_values[:, idx_h5, ...]
                             elif antenna_index == 2:
-                                new_values[:, :, idx, ...] += old_values[:, :, idx_old, ...]
+                                ms_values[:, :, idx, ...] += h5_values[:, :, idx_h5, ...]
                             elif antenna_index == 3:
-                                new_values[:, :, :, idx, ...] += old_values[:, :, :, idx_old, ...]
+                                ms_values[:, :, :, idx, ...] += h5_values[:, :, :, idx_h5, ...]
                             elif antenna_index == 4:
-                                new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, idx_old, ...]
+                                ms_values[:, :, :, :, idx, ...] += h5_values[:, :, :, :, idx_h5, ...]
                         elif 'CS' in a: # core stations
                             if antenna_index == 0:
-                                new_values[idx, ...] += old_values[superstation_index, ...]
+                                ms_values[idx, ...] += h5_values[superstation_index, ...]
                             elif antenna_index == 1:
-                                new_values[:, idx, ...] += old_values[:, superstation_index, ...]
+                                ms_values[:, idx, ...] += h5_values[:, superstation_index, ...]
                             elif antenna_index == 2:
-                                new_values[:, :, idx, ...] += old_values[:, :, superstation_index, ...]
+                                ms_values[:, :, idx, ...] += h5_values[:, :, superstation_index, ...]
                             elif antenna_index == 3:
-                                new_values[:, :, :, idx, ...] += old_values[:, :, :, superstation_index, ...]
+                                ms_values[:, :, :, idx, ...] += h5_values[:, :, :, superstation_index, ...]
                             elif antenna_index == 4:
-                                new_values[:, :, :, :, idx, ...] += old_values[:, :, :, :, superstation_index, ...]
+                                ms_values[:, :, :, :, idx, ...] += h5_values[:, :, :, :, superstation_index, ...]
 
                     valtype = str(st._f_get_child(axes).dtype)
                     if '16' in valtype:
@@ -1172,7 +1183,7 @@ class MergeH5:
                         atomtype = tables.Float64Atom()
 
                     st._f_get_child(axes)._f_remove()
-                    H.create_array(st, axes, new_values.astype(valtype), atom=atomtype)
+                    H.create_array(st, axes, ms_values.astype(valtype), atom=atomtype)
                     st._f_get_child(axes).attrs['AXES'] = attrsaxes
                 print('Value shape after --> '+str(st.val.shape))
 
