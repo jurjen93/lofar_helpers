@@ -1106,7 +1106,10 @@ class MergeH5:
             sys.exit("ERROR: Measurement set needed to add antennas. Use --ms.")
 
         t = ct.table(self.ms[0] + "::ANTENNA", ack=False)
-        ms_antlist = [n.decode('utf8') for n in t.getcol('NAME')]
+        try:
+            ms_antlist = [n.decode('utf8') for n in t.getcol('NAME')]
+        except AttributeError:
+            ms_antlist = t.getcol('NAME')
         ms_antpos = t.getcol('POSITION')
         ms_antennas = list(zip(*(ms_antlist, ms_antpos)))
         t.close()
@@ -1128,6 +1131,8 @@ class MergeH5:
                                   [station for station in h5_antlist if 'ST' not in station]
                     all_antennas = [a for a in unique(append(ms_antennas, h5_antennas), axis=0) if a[0] != 'ST001']
                     antennas_new = [all_antennas[[a[0] for a in all_antennas].index(a)] for a in new_antlist] # sorting
+                    if len(new_antlist)!=len(antennas_new):
+                        print('ERROR: core stations could not be added due to bug or incorrect antenna tables from h5 and MS files')
                 else:
                     new_antlist = ms_antlist
                     antennas_new = ms_antennas
