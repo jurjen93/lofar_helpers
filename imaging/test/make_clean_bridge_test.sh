@@ -88,7 +88,7 @@ ${MS}.test
 
 #mask compact objects
 singularity exec -B ${SING_BIND} ${SING_IMAGE_P2} \
-python /home/lofarvwf-jdejong/scripts/MakeMask.py \
+python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyModel/MakeMask.py \
 --Th=3.0 \
 --RestoredIm=${NAME}_compact-MFS-image.fits
 
