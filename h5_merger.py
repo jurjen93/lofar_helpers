@@ -1111,7 +1111,7 @@ class MergeH5:
         except AttributeError:
             ms_antlist = t.getcol('NAME')
         ms_antpos = t.getcol('POSITION')
-        ms_antennas = list(zip(*(ms_antlist, ms_antpos)))
+        ms_antennas = array([list(zip(*(ms_antlist, ms_antpos)))], dtype=[('name', 'S16'), ('position', '<f4', (3,))])
         t.close()
 
         H = tables.open_file(self.h5name_out, 'r+')
@@ -1130,7 +1130,7 @@ class MergeH5:
                     new_antlist = [station for station in ms_antlist if 'CS' in station] + \
                                   [station for station in h5_antlist if 'ST' not in station]
                     print(append(array([ms_antennas]), h5_antennas))
-                    all_antennas = [a for a in unique(append(array([ms_antennas]), h5_antennas), axis=0) if a[0] != 'ST001']
+                    all_antennas = [a for a in unique(append(ms_antennas, h5_antennas), axis=0) if a[0] != 'ST001']
                     antennas_new = [all_antennas[[a[0] for a in all_antennas].index(a)] for a in new_antlist] # sorting
                     if len(new_antlist)!=len(antennas_new):
                         print('ERROR: core stations could not be added due to bug or incorrect antenna tables from h5 and MS files')
