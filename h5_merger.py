@@ -1133,8 +1133,6 @@ class MergeH5:
                     new_antlist = [station for station in ms_antlist if 'CS' in station] + \
                                   [station for station in h5_antlist if 'ST' not in station]
                     all_antennas = [a for a in unique(append(ms_antennas, h5_antennas), axis=0) if a[0] != 'ST001']
-                    print(new_antlist)
-                    print(all_antennas)
                     antennas_new = [all_antennas[[a[0].decode('utf8') for a in all_antennas].index(a)] for a in new_antlist] # sorting
                     # if len(new_antlist)!=len(antennas_new):
                     #     print('ERROR: core stations could not be added due to bug or incorrect antenna tables from h5 and MS files')
