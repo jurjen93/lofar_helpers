@@ -1129,7 +1129,6 @@ class MergeH5:
                 if keepLB:  # keep international stations if these are not in MS
                     new_antlist = [station for station in ms_antlist if 'CS' in station] + \
                                   [station for station in h5_antlist if 'ST' not in station]
-                    print(append(array([ms_antennas]), h5_antennas))
                     all_antennas = [a for a in unique(append(ms_antennas, h5_antennas), axis=0) if a[0] != 'ST001']
                     antennas_new = [all_antennas[[a[0].decode('utf8') for a in all_antennas].index(a)] for a in new_antlist] # sorting
                     if len(new_antlist)!=len(antennas_new):
@@ -1628,13 +1627,13 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
-             filtered_dir=None, add_cs=None, keep_ants_from_ms=None, check_output=None):
+             filtered_dir=None, add_cs=None, getants_from_ms=None, check_output=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
     :param h5_out (string): h5 table name out
     :param h5_tables (string or list): h5 tables to merge
-    :param ms_files (string or list): ms files to take freq and time axis from
+    :param ms_files (string or list): ms files
     :param h5_time_freq (str or list): h5 file to take freq and time axis from
     :param convert_tec (boolean): convert TEC to phase or not
     :param merge_all_in_one: merge all in one direction
@@ -1645,7 +1644,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param use_solset: use specific solset number
     :param filtered_dir: filter a specific list of directions from h5 file. Only lists allowed.
     :param add_cs: use MS to replace super station with core station
-    :param keep_ants_from_ms: use only stations from Measurement set
+    :param getants_from_ms: use only stations from Measurement set
     :param check_output: check if output has all correct output information
     """
 
@@ -1688,11 +1687,11 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     merge.create_missing_template()
 
     #Add antennas
-    if (add_cs or keep_ants_from_ms) and len(merge.ms)==0:
+    if (add_cs or getants_from_ms) and len(merge.ms)==0:
         sys.exit('ERROR: --add_CS needs MS, given with --ms')
     if add_cs:
         merge.add_ms_antennas(keepLB=True)
-    elif keep_ants_from_ms:
+    elif getants_from_ms:
         merge.add_ms_antennas(keepLB=False)
     else:
         merge.add_h5_antennas()
@@ -1700,6 +1699,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if add_directions:
         merge.add_empty_directions(add_directions)
 
+    #Reorder directions for Python 2
     if sys.version_info.major == 2:
         merge.reorder_directions()
 
@@ -1762,7 +1762,7 @@ if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output.', required=True)
     parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge.', required=True)
-    parser.add_argument('-ms', '--ms', type=str, help='ms files to use time and frequency arrays from.')
+    parser.add_argument('-ms', '--ms', type=str, help='ms files input.')
     parser.add_argument('--h5_time_freq', type=str, help='h5 file to use time and frequency arrays from.')
     parser.add_argument('--not_convert_tec', action='store_true', help='convert tec to phase.')
     parser.add_argument('--merge_all_in_one', action='store_true', help='merge all solutions in one direction.')
@@ -1775,7 +1775,7 @@ if __name__ == '__main__':
     parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input h5 files.')
     parser.add_argument('--filter_directions', type=str, default=None, help='Filter a specific list of directions from h5 file. Only lists allowed.')
     parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output')
-    parser.add_argument('--keep_ants_from_ms', action='store_true', default=None, help='Use only stations from Measurement set')
+    parser.add_argument('--getants_from_ms', action='store_true', default=None, help='Use only antenna stations from measurement set (use --ms)')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     args = parser.parse_args()
 
@@ -1837,5 +1837,5 @@ if __name__ == '__main__':
              use_solset=args.usesolset,
              filtered_dir=filtered_dir,
              add_cs=args.add_cs,
-             keep_ants_from_ms=args.keep_ants_from_ms,
+             getants_from_ms=args.getants_from_ms,
              check_output=args.check_output)
