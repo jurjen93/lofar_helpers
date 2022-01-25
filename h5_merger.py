@@ -1118,7 +1118,10 @@ class MergeH5:
 
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
-            h5_antennas = ss.antenna[:]
+
+            F = tables.open_file(self.h5_tables[0])
+            h5_antennas = F.root._f_get_child(solset).antenna[:]
+            F.close()
 
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
@@ -1133,8 +1136,8 @@ class MergeH5:
                     print(new_antlist)
                     print(all_antennas)
                     antennas_new = [all_antennas[[a[0].decode('utf8') for a in all_antennas].index(a)] for a in new_antlist] # sorting
-                    if len(new_antlist)!=len(antennas_new):
-                        print('ERROR: core stations could not be added due to bug or incorrect antenna tables from h5 and MS files')
+                    # if len(new_antlist)!=len(antennas_new):
+                    #     print('ERROR: core stations could not be added due to bug or incorrect antenna tables from h5 and MS files')
                 else:
                     new_antlist = ms_antlist
                     antennas_new = ms_antennas
