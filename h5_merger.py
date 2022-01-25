@@ -1094,7 +1094,7 @@ class MergeH5:
 
         return self
 
-    def add_ms_antennas(self, keepLB=True):
+    def add_ms_antennas(self, keepLB=None):
         """
         Add antennas from MS
 
@@ -1122,6 +1122,7 @@ class MergeH5:
                 attrsaxes = st.val.attrs['AXES']
                 antenna_index = attrsaxes.decode('utf8').split(',').index('ant')
                 h5_antlist = [v.decode('utf8') for v in list(st.ant[:])]
+
                 if keepLB:  # keep international stations if these are not in MS
                     new_antlist = [station for station in ms_antlist if 'CS' in station] + \
                                   [station for station in h5_antlist if 'ST' not in station]
@@ -1130,15 +1131,15 @@ class MergeH5:
                 else:
                     new_antlist = ms_antlist
                     antennas_new = ms_antennas
+
                 st.ant._f_remove()
                 overwrite_table(H, solset, 'antenna', antennas_new)
                 H.create_array(st, 'ant', array(list(new_antlist), dtype='|S16'))
-                if b'ST001' in h5_antlist:
-                    superstation_index = h5_antlist.index(b'ST001')
-                elif 'ST001' in h5_antlist:
+
+                try:
                     superstation_index = h5_antlist.index('ST001')
-                else:
-                    sys.exit('ERROR: No super station in antennas or other type of bug')
+                except ValueError:
+                    sys.exit('ERROR: No super station in antennas (denoted by ST001)')
 
                 for axes in ['val', 'weight']:
                     assert axes in list(st._v_children.keys()), axes+' not in .root.'+solset+'.'+soltab+' (not in axes)'
@@ -1621,7 +1622,7 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
-             filtered_dir=None, add_cs=None, check_output=None):
+             filtered_dir=None, add_cs=None, keep_ants_from_ms=None, check_output=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -1638,6 +1639,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param use_solset: use specific solset number
     :param filtered_dir: filter a specific list of directions from h5 file. Only lists allowed.
     :param add_cs: use MS to replace super station with core station
+    :param keep_ants_from_ms: use only stations from Measurement set
     :param check_output: check if output has all correct output information
     """
 
@@ -1680,10 +1682,12 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     merge.create_missing_template()
 
     #Add antennas
+    if (add_cs or keep_ants_from_ms) and len(merge.ms)==0:
+        sys.exit('ERROR: --add_CS needs MS, given with --ms')
     if add_cs:
-        if len(merge.ms) == 0:
-            sys.exit('ERROR: --add_CS needs MS, given with --ms')
-        merge.add_ms_antennas()
+        merge.add_ms_antennas(keepLB=True)
+    elif keep_ants_from_ms:
+        merge.add_ms_antennas(keepLB=False)
     else:
         merge.add_h5_antennas()
 
@@ -1765,6 +1769,7 @@ if __name__ == '__main__':
     parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input h5 files.')
     parser.add_argument('--filter_directions', type=str, default=None, help='Filter a specific list of directions from h5 file. Only lists allowed.')
     parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output')
+    parser.add_argument('--keep_ants_from_ms', action='store_true', default=None, help='Use only stations from Measurement set')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     args = parser.parse_args()
 
@@ -1826,4 +1831,5 @@ if __name__ == '__main__':
              use_solset=args.usesolset,
              filtered_dir=filtered_dir,
              add_cs=args.add_cs,
+             keep_ants_from_ms=args.keep_ants_from_ms,
              check_output=args.check_output)
