@@ -1627,7 +1627,7 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
-             filtered_dir=None, add_cs=None, getants_from_ms=None, check_output=None):
+             filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -1644,7 +1644,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param use_solset: use specific solset number
     :param filtered_dir: filter a specific list of directions from h5 file. Only lists allowed.
     :param add_cs: use MS to replace super station with core station
-    :param getants_from_ms: use only stations from Measurement set
+    :param use_ants_from_ms: use only stations from Measurement set
     :param check_output: check if output has all correct output information
     """
 
@@ -1687,11 +1687,11 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     merge.create_missing_template()
 
     #Add antennas
-    if (add_cs or getants_from_ms) and len(merge.ms)==0:
+    if (add_cs or use_ants_from_ms) and len(merge.ms)==0:
         sys.exit('ERROR: --add_CS needs MS, given with --ms')
     if add_cs:
         merge.add_ms_antennas(keepLB=True)
-    elif getants_from_ms:
+    elif use_ants_from_ms:
         merge.add_ms_antennas(keepLB=False)
     else:
         merge.add_h5_antennas()
@@ -1775,7 +1775,7 @@ if __name__ == '__main__':
     parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input h5 files.')
     parser.add_argument('--filter_directions', type=str, default=None, help='Filter a specific list of directions from h5 file. Only lists allowed.')
     parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output')
-    parser.add_argument('--getants_from_ms', action='store_true', default=None, help='Use only antenna stations from measurement set (use --ms)')
+    parser.add_argument('--use_ants_from_ms', action='store_true', default=None, help='Use only antenna stations from measurement set (use --ms)')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     args = parser.parse_args()
 
@@ -1837,5 +1837,5 @@ if __name__ == '__main__':
              use_solset=args.usesolset,
              filtered_dir=filtered_dir,
              add_cs=args.add_cs,
-             getants_from_ms=args.getants_from_ms,
+             use_ants_from_ms=args.use_ants_from_ms,
              check_output=args.check_output)
