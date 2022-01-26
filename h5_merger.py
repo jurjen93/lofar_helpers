@@ -1507,10 +1507,10 @@ class PolChange:
                 if 'phase' in st:
                     if 'pol' in solutiontable.getAxesNames():
                         values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
-                        self.G *= exp(values)
+                        self.G *= exp(values * 1j)
                     else:
                         values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
-                        self.G *= exp(self.add_polarization(values, 2))
+                        self.G *= exp(self.add_polarization(values, 2) * 1j)
 
                 elif 'amplitude' in st:
                     if 'pol' in solutiontable.getAxesNames():
