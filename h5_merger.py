@@ -1356,11 +1356,12 @@ class PolChange:
         LR = (G[..., 0] - G[..., -1]).astype(complex128)
         LL = (G[..., 0] + G[..., -1]).astype(complex128)
 
-        # if G.shape[-1] == 4:
-        RR += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
-        RL += 1j * (G[..., 2] + G[..., 1]).astype(complex128)
-        LR -= 1j * (G[..., 2] + G[..., 1]).astype(complex128)
-        LL += 1j * (G[..., 1] - G[..., 2]).astype(complex128)
+        print(G.shape)
+        if G.shape[-1] == 4:
+            RR += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
+            RL += 1j * (G[..., 2] + G[..., 1]).astype(complex128)
+            LR -= 1j * (G[..., 2] + G[..., 1]).astype(complex128)
+            LL += 1j * (G[..., 1] - G[..., 2]).astype(complex128)
 
         RR /= 2
         RL /= 2
