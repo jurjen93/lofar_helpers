@@ -1352,20 +1352,20 @@ class PolChange:
         # LL = XX + iXY - iYX + YY
 
         RR = (G[..., 0] + G[..., -1]).astype(complex128)
-        LL = (G[..., 0] + G[..., -1]).astype(complex128)
         RL = (G[..., 0] - G[..., -1]).astype(complex128)
         LR = (G[..., 0] - G[..., -1]).astype(complex128)
+        LL = (G[..., 0] + G[..., -1]).astype(complex128)
 
         if G.shape[-1] == 4:
             RR += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
-            LL += 1j * (G[..., 1] - G[..., 2]).astype(complex128)
             RL += 1j * (G[..., 2] + G[..., 1]).astype(complex128)
             LR -= 1j * (G[..., 2] + G[..., 1]).astype(complex128)
+            LL += 1j * (G[..., 1] - G[..., 2]).astype(complex128)
 
         RR /= 2
-        LL /= 2
         RL /= 2
         LR /= 2
+        LL /= 2
 
         G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += RR
@@ -1390,20 +1390,21 @@ class PolChange:
         # YY = RR - RL - LR + LL
 
         XX = (G[..., 0] + G[..., -1]).astype(complex128)
-        YY = (G[..., 0] + G[..., -1]).astype(complex128)
         XY = 1j * (G[..., 0] - G[..., -1]).astype(complex128)
         YX = 1j * (G[..., -1] - G[..., 0]).astype(complex128)
+        YY = (G[..., 0] + G[..., -1]).astype(complex128)
+
 
         if G.shape[-1] == 4:
             XX += (G[..., 2] + G[..., 1]).astype(complex128)
-            YY -= (G[..., 1] + G[..., 2]).astype(complex128)
             XY += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
             YX += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
+            YY -= (G[..., 1] + G[..., 2]).astype(complex128)
 
         XX /= 2
-        YY /= 2
         XY /= 2
         YX /= 2
+        YY /= 2
 
         G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += XX
@@ -1537,7 +1538,7 @@ class PolChange:
                 sys.exit('ERROR: No conversion given')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
-            phase = angle(G_new)
+            phase = angle(G_new)%pi
             amplitude = abs(G_new)
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
