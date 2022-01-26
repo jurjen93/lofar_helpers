@@ -1341,15 +1341,15 @@ class PolChange:
         """
         Convert linear polarization to circular polarization
 
+        RR = XX - iXY + iYX + YY
+        RL = XX + iXY + iYX - YY
+        LR = XX - iXY - iYX - YY
+        LL = XX + iXY - iYX + YY
+
         :param G: Linear polarized Gain
 
         :return: Circular polarized Gain
         """
-
-        # RR = XX - iXY + iYX + YY
-        # RL = XX + iXY + iYX - YY
-        # LR = XX - iXY - iYX - YY
-        # LL = XX + iXY - iYX + YY
 
         RR = (G[..., 0] + G[..., -1]).astype(complex128)
         RL = (G[..., 0] - G[..., -1]).astype(complex128)
@@ -1362,10 +1362,10 @@ class PolChange:
             LR -= 1j * (G[..., 2] + G[..., 1]).astype(complex128)
             LL += 1j * (G[..., 1] - G[..., 2]).astype(complex128)
 
-        # RR /= 2
-        # RL /= 2
-        # LR /= 2
-        # LL /= 2
+        RR /= 2
+        RL /= 2
+        LR /= 2
+        LL /= 2
 
         G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += RR
@@ -1379,15 +1379,15 @@ class PolChange:
         """
         Convert circular polarization to linear polarization
 
+        XX = RR + RL + LR + LL
+        XY = iRR - iRL + iLR - iLL
+        YX = -iRR - iRL + iLR + iLL
+        YY = RR - RL - LR + LL
+
         :param G: Circular polarized Gain
 
         :return: linear polarized Gain
         """
-
-        # XX = RR + RL + LR + LL
-        # XY = iRR - iRL + iLR - iLL
-        # YX = -iRR - iRL + iLR + iLL
-        # YY = RR - RL - LR + LL
 
         XX = (G[..., 0] + G[..., -1]).astype(complex128)
         XY = 1j * (G[..., 0] - G[..., -1]).astype(complex128)
@@ -1401,10 +1401,10 @@ class PolChange:
             YX += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
             YY -= (G[..., 1] + G[..., 2]).astype(complex128)
 
-        # XX /= 2
-        # XY /= 2
-        # YX /= 2
-        # YY /= 2
+        XX /= 2
+        XY /= 2
+        YX /= 2
+        YY /= 2
 
         G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += XX
