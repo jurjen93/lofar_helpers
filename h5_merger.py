@@ -1362,10 +1362,10 @@ class PolChange:
             LR -= 1j * (G[..., 2] + G[..., 1]).astype(complex128)
             LL += 1j * (G[..., 1] - G[..., 2]).astype(complex128)
 
-        RR /= 2
-        RL /= 2
-        LR /= 2
-        LL /= 2
+        # RR /= 2
+        # RL /= 2
+        # LR /= 2
+        # LL /= 2
 
         G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += RR
@@ -1401,10 +1401,10 @@ class PolChange:
             YX += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
             YY -= (G[..., 1] + G[..., 2]).astype(complex128)
 
-        XX /= 2
-        XY /= 2
-        YX /= 2
-        YY /= 2
+        # XX /= 2
+        # XY /= 2
+        # YX /= 2
+        # YY /= 2
 
         G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += XX
