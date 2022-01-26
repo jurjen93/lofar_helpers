@@ -1356,7 +1356,6 @@ class PolChange:
         LR = (G[..., 0] - G[..., -1]).astype(complex128)
         LL = (G[..., 0] + G[..., -1]).astype(complex128)
 
-        print(G.shape)
         if G.shape[-1] == 4:
             RR += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
             RL += 1j * (G[..., 2] + G[..., 1]).astype(complex128)
@@ -1539,7 +1538,7 @@ class PolChange:
                 sys.exit('ERROR: No conversion given')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
-            phase = angle(G_new)%(2*pi)
+            phase = angle(G_new%pi)
             amplitude = abs(G_new)
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
