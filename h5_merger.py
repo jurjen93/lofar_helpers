@@ -1538,7 +1538,7 @@ class PolChange:
                 sys.exit('ERROR: No conversion given')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
-            phase = angle(G_new%pi)
+            phase = angle(G_new)%pi
             amplitude = abs(G_new)
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
