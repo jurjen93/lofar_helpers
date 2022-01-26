@@ -1499,8 +1499,6 @@ class PolChange:
 
         for ss in self.h5_in.getSolsetNames():
 
-            print(ss)
-
             self.solsetout = self.h5_out.makeSolset(ss)
 
             for st in self.h5_in.getSolset(ss).getSoltabNames():
@@ -1538,7 +1536,7 @@ class PolChange:
                 sys.exit('ERROR: No conversion given')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
-            phase = angle(G_new)%(2*pi)
+            phase = angle(G_new)
             amplitude = abs(G_new)
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
