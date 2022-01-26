@@ -1346,16 +1346,21 @@ class PolChange:
         :return: Circular polarized Gain
         """
 
+        # RR = XX - iXY + iYX + YY
+        # RL = XX + iXY + iYX - YY
+        # LR = XX - iXY - iYX - YY
+        # LL = XX + iXY - iYX + YY
+
         RR = (G[..., 0] + G[..., -1]).astype(complex128)
         LL = (G[..., 0] + G[..., -1]).astype(complex128)
         RL = (G[..., 0] - G[..., -1]).astype(complex128)
         LR = (G[..., 0] - G[..., -1]).astype(complex128)
 
         if G.shape[-1] == 4:
-            RR += 1j * (G[..., 2] - G[..., 1])
-            LL += 1j * (G[..., 1] - G[..., 2])
-            RL += 1j * (G[..., 2] + G[..., 1])
-            LR -= 1j * (G[..., 2] + G[..., 1])
+            RR += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
+            LL += 1j * (G[..., 1] - G[..., 2]).astype(complex128)
+            RL += 1j * (G[..., 2] + G[..., 1]).astype(complex128)
+            LR -= 1j * (G[..., 2] + G[..., 1]).astype(complex128)
 
         RR /= 2
         LL /= 2
@@ -1379,6 +1384,11 @@ class PolChange:
         :return: linear polarized Gain
         """
 
+        # XX = RR + RL + LR + LL
+        # XY = iRR - iRL + iLR - iLL
+        # YX = -iRR - iRL + iLR + iLL
+        # YY = RR - RL - LR + LL
+
         XX = (G[..., 0] + G[..., -1]).astype(complex128)
         YY = (G[..., 0] + G[..., -1]).astype(complex128)
         XY = 1j * (G[..., 0] - G[..., -1]).astype(complex128)
@@ -1387,8 +1397,8 @@ class PolChange:
         if G.shape[-1] == 4:
             XX += (G[..., 2] + G[..., 1]).astype(complex128)
             YY -= (G[..., 1] + G[..., 2]).astype(complex128)
-            XY += 1j * (G[..., 2] - G[..., 1])
-            YX += 1j * (G[..., 2] - G[..., 1])
+            XY += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
+            YX += 1j * (G[..., 2] - G[..., 1]).astype(complex128)
 
         XX /= 2
         YY /= 2
