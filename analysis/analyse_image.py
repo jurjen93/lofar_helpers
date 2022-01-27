@@ -8,6 +8,8 @@ from matplotlib.colors import SymLogNorm
 from reproject import reproject_interp
 import string
 import sys
+from astropy.modeling.models import Gaussian2D
+from astropy.convolution import convolve, Gaussian2DKernel
 
 def flatten(f):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
@@ -103,7 +105,7 @@ class Imaging:
 
         return self
 
-    def make_contourplot(self, image_data=None, maxlevel=None, minlevel=None, steps=None, wcs=None, title=None):
+    def make_contourplot(self, image_data=None, maxlevel=None, minlevel=None, steps=None, wcs=None, title=None, smallcutout=False):
 
         if image_data is None:
             image_data = self.image_data
@@ -115,7 +117,7 @@ class Imaging:
             wcs = self.wcs
 
         if minlevel is None:
-            minlevel = self.rms*3
+            minlevel = self.rms*1.5
 
         if steps is None:
             steps = 100
@@ -124,15 +126,20 @@ class Imaging:
         plt.figure(figsize=(7, 10))
         plt.subplot(projection=wcs)
 
-        levels1 = np.linspace(minlevel, maxlevel, steps)
-        levels2 = np.linspace(minlevel, maxlevel, 100)
+        if smallcutout:
+            levels = [minlevel/3]
+        else:
+            levels = [minlevel]
+        for _ in range(50):
+            levels.append(levels[-1]*2)
 
-        cs1 = plt.contour(image_data, levels1, colors=('k'), linestyles=('-'), linewidths=(0.3,))
-        cs2 = plt.contourf(image_data, levels2, cmap='YlGn') # https://matplotlib.org/stable/tutorials/colors/colormaps.html
-        # cbar = plt.colorbar(orientation='horizontal', shrink=1,
-        #                     ticks=[round(a, 1) if a<np.max(image_data) else a for a in np.linspace(minlevel, maxlevel, 4)])
+        levels2 = np.linspace(minlevel, maxlevel, steps)
+
+        plt.contour(image_data, levels, colors=('k'), linestyles=('-'), linewidths=(0.3,))
+        plt.contourf(image_data, levels2, cmap='Blues',
+                           norm=SymLogNorm(linthresh=minlevel*10, vmin=minlevel, vmax=maxlevel))
         cbar = plt.colorbar(orientation='horizontal', shrink=1,
-                            ticks=[round(a, 3) for a in np.linspace(minlevel, maxlevel, 6)])
+                            ticks=np.linspace(levels2[0], levels2[-1], 5))
         cbar.set_label('Surface brightness [Jy/beam]')
         plt.xlabel('Right Ascension (J2000)')
         plt.ylabel('Declination (J2000)')
@@ -141,42 +148,51 @@ class Imaging:
 
         return self
 
-    def make_overlay_contourplot(self, fitsfile=None, minlevel_1=None, maxlevel_1=None, maxlevel_2=None,
-                                 minlevel_2=None, title=None):
+    def make_bridge_overlay_contourplot(self, fitsfile=None, minlevel_1=None, maxlevel_1=None, maxlevel_2=None,
+                                 minlevel_2=None, steps_1=100, steps_2=None, title=None, convolve_2=False):
 
         hdu = fits.open(fitsfile)
         image_data_2 = hdu[0].data
+
         while len(image_data_2.shape) != 2:
             image_data_2 = image_data_2[0]
         wcs_2 = WCS(hdu[0].header)
 
+        if convolve_2:
+            gauss_kernel = Gaussian2DKernel(20)
+            image_data_2 = convolve(image_data_2, gauss_kernel)
+            # rms = self.get_noise(image_data_2)
+            # self.make_image(image_data_2, vmin=rms, vmax=rms*25)
 
         if maxlevel_2 is None:
             maxlevel_2 = np.max(image_data_2)
 
         if minlevel_2 is None:
-            minlevel_2 = 10**(-5)
+            minlevel_2 = self.get_noise(image_data_2)
 
         if maxlevel_1 is None:
             maxlevel_1 = np.max(self.image_data)
 
         if minlevel_1 is None:
-            minlevel_1 = self.rms*2
+            minlevel_1 = self.rms*3
 
-        image_data_2 = np.clip(image_data_2, a_min=0, a_max=maxlevel_2)
+
+        # image_data_2 = np.clip(image_data_2, a_min=0, a_max=maxlevel_2)
         plt.figure(figsize=(7, 10))
         plt.subplot(projection=wcs_2)
 
-        levels_2 = np.linspace(minlevel_2, maxlevel_2, 10)
-        levels_1 = np.linspace(minlevel_1, maxlevel_1, 5)
+        levels_2 = [minlevel_2]
+        for _ in range(10):
+            levels_2.append(levels_2[-1]*2)
 
-        plt.contour(image_data_2, levels_2, colors=('k'), linestyles=('-'), linewidths=(0.3,))
-        # plt.contourf(np.clip(image_data_2, a_min=0, a_max=maxlevel_2), np.linspace(minlevel_2, maxlevel_2, 10), cmap='YlOrBr')
+        levels_1 = np.linspace(minlevel_1, maxlevel_1, steps_1)
 
-        plt.contourf(np.clip(self.image_data, a_min=0, a_max=maxlevel_1), levels_1, cmap='Greys') # https://matplotlib.org/stable/tutorials/colors/colormaps.html
+        plt.contour(image_data_2, levels_2, colors=('r'), linestyles=('-'), linewidths=(1,))
+        plt.imshow(np.where(self.image_data<levels_1[-1], 0, 1), cmap='Greys')
+        plt.contourf(np.clip(self.image_data, a_min=levels_1[0], a_max=np.max(self.image_data)), levels_1, cmap='Blues')
         cbar = plt.colorbar(orientation='horizontal', shrink=1,
-                            ticks=[round(a, 1) if a>0.005 and a<np.max(self.image_data) else a for a in np.linspace(minlevel_1, maxlevel_1, 4)])
-        cbar.set_label('Surface brightness [Jy/beam]')
+                            ticks=np.linspace(levels_1[0], levels_1[-1], 5))
+        cbar.set_label('Surface brightness  [Jy/beam]')
         plt.xlabel('Right Ascension (J2000)')
         plt.ylabel('Declination (J2000)')
         plt.title(title)
@@ -247,35 +263,37 @@ if __name__ == '__main__':
     Image = Imaging(f'../strwfits/60arcsec.fits')
 
     Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
-
-    Image.reproject_map('../strwfits/a401_curdecmaps_0.2_1.5s_sz.fits', 'test.fits')
-
     Image.make_contourplot(title='Contour plot with radio data', maxlevel=1.5)
-    Image.make_overlay_contourplot('test.fits', title='y-map contour lines and radio filled contour')
-
-    # for n, galpos in enumerate([(3150, 4266.82), (2988, 3569), (2564, 3635), (2524, 2814), (3297, 2356), (3019, 1945)]):
-    #
-    #     Image = Imaging('../strwfits/archive0.fits')
-    #     if n in [2,4]:
-    #         Image.make_cutout(pos=galpos, size=(600, 600))
-    #     else:
-    #         Image.make_cutout(pos=galpos, size=(400, 400))
-    #     Image.make_contourplot(title=f'Source {string.ascii_uppercase[n]} (6")', maxlevel=0.05, minlevel=0.00065, steps=25)
-    #     Image.make_image()
-    #
-    #     galpos = tuple([g/2 for g in galpos])
-    #
-    #     Image = Imaging('../strwfits/20arcsec.fits')
-    #     if n in [2,4]:
-    #         Image.make_cutout(pos=galpos, size=(300, 300))
-    #     else:
-    #         Image.make_cutout(pos=galpos, size=(200, 200))
-    #     Image.make_contourplot(title=f'Source {string.ascii_uppercase[n]} (20")', maxlevel=0.1, minlevel=0.0015, steps=25)
-    #     Image.make_image()
-
-    # Image = Imaging('../strwfits/archive0.fits')
-    # Image.make_cutout(pos=(2988, 3569), size=(400, 400))
-    # Image.make_contourplot(title='Source B', maxlevel=0.06, steps=6)
     # Image.make_image()
 
+    Image.reproject_map('../strwfits/a401_curdecmaps_0.2_1.5s_sz.fits', 'test.fits')
+    Image.make_bridge_overlay_contourplot('test.fits', title='y-map contour lines and radio filled contour',
+                                          minlevel_1=-0.002, maxlevel_1=0.005, steps_1=100, steps_2=6, minlevel_2=(10**(-5)/2), convolve_2=True)
 
+    Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
+
+    Image.reproject_map('../strwfits/mosaic_a399_a401_bkg.fits', 'test.fits')
+
+    Image.make_bridge_overlay_contourplot('test.fits', title='y-map contour lines and radio filled contour',
+                                          minlevel_1=-0.002, maxlevel_1=0.005, steps_1=100, steps_2=6, convolve_2=True, maxlevel_2=50)
+
+
+    for n, galpos in enumerate([(3150, 4266.82), (2988, 3569), (2564, 3635), (2524, 2814), (3297, 2356), (3019, 1945)]):
+
+        Image = Imaging('../strwfits/archive0.fits')
+        if n in [2,4]:
+            Image.make_cutout(pos=galpos, size=(600, 600))
+        else:
+            Image.make_cutout(pos=galpos, size=(400, 400))
+        Image.make_contourplot(title=f'Source {string.ascii_uppercase[n]} (6")', maxlevel=1, minlevel=0.0015, steps=100, smallcutout=True)
+        Image.make_image()
+
+        galpos = tuple([g/2 for g in galpos])
+
+        Image = Imaging('../strwfits/20arcsec.fits')
+        if n in [2,4]:
+            Image.make_cutout(pos=galpos, size=(300, 300))
+        else:
+            Image.make_cutout(pos=galpos, size=(200, 200))
+        Image.make_contourplot(title=f'Source {string.ascii_uppercase[n]} (20")', maxlevel=2, minlevel=0.003, steps=100, smallcutout=True)
+        Image.make_image()
