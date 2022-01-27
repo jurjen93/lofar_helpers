@@ -6,6 +6,7 @@ from astropy.nddata import Cutout2D
 import matplotlib.pyplot as plt
 from matplotlib.colors import SymLogNorm
 from reproject import reproject_interp
+import string
 import sys
 
 def flatten(f):
@@ -61,6 +62,7 @@ class Imaging:
             self.image_data = self.image_data[0]
         self.wcs = WCS(self.hdu[0].header, naxis=2)
         self.header = self.wcs.to_header()
+        self.rms = self.noise
 
     def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None):
         """
@@ -70,21 +72,21 @@ class Imaging:
         """
 
         if vmin is None:
-            self.vmin = np.nanstd(self.image_data)
+            vmin = self.rms
         else:
-            self.vmin = vmin
+            vmin = vmin
         if vmax is None:
-            self.vmax = np.nanstd(self.image_data)*25
+            vmax = self.rms*25
 
         if image_data is None:
             image_data = self.image_data
 
-        plt.figure(figsize=(10, 10))
+        plt.figure(figsize=(7, 10))
         plt.subplot(projection=self.wcs)
-        plt.imshow(image_data, norm=SymLogNorm(linthresh=self.vmin/20, vmin=self.vmin/50, vmax=self.vmax), origin='lower', cmap=cmap)
+        plt.imshow(image_data, norm=SymLogNorm(linthresh=vmin*10, vmin=vmin, vmax=vmax), origin='lower', cmap=cmap)
         plt.xlabel('Galactic Longitude')
         plt.ylabel('Galactic Latitude')
-        cbar = plt.colorbar(orientation='horizontal', shrink=0.7)
+        cbar = plt.colorbar(orientation='horizontal', shrink=0.7, ticks=[round(a, 4) for a in np.linspace(vmin, vmax, 4)])
         cbar.set_label('Surface brightness [Jy/beam]')
         plt.show()
 
@@ -101,7 +103,7 @@ class Imaging:
 
         return self
 
-    def make_contourplot(self, image_data=None, maxlevel=None, minlevel=None, wcs=None, title=None):
+    def make_contourplot(self, image_data=None, maxlevel=None, minlevel=None, steps=None, wcs=None, title=None):
 
         if image_data is None:
             image_data = self.image_data
@@ -113,18 +115,24 @@ class Imaging:
             wcs = self.wcs
 
         if minlevel is None:
-            minlevel = self.noise*2
+            minlevel = self.rms*3
 
-        image_data = np.clip(image_data, a_min=0, a_max=maxlevel)
+        if steps is None:
+            steps = 100
+
+        image_data = np.clip(image_data, a_min=np.min(image_data), a_max=maxlevel*0.99)
         plt.figure(figsize=(7, 10))
         plt.subplot(projection=wcs)
 
-        levels = np.linspace(minlevel, maxlevel, 100)
+        levels1 = np.linspace(minlevel, maxlevel, steps)
+        levels2 = np.linspace(minlevel, maxlevel, 100)
 
-        cs1 = plt.contour(image_data, levels, colors=('k'), linestyles=('-'), linewidths=(0.3,))
-        cs2 = plt.contourf(image_data, levels, cmap='YlGn') # https://matplotlib.org/stable/tutorials/colors/colormaps.html
+        cs1 = plt.contour(image_data, levels1, colors=('k'), linestyles=('-'), linewidths=(0.3,))
+        cs2 = plt.contourf(image_data, levels2, cmap='YlGn') # https://matplotlib.org/stable/tutorials/colors/colormaps.html
+        # cbar = plt.colorbar(orientation='horizontal', shrink=1,
+        #                     ticks=[round(a, 1) if a<np.max(image_data) else a for a in np.linspace(minlevel, maxlevel, 4)])
         cbar = plt.colorbar(orientation='horizontal', shrink=1,
-                            ticks=[round(a, 1) if a>0.005 and a<np.max(image_data) else a for a in np.linspace(minlevel, maxlevel, 4)])
+                            ticks=[round(a, 3) for a in np.linspace(minlevel, maxlevel, 6)])
         cbar.set_label('Surface brightness [Jy/beam]')
         plt.xlabel('Right Ascension (J2000)')
         plt.ylabel('Declination (J2000)')
@@ -153,7 +161,7 @@ class Imaging:
             maxlevel_1 = np.max(self.image_data)
 
         if minlevel_1 is None:
-            minlevel_1 = self.noise*2
+            minlevel_1 = self.rms*2
 
         image_data_2 = np.clip(image_data_2, a_min=0, a_max=maxlevel_2)
         plt.figure(figsize=(7, 10))
@@ -191,6 +199,7 @@ class Imaging:
         self.hdu = [fits.PrimaryHDU(out.data, header=out.wcs.to_header())]
         self.image_data = out.data
         self.wcs = out.wcs
+        self.rms = self.noise
 
         return self
 
@@ -235,11 +244,38 @@ class Imaging:
 if __name__ == '__main__':
 
 
-    Image = Imaging(f'../60arcsec.fits')
+    Image = Imaging(f'../strwfits/60arcsec.fits')
 
     Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
 
-    Image.reproject_map('/home/jurjen/Documents/Python/a399a401/a399-401/a401_curdecmaps_0.2_1.5s_sz.fits', 'test.fits')
+    Image.reproject_map('../strwfits/a401_curdecmaps_0.2_1.5s_sz.fits', 'test.fits')
 
-    Image.make_contourplot(title='Contour plot with radio data')
+    Image.make_contourplot(title='Contour plot with radio data', maxlevel=1.5)
     Image.make_overlay_contourplot('test.fits', title='y-map contour lines and radio filled contour')
+
+    # for n, galpos in enumerate([(3150, 4266.82), (2988, 3569), (2564, 3635), (2524, 2814), (3297, 2356), (3019, 1945)]):
+    #
+    #     Image = Imaging('../strwfits/archive0.fits')
+    #     if n in [2,4]:
+    #         Image.make_cutout(pos=galpos, size=(600, 600))
+    #     else:
+    #         Image.make_cutout(pos=galpos, size=(400, 400))
+    #     Image.make_contourplot(title=f'Source {string.ascii_uppercase[n]} (6")', maxlevel=0.05, minlevel=0.00065, steps=25)
+    #     Image.make_image()
+    #
+    #     galpos = tuple([g/2 for g in galpos])
+    #
+    #     Image = Imaging('../strwfits/20arcsec.fits')
+    #     if n in [2,4]:
+    #         Image.make_cutout(pos=galpos, size=(300, 300))
+    #     else:
+    #         Image.make_cutout(pos=galpos, size=(200, 200))
+    #     Image.make_contourplot(title=f'Source {string.ascii_uppercase[n]} (20")', maxlevel=0.1, minlevel=0.0015, steps=25)
+    #     Image.make_image()
+
+    # Image = Imaging('../strwfits/archive0.fits')
+    # Image.make_cutout(pos=(2988, 3569), size=(400, 400))
+    # Image.make_contourplot(title='Source B', maxlevel=0.06, steps=6)
+    # Image.make_image()
+
+
