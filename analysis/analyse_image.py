@@ -260,28 +260,29 @@ class Imaging:
 if __name__ == '__main__':
 
 
-    Image = Imaging(f'../strwfits/60arcsec.fits')
 
-    Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
-    Image.make_contourplot(title='Contour plot with radio data', maxlevel=1.5)
-    # Image.make_image()
-
-    Image.reproject_map('../strwfits/a401_curdecmaps_0.2_1.5s_sz.fits', 'test.fits')
-    Image.make_bridge_overlay_contourplot('test.fits', title='y-map contour lines and radio filled contour',
-                                          minlevel_1=-0.002, maxlevel_1=0.005, steps_1=100, steps_2=6, minlevel_2=(10**(-5)/2), convolve_2=True)
-
-    Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
-
-    Image.reproject_map('../strwfits/mosaic_a399_a401_bkg.fits', 'test.fits')
-
-    Image.make_bridge_overlay_contourplot('test.fits', title='y-map contour lines and radio filled contour',
-                                          minlevel_1=-0.002, maxlevel_1=0.005, steps_1=100, steps_2=6, convolve_2=True, maxlevel_2=50)
+    # Image = Imaging(f'../fits/60arcsec.fits')
+    #
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
+    # Image.make_contourplot(title='Contour plot with radio data', maxlevel=1.5)
+    # # Image.make_image()
+    #
+    # Image.reproject_map('../fits/a401_curdecmaps_0.2_1.5s_sz.fits', 'test.fits')
+    # Image.make_bridge_overlay_contourplot('test.fits', title='y-map contour lines and radio filled contour',
+    #                                       minlevel_1=-0.002, maxlevel_1=0.005, steps_1=100, steps_2=6, minlevel_2=(10**(-5)/2), convolve_2=True)
+    #
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
+    #
+    # Image.reproject_map('../fits/mosaic_a399_a401_bkg.fits', 'test.fits')
+    #
+    # Image.make_bridge_overlay_contourplot('test.fits', title='y-map contour lines and radio filled contour',
+    #                                       minlevel_1=-0.002, maxlevel_1=0.005, steps_1=100, steps_2=6, convolve_2=True, maxlevel_2=50)
 
 
     for n, galpos in enumerate([(3150, 4266.82), (2988, 3569), (2564, 3635), (2524, 2814), (3297, 2356), (3019, 1945)]):
 
-        Image = Imaging('../strwfits/archive0.fits')
-        if n in [2,4]:
+        Image = Imaging('../fits/image_test_A399-MFS-image.fits')
+        if n in [2, 4]:
             Image.make_cutout(pos=galpos, size=(600, 600))
         else:
             Image.make_cutout(pos=galpos, size=(400, 400))
@@ -290,7 +291,7 @@ if __name__ == '__main__':
 
         galpos = tuple([g/2 for g in galpos])
 
-        Image = Imaging('../strwfits/20arcsec.fits')
+        Image = Imaging('../fits/20arcsec.fits')
         if n in [2,4]:
             Image.make_cutout(pos=galpos, size=(300, 300))
         else:
