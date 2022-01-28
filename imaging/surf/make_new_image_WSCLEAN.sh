@@ -15,7 +15,7 @@ MS=$2
 
 SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
-SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest.sif
+SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest_facetfix.sif
 
 TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_$(echo "$H5" | tr -cd ' ' | wc -c)
 FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
