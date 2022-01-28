@@ -21,6 +21,6 @@ class Template:
 
 if __name__ == '__main__':
     test = Template('test.h5')
-    test.create_group
+    # test.create_group
 
 

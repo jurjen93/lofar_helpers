@@ -1,10 +1,5 @@
 #!/bin/bash
 
-N=$1
-NMITER=$2
-
-NAME=image_test_A399_cleanbridge
-
 SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn3,/net/rijn2
 SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest.sif
@@ -12,9 +7,10 @@ SING_IMAGE_P2=/net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fe
 
 TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_500kpc
 FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
-H5=all_directions${N}.h5
-MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive${N}.avg.goodtimes
+H5=all_directions0.h5
+MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes
 TESS=tessupdate.reg
+NAME=image_test_A399_cleanbridge
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 
@@ -103,7 +99,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -name ${NAME}_compactmask \
 -size 6000 6000 \
 -scale 1.5arcsec \
--nmiter ${NMITER} \
+-nmiter 8 \
 -minuv-l 1250.0 \
 ${MS}
 
@@ -145,7 +141,7 @@ wsclean \
 -multiscale \
 -join-channels \
 -multiscale-max-scales 10 \
--nmiter ${NMITER} \
+-nmiter 8 \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions ${TESS} \
