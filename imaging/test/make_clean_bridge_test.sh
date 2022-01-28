@@ -18,10 +18,8 @@ TESS=tessupdate.reg
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 
-make dir
-mkdir -p ${TO}
-
 #copy files
+mkdir -p ${TO}
 cp ${FROM}/${H5} ${TO} && wait
 cp -r ${FROM}/${MS} ${TO} && wait
 
