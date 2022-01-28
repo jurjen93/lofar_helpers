@@ -5,6 +5,7 @@
 .ipynb_checkpoints
 # fit files
 *.fits
+*.fits.gz
 #idea file
 .idea
 #pycache
