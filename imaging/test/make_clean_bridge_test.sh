@@ -10,7 +10,7 @@ SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest.sif
 SING_IMAGE_P2=/net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fedora31_ddf.sif
 
-TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_${N}_cleanbridge
+TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_300kpc
 FROM=/net/tussenrijn/data2/jurjendejong/A399_extracted_avg
 H5=all_directions${N}.h5
 MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive${N}.avg.goodtimes
@@ -18,41 +18,24 @@ TESS=tessupdate.reg
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 
-make dir
-mkdir -p ${TO}
-
 #copy files
+mkdir -p ${TO}
 cp ${FROM}/${H5} ${TO} && wait
 cp -r ${FROM}/${MS} ${TO} && wait
 
-#make shorter time axis
-singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-python /home/jurjendejong/scripts/lofar_helpers/supporting_scripts/flag_time.py \
---time_flag 0 300 \
--msin ${TO}/${MS} \
--msout ${TO}/${MS}.test && wait
-rm -rf ${TO}/${MS}
-
-singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-python ~/scripts/lofar_helpers/h5_merger.py \
---h5_tables ${TO}/${H5} \
---h5_out ${TO}/short_${H5} \
---ms ${TO}/${MS}.test && wait
-rm -rf ${TO}/${H5}
-
 #aoflagger
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-aoflagger ${TO}/${MS}.test && wait
+aoflagger ${TO}/${MS} && wait
 
 cd ${TO}
 
 #make tesselation
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
 python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
---h5 ${TO}/short_${H5} \
+--h5 ${TO}/${H5} \
 --DS9regionout ${TO}/${TESS} \
 --imsize 6000 \
---ms ${TO}/${MS}.test
+--ms ${TO}/${MS}
 
 # make first image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
@@ -79,13 +62,13 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -parallel-deconvolution 1600 \
 -parallel-gridding 5 \
 -facet-regions ${TESS} \
--apply-facet-solutions short_${H5} amplitude000,phase000 \
+-apply-facet-solutions ${H5} amplitude000,phase000 \
 -name ${NAME}_compact \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 7 \
 -minuv-l 2100.0 \
-${MS}.test
+${MS}
 
 #mask compact objects
 singularity exec -B ${SING_BIND} ${SING_IMAGE_P2} \
@@ -116,13 +99,13 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -parallel-deconvolution 1600 \
 -parallel-gridding 5 \
 -facet-regions ${TESS} \
--apply-facet-solutions short_${H5} amplitude000,phase000 \
+-apply-facet-solutions ${H5} amplitude000,phase000 \
 -name ${NAME}_compactmask \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter ${NMITER} \
 -minuv-l 2100.0 \
-${MS}.test
+${MS}
 
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -132,11 +115,11 @@ wsclean \
 -padding 1.2 \
 -predict \
 -name ${NAME}_compactmask \
-${MS}.test
+${MS}
 
 #subtract
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS}.test --colname DIFFUSE_SUB
+python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS} --colname DIFFUSE_SUB
 
 #make final image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -170,5 +153,5 @@ wsclean \
 -fit-spectral-pol 3 \
 -taper-gaussian 60arcsec \
 -data-column DIFFUSE_SUB \
--apply-facet-solutions short_${H5} amplitude000,phase000 \
-${MS}.test
+-apply-facet-solutions ${H5} amplitude000,phase000 \
+${MS}
