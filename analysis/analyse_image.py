@@ -12,6 +12,7 @@ from astropy.modeling.models import Gaussian2D
 from astropy.convolution import convolve, Gaussian2DKernel
 from matplotlib.ticker import LogLocator, LogFormatterSciNotation as LogFormatter
 import os
+from scipy.ndimage import gaussian_filter
 
 
 def flatten(f):
@@ -101,6 +102,14 @@ class Imaging:
         cbar.set_label('Surface brightness [Jy/beam]')
         plt.show()
 
+        return self
+
+    def taper(self, gaussian):
+        # Gaussian2DKernel(gaussian)
+        # gauss_kernel = Gaussian2DKernel(100)
+        # self.image_data = convolve(self.image_data, gauss_kernel)
+        self.image_data = gaussian_filter(self.image_data, sigma=1)
+        self.rms = self.noise
         return self
 
     def reproject_map(self, input, output):
@@ -307,7 +316,7 @@ if __name__ == '__main__':
 
 
 
-    Image = Imaging(f'../fits/60arcsec.fits')
+    Image = Imaging(f'../fits/60all.fits')
     #
     Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
     Image.make_contourplot(title='Contour plot with radio data', maxlevel=0.5)
