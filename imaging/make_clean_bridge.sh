@@ -1,23 +1,16 @@
 #!/bin/bash
-#SBATCH -c 24
-#SBATCH --mail-type=FAIL
-#SBATCH --mail-user=jurjendejong@strw.leidenuniv.nl
-
 
 #input
-H5=$1
-MS=$2
+H5='all_directions0.h5 all_directions1.h5 all_directions2.h5 all_directions3.h5 all_directions4.h5 all_directions5.h5'
+MS='Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive1.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive2.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive3.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive4.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive5.avg.goodtimes'
 
-NAME=image_test_A399_cleanbridge
-
-SING_BIND=/project/lofarvwf/Share/jdejong,/home/lofarvwf-jdejong/scripts
-SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
-SING_IMAGE_WSCLEAN=/home/lofarvwf-jdejong/singularities/idgtest_facetfix.sif
-SING_IMAGE_P2=/home/lofarvwf-jdejong/singularities/lofar_sksp_fedora31_ddf.sif
-
-TO=/project/lofarvwf/Share/jdejong/output/A399/imaging/Abell399-401_cleanbridge_$(echo "$H5" | tr -cd ' ' | wc -c)
-FROM=/project/lofarvwf/Share/jdejong/output/A399/imaging/A399_extracted_avg
-TESS=tess60.reg
+#parameters
+SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn4,/net/rijn3,/net/rijn2
+SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
+SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest_facetfix.sif
+TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_all
+FROM=/net/rijn5/data2/jurjendejong/A399_extracted_avg
+TESS=tessupdate.reg
 
 #check if directory exists
 if [[ -f ${TO} ]]
@@ -81,11 +74,11 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -scale 1.5arcsec \
 -nmiter 7 \
 -minuv-l 2100.0 \
-${MS}
+${MS} > logcompact.txt
 
 #mask compact objects
 singularity exec -B ${SING_BIND} ${SING_IMAGE_P2} \
-python /home/lofarvwf-jdejong/scripts/MakeMask.py \
+python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyModel/MakeMask.py \
 --Th=3.0 \
 --RestoredIm=${NAME}_compact-MFS-image.fits
 
@@ -116,9 +109,9 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -name ${NAME}_compactmask \
 -size 6000 6000 \
 -scale 1.5arcsec \
--nmiter 10 \
+-nmiter 9 \
 -minuv-l 2100.0 \
-${MS}
+${MS} > logcompactmask.txt
 
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -128,11 +121,16 @@ wsclean \
 -padding 1.2 \
 -predict \
 -name ${NAME}_compactmask \
-${MS}
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+${MS} > logpredict.txt
 
 #subtract
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
 python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS} --colname DIFFUSE_SUB
+
+mdkir /net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_subtracteddata && \
+cp -r Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive* /net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_subtracteddata/ && \
+wait
 
 #make final image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -158,7 +156,7 @@ wsclean \
 -multiscale \
 -join-channels \
 -multiscale-max-scales 10 \
--nmiter 10 \
+-nmiter 5 \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions ${TESS} \
@@ -167,4 +165,4 @@ wsclean \
 -taper-gaussian 60arcsec \
 -data-column DIFFUSE_SUB \
 -apply-facet-solutions ${H5// /,} amplitude000,phase000 \
-${MS}
+${MS} > logfinal.txt
