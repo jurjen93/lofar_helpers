@@ -13,6 +13,10 @@ from astropy.convolution import convolve, Gaussian2DKernel
 from matplotlib.ticker import LogLocator, LogFormatterSciNotation as LogFormatter
 import os
 from scipy.ndimage import gaussian_filter
+import pyregion
+from pyregion.mpl_helper import properties_func_default
+from astropy.visualization.wcsaxes import WCSAxes
+from matplotlib.patches import ConnectionPatch
 
 
 def flatten(f):
@@ -71,7 +75,7 @@ class Imaging:
         self.rms = self.noise
         self.rms_full = self.rms.copy()
 
-    def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None):
+    def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None, colorbar=True):
         """
         Image your data with this method.
         image_data -> insert your image_data or plot full image
@@ -88,29 +92,139 @@ class Imaging:
         if image_data is None:
             image_data = self.image_data
 
-        plt.figure(figsize=(7, 10))
-        plt.subplot(projection=self.wcs)
+        if wcs is None:
+            wcs = self.wcs
+
+        if show_regions is not None:
+            r = pyregion.open(show_regions).as_imagecoord(header=self.hdu[0].header)
+            patch_list, artist_list = r.get_mpl_patches_texts()
+            fig = plt.figure(figsize=(7, 10))
+
+            ax = WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
+            fig.add_axes(ax)
+            for patch in patch_list:
+                ax.add_patch(patch)
+        else:
+            plt.figure(figsize=(7, 10))
+            plt.subplot(projection=wcs)
         im = plt.imshow(image_data, origin='lower', cmap=cmap)
         im.set_norm(SymLogNorm(linthresh=vmin*10, vmin=vmin, vmax=vmax, base=10))
         plt.xlabel('Galactic Longitude')
         plt.ylabel('Galactic Latitude')
-        cbar = plt.colorbar(orientation='horizontal', shrink=1)
-        # cbar.ax.set_xscale('log')
-        cbar.locator = LogLocator()
-        cbar.formatter = LogFormatter()
-        cbar.update_normal(im)
-        cbar.set_label('Surface brightness [Jy/beam]')
+        if colorbar:
+            cbar = plt.colorbar(orientation='horizontal', shrink=1)
+            # cbar.ax.set_xscale('log')
+            cbar.locator = LogLocator()
+            cbar.formatter = LogFormatter()
+            cbar.update_normal(im)
+            cbar.set_label('Surface brightness [Jy/beam]')
+        plt.tight_layout()
+
         plt.show()
 
         return self
 
-    def taper(self, gaussian):
-        # Gaussian2DKernel(gaussian)
-        # gauss_kernel = Gaussian2DKernel(100)
+    def make_subimages(self, regionfile, cmap='CMRmap'):
+
+        r = pyregion.open(regionfile).as_imagecoord(header=self.hdu[0].header)
+
+        fig = plt.figure(figsize=(10, 10))
+
+        rows, cols = len(r)//2, 2
+
+        for k, shape in enumerate(r):
+            s = np.array(shape.coord_list)
+
+            out = Cutout2D(
+                data=self.image_data,
+                position=(s[0], s[1]),
+                size=(s[2], s[3]),
+                wcs=self.wcs,
+                mode='partial'
+            )
+            norm = SymLogNorm(linthresh=self.rms * 10, vmin=self.rms, vmax=self.rms*25, base=10)
+
+            plt.subplot(rows, cols, k+1, projection=self.wcs)
+            im = plt.imshow(out.data, origin='lower', cmap=cmap, norm=norm)
+            plt.xlabel('Right Ascension (J2000)')
+            plt.ylabel('Declination (J2000)')
+
+        fig.subplots_adjust(top=0.8)
+        cbar_ax = fig.add_axes([0.22, 0.88, 0.6, 0.03]) # l, b, w, h
+        cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal')
+        cbar.ax.set_xscale('log')
+        cbar.locator = LogLocator()
+        cbar.formatter = LogFormatter()
+        cbar.update_normal(im)
+        cbar.set_label('Surface brightness [Jy/beam]')
+
+        plt.show()
+
+
+    def make_subcontour(self, regionfile, maxlevel=None, minlevel=None, steps=None):
+
+        r = pyregion.open(regionfile).as_imagecoord(header=self.hdu[0].header)
+
+        if maxlevel is None:
+            maxlevel = self.rms_full/0.0001892
+
+        if minlevel is None:
+            minlevel = self.rms_full/0.2521040
+
+        if steps is None:
+            steps = 1000
+
+        levels = [minlevel / 1.5]
+
+        for _ in range(50):
+            levels.append(levels[-1] * 2)
+
+        levels2 = np.linspace(minlevel, maxlevel, steps)
+
+        fig = plt.figure(figsize=(10, 10))
+
+        rows, cols = len(r)//2, 2
+        for k, shape in enumerate(r):
+            s = np.array(shape.coord_list)
+
+            out = Cutout2D(
+                data=self.image_data,
+                position=(s[0], s[1]),
+                size=(s[2], s[3]),
+                wcs=self.wcs,
+                mode='partial'
+            )
+
+            image_data = np.clip(out.data, a_min=np.min(out.data), a_max=maxlevel * 0.99)
+            plt.subplot(rows, cols, k+1, projection=self.wcs)
+            norm = SymLogNorm(linthresh=minlevel, vmin=minlevel / 10, vmax=maxlevel, base=10)
+            plt.contour(image_data, levels, colors=('k'), linestyles=('-'), linewidths=(0.3,))
+            im = plt.contourf(image_data, levels2, cmap='Blues', norm=norm)
+            plt.xlabel('Right Ascension (J2000)')
+            plt.ylabel('Declination (J2000)')
+
+        fig.subplots_adjust(top=0.8)
+        cbar_ax = fig.add_axes([0.22, 0.88, 0.6, 0.03]) # l, b, w, h
+        cbar = fig.colorbar(im, cax=cbar_ax, orientation='horizontal', ticks=[round(a, 5) for a in
+                                   np.logspace(np.log(minlevel), np.log(maxlevel), 4, endpoint=True)])
+
+        cbar.set_label('Surface brightness [Jy/beam]')
+        cbar.ax.set_xscale('log')
+
+        plt.show()
+
+
+    def convolve_image(self, image_data=None, sigma=None):
+        # gauss_kernel = Gaussian2DKernel(sigma)
         # self.image_data = convolve(self.image_data, gauss_kernel)
-        self.image_data = gaussian_filter(self.image_data, sigma=1)
-        self.rms = self.noise
-        return self
+        if image_data is None:
+            image_data = self.image_data
+        if sigma:
+            image_data = gaussian_filter(image_data, sigma=sigma)
+            self.rms = self.noise
+        else:
+            print('No tapering because no value given.')
+        return image_data
 
     def reproject_map(self, input, output):
 
@@ -123,7 +237,8 @@ class Imaging:
 
         return self
 
-    def make_contourplot(self, image_data=None, maxlevel=None, minlevel=None, steps=None, wcs=None, title=None, smallcutout=False):
+    def make_contourplot(self, image_data=None, maxlevel=None, minlevel=None, steps=None, wcs=None, title=None,
+                         smallcutout=False, regions=None):
 
         if image_data is None:
             image_data = self.image_data
@@ -144,9 +259,21 @@ class Imaging:
         if steps is None:
             steps = 1000
 
+        if regions:
+            r = pyregion.open(regions).as_imagecoord(header=self.hdu[0].header)
+            patch_list, artist_list = r.get_mpl_patches_texts()
+            fig = plt.figure(figsize=(7, 10))
+
+            ax = WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
+            fig.add_axes(ax)
+            for patch in patch_list:
+                ax.add_patch(patch)
+        else:
+            plt.figure(figsize=(7, 10))
+            plt.subplot(projection=wcs)
+
         image_data = np.clip(image_data, a_min=np.min(image_data), a_max=maxlevel*0.99)
-        plt.figure(figsize=(7, 10))
-        plt.subplot(projection=wcs)
+
 
         if smallcutout:
             levels = [minlevel/1.5]
@@ -157,7 +284,7 @@ class Imaging:
 
         levels2 = np.linspace(minlevel, maxlevel, steps)
 
-        norm = SymLogNorm(linthresh=minlevel, vmin=minlevel, vmax=maxlevel, base=10)
+        norm = SymLogNorm(linthresh=minlevel, vmin=minlevel/10, vmax=maxlevel, base=10)
 
         plt.contour(image_data, levels, colors=('k'), linestyles=('-'), linewidths=(0.3,))
         plt.contourf(image_data, levels2, cmap='Blues', norm=norm)
@@ -214,8 +341,7 @@ class Imaging:
         wcs_2 = WCS(hdu[0].header)
 
         if convolve_2:
-            gauss_kernel = Gaussian2DKernel(10)
-            image_data_2 = convolve(image_data_2, gauss_kernel)
+            image_data_2 = self.convolve_image(image_data_2, 10)
 
         if maxlevel_2 is None:
             maxlevel_2 = np.max(image_data_2)
@@ -253,6 +379,7 @@ class Imaging:
         plt.title(title)
         plt.show()
 
+
     def make_cutout(self, pos: tuple = None, size: tuple = (1000, 1000)):
         """
         Make cutout from your image with this method.
@@ -267,10 +394,12 @@ class Imaging:
             mode='partial'
         )
 
-        self.hdu = [fits.PrimaryHDU(out.data, header=out.wcs.to_header())]
-        self.image_data = out.data
         self.wcs = out.wcs
+        self.header = self.wcs.to_header()
+        self.image_data = out.data
         self.rms = self.noise
+        self.hdu = [fits.PrimaryHDU(self.image_data, header=self.header)]
+
 
         return self
 
@@ -315,23 +444,29 @@ class Imaging:
 if __name__ == '__main__':
 
 
+    Image = Imaging('../fits/image_test_A399-MFS-image.fits')
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
+    #                   size=(int(Image.image_data.shape[0] / (3/2)), int(Image.image_data.shape[0] / (3/2))))
+    # Image.make_image(show_regions='../regions.reg')
+    Image.make_subimages('../regions.reg')
+    Image.make_subcontour('../regions.reg')
 
-    Image = Imaging(f'../fits/60all.fits')
+    # Image = Imaging(f'../fits/60all.fits')
+
+
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
+    # Image.make_contourplot(title='Contour plot with radio data', maxlevel=0.5)
     #
-    Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
-    Image.make_contourplot(title='Contour plot with radio data', maxlevel=0.5)
-    # # Image.make_image()
+    # Image.make_bridge_overlay_contourplot('../fits/a401_curdecmaps_0.2_1.5s_sz.fits', title='y-map contour lines and radio filled contour',
+    #                                       minlevel_1=0, maxlevel_1=0.005, steps_1=100, steps_2=6, minlevel_2=(10**(-5)/2), convolve_2=True)
     #
-    Image.make_bridge_overlay_contourplot('../fits/a401_curdecmaps_0.2_1.5s_sz.fits', title='y-map contour lines and radio filled contour',
-                                          minlevel_1=0, maxlevel_1=0.005, steps_1=100, steps_2=6, minlevel_2=(10**(-5)/2), convolve_2=True)
-
-
-    Image.make_bridge_overlay_contourplot('../fits/mosaic_a399_a401.fits', title='X-ray contour lines and radio filled contour',
-                                          minlevel_1=0, maxlevel_1=0.005, steps_1=100, steps_2=6, convolve_2=True, maxlevel_2=50, xray=True)
+    #
+    # Image.make_bridge_overlay_contourplot('../fits/mosaic_a399_a401.fits', title='X-ray contour lines and radio filled contour',
+    #                                       minlevel_1=0, maxlevel_1=0.005, steps_1=100, steps_2=6, convolve_2=True, maxlevel_2=50, xray=True)
 
     # for n, galpos in enumerate([(3150, 4266.82), (2988, 3569), (2564, 3635), (2524, 2814), (3297, 2356), (3019, 1945)]):
     #
-    #     Image = Imaging('../fits/archive0.fits')
+    #     Image = Imaging('../fits/image_test_A399-MFS-image.fits')
     #     if n in [2, 4]:
     #         Image.make_cutout(pos=galpos, size=(600, 600))
     #     else:
@@ -348,5 +483,5 @@ if __name__ == '__main__':
     #         Image.make_cutout(pos=galpos, size=(200, 200))
     #     Image.make_contourplot(title=f'Source {string.ascii_uppercase[n]} (20")', smallcutout=True)
     #     Image.make_image()
-
-    os.system('test.fits')
+    #
+    # os.system('rm test.fits')
