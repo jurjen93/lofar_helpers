@@ -111,6 +111,7 @@ wsclean \
 -padding 1.2 \
 -predict \
 -name ${NAME}_compactmask \
+-apply-facet-solutions ${H5} amplitude000,phase000 \
 ${MS}
 
 #subtract
