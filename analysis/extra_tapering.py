@@ -16,7 +16,7 @@ import os
 
 
 Image = Imaging(f'../fits/60arcsec_full.fits')
-Image.taper(10)
+Image.taper(60/80)
 Image.make_image()
 
 Image = Imaging(f'../fits/80arcsec_full.fits')
