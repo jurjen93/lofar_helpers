@@ -1680,7 +1680,7 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=None):
+             check_flagged_station=True):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -1701,6 +1701,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param add_cs: use MS to replace super station with core station
     :param use_ants_from_ms: use only stations from Measurement set
     :param check_output: check if output has all correct output information
+    :param check_flagged_station: check if input stations are flagged, if so flag same stations in output
     """
 
     print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################\n\nMerging the following tables:\n'+'\n'.join(h5_tables)+'\n')
