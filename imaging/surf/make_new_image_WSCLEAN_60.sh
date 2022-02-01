@@ -71,7 +71,7 @@ wsclean \
 -channels-out 6 \
 -join-channels \
 -multiscale-max-scales 10 \
--nmiter 10 \
+-nmiter 5 \
 -log-time \
 -multiscale-scale-bias 0.7 \
 -facet-regions ${TESS} \
