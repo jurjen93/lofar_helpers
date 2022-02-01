@@ -122,6 +122,7 @@ wsclean \
 -predict \
 -name ${NAME}_compactmask \
 -apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+-facet-regions ${TESS} \
 ${MS} > logpredict.txt
 
 #subtract
