@@ -1764,6 +1764,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if sys.version_info.major == 2:
         merge.reorder_directions()
 
+    #Check if stations are fully flagged in input and flag in output as well
     if check_flagged_station:
         merge.check_stations()
 
