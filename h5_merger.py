@@ -14,7 +14,6 @@ merge_h5(h5_out='test.h5',
         convert_tec=True)
 """
 
-# TODO: test rotation (fulljones)
 # TODO: test convert_tec==False  ---> now they are deleted if convert_tec==false
 # TODO: test circ2lin and vice versa
 
@@ -30,7 +29,10 @@ import sys
 import re
 import tables
 from collections import OrderedDict
+import warnings
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, expand_dims, pi, array, all, complex128, exp, angle, sort, power, sum, argmin, float64
+
+warnings.filterwarnings('ignore')
 
 __all__ = ['merge_h5', 'output_check', 'move_source_in_sourcetable']
 
@@ -1223,6 +1225,44 @@ class MergeH5:
 
         return self
 
+    def check_stations(self):
+        for input_h5 in self.h5_tables:
+            T = tables.open_file(input_h5)
+            for solset in T.root._v_groups.keys():
+                ss = T.root._f_get_child(solset)
+                for soltab in ss._v_groups.keys():
+                    st = ss._f_get_child(soltab)
+                    weight = st.weight
+                    ant_index = str(weight.attrs['AXES']).split(',').index('ant')
+                    for a in range(weight.shape[ant_index]):
+                        if ant_index==0:
+                            if sum(weight[a, ...])==0.:
+                                H = tables.open_file(self.h5name_out, 'r+')
+                                H.root._f_get_child(solset)._f_get_child(soltab).weight[a, ...] = 0.
+                                H.close()
+                        elif ant_index==1:
+                            if sum(weight[:, a, ...])==0.:
+                                H = tables.open_file(self.h5name_out, 'r+')
+                                H.root._f_get_child(solset)._f_get_child(soltab).weight[:, a, ...] = 0.
+                                H.close()
+                        elif ant_index==2:
+                            if sum(weight[:, :, a, ...])==0.:
+                                H = tables.open_file(self.h5name_out, 'r+')
+                                H.root._f_get_child(solset)._f_get_child(soltab).weight[:, :, a, ...] = 0.
+                                H.close()
+                        elif ant_index==3:
+                            if sum(weight[:, :, :, a, ...])==0.:
+                                H = tables.open_file(self.h5name_out, 'r+')
+                                H.root._f_get_child(solset)._f_get_child(soltab).weight[:, :, :, a, ...] = 0.
+                                H.close()
+                        elif ant_index==4:
+                            if sum(weight[:, :, :, :, a, ...])==0.:
+                                H = tables.open_file(self.h5name_out, 'r+')
+                                H.root._f_get_child(solset)._f_get_child(soltab).weight[:, :, :, :, a, ...] = 0.
+                                H.close()
+        return self
+
+
 
 def _create_h5_name(h5_name):
     if '.h5' != h5_name[-3:]:
@@ -1639,7 +1679,8 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
-             filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None, freq_av=None, time_av=None):
+             filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None, freq_av=None, time_av=None,
+             check_flagged_station=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -1723,6 +1764,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if sys.version_info.major == 2:
         merge.reorder_directions()
 
+    if check_flagged_station:
+        merge.check_stations()
+
     #Check table source size
     merge.reduce_memory_source()
 
@@ -1799,6 +1843,7 @@ if __name__ == '__main__':
     parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output')
     parser.add_argument('--use_ants_from_ms', action='store_true', default=None, help='Use only antenna stations from measurement set (use --ms)')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
+    parser.add_argument('--not_flagstation', action='store_true', default=None, help='Do not flag any station if station is flagged in input h5')
     args = parser.parse_args()
 
     # check if solset name is accepted
@@ -1862,4 +1907,5 @@ if __name__ == '__main__':
              use_ants_from_ms=args.use_ants_from_ms,
              check_output=args.check_output,
              time_av=args.time_av,
-             freq_av=args.freq_av)
+             freq_av=args.freq_av,
+             check_flagged_station=not args.not_flagstation)

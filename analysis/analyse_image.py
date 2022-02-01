@@ -17,6 +17,11 @@ import pyregion
 from pyregion.mpl_helper import properties_func_default
 from astropy.visualization.wcsaxes import WCSAxes
 from matplotlib.patches import ConnectionPatch
+import astropy.units as u
+from astropy.cosmology import FlatLambdaCDM
+from radioflux import Radiomap
+
+
 
 
 def flatten(f):
@@ -66,6 +71,7 @@ def reproject_hdu(hdu1, hdu2, outputname):
 class Imaging:
 
     def __init__(self, fits_file: str = None):
+        self.fitsfile = fits_file
         self.hdu = fits.open(fits_file)
         self.image_data = self.hdu[0].data
         while len(self.image_data.shape) != 2:
@@ -74,6 +80,7 @@ class Imaging:
         self.header = self.wcs.to_header()
         self.rms = self.noise
         self.rms_full = self.rms.copy()
+        self.cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
     def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None, colorbar=True):
         """
@@ -82,6 +89,9 @@ class Imaging:
         cmap -> choose your preferred cmap
         """
 
+        if image_data is None:
+            image_data = self.image_data
+
         if vmin is None:
             vmin = self.rms
         else:
@@ -89,11 +99,10 @@ class Imaging:
         if vmax is None:
             vmax = self.rms*25
 
-        if image_data is None:
-            image_data = self.image_data
-
         if wcs is None:
             wcs = self.wcs
+
+        print(vmin, vmax)
 
         if show_regions is not None:
             r = pyregion.open(show_regions).as_imagecoord(header=self.hdu[0].header)
@@ -118,7 +127,7 @@ class Imaging:
             cbar.formatter = LogFormatter()
             cbar.update_normal(im)
             cbar.set_label('Surface brightness [Jy/beam]')
-        plt.tight_layout()
+        # plt.tight_layout()
 
         plt.show()
 
@@ -212,6 +221,47 @@ class Imaging:
         cbar.ax.set_xscale('log')
 
         plt.show()
+
+    def pix_to_size(self, z):
+        return abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(z)
+
+
+
+    def do_science(self, region, objects='bridge'):
+
+        rm = Radiomap(fits.open(self.fitsfile))
+
+        if objects=='bridge':
+            # mask1 = np.where(self.image_data<self.rms, True, False)
+            r = pyregion.open(region).as_imagecoord(header=self.hdu[0].header)
+            extrapolatedregion = pyregion.open('../extrapolatedregion.reg').as_imagecoord(header=self.hdu[0].header).\
+                get_mask(hdu=self.hdu[0], shape=self.image_data.shape)
+            pix_extrap = np.sum(extrapolatedregion)
+            mask = r.get_mask(hdu=self.hdu[0], shape=self.image_data.shape)
+            # mask = np.where(mask2, mask1, False)
+            image_data = np.where(mask, self.image_data, 0)
+            pixnum=np.sum(np.where(image_data!=0, 1, 0))
+            print(pixnum)
+            # image_data = image_data[image_data>self.rms*3]
+            # self.make_image(image_data, vmin=0.0001, vmax=0.003)
+            integrated_surface_brightness = np.nansum(image_data)
+            av_sb = round(np.mean(image_data[image_data!=0])*1000,10) * u.mJy/u.beam
+            # print(f'Integrated surface brightness is: {round(integrated_surface_brightness*1000,2) * u.mJy/u.beam}')
+            print(f'Average surface brightness is: {av_sb}')
+            flux_density = round(integrated_surface_brightness*1000/rm.area,2) * u.mJy
+            flux_density_err = np.std(image_data)/rm.area
+            print(f'Total extrapolated flux density is: {flux_density} $\pm$ {flux_density_err}')
+            area = self.pix_to_size(0.072)**2*pixnum
+
+            z=0.072
+            L = np.nansum(image_data) * self.pix_to_size(z).value**2 * (1 / rm.area) * 10 ** (-26) * 4 * np.pi * (1 + z) ** (0.7 - 1) * (1 + z) ** 4 / (
+                    ((1.5 * u.arcsec.to(u.rad)) * (1 * u.m).to(u.Mpc).value) ** 2)*u.W/u.Hz
+
+            print(f'Radio power: {L}')
+
+            # area_govoni=3.9*u.Mpc**2
+            # print(f'Calculated area {area} and Govoni area {area_govoni}')
+            # print(f'Radio power: {(flux_density*area).to(u.W/u.Hz)}')
 
 
     def convolve_image(self, image_data=None, sigma=None):
@@ -419,7 +469,7 @@ class Imaging:
             rms = np.std(m[ind])
             if np.abs(old_div((rms-rmsold), rmsold)) < diff: break
             rmsold = rms
-        print('Noise : ' + str(round(rms * 1000, 2)) + ' mJy/beam')
+        print('Noise : ' + str(round(rms * 1000, 2)) + f'{u.mJy/u.beam}')
         self.rms = rms
         return rms
 
@@ -438,30 +488,47 @@ class Imaging:
             rms = np.std(m[ind])
             if np.abs(old_div((rms-rmsold), rmsold)) < diff: break
             rmsold = rms
-        print('Noise : ' + str(round(rms * 1000, 2)) + ' mJy/beam')
+        print('Noise : ' + str(round(rms * 1000, 2)) + f'{u.mJy/u.beam}')
         return rms
 
 if __name__ == '__main__':
 
 
     Image = Imaging('../fits/image_test_A399-MFS-image.fits')
+
     Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
                       size=(int(Image.image_data.shape[0] / (3/2)), int(Image.image_data.shape[0] / (3/2))))
-    Image.make_image(show_regions='../regions.reg')
-    Image.make_subimages('../regions.reg')
-    Image.make_subcontour('../regions.reg')
 
-    Image = Imaging(f'../fits/60all.fits')
-
-    Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
-    Image.make_contourplot(title='Contour plot with radio data', maxlevel=0.5)
-
-    Image.make_bridge_overlay_contourplot('../fits/a401_curdecmaps_0.2_1.5s_sz.fits', title='y-map contour lines and radio filled contour',
-                                          minlevel_1=0, maxlevel_1=0.005, steps_1=100, steps_2=6, minlevel_2=(10**(-5)/2), convolve_2=True)
+    Image.do_science(region='../bridge.reg', objects='bridge')
 
 
-    Image.make_bridge_overlay_contourplot('../fits/mosaic_a399_a401.fits', title='X-ray contour lines and radio filled contour',
-                                          minlevel_1=0, maxlevel_1=0.005, steps_1=100, steps_2=6, convolve_2=True, maxlevel_2=50, xray=True)
+    # Image.make_image(show_regions='../regions.reg')
+    # Image.make_subimages('../regions.reg')
+    # Image.make_subcontour('../regions.reg')
+
+    # Image = Imaging(f'../fits/60all.fits')
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    # Image.make_image(show_regions='../bridgebroken.reg', vmax=0.31)
+
+    # Image = Imaging(f'../fits/20all.fits')
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    # Image.make_image(show_regions='../bridge.reg', vmax=0.02, vmin=0.0002)
+
+    # Image = Imaging(f'../fits/image_test_A399-MFS-image.fits')
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(int(Image.image_data.shape[0] / (3/2)), int(Image.image_data.shape[0] / (3/2))))
+    # Image.make_image(show_regions='../bridgebroken.reg', vmax=0.01)
+
+    # Image = Imaging(f'../fits/60all.fits')
+    #
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
+    # Image.make_contourplot(title='Contour plot with radio data', maxlevel=0.5)
+    #
+    # Image.make_bridge_overlay_contourplot('../fits/a401_curdecmaps_0.2_1.5s_sz.fits', title='y-map contour lines and radio filled contour',
+    #                                       minlevel_1=0, maxlevel_1=0.005, steps_1=100, steps_2=6, minlevel_2=(10**(-5)/2), convolve_2=True)
+    #
+    #
+    # Image.make_bridge_overlay_contourplot('../fits/mosaic_a399_a401.fits', title='X-ray contour lines and radio filled contour',
+    #                                       minlevel_1=0, maxlevel_1=0.005, steps_1=100, steps_2=6, convolve_2=True, maxlevel_2=50, xray=True)
 
     # for n, galpos in enumerate([(3150, 4266.82), (2988, 3569), (2564, 3635), (2524, 2814), (3297, 2356), (3019, 1945)]):
     #
