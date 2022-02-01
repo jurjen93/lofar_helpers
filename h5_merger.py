@@ -1639,7 +1639,7 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
-             filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None):
+             filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None, freq_av=None, time_av=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -1647,6 +1647,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param h5_tables (string or list): h5 tables to merge
     :param ms_files (string or list): ms files
     :param h5_time_freq (str or list): h5 file to take freq and time axis from
+    :param freq_av (int): averaging of frequency axis
+    :param time_av (int): averaging of time axis
     :param convert_tec (boolean): convert TEC to phase or not
     :param merge_all_in_one: merge all in one direction
     :param lin2circ: boolean for linear to circular conversion
@@ -1681,6 +1683,12 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
                     merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir)
+
+    if time_av:
+        merge.ax_time = merge.ax_time[::int(time_av)]
+
+    if freq_av:
+        merge.ax_freq = merge.ax_freq[::int(freq_av)]
 
     merge.get_allkeys()
 
@@ -1776,6 +1784,8 @@ if __name__ == '__main__':
     parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge.', required=True)
     parser.add_argument('-ms', '--ms', type=str, help='ms files input.')
     parser.add_argument('--h5_time_freq', type=str, help='h5 file to use time and frequency arrays from.')
+    parser.add_argument('--time_av', type=int, help='time averaging')
+    parser.add_argument('--freq_av', type=int, help='frequency averaging')
     parser.add_argument('--not_convert_tec', action='store_true', help='convert tec to phase.')
     parser.add_argument('--merge_all_in_one', action='store_true', help='merge all solutions in one direction.')
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular.')
@@ -1850,4 +1860,6 @@ if __name__ == '__main__':
              filtered_dir=filtered_dir,
              add_cs=args.add_cs,
              use_ants_from_ms=args.use_ants_from_ms,
-             check_output=args.check_output)
+             check_output=args.check_output,
+             time_av=args.time_av,
+             freq_av=args.freq_av)
