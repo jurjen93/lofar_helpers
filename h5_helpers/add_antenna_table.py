@@ -2,13 +2,16 @@ import tables
 import casacore.tables as ct
 from numpy import array
 
-def add_antenna_from_ms(ms, h5):
+def add_antenna_from_ms(ms, h5, solset=None):
     """
     Add antenna table to h5 from corresponding MS
     WARNING: this overwrites the antenna table from the h5
 
     :param ms: Measurement set
     :param h5: hdf5 solution file
+    :param solset: specific solset (sol000, sol001,...)
+
+    :return:
     """
 
     t = ct.table(ms + "::ANTENNA", ack=False)
@@ -18,6 +21,12 @@ def add_antenna_from_ms(ms, h5):
     values = array([list(zip(*(new_antlist, new_antpos)))], dtype=[('name', 'S16'), ('position', '<f4', (3,))])
 
     T = tables.open_file(h5, 'r+')
-    T.root.sol000.antenna._f_remove()
-    T.create_table(T.root.sol000, 'antenna', values, title='Antenna names and positions')
+    if solset:
+        T.root._f_get_child(solset).antenna._f_remove()
+        T.create_table(T.root._f_get_child(solset), 'antenna', values, title='Antenna names and positions')
+
+    else:
+        for solset in T.root._v_groups.keys():
+            T.root._f_get_child(solset).antenna._f_remove()
+            T.create_table(T.root._f_get_child(solset), 'antenna', values, title='Antenna names and positions')
     T.close()
