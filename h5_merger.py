@@ -520,6 +520,27 @@ class MergeH5:
         self.directions.update(source)
         self.directions = OrderedDict(sorted(self.directions.items()))
 
+    @staticmethod
+    def correct_invalid_values(soltab, values, axlist):
+        if soltab == 'phase':
+            values[~isfinite(values)] = 0.
+        elif soltab == 'amplitude':
+            if 'pol' in axlist:
+                if axlist.index('pol') == 0:
+                    values[(~isfinite(values))] = 0.
+                    values[0, ...][(~isfinite(values[0, ...])) | (values[0, ...] == 0.)] = 1.
+                    values[-1, ...][(~isfinite(values[-1, ...])) | (values[-1, ...] == 0.)] = 1.
+                elif axlist.index('pol')-len(axlist)==-1:
+                    values[(~isfinite(values))] = 0.
+                    values[..., 0][(~isfinite(values[..., 0])) | (values[..., 0] == 0.)] = 1.
+                    values[..., -1][(~isfinite(values[..., -1])) | (values[..., -1] == 0.)] = 1.
+                else:
+                    sys.exit('ERROR: polarization found at unexpected axis '+str(axlist))
+            else:
+                values[(~isfinite(values)) | (values == 0.)] = 1.
+
+        return values
+
 
     @staticmethod
     def _expand_poldim(values, dim_pol, type, haspol):
@@ -620,8 +641,7 @@ class MergeH5:
                     else:
                         self.axes_current.insert(0, 'dir')
 
-                idxnan = where((~isfinite(values)))
-                values[idxnan] = 0.0
+                values = self.correct_invalid_values(st.getType(), values, self.axes_current)
 
                 # get source coordinates
                 dirs = ss.getSou()
@@ -929,13 +949,16 @@ class MergeH5:
         # right order vals
         axes_vals = [v[1] for v in sorted(axes_vals.items(), key=lambda pair: self.axes_final.index(pair[0]))]
 
+
         # make new solution table
         if 'phase' in soltab:
+            self.phases = self.correct_invalid_values('phase', self.phases, self.axes_final)
             weights = ones(self.phases.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
             solsetout.makeSoltab('phase', axesNames=self.axes_final, axesVals=axes_vals, vals=self.phases,
                                  weights=weights)
         if 'amplitude' in soltab:
+            self.gains = self.correct_invalid_values('amplitude', self.gains, self.axes_final)
             weights = ones(self.gains.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
             solsetout.makeSoltab('amplitude', axesNames=self.axes_final, axesVals=axes_vals, vals=self.gains,
@@ -1655,6 +1678,32 @@ def _test_h5_output(h5_out, tables_to_merge):
         print('Received at least once the same source coordinates of two directions, which have been merged together.')
     H5out.close()
 
+def _checknan_input(h5):
+    """
+    Check h5 on nan or 0 values
+    """
+    H = tables.open_file(h5)
+
+    try:
+        amp = H.root.sol000.amplitude000.val[:]
+        print('Amplitude:')
+        print(amp[(~isfinite(amp)) | (amp==0.)])
+        del amp
+    except:
+        print('H.root.amplitude000 does not exist')
+
+    try:
+        phase = H.root.sol000.phase000.val[:]
+        print('Phase:')
+        print(phase[(~isfinite(phase)) | (phase==0.)])
+        del phase
+    except:
+        print('H.root.sol000.phase000 does not exist')
+
+    H.close()
+
+    return 'Done'
+
 def _degree_to_radian(d):
     return pi*d/180
 
@@ -1667,6 +1716,7 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
     :param ra_degrees: change right ascension degrees
     :param dec_degrees: change declination degrees
     """
+
     if not overwrite:
         os.system('cp '+h5+' '+h5.replace('.h5', '_upd.h5'))
         h5 = h5.replace('.h5', '_upd.h5')
