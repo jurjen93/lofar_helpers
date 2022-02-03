@@ -1,8 +1,9 @@
 #!/bin/bash
 
 #input
-H5='all_directions0.h5 all_directions1.h5 all_directions2.h5 all_directions3.h5 all_directions4.h5 all_directions5.h5'
-MS='Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive1.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive2.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive3.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive4.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive5.avg.goodtimes'
+#H5='all_directions0.h5 all_directions1.h5 all_directions2.h5 all_directions3.h5 all_directions4.h5 all_directions5.h5'
+MS='/net/rijn8/data1/rvweeren/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes.MAVG /net/rijn8/data1/rvweeren/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive1.avg.goodtimes.MAVG /net/rijn8/data1/rvweeren/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive2.avg.goodtimes.MAVG /net/rijn8/data1/rvweeren/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive3.avg.goodtimes.MAVG /net/rijn8/data1/rvweeren/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive4.avg.goodfreq.goodtimes.MAVG /net/rijn8/data1/rvweeren/Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive5.avg.goodtimes.MAVG'
+H5='/net/rijn5/data2/jurjendejong/A399_extracted_avg/all_directions0_HAVG.h5 /net/rijn5/data2/jurjendejong/A399_extracted_avg/all_directions1_HAVG.h5 /net/rijn5/data2/jurjendejong/A399_extracted_avg/all_directions2_HAVG.h5 /net/rijn5/data2/jurjendejong/A399_extracted_avg/all_directions3_HAVG.h5 /net/rijn5/data2/jurjendejong/A399_extracted_avg/all_directions4_HAVG.h5 /net/rijn5/data2/jurjendejong/A399_extracted_avg/all_directions5_HAVG.h5'
 
 #parameters
 SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn4,/net/rijn3,/net/rijn2
@@ -68,7 +69,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -parallel-deconvolution 1600 \
 -parallel-gridding 5 \
 -facet-regions ${TESS} \
--apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+-apply-facet-solutions ${H5_FREQAVG// /,} amplitude000,phase000 \
 -name ${NAME}_compact \
 -size 6000 6000 \
 -scale 1.5arcsec \
@@ -105,7 +106,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -parallel-deconvolution 1600 \
 -parallel-gridding 5 \
 -facet-regions ${TESS} \
--apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+-apply-facet-solutions ${H5_FREQAVG// /,} amplitude000,phase000 \
 -name ${NAME}_compactmask \
 -size 6000 6000 \
 -scale 1.5arcsec \
@@ -121,7 +122,7 @@ wsclean \
 -padding 1.2 \
 -predict \
 -name ${NAME}_compactmask \
--apply-facet-solutions ${H5// /,} amplitude000,phase000 \
+-apply-facet-solutions ${H5_FREQAVG// /,} amplitude000,phase000 \
 -facet-regions ${TESS} \
 ${MS} > logpredict.txt
 
