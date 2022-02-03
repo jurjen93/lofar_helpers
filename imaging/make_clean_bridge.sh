@@ -69,7 +69,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -parallel-deconvolution 1600 \
 -parallel-gridding 5 \
 -facet-regions ${TESS} \
--apply-facet-solutions ${H5_FREQAVG// /,} amplitude000,phase000 \
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
 -name ${NAME}_compact \
 -size 6000 6000 \
 -scale 1.5arcsec \
@@ -106,7 +106,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -parallel-deconvolution 1600 \
 -parallel-gridding 5 \
 -facet-regions ${TESS} \
--apply-facet-solutions ${H5_FREQAVG// /,} amplitude000,phase000 \
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
 -name ${NAME}_compactmask \
 -size 6000 6000 \
 -scale 1.5arcsec \
@@ -122,7 +122,7 @@ wsclean \
 -padding 1.2 \
 -predict \
 -name ${NAME}_compactmask \
--apply-facet-solutions ${H5_FREQAVG// /,} amplitude000,phase000 \
+-apply-facet-solutions ${H5// /,} amplitude000,phase000 \
 -facet-regions ${TESS} \
 ${MS} > logpredict.txt
 
@@ -130,7 +130,7 @@ ${MS} > logpredict.txt
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
 python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS} --colname DIFFUSE_SUB
 
-mdkir /net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_subtracteddata && \
+mkdir /net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_subtracteddata && \
 cp -r Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive* /net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_subtracteddata/ && \
 wait
 
