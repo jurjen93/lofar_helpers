@@ -1482,6 +1482,7 @@ class PolChange:
         G_new[..., 1] += RL
         G_new[..., 2] += LR
         G_new[..., 3] += LL
+
         return G_new
 
     @staticmethod
@@ -1646,6 +1647,7 @@ class PolChange:
                 sys.exit('ERROR: No conversion given')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
+            G_new = where(abs(G_new)<1e-15, 0, G_new)
             phase = angle(G_new)
             amplitude = abs(G_new)
 
