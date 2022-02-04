@@ -409,7 +409,7 @@ class MergeH5:
             self.gains = ones(
                 (len(self.polarizations), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
         else:
-            self.gains = ones((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+            self.gains = ones((1, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
         if 'phase' in soltab and 'pol' in st.getAxesNames():
             self.phases = zeros(
@@ -489,8 +489,14 @@ class MergeH5:
                 else:
                     st = ss.getSoltab(soltab)
 
-                self._get_template_values(soltab, st)
-                self.axes_final = [an for an in self.solaxnames if an in st.getAxesNames()]
+                if not self.convert_tec or (self.convert_tec and 'tec' not in soltab):
+                    self._get_template_values(soltab, st)
+                    self.axes_final = [an for an in self.solaxnames if an in st.getAxesNames()]
+                elif 'tec' in soltab and self.convert_tec:
+                    for st_group in self.all_soltabs:
+                        if soltab in st_group and ('phase000' not in st_group and 'phase{n}'.format(n=soltab[-3:])):
+                            self._get_template_values(soltab, st)
+                            self.axes_final = [an for an in self.solaxnames if an in st.getAxesNames()]
 
                 # add dir if missing
                 if 'dir' not in self.axes_final:
