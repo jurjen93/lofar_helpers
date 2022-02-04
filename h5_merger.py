@@ -688,6 +688,15 @@ class MergeH5:
                                 shape[dir_index] = 1
                                 self.phases = append(self.phases, zeros(shape),
                                                         axis=dir_index)  # add clean phase to merge with
+                        elif st.getType() in ['phase', 'rotation'] and not self.convert_tec:
+                            shape = list(self.phases.shape)
+                            dir_index = self.phases.ndim - 4
+                            if dir_index < 0:
+                                sys.exit('ERROR: Missing dir axes')
+                            if self.n > shape[dir_index]:
+                                shape[dir_index] = 1
+                                self.phases = append(self.phases, zeros(shape),
+                                                        axis=dir_index)  # add clean phase to merge with
                         elif st.getType() == 'amplitude':
                             shape = list(self.gains.shape)
                             dir_index = self.gains.ndim - 4
@@ -1920,7 +1929,7 @@ if __name__ == '__main__':
     parser.add_argument('--h5_time_freq', type=str, help='h5 file to use time and frequency arrays from.')
     parser.add_argument('--time_av', type=int, help='time averaging')
     parser.add_argument('--freq_av', type=int, help='frequency averaging')
-    parser.add_argument('--keep_tec', action='store_true', help='convert tec to phase.')
+    parser.add_argument('--keep_tec', action='store_true', help='do not convert tec to phase.')
     parser.add_argument('--merge_all_in_one', action='store_true', help='merge all solutions in one direction.')
     parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular.')
     parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear.')
