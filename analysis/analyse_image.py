@@ -82,7 +82,7 @@ class Imaging:
         self.rms_full = self.rms.copy()
         self.cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
-    def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None, colorbar=True):
+    def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None, colorbar=True, save=None, text=None):
         """
         Image your data with this method.
         image_data -> insert your image_data or plot full image
@@ -107,29 +107,36 @@ class Imaging:
         if show_regions is not None:
             r = pyregion.open(show_regions).as_imagecoord(header=self.hdu[0].header)
             patch_list, artist_list = r.get_mpl_patches_texts()
-            fig = plt.figure(figsize=(7, 10))
+            fig = plt.figure(figsize=(7, 10), dpi=200)
 
             ax = WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
             fig.add_axes(ax)
             for patch in patch_list:
                 ax.add_patch(patch)
         else:
-            plt.figure(figsize=(7, 10))
+            plt.figure(figsize=(7, 10), dpi=200)
             plt.subplot(projection=wcs)
         im = plt.imshow(image_data, origin='lower', cmap=cmap)
         im.set_norm(SymLogNorm(linthresh=vmin*10, vmin=vmin, vmax=vmax, base=10))
         plt.xlabel('Galactic Longitude')
         plt.ylabel('Galactic Latitude')
         if colorbar:
-            cbar = plt.colorbar(orientation='horizontal', shrink=1)
+            cbar = plt.colorbar(orientation='horizontal', shrink=0.55)
             # cbar.ax.set_xscale('log')
             cbar.locator = LogLocator()
             cbar.formatter = LogFormatter()
             cbar.update_normal(im)
             cbar.set_label('Surface brightness [Jy/beam]')
-        # plt.tight_layout()
+        if text:
+            print(image_data.shape)
+            plt.text(3200 -(6000-image_data.shape[0])/2, 2000 - (6000-image_data.shape[1])/2, 'A399', color='pink')
+            plt.text(2200 -(6000-image_data.shape[0])/2, 3800 - (6000-image_data.shape[1])/2, 'A401', color='pink')
+            # plt.text(3200, 1800, 'A401', color='pink')
 
-        plt.show()
+        if save:
+            plt.savefig(save, dpi=250)
+        else:
+            plt.show()
 
         return self
 
@@ -494,17 +501,27 @@ class Imaging:
 if __name__ == '__main__':
 
 
+    # Image = Imaging('../fits/image_test_A399-MFS-image.fits')
+    # Image = Imaging('../fits/80all.fits')
+    # Image = Imaging('../fits/60all.fits')
+    # Image = Imaging('../fits/20all.fits')
+    # Image.make_image(vmin=0.00007, vmax=0.002, text=True)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
+    #                   size=(int(Image.image_data.shape[0] / (5/2)), int(Image.image_data.shape[0] / (5/2))))
+    # Image.make_image(vmin=0.00007, vmax=0.002, text=True)
+    # Image.make_image(show_regions='../boxlayout.reg', vmin=0.00005)
+    # Image.make_image(show_regions='../tessupdate.reg', vmin=0.00005)
+
+
+
+
+    # Image.do_science(region='../bridge.reg', objects='bridge')
     Image = Imaging('../fits/image_test_A399-MFS-image.fits')
-
     Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
-                      size=(int(Image.image_data.shape[0] / (3/2)), int(Image.image_data.shape[0] / (3/2))))
-
-    Image.do_science(region='../bridge.reg', objects='bridge')
-
-
-    # Image.make_image(show_regions='../regions.reg')
+                      size=(int(Image.image_data.shape[0] / (3.5/2)), int(Image.image_data.shape[0] / (3.5/2))))
+    Image.make_image(show_regions='../regions.reg', vmin=0.00007, vmax=0.002)
     # Image.make_subimages('../regions.reg')
-    # Image.make_subcontour('../regions.reg')
+    Image.make_subcontour('../regions.reg')
 
     # Image = Imaging(f'../fits/60all.fits')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
