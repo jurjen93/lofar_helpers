@@ -688,6 +688,15 @@ class MergeH5:
                                 shape[dir_index] = 1
                                 self.phases = append(self.phases, zeros(shape),
                                                         axis=dir_index)  # add clean phase to merge with
+                        if st.getType() in ['phase', 'rotation'] and not self.convert_tec:
+                            shape = list(self.phases.shape)
+                            dir_index = self.phases.ndim - 4
+                            if dir_index < 0:
+                                sys.exit('ERROR: Missing dir axes')
+                            if self.n > shape[dir_index]:
+                                shape[dir_index] = 1
+                                self.phases = append(self.phases, zeros(shape),
+                                                        axis=dir_index)  # add clean phase to merge with
                         elif st.getType() == 'amplitude':
                             shape = list(self.gains.shape)
                             dir_index = self.gains.ndim - 4
