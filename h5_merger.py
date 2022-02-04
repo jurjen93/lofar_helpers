@@ -409,7 +409,7 @@ class MergeH5:
             self.gains = ones(
                 (len(self.polarizations), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
         else:
-            self.gains = ones((1, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+            self.gains = ones((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
         if 'phase' in soltab and 'pol' in st.getAxesNames():
             self.phases = zeros(
@@ -1821,8 +1821,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         merge.ax_freq = merge.ax_freq[::int(freq_av)]
 
     merge.get_allkeys()
-    print(merge.all_soltabs)
-    print(merge.all_soltabs)
 
     for st_group in merge.all_soltabs:
         if len(st_group) > 0:
