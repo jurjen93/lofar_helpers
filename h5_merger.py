@@ -688,7 +688,7 @@ class MergeH5:
                                 shape[dir_index] = 1
                                 self.phases = append(self.phases, zeros(shape),
                                                         axis=dir_index)  # add clean phase to merge with
-                        if st.getType() in ['phase', 'rotation'] and not self.convert_tec:
+                        elif st.getType() in ['phase', 'rotation'] and not self.convert_tec:
                             shape = list(self.phases.shape)
                             dir_index = self.phases.ndim - 4
                             if dir_index < 0:
