@@ -20,8 +20,7 @@ from matplotlib.patches import ConnectionPatch
 import astropy.units as u
 from astropy.cosmology import FlatLambdaCDM
 from radioflux import Radiomap
-
-
+from radio_beam import Beams
 
 
 def flatten(f):
@@ -82,7 +81,7 @@ class Imaging:
         self.rms_full = self.rms.copy()
         self.cosmo = FlatLambdaCDM(H0=70 * u.km / u.s / u.Mpc, Tcmb0=2.725 * u.K, Om0=0.3)
 
-    def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None, colorbar=True, save=None, text=None):
+    def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None, colorbar=True, save=None, text=None, resolution=None):
         """
         Image your data with this method.
         image_data -> insert your image_data or plot full image
@@ -110,11 +109,12 @@ class Imaging:
             fig = plt.figure(figsize=(7, 10), dpi=200)
 
             ax = WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
+
             fig.add_axes(ax)
             for patch in patch_list:
                 ax.add_patch(patch)
         else:
-            plt.figure(figsize=(7, 10), dpi=200)
+            figure, ax = plt.subplots(figsize=(7, 10), dpi=200)
             plt.subplot(projection=wcs)
         im = plt.imshow(image_data, origin='lower', cmap=cmap)
         im.set_norm(SymLogNorm(linthresh=vmin*10, vmin=vmin, vmax=vmax, base=10))
@@ -133,6 +133,19 @@ class Imaging:
             plt.text(2200 -(6000-image_data.shape[0])/2, 3800 - (6000-image_data.shape[1])/2, 'A401', color='pink')
             # plt.text(3200, 1800, 'A401', color='pink')
 
+        Mpc_pixels = 1 / (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value
+        l1, l2 = [int(image_data.shape[0]*0.1), int(image_data.shape[0]*0.1+Mpc_pixels)], [int(image_data.shape[1]*0.9), int(image_data.shape[1]*0.9)]
+        plt.plot(l1, l2, color='cyan', linewidth=1)
+        plt.text(0.85*(l1[0]+l1[1])/2, 1.02*(l2[0]+l2[1])/2, 'Mpc', color='cyan', fontsize=5)
+
+        if type(resolution)==int:
+            beampix = resolution/(self.header['CDELT2']*u.deg).to(u.arcsec).value
+            circle = plt.Circle((image_data.shape[0]*0.03, image_data.shape[1]*0.03), beampix, color='g', fill=True)
+            rectangle = plt.Rectangle((image_data.shape[0]*0.03-beampix*4, image_data.shape[1]*0.03-beampix*4), beampix*8, beampix*8, fill=True, color='white')
+            plt.gcf().gca().add_artist(rectangle)
+            plt.gcf().gca().add_artist(circle)
+            # ax.set_aspect(1)
+
         if save:
             plt.savefig(save, dpi=250)
         else:
@@ -140,7 +153,7 @@ class Imaging:
 
         return self
 
-    def make_subimages(self, regionfile, cmap='CMRmap'):
+    def make_subimages(self, regionfile, cmap='CMRmap', resolution=None):
 
         r = pyregion.open(regionfile).as_imagecoord(header=self.hdu[0].header)
 
@@ -164,6 +177,16 @@ class Imaging:
             im = plt.imshow(out.data, origin='lower', cmap=cmap, norm=norm)
             plt.xlabel('Right Ascension (J2000)')
             plt.ylabel('Declination (J2000)')
+            if type(resolution) == int:
+                beampix = resolution / (self.header['CDELT2'] * u.deg).to(u.arcsec).value
+                circle = plt.Circle((out.data.shape[0] * 0.03, out.data.shape[1] * 0.03), beampix, color='g',
+                                    fill=True)
+                rectangle = plt.Rectangle(
+                    (out.data.shape[0] * 0.03 - beampix * 4, out.data.shape[1] * 0.03 - beampix * 4), beampix * 8,
+                    beampix * 8, fill=True, color='white')
+                plt.gcf().gca().add_artist(rectangle)
+                plt.gcf().gca().add_artist(circle)
+                # ax.set_aspect(1)
 
         fig.subplots_adjust(top=0.8)
         cbar_ax = fig.add_axes([0.22, 0.88, 0.6, 0.03]) # l, b, w, h
@@ -177,7 +200,7 @@ class Imaging:
         plt.show()
 
 
-    def make_subcontour(self, regionfile, maxlevel=None, minlevel=None, steps=None):
+    def make_subcontour(self, regionfile, maxlevel=None, minlevel=None, steps=None, resolution=None):
 
         r = pyregion.open(regionfile).as_imagecoord(header=self.hdu[0].header)
 
@@ -218,6 +241,15 @@ class Imaging:
             im = plt.contourf(image_data, levels2, cmap='Blues', norm=norm)
             plt.xlabel('Right Ascension (J2000)')
             plt.ylabel('Declination (J2000)')
+            if type(resolution) == int:
+                beampix = resolution / (self.header['CDELT2'] * u.deg).to(u.arcsec).value
+                circle = plt.Circle((out.data.shape[0] * 0.03, out.data.shape[1] * 0.03), beampix, color='g',
+                                    fill=True)
+                rectangle = plt.Rectangle(
+                    (out.data.shape[0] * 0.03 - beampix * 4, out.data.shape[1] * 0.03 - beampix * 4), beampix * 8,
+                    beampix * 8, fill=True, color='white')
+                plt.gcf().gca().add_artist(rectangle)
+                plt.gcf().gca().add_artist(circle)
 
         fig.subplots_adjust(top=0.8)
         cbar_ax = fig.add_axes([0.22, 0.88, 0.6, 0.03]) # l, b, w, h
@@ -295,7 +327,7 @@ class Imaging:
         return self
 
     def make_contourplot(self, image_data=None, maxlevel=None, minlevel=None, steps=None, wcs=None, title=None,
-                         smallcutout=False, regions=None):
+                         smallcutout=False, regions=None, resolution=None):
 
         if image_data is None:
             image_data = self.image_data
@@ -349,6 +381,20 @@ class Imaging:
                             ticks=[round(a, 5) for a in np.logspace(np.log(minlevel), np.log(maxlevel), 4, endpoint=True)])
         cbar.set_label('Surface brightness [Jy/beam]')
         cbar.ax.set_xscale('log')
+        Mpc_pixels = 1 / (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value
+        l1, l2 = [int(image_data.shape[0]*0.1), int(image_data.shape[0]*0.1+Mpc_pixels)], [int(image_data.shape[1]*0.9), int(image_data.shape[1]*0.9)]
+        plt.plot(l1, l2, color='pink', linewidth=1)
+        plt.text(0.85*(l1[0]+l1[1])/2, 1.02*(l2[0]+l2[1])/2, 'Mpc', color='pink', fontsize=5)
+        if type(resolution) == int:
+            beampix = resolution / (self.header['CDELT2'] * u.deg).to(u.arcsec).value
+            circle = plt.Circle((image_data.shape[0] * 0.03, image_data.shape[1] * 0.03), beampix, color='g',
+                                fill=True)
+            rectangle = plt.Rectangle(
+                (image_data.shape[0] * 0.03 - beampix * 4, image_data.shape[1] * 0.03 - beampix * 4), beampix * 8,
+                                                                                                  beampix * 8,
+                fill=True, color='white')
+            plt.gcf().gca().add_artist(rectangle)
+            plt.gcf().gca().add_artist(circle)
         plt.xlabel('Right Ascension (J2000)')
         plt.ylabel('Declination (J2000)')
         plt.title(title)
@@ -383,7 +429,8 @@ class Imaging:
         return (data - data_bkg)/data_exp
 
     def make_bridge_overlay_contourplot(self, fitsfile=None, minlevel_1=None, maxlevel_1=None, maxlevel_2=None,
-                                 minlevel_2=None, steps_1=1000, steps_2=None, title=None, convolve_2=False, xray=False):
+                                 minlevel_2=None, steps_1=1000, steps_2=None, title=None, convolve_2=False, xray=False,
+                                        resolution=None):
 
         self.reproject_map(fitsfile, 'test.fits')
 
@@ -433,6 +480,20 @@ class Imaging:
         # cbar.ax.set_xscale('log')
         plt.xlabel('Right Ascension (J2000)')
         plt.ylabel('Declination (J2000)')
+        Mpc_pixels = 1 / (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value
+        l1, l2 = [int(self.image_data.shape[0]*0.1), int(self.image_data.shape[0]*0.1+Mpc_pixels)], [int(self.image_data.shape[1]*0.9), int(self.image_data.shape[1]*0.9)]
+        plt.plot(l1, l2, color='pink', linewidth=1)
+        plt.text(0.85*(l1[0]+l1[1])/2, 1.02*(l2[0]+l2[1])/2, 'Mpc', color='pink', fontsize=5)
+        # if type(resolution) == int:
+        #     beampix = resolution / (self.header['CDELT2'] * u.deg).to(u.arcsec).value
+        #     circle = plt.Circle((image_data.shape[0] * 0.03, image_data.shape[1] * 0.03), beampix, color='g',
+        #                         fill=True)
+        #     rectangle = plt.Rectangle(
+        #         (image_data.shape[0] * 0.03 - beampix * 4, image_data.shape[1] * 0.03 - beampix * 4), beampix * 8,
+        #                                                                                           beampix * 8,
+        #         fill=True, color='white')
+        #     plt.gcf().gca().add_artist(rectangle)
+        #     plt.gcf().gca().add_artist(circle)
         plt.title(title)
         plt.show()
 
@@ -517,9 +578,10 @@ if __name__ == '__main__':
 
     # Image.do_science(region='../bridge.reg', objects='bridge')
     Image = Imaging('../fits/image_test_A399-MFS-image.fits')
-    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
-                      size=(int(Image.image_data.shape[0] / (3.5/2)), int(Image.image_data.shape[0] / (3.5/2))))
-    Image.make_image(show_regions='../regions.reg', vmin=0.00007, vmax=0.002)
+    # Image.make_image(resolution=6)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
+    #                   size=(int(Image.image_data.shape[0] / (3.5/2)), int(Image.image_data.shape[0] / (3.5/2))))
+    # Image.make_image(show_regions='../regions.reg', vmin=0.00007, vmax=0.002, resolution=6)
     # Image.make_subimages('../regions.reg')
     Image.make_subcontour('../regions.reg')
 
