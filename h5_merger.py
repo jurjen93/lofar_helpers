@@ -30,7 +30,7 @@ import re
 import tables
 from collections import OrderedDict
 import warnings
-from numpy import zeros, ones, round, unique, array_equal, append, where, imag, isfinite, real, around, expand_dims, pi, array, all, cfloat, exp, angle, sort, power, sum, argmin, float64
+from numpy import zeros, ones, round, unique, array_equal, append, where, imag, isfinite, real, complex128, expand_dims, pi, array, all, exp, angle, sort, power, sum, argmin, float64
 
 warnings.filterwarnings('ignore')
 
@@ -1461,23 +1461,23 @@ class PolChange:
         :return: Circular polarized Gain
         """
 
-        RR = (G[..., 0] + G[..., -1]).astype(cfloat)
-        RL = (G[..., 0] - G[..., -1]).astype(cfloat)
-        LR = (G[..., 0] - G[..., -1]).astype(cfloat)
-        LL = (G[..., 0] + G[..., -1]).astype(cfloat)
+        RR = (G[..., 0] + G[..., -1])
+        RL = (G[..., 0] - G[..., -1])
+        LR = (G[..., 0] - G[..., -1])
+        LL = (G[..., 0] + G[..., -1])
 
         if G.shape[-1] == 4:
-            RR += 1j * (G[..., 2] - G[..., 1]).astype(cfloat)
-            RL += 1j * (G[..., 2] + G[..., 1]).astype(cfloat)
-            LR -= 1j * (G[..., 2] + G[..., 1]).astype(cfloat)
-            LL += 1j * (G[..., 1] - G[..., 2]).astype(cfloat)
+            RR += 1j * (G[..., 2] - G[..., 1])
+            RL += 1j * (G[..., 2] + G[..., 1])
+            LR -= 1j * (G[..., 2] + G[..., 1])
+            LL += 1j * (G[..., 1] - G[..., 2])
 
         RR /= 2
         RL /= 2
         LR /= 2
         LL /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(cfloat)
+        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += RR
         G_new[..., 1] += RL
         G_new[..., 2] += LR
@@ -1500,24 +1500,24 @@ class PolChange:
         :return: linear polarized Gain
         """
 
-        XX = (G[..., 0] + G[..., -1]).astype(cfloat)
-        XY = 1j * (G[..., 0] - G[..., -1]).astype(cfloat)
-        YX = 1j * (G[..., -1] - G[..., 0]).astype(cfloat)
-        YY = (G[..., 0] + G[..., -1]).astype(cfloat)
+        XX = (G[..., 0] + G[..., -1])
+        XY = 1j * (G[..., 0] - G[..., -1])
+        YX = 1j * (G[..., -1] - G[..., 0])
+        YY = (G[..., 0] + G[..., -1])
 
 
         if G.shape[-1] == 4:
-            XX += (G[..., 2] + G[..., 1]).astype(cfloat)
-            XY += 1j * (G[..., 2] - G[..., 1]).astype(cfloat)
-            YX += 1j * (G[..., 2] - G[..., 1]).astype(cfloat)
-            YY -= (G[..., 1] + G[..., 2]).astype(cfloat)
+            XX += (G[..., 2] + G[..., 1])
+            XY += 1j * (G[..., 2] - G[..., 1])
+            YX += 1j * (G[..., 2] - G[..., 1])
+            YY -= (G[..., 1] + G[..., 2])
 
         XX /= 2
         XY /= 2
         YX /= 2
         YY /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(cfloat)
+        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += XX
         G_new[..., 1] += XY
         G_new[..., 2] += YX
@@ -1557,10 +1557,10 @@ class PolChange:
                     try:
                         if 'pol' in solutiontable.getAxesNames():
                             values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
-                            self.G = ones(values.shape).astype(cfloat)
+                            self.G = ones(values.shape).astype(complex128)
                         else:
                             values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
-                            self.G = ones(values.shape+(2,)).astype(cfloat)
+                            self.G = ones(values.shape+(2,)).astype(complex128)
                     except:
                         sys.exit('ERROR: Received '+str(solutiontable.getAxesNames())+', but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]')
 
@@ -1643,14 +1643,15 @@ class PolChange:
             elif circ2lin:
                 print('Convert circular polarization to linear polarization')
                 G_new = self.circ2lin(self.G)
+                print(G_new.dtype)
             else:
                 sys.exit('ERROR: No conversion given')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
             G_new = where(abs(imag(G_new))<1e-14, real(G_new), G_new)
             G_new = where(abs(real(G_new))<1e-14, imag(G_new)*1j, G_new)
-            phase = angle(G_new)
-            amplitude = abs(G_new)
+            phase = angle(G_new).astype(float64)
+            amplitude = abs(G_new).astype(float64)
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
 
