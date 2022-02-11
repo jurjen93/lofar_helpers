@@ -11,9 +11,12 @@ import csv
 import sys
 import matplotlib
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-
 import matplotlib.pyplot as plt
 from matplotlib.colors import SymLogNorm
+import warnings
+
+warnings.filterwarnings('ignore')
+plt.style.use('ggplot')
 
 class Imaging:
     def __init__(self, fits_file: str = None, vmin: float = None, vmax: float = None):
@@ -85,7 +88,9 @@ axes[0].imshow(image_1.image_data, norm=SymLogNorm(linthresh=image_1.vmin / 10, 
            cmap='CMRmap')
 axes[0].set_xlabel('Galactic Longitude', size=15)
 axes[0].set_ylabel('Galactic Latitude', size=15)
-axes[0].tick_params(axis='both', which='major', labelsize=15)
+axes[0].tick_params(axis='both', which='major', labelsize=12)
+axes[0].grid(False)
+
 # axes[0].tick_params(axis='both', which='minor', labelsize=15)
 # axes[1].imshow(image_2.image_data, norm=SymLogNorm(linthresh=image_2.vmin / 10, vmin=image_2.vmin / 20, vmax=image_2.vmax),
 #            origin='lower',
@@ -95,10 +100,12 @@ im = axes[1].imshow(image_4.image_data, norm=SymLogNorm(linthresh=image_1.vmin /
            cmap='CMRmap')
 axes[1].set_xlabel('Galactic Longitude', size=15)
 # axes[1].set_ylabel('Galactic Latitude', size=15)
-axes[1].tick_params(axis='both', which='major', labelsize=15)
+axes[1].tick_params(axis='both', which='major', labelsize=12)
 axes[1].set_yticks([])
 axes[1].axes.yaxis.set_visible(False)
 axes[1].yaxis.set_visible(False)
+axes[1].grid(False)
+
 
 # axes[1].tick_params(axis='both', which='minor', labelsize=15)
 # divider = make_axes_locatable(axes[2])
@@ -107,4 +114,4 @@ cbar = fig.colorbar(im, ax=axes, orientation='horizontal', shrink=1)
 cbar.ax.tick_params(labelsize=15)
 cbar.set_label('Surface brightness [Jy/beam]', size=15)
 # plt.subplots_adjust(left=0.1, bottom=0.3, right=0.9, top=0.5, wspace=0.5, hspace=0.1)
-plt.show()
+plt.savefig('../analysis/selfcals.png', dpi=250, bbox_inches="tight")
