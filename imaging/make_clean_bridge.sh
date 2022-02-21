@@ -121,6 +121,7 @@ wsclean \
 -channels-out 6 \
 -padding 1.2 \
 -predict \
+-parallel-gridding 5 \
 -name ${NAME}_compactmask \
 -apply-facet-solutions ${H5// /,} amplitude000,phase000 \
 -facet-regions ${TESS} \
