@@ -94,6 +94,23 @@ def natural_sort(l):
     return sorted(l, key=alphanum_key)
 
 
+def calc_beamarea_fromfits(f):
+    # Given a fitsfile this calculates the beamarea in pixels
+
+    hdu = fits.open(f)
+
+    bmaj = hdu[0].header['BMAJ']
+    bmin = hdu[0].header['BMIN']
+
+    beammaj = bmaj / (2.0 * (2 * np.log(2)) ** 0.5)  # Convert to sigma
+    beammin = bmin / (2.0 * (2 * np.log(2)) ** 0.5)  # Convert to sigma
+    pixarea = abs(hdu[0].header['CDELT1'] * hdu[0].header['CDELT2'])
+
+    beamarea = 2 * np.pi * 1.0 * beammaj * beammin  # Note that the volume of a two dimensional gaus$
+    beamarea_pix = beamarea / pixarea
+
+    return beamarea_pix
+
 def calc_beamarea(hdu):
     # Given a fitsfile this calculates the beamarea in pixels
 
@@ -167,7 +184,8 @@ def get_image_info(infile, xray=False, y=False):
         return pixsize
 
     if y == True:
-        return pixsize
+        rmsy = findrms(np.ndarray.flatten(hdu[0].data))
+        return pixsize, rmsy
 
     beamarea_pix = calc_beamarea(hdu)
     print('The beam area is: {:.2f} pixel^2'.format(beamarea_pix))  # in pixel^2
@@ -226,16 +244,16 @@ def make_grid(regionfile, xmin, ymin, xmax, ymax, size):
         i = ymin
         while i <= ymax:
             with open(regionfile, 'a') as f:
-                f.write('box({},{},{},{},0)\n'.format(j, i, size, size))
+                f.write('box({},{},{},{},0)\n'.format(j, i, size*2, size*2))
 
             xaf_region = 'xaf_' + str(counter) + '.reg'
             make_ds9_image_region_header(xaf_region)
             with open(xaf_region, 'a') as f:
-                f.write('box({},{},{},{},0)\n'.format(j, i, size, size))
+                f.write('box({},{},{},{},0)\n'.format(j, i, size*2, size*2))
 
-            counter = counter + 1
-            i = i + size
-        j = j + size
+            counter += 1
+            i += size
+        j += size
 
     print('Created: ' + regionfile)
 
@@ -415,7 +433,7 @@ print('Information of ' + xsou)
 xray_pixscale = get_image_info(xsou, xray=True)
 
 if ymap:
-    y_pixscale = get_image_info(ymap, y=True)
+    y_pixscale, rmsy = get_image_info(ymap, y=True)
 
 
 if args['skip_reproj'] == False:
@@ -449,7 +467,7 @@ xray_reproj_pixscale = get_image_info('xsou_reproj.fits.gz', xray=True)
 xray_reproj_corr_factor = (xray_reproj_pixscale / xray_pixscale) ** 2
 
 if ymap:
-    y_reproj_pixscale = get_image_info('y_reproj.fits.gz', y=True)
+    y_reproj_pixscale, rmsy = get_image_info('y_reproj.fits.gz', y=True)
 
     y_reproj_corr_factor = (y_reproj_pixscale / y_pixscale) **2
 
@@ -680,7 +698,7 @@ for xaf_region in xaf_region_list:
         y_sb_err = np.nan
     else:
         y_fluxdensity = y_sum
-        y_fluxdensity_err = np.sqrt(y_fluxdensity)
+        y_fluxdensity_err = rmsy
         y_sb = y_fluxdensity / (y_Npix * y_pixscale * y_pixscale)
         y_sb_err = y_fluxdensity_err / (y_Npix * y_pixscale * y_pixscale)
 
