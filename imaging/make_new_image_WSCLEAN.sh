@@ -1,8 +1,8 @@
 #!/bin/bash
 
-#EXAMPLE ~/scripts/lofar_helpers/imaging/make_new_image_WSCLEAN.sh \
-# 'all_directions0.h5 all_directions1.h5' \
-# 'Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive1.avg.goodtimes'
+#EXAMPLE ~/scripts/lofar_helpers/imaging/make_new_image_WSCLEAN.sh
+# 'all_directions0.h5 all_directions1.h5 all_directions2.h5 all_directions3.h5 all_directions4.h5 all_directions5.h5'
+# 'Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive1.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive2.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive3.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive4.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive5.avg.goodtimes'
 
 #input
 H5=$1
