@@ -7,17 +7,20 @@ from scipy.stats.stats import pearsonr, spearmanr
 from past.utils import old_div
 import astropy.units as u
 from astropy.wcs import WCS
+import argparse
+
+parser = argparse.ArgumentParser(
+    description='Perform point-to-point analysis (radio/X or radio/radio/X) and save the results in a fits table. If (i) the X-ray counts < 0, (ii) the cell is not totally inside the X-ray FoV, and (ii) the radio flux density is < 0, it saves NaNs.')
+parser._action_groups.pop()
+required = parser.add_argument_group('required arguments')
+optional = parser.add_argument_group('optional arguments')
+# REQUIRED
+required.add_argument('-filein', type=str, required=True)
+required.add_argument('-fileout', type=str, required=True)
+args = parser.parse_args()
 
 
-# os.system('python /home/jurjen/Documents/Python/lofar_helpers/analysis/ppt.py '
-#           '-radio1 /home/jurjen/Documents/Python/lofar_helpers/fits/80all.fits '
-#           '-limits 604 650 815 859 '
-#           '-xsou /home/jurjen/Documents/Python/lofar_helpers/fits/mosaic_a399_a401.fits '
-#           '-xbkg /home/jurjen/Documents/Python/lofar_helpers/fits/mosaic_a399_a401_bkg.fits '
-#           '-xexp /home/jurjen/Documents/Python/lofar_helpers/fits/mosaic_a399_a401_exp.fits '
-#           '-cellsize 15 '
-#           '-y /home/jurjen/Documents/Python/lofar_helpers/fits/a401_curdecmaps_0.2_1.5s_sz.fits '
-#           '-excluderegion /home/jurjen/Documents/Python/lofar_helpers/regions/excluderegions.reg')
+
 
 warnings.filterwarnings('ignore')
 plt.style.use('ggplot')
@@ -54,18 +57,19 @@ def calc_beamarea(hdu):
 
     return beamarea_pix
 
-f1 = fits.open('../fits/20median.fits')
+f1 = fits.open('fits/20median.fits')
 wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
+
 f1.close()
 
-f = fits.open('../ptp_dir/grid_75x75/grid_75x75_results.fits')
+f = fits.open(args.filein)
 header = f[0].header
 t = f[1].data
 
 t = t[(t['xray_sb']>0)
-      # & (t['radio1_sb']>rms*3)
+      & (t['radio1_sb']>rms*3)
       & (t['xray_sb_err']>0)
       & (t['radio1_sb_err']>0)]
 
@@ -119,35 +123,69 @@ fitliney = fit(np.log10(t['y_sb']), np.log10(t['radio1_sb']))
 # plt.savefig('ymapcorr.png')
 # plt.close()
 
+# fig, ax = plt.subplots(constrained_layout=True)
+# # ax.plot([np.min(np.log10(t['xray_sb'])-(t['xray_sb_err']/t['xray_sb'])),np.max(np.log10(t['xray_sb'])+(t['xray_sb_err']/t['xray_sb']))],
+# #          [np.log10(rms*3), np.log10(rms*3)], linestyle='--', color='green')
+# ax.errorbar(np.log10(t['xray_sb']), np.log10(t['radio1_sb']), xerr=(0.434*t['xray_sb_err']/t['xray_sb']), yerr=0.434*t['radio1_sb_err']/t['radio1_sb'], fmt='.', ecolor='red', elinewidth=0.4, color='red')
+# ax.set_ylim(np.min(np.log10(t['radio1_sb'])-(0.434*t['radio1_sb_err']/t['radio1_sb'])),
+#          np.max(np.log10(t['radio1_sb'])+(0.434*t['radio1_sb_err']/t['radio1_sb'])))
+# ax.set_xlim(np.min(np.log10(t['xray_sb'])-(t['xray_sb_err']/t['xray_sb'])),
+#          np.max(np.log10(t['xray_sb'])+(t['xray_sb_err']/t['xray_sb'])))
+# plt.grid(False)
+# ax2 = ax.twiny()
+# ax2.errorbar(np.log10(t['y_sb']), np.log10(t['radio1_sb']), xerr=(t['y_sb_err']/t['y_sb']), yerr=0.434*t['radio1_sb_err']/t['radio1_sb'], fmt='.', ecolor='blue', elinewidth=0.4, color='blue')
+# ax2.set_ylim(np.min(np.log10(t['radio1_sb'])-(0.434*t['radio1_sb_err']/t['radio1_sb'])),
+#          np.max(np.log10(t['radio1_sb'])+(0.434*t['radio1_sb_err']/t['radio1_sb'])))
+# ax2.set_xlim(np.min(np.log10(t['y_sb'])-(t['y_sb_err']/t['y_sb'])),
+#          np.max(np.log10(t['y_sb'])+(t['y_sb_err']/t['y_sb'])))
+# ax.set_ylabel('log $I_{R}$ [Jy/arcsec$^2$]')
+# ax.set_xlabel('log $I_{X}$ [counts/s/arcsec$^2$]')
+# ax2.set_xlabel('log $y$ [Compton-y/arcsec$^2$]')
+# fig.legend(['Radio vs. X-ray', 'Radio vs. SZ'], loc='upper left')
+# # ax.plot(fitlinex[0], fitlinex[1], color='red', linestyle='--')
+# # ax2.plot(fitliney[0], fitliney[1], color='blue', linestyle='--')
+# plt.tight_layout()
+# plt.grid(False)
+# plt.savefig('a399.png', bbox_inches='tight')
+
+radio = t['radio1_sb']
+xray = t['xray_sb']
+y = t['y_sb']
+
+radio_err = t['radio1_sb_err']*2
+xray_err = t['xray_sb_err']
+y_err = t['y_sb_err']*2
+
+radio_err/=np.mean(radio)
+xray_err/=np.mean(xray)
+y_err/=np.mean(y)
+
+radio/=np.mean(radio)
+xray/=np.mean(xray)
+y/=np.mean(y)
+
 fig, ax = plt.subplots(constrained_layout=True)
-# ax.plot([np.min(np.log10(t['xray_sb'])-(t['xray_sb_err']/t['xray_sb'])),np.max(np.log10(t['xray_sb'])+(t['xray_sb_err']/t['xray_sb']))],
-#          [np.log10(rms*3), np.log10(rms*3)], linestyle='--', color='green')
-ax.errorbar(np.log10(t['xray_sb']), np.log10(t['radio1_sb']), xerr=(0.434*t['xray_sb_err']/t['xray_sb']), yerr=0.434*t['radio1_sb_err']/t['radio1_sb'], fmt='.', ecolor='red', elinewidth=0.4, color='red')
-ax.set_ylim(np.min(np.log10(t['radio1_sb'])-(0.434*t['radio1_sb_err']/t['radio1_sb'])),
-         np.max(np.log10(t['radio1_sb'])+(0.434*t['radio1_sb_err']/t['radio1_sb'])))
-ax.set_xlim(np.min(np.log10(t['xray_sb'])-(t['xray_sb_err']/t['xray_sb'])),
-         np.max(np.log10(t['xray_sb'])+(t['xray_sb_err']/t['xray_sb'])))
+ax.errorbar(np.log10(xray), np.log10(radio), xerr=(0.434*xray_err/xray), yerr=0.434*radio_err/radio, fmt='.', ecolor='red', elinewidth=0.4, color='darkred')
+ax.set_ylim(np.min(np.log10(radio)-(0.434*radio_err/radio)),
+         np.max(np.log10(radio)+(0.434*radio_err/radio)))
+ax.set_xlim(np.min(np.log10(xray)-(xray_err/xray)),
+         np.max(np.log10(xray)+(xray_err/xray)))
 plt.grid(False)
-ax2 = ax.twiny()
-ax2.errorbar(np.log10(t['y_sb']), np.log10(t['radio1_sb']), xerr=(t['y_sb_err']/t['y_sb']), yerr=0.434*t['radio1_sb_err']/t['radio1_sb'], fmt='.', ecolor='blue', elinewidth=0.4, color='blue')
-ax2.set_ylim(np.min(np.log10(t['radio1_sb'])-(0.434*t['radio1_sb_err']/t['radio1_sb'])),
-         np.max(np.log10(t['radio1_sb'])+(0.434*t['radio1_sb_err']/t['radio1_sb'])))
-ax2.set_xlim(np.min(np.log10(t['y_sb'])-(t['y_sb_err']/t['y_sb'])),
-         np.max(np.log10(t['y_sb'])+(t['y_sb_err']/t['y_sb'])))
-ax.set_ylabel('log $I_{R}$ [Jy/arcsec$^2$]')
-ax.set_xlabel('log $I_{X}$ [counts/s/arcsec$^2$]')
-ax2.set_xlabel('log $y$ [Compton-y/arcsec$^2$]')
+ax.errorbar(np.log10(y), np.log10(radio), xerr=(y_err/y), yerr=0.434*radio_err/radio, fmt='.', ecolor='blue', elinewidth=0.4, color='darkblue')
+ax.set_xlim(-1, 0.75)
+ax.set_ylim(-0.7, 0.6)
+ax.set_ylabel('log($I_{R}$) [SB/mean(SB)]')
+# ax.set_xlabel('X-ray [SB/mean(SB)]')
+ax.set_xlabel('log($I_{X}$) [SB/mean(SB)] and log(y) [SZ/mean(SZ)]')
 fig.legend(['Radio vs. X-ray', 'Radio vs. SZ'], loc='upper left')
-# ax.plot(fitlinex[0], fitlinex[1], color='red', linestyle='--')
-# ax2.plot(fitliney[0], fitliney[1], color='blue', linestyle='--')
 plt.tight_layout()
 plt.grid(False)
-plt.savefig('corrcombiplot.png', bbox_inches='tight')
+plt.savefig(args.fileout, bbox_inches='tight')
 
 print('Number of cells used: '+str(len(t)))
 
-print('Pearson R (x-ray vs radio): '+str(pearsonr(np.log(t['xray_sb']), np.log(t['radio1_sb']))))
-print('Pearson R (ymap vs radio): '+str(pearsonr(np.log(t['y_sb']), np.log(t['radio1_sb']))))
+print('Pearson R (x-ray vs radio): '+str(pearsonr(np.log(xray), np.log(radio))))
+print('Pearson R (ymap vs radio): '+str(pearsonr(np.log(y), np.log(radio))))
 
-print('Spearman R (x-ray vs radio): '+str(spearmanr(np.log(t['xray_sb']), np.log(t['radio1_sb']))))
-print('Spearman R (ymap vs radio): '+str(spearmanr(np.log(t['y_sb']), np.log(t['radio1_sb']))))
+print('Spearman R (x-ray vs radio): '+str(spearmanr(np.log(xray), np.log(radio))))
+print('Spearman R (ymap vs radio): '+str(spearmanr(np.log(y), np.log(radio))))
