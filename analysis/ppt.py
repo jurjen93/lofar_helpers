@@ -184,7 +184,7 @@ def get_image_info(infile, xray=False, y=False):
         return pixsize
 
     if y == True:
-        rmsy = findrms(np.ndarray.flatten(hdu[0].data))
+        rmsy = np.nanstd(np.ndarray.flatten(hdu[0].data))
         return pixsize, rmsy
 
     beamarea_pix = calc_beamarea(hdu)
@@ -244,12 +244,12 @@ def make_grid(regionfile, xmin, ymin, xmax, ymax, size):
         i = ymin
         while i <= ymax:
             with open(regionfile, 'a') as f:
-                f.write('box({},{},{},{},0)\n'.format(j, i, size*2, size*2))
+                f.write('box({},{},{},{},0)\n'.format(j, i, size, size))
 
             xaf_region = 'xaf_' + str(counter) + '.reg'
             make_ds9_image_region_header(xaf_region)
             with open(xaf_region, 'a') as f:
-                f.write('box({},{},{},{},0)\n'.format(j, i, size*2, size*2))
+                f.write('box({},{},{},{},0)\n'.format(j, i, size, size))
 
             counter += 1
             i += size
@@ -268,9 +268,11 @@ def calc_sum_pix(hduflat, xaf_region, cellsize,
     print('Reading ' + xaf_region)
 
     xaf_mask = add_mask(hduflat, xaf_region, flat_it=False)
-    xaf_sum = np.sum(hduflat.data[np.where(xaf_mask == True)])
-    xaf_mean = np.mean(hduflat.data[np.where(xaf_mask == True)])
-    xaf_Npix = np.count_nonzero(hduflat.data[np.where(xaf_mask == True)])
+    xaf_mask = hduflat.data[np.where(xaf_mask)]
+    xaf_mask = xaf_mask[~np.isnan(xaf_mask)]
+    xaf_sum = np.sum(xaf_mask)
+    xaf_mean = np.mean(xaf_mask)
+    xaf_Npix = np.count_nonzero(xaf_mask)
 
     if reproj_corr_factor != 1.0:
         xaf_sum = xaf_sum * reproj_corr_factor
@@ -570,15 +572,15 @@ for xaf_region in xaf_region_list:
     print('Doing radio1 image:')
     radio1_sum, radio1_Npix, _ = calc_sum_pix(radio1_hduflat, xaf_region, cellsize)
 
-    if radio1_Npix / (cellsize * cellsize) != 1:
-        print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
-        #        os.system('rm -rf ' + xaf_region)
-        #        continue
-        radio1_fluxdensity = np.nan
-        radio1_fluxdensity_err = np.nan
-        radio1_sb = np.nan
-        radio1_sb_err = np.nan
-    elif radio1_sum <= 0:
+    # if radio1_Npix / (cellsize * cellsize) != 1:
+    #     print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
+    #     #        os.system('rm -rf ' + xaf_region)
+    #     #        continue
+    #     radio1_fluxdensity = np.nan
+    #     radio1_fluxdensity_err = np.nan
+    #     radio1_sb = np.nan
+    #     radio1_sb_err = np.nan
+    if radio1_sum <= 0:
         print('Removing region {}: the sum of pixel values is negative'.format(xaf_region))
         #        os.system('rm -rf ' + xaf_region)
         #        continue
@@ -592,6 +594,9 @@ for xaf_region in xaf_region_list:
             (radio1_rms_jyb * np.sqrt(radio1_Npix / radio1_beam_area_pix)) ** 2 + (sys1 * radio1_fluxdensity) ** 2)
         radio1_sb = radio1_fluxdensity / (radio1_Npix * radio1_pixscale * radio1_pixscale)
         radio1_sb_err = radio1_fluxdensity_err / (radio1_Npix * radio1_pixscale * radio1_pixscale)
+
+        print(radio1_sb_err)
+        print(radio1_sb)
 
     # RADIO2
     if radio2 != None:
@@ -651,16 +656,16 @@ for xaf_region in xaf_region_list:
                                                   reproj_corr_factor=xray_reproj_corr_factor)
     xray_net_count = (xsou_sum - xbkg_sum)
 
-    if xexp_Npix / (cellsize * cellsize) != 1:
-        # THIS IS NOT OK FOR XMM, A SOLUTION CUOLD BE PLACE 1s WHERE THE EXPOSURE IS 0s DUE TO CCD GAPS (THEY ARE SMALL PORTIONS)
-        print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
-        #        os.system('rm -rf ' + xaf_region)
-        #        continue
-        xray_count_rate = np.nan
-        xray_count_rate_err = np.nan
-        xray_sb = np.nan
-        xray_sb_err = np.nan
-    elif xray_net_count <= 0:
+    # if xexp_Npix / (cellsize * cellsize) != 1:
+    #     # THIS IS NOT OK FOR XMM, A SOLUTION CUOLD BE PLACE 1s WHERE THE EXPOSURE IS 0s DUE TO CCD GAPS (THEY ARE SMALL PORTIONS)
+    #     print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
+    #     #        os.system('rm -rf ' + xaf_region)
+    #     #        continue
+    #     xray_count_rate = np.nan
+    #     xray_count_rate_err = np.nan
+    #     xray_sb = np.nan
+    #     xray_sb_err = np.nan
+    if xray_net_count <= 0:
         print('Removing region {}: it has <= 0 net counts'.format(xaf_region))
         #        os.system('rm -rf ' + xaf_region)
         #        continue
@@ -673,22 +678,21 @@ for xaf_region in xaf_region_list:
         xray_count_rate_err = np.sqrt(xsou_sum + xbkg_sum) / xexp_mean
         xray_sb = xray_count_rate / ((cellsize * cellsize) * xray_reproj_pixscale * xray_reproj_pixscale)
         xray_sb_err = xray_count_rate_err / ((cellsize * cellsize) * xray_reproj_pixscale * xray_pixscale)
-    print(xray_sb, xray_sb_err, radio1_sb, radio1_sb_err)
 
 
     print('Doing y-map (SZ-effect)')
     #Ymap
     y_sum, y_Npix, y_mean = calc_sum_pix(y_reproj_hduflat, xaf_region, cellsize,
                                           reproj_corr_factor=y_reproj_corr_factor)
-    if y_Npix / (cellsize * cellsize) != 1:
-        print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
-        #            os.system('rm -rf ' + xaf_region)
-        #            continue
-        y_fluxdensity = np.nan
-        y_fluxdensity_err = np.nan
-        y_sb = np.nan
-        y_sb_err = np.nan
-    elif y_sum <= 0:
+    # if y_Npix / (cellsize * cellsize) != 1:
+    #     print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
+    #     #            os.system('rm -rf ' + xaf_region)
+    #     #            continue
+    #     y_fluxdensity = np.nan
+    #     y_fluxdensity_err = np.nan
+    #     y_sb = np.nan
+    #     y_sb_err = np.nan
+    if y_sum <= 0:
         print('Removing region {}: the sum of pixel values is negative'.format(xaf_region))
         #            os.system('rm -rf ' + xaf_region)
         #            continue
@@ -699,8 +703,8 @@ for xaf_region in xaf_region_list:
     else:
         y_fluxdensity = y_sum
         y_fluxdensity_err = rmsy
-        y_sb = y_fluxdensity / (y_Npix * y_pixscale * y_pixscale)
-        y_sb_err = y_fluxdensity_err / (y_Npix * y_pixscale * y_pixscale)
+        y_sb = y_fluxdensity / (y_Npix * y_reproj_pixscale * y_reproj_pixscale)
+        y_sb_err = y_fluxdensity_err / (y_Npix * y_reproj_pixscale * y_reproj_pixscale)
 
 
     if radio2 != None:
