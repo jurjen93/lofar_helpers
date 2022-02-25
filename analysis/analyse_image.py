@@ -118,7 +118,7 @@ class Imaging:
 
 
     def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None,
-                   colorbar=True, save=None, text=None, subim=None, beam=True, give_scale=True):
+                   colorbar=True, save=None, text=None, subim=None, beam=True, give_scale=True, convolve=None):
         """
         Image your data with this method.
         image_data -> insert your image_data or plot full image
@@ -136,6 +136,9 @@ class Imaging:
 
         if wcs is None:
             wcs = self.wcs
+
+        if convolve:
+            image_data = self.convolve_image(image_data, 4)
 
         if show_regions is not None:
 
@@ -711,7 +714,8 @@ class Imaging:
         norm = SymLogNorm(linthresh=self.rms*2, vmin=self.rms, vmax=levels[-1], base=10)
         plt.imshow(np.where(self.image_data<levels[-1], 0, 1), cmap='Greys')
         plt.contourf(self.image_data, levels, cmap='Blues', norm=norm)
-        cbar = plt.colorbar(orientation='horizontal', shrink=1, ticks=[0.0002, 0.0005, 0.0008])
+        ticks = [0.0002, 0.0004]
+        cbar = plt.colorbar(orientation='horizontal', shrink=1, ticks=ticks)
         cbar.set_label('Surface brightness  [Jy/beam]')
         # cbar.ax.set_xscale('log')
         plt.xlabel('Right Ascension (J2000)')
@@ -897,18 +901,18 @@ class Imaging:
         xray_err/=np.mean(xray)
         xray/=np.mean(xray)
         print('radio vs. xray')
-        slopex, errx = linreg(np.log10(radio), np.log10(xray))
-        fitxray = fit(np.log10(radio),np.log10(xray))
+        slopex, errx = linreg(np.log10(xray), np.log10(radio))
+        fitxray = fit(np.log10(xray), np.log10(radio))
         print('radio vs y')
-        slopey, erry =linreg(np.log10(radio), np.log10(y))
-        fity = fit(np.log10(radio),np.log10(y))
+        slopey, erry =linreg(np.log10(y), np.log10(radio))
+        fity = fit(np.log10(y), np.log10(radio))
 
 
-        print('Pearson R (x-ray vs radio): ' + str(pearsonr(np.log(radio), np.log(xray))))
-        print('Pearson R (ymap vs radio): ' + str(pearsonr(np.log(y), np.log(radio))))
+        print('Pearson R (x-ray vs radio): ' + str(pearsonr(np.log(xray), np.log(radio))))
+        print('Pearson R (ymap vs radio): ' + str(pearsonr(np.log(radio), np.log(y))))
 
-        print('Spearman R (x-ray vs radio): ' + str(spearmanr(np.log(radio), np.log(xray))))
-        print('Spearman R (ymap vs radio): ' + str(spearmanr(np.log(y), np.log(radio))))
+        print('Spearman R (x-ray vs radio): ' + str(spearmanr(np.log(xray), np.log(radio))))
+        print('Spearman R (ymap vs radio): ' + str(spearmanr(np.log(radio), np.log(y))))
 
         fig, ax = plt.subplots(constrained_layout=True)
         ax.errorbar(np.log10(xray), np.log10(radio), xerr=(0.434 * xray_err / xray),
@@ -931,8 +935,8 @@ class Imaging:
         # ax.set_xlabel('X-ray [SB/mean(SB)]')
         ax.set_xlabel('log($I_{X}$) [SB/mean(SB)] and log(y) [SZ/mean(SZ)]')
         ax.legend(['Radio vs. X-ray', 'Radio vs. SZ'], loc='upper left')
-        ax.plot(fity[1], fity[0], color='darkblue', linestyle='--')
-        ax.plot(fitxray[1], fitxray[0], color='darkred', linestyle='--')
+        ax.plot(fity[0], fity[1], color='darkblue', linestyle='--')
+        ax.plot(fitxray[0], fitxray[1], color='darkred', linestyle='--')
 
         plt.tight_layout()
         plt.grid(False)
@@ -1195,6 +1199,8 @@ if __name__ == '__main__':
 
     #20"
     # Image = Imaging('../fits/20all.fits', resolution=20)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    # Image.make_image(convolve=True, save='test20.png', text=True)
     # Image.plot3d(pixelsize=35, savenumpy='radio3d_20.npy', savefig='radio3d_20.png')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
     #                   size=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)))
@@ -1207,8 +1213,8 @@ if __name__ == '__main__':
 
     #20" median (will be substitute with bridge? for correlating)
     Image = Imaging('../fits/20median.fits', resolution=20)
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    # Image.make_image(show_regions='corr_area.reg')
+    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    # Image.make_image(save='justbridge.png', text=True)
     # Image.plot3d(pixelsize=35, savenumpy='radio3d.npy', savefig='radio3d.png')
     # Image.plot3d(pixelsize=35, savenumpy='y.npy', savefig='y3d.png', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits')
     # Image.plot3d(pixelsize=35, savenumpy='xray.npy', savefig='xray3d.png', fitsfile='../fits/mosaic_a399_a401.fits', xray=True)
@@ -1217,13 +1223,13 @@ if __name__ == '__main__':
     # Image.plot3d(savenumpy='a399y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', halo='A399')
     # Image.plot3d(savenumpy='a399xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, halo='A399')
     # Image.plot_corr(halo='A399', savefig='A399corr.png')
-    Image.plot3d(savenumpy='a401radio.npy', halo='A401')
-    Image.plot3d(savenumpy='a401y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', halo='A401')
-    Image.plot3d(savenumpy='a401xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, halo='A401')
-    Image.plot_corr(halo='A401', savefig='A401corr.png')
+    # Image.plot3d(savenumpy='a401radio.npy', halo='A401')
+    # Image.plot3d(savenumpy='a401y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', halo='A401')
+    # Image.plot3d(savenumpy='a401xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, halo='A401')
+    # Image.plot_corr(halo='A401', savefig='A401corr.png')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    # Image.make_bridge_overlay_yxr_contourplot(fits2='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', fits1='../fits/mosaic_a399_a401.fits',
-    #                                           show_regions='corr_area.reg', save='ymapxray.png')
+    Image.make_bridge_overlay_yxr_contourplot(fits2='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', fits1='../fits/mosaic_a399_a401.fits',
+                                              show_regions='corr_area.reg', save='ymapxray.png')
 
     # Image.do_science(region='../regions/bridge.reg')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(1500, 1500))
