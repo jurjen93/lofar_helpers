@@ -223,6 +223,7 @@ class MergeH5:
                         H_ref.close()
                         copy_antennas_from_MS_to_h5(self.ms[0], h5_name1, solset1)
                     else:
+                        H_ref.close()
                         sys.exit('ERROR: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
                                 '\nAdd --ms to add a measurement set to fill up the antenna table')
             H_ref.close()
@@ -402,6 +403,7 @@ class MergeH5:
 
         if 'pol' in st.getAxesNames():
             self.polarizations = st.getAxisValues('pol')
+            print(self.polarizations)
         else:
             self.polarizations = []
 
@@ -635,6 +637,8 @@ class MergeH5:
                     # adding direction dimension
                     values = expand_dims(values, axis=0)
                 else:
+                    if len(st.getAxisValues('pol')) > len(self.polarizations):
+                        self.polarizations = st.getAxisValues('pol')
                     values = table_values[:, dir_idx, ...]
                     # adding direction dimension
                     values = expand_dims(values, axis=1)
@@ -850,6 +854,7 @@ class MergeH5:
 
         return self
 
+
     def _DPPP_style(self, soltab):
         """
         Reorder the axes in DPPP style because that is needed in most LOFAR software
@@ -998,6 +1003,9 @@ class MergeH5:
             self.gains = self.correct_invalid_values('amplitude', self.gains, self.axes_final)
             weights = ones(self.gains.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
+            print(self.gains.shape)
+            print(self.axes_final)
+            print([len(a) for a in axes_vals])
             solsetout.makeSoltab('amplitude', axesNames=self.axes_final, axesVals=axes_vals, vals=self.gains,
                                  weights=weights)
         if 'tec' in soltab and not self.convert_tec:
@@ -1330,6 +1338,7 @@ class MergeH5:
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
                                     H.root._f_get_child(solset)._f_get_child(soltab).weight[:, :, :, :, a, ...] = 0.
                                 H.close()
+            T.close()
         return self
 
 
@@ -1918,6 +1927,11 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         output_check(h5_out)
 
     print('\nSee output file --> '+h5_out+'\n\n###################\nEND MERGE H5 TABLES \n###################\n')
+
+    try:
+        tables.file._open_files.close_all()
+    except:
+        pass
 
 
 if __name__ == '__main__':
