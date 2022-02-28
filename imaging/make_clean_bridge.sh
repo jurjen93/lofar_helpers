@@ -127,6 +127,8 @@ mv ${NAME}_compactmask-0003-model-pb.fits ${NAME}_compactmask-0003-model.fits
 mv ${NAME}_compactmask-0004-model-pb.fits ${NAME}_compactmask-0004-model.fits
 mv ${NAME}_compactmask-0005-model-pb.fits ${NAME}_compactmask-0005-model.fits
 
+cp -r ${TO} ${TO}_backup && wait
+
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
