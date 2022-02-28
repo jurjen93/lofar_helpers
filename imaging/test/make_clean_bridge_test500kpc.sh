@@ -5,9 +5,9 @@ SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest_23_02_2022.sif
 SING_IMAGE_P2=/net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fedora31_ddf.sif
 
-TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_500kpc
+TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_300kpc
 FROM=/net/rijn5/data2/jurjendejong/A399_extracted_avg
-H5=all_directions0.h5
+H5=all_directions0_freqav2.h5
 MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes
 TESS=tessupdate.reg
 NAME=image_test_A399_cleanbridge
@@ -102,6 +102,21 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -nmiter 8 \
 -minuv-l 1250.0 \
 ${MS}
+
+rm -rf ${NAME}_compactmask-0000-model.fits
+rm -rf ${NAME}_compactmask-0001-model.fits
+rm -rf ${NAME}_compactmask-0002-model.fits
+rm -rf ${NAME}_compactmask-0003-model.fits
+rm -rf ${NAME}_compactmask-0004-model.fits
+rm -rf ${NAME}_compactmask-0005-model.fits
+mv ${NAME}_compactmask-0000-model-pb.fits ${NAME}_compactmask-0000-model.fits
+mv ${NAME}_compactmask-0001-model-pb.fits ${NAME}_compactmask-0001-model.fits
+mv ${NAME}_compactmask-0002-model-pb.fits ${NAME}_compactmask-0002-model.fits
+mv ${NAME}_compactmask-0003-model-pb.fits ${NAME}_compactmask-0003-model.fits
+mv ${NAME}_compactmask-0004-model-pb.fits ${NAME}_compactmask-0004-model.fits
+mv ${NAME}_compactmask-0005-model-pb.fits ${NAME}_compactmask-0005-model.fits
+
+cp -r ${TO} ${TO}_backup && wait
 
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \

@@ -2,8 +2,8 @@
 
 #input
 #H5='all_directions0.h5 all_directions1.h5 all_directions2.h5 all_directions3.h5 all_directions4.h5 all_directions5.h5'
-MS='Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes.MAVG Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive1.avg.goodtimes.MAVG Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive2.avg.goodtimes.MAVG Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive3.avg.goodtimes.MAVG Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive4.avg.goodfreq.goodtimes.MAVG Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive5.avg.goodtimes.MAVG'
-H5='all_directions0_HAVG.h5 all_directions1_HAVG.h5 all_directions2_HAVG.h5 all_directions3_HAVG.h5 all_directions4_HAVG.h5 all_directions5_HAVG.h5'
+MS='Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive1.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive2.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive3.avg.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive4.avg.goodfreq.goodtimes Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive5.avg.goodtimes'
+H5='all_directions0.h5 all_directions1.h5 all_directions2.h5 all_directions3.h5 all_directions4.h5 all_directions5.h5'
 
 #parameters
 SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederrijn/,/net/bovenrijn,/net/botlek,/net/para10,/net/lofar2,/net/lofar3,/net/lofar4,/net/lofar5,/net/lofar6,/net/lofar7,/disks/ftphome,/net/krommerijn,/net/voorrijn,/net/achterrijn,/net/tussenrijn,/net/ouderijn,/net/nieuwerijn,/net/lofar8,/net/lofar9,/net/rijn8,/net/rijn7,/net/rijn5,/net/rijn4,/net/rijn3,/net/rijn2
