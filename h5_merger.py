@@ -1003,9 +1003,6 @@ class MergeH5:
             self.gains = self.correct_invalid_values('amplitude', self.gains, self.axes_final)
             weights = ones(self.gains.shape)
             print('Value shape after --> {values}'.format(values=weights.shape))
-            print(self.gains.shape)
-            print(self.axes_final)
-            print([len(a) for a in axes_vals])
             solsetout.makeSoltab('amplitude', axesNames=self.axes_final, axesVals=axes_vals, vals=self.gains,
                                  weights=weights)
         if 'tec' in soltab and not self.convert_tec:
@@ -1814,6 +1811,11 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param check_flagged_station: check if input stations are flagged, if so flag same stations in output
     """
 
+    tables.file._open_files.close_all()
+
+    if type(h5_tables)==str:
+        h5_tables = glob(h5_tables)
+
     print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################\n\nMerging the following tables:\n'+'\n'.join(h5_tables)+'\n')
 
     h5_out = _create_h5_name(h5_out)
@@ -1853,6 +1855,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
                 merge.create_new_dataset('sol000', 'phase')
             else:
                 merge.create_new_dataset('sol000', st)
+
     tables.file._open_files.close_all()
 
     #If amplitude000 or phase000 are missing, we can add a template for these
