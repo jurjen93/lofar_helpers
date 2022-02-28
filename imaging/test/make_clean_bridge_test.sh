@@ -103,12 +103,18 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -minuv-l 2100.0 \
 ${MS}
 
-mv ${NAME}_compactmask-0000-model-pb.fits ${NAME}_compact-0000-model.fits
-mv ${NAME}_compactmask-0001-model-pb.fits ${NAME}_compact-0001-model.fits
-mv ${NAME}_compactmask-0002-model-pb.fits ${NAME}_compact-0002-model.fits
-mv ${NAME}_compactmask-0003-model-pb.fits ${NAME}_compact-0003-model.fits
-mv ${NAME}_compactmask-0004-model-pb.fits ${NAME}_compact-0004-model.fits
-mv ${NAME}_compactmask-0005-model-pb.fits ${NAME}_compact-0005-model.fits
+rm -rf ${NAME}_compactmask-0000-model.fits
+rm -rf ${NAME}_compactmask-0001-model.fits
+rm -rf ${NAME}_compactmask-0002-model.fits
+rm -rf ${NAME}_compactmask-0003-model.fits
+rm -rf ${NAME}_compactmask-0004-model.fits
+rm -rf ${NAME}_compactmask-0005-model.fits
+mv ${NAME}_compactmask-0000-model-pb.fits ${NAME}_compactmask-0000-model.fits
+mv ${NAME}_compactmask-0001-model-pb.fits ${NAME}_compactmask-0001-model.fits
+mv ${NAME}_compactmask-0002-model-pb.fits ${NAME}_compactmask-0002-model.fits
+mv ${NAME}_compactmask-0003-model-pb.fits ${NAME}_compactmask-0003-model.fits
+mv ${NAME}_compactmask-0004-model-pb.fits ${NAME}_compactmask-0004-model.fits
+mv ${NAME}_compactmask-0005-model-pb.fits ${NAME}_compactmask-0005-model.fits
 
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
