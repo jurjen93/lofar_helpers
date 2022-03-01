@@ -4,7 +4,6 @@ import tables
 def list_opened():
     """List current open HDF5 files"""
     h5s = tables.file._open_files.filenames
-    print('Currently open --> ' + ', '.join(h5s))
     return h5s
 
 
