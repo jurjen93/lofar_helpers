@@ -1,5 +1,5 @@
 import tables
-
+import sys
 
 def list_opened():
     """List current open HDF5 files"""
@@ -12,7 +12,7 @@ def force_close_all():
     if len(tables.file._open_files._handlers) > 0:
         tables.file._open_files.close_all()
     else:
-        print('No open HDF5 files')
+        sys.stderr.write('No open HDF5 files'+'\n')
 
 
 def force_close(h5):
@@ -20,7 +20,11 @@ def force_close(h5):
     h5s = list(tables.file._open_files._handlers)
     for h in h5s:
         if h.filename == h5:
-            print('Closed by force --> ' + h5)
+            sys.stderr.write('Closed by force --> ' + h5+'\n')
             h.close()
             return
-    print(h5 + ' not found')
+    sys.stderr.write(h5 + ' not found\n')
+
+H = tables.open_file('../t.h5')
+F = tables.open_file('../test2.h5')
+
