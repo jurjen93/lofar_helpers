@@ -24,7 +24,3 @@ def force_close(h5):
             h.close()
             return
     sys.stderr.write(h5 + ' not found\n')
-
-H = tables.open_file('../t.h5')
-F = tables.open_file('../test2.h5')
-
