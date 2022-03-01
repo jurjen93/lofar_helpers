@@ -20,7 +20,7 @@ def force_close(h5):
     h5s = list(tables.file._open_files._handlers)
     for h in h5s:
         if h.filename == h5:
-            sys.stderr.write('Closed by force --> ' + h5+'\n')
+            sys.stdout.write('Closed by force --> ' + h5+'\n')
             h.close()
             return
     sys.stderr.write(h5 + ' not found\n')
