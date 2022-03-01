@@ -13,7 +13,7 @@ from astropy.modeling.models import Gaussian2D
 from astropy.convolution import convolve, Gaussian2DKernel
 from matplotlib.ticker import LogLocator, LogFormatterSciNotation as LogFormatter
 import os
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter, filters
 import pyregion
 from pyregion.mpl_helper import properties_func_default
 from astropy.visualization.wcsaxes import WCSAxes
@@ -26,11 +26,8 @@ import scipy.ndimage as sn
 from scipy.stats.stats import pearsonr, spearmanr, linregress
 from scipy.optimize import curve_fit
 
-
 warnings.filterwarnings('ignore')
 plt.style.use('ggplot')
-
-
 
 def flatten(f):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """
@@ -116,6 +113,15 @@ class Imaging:
             print('Saved: '+write)
         return self
 
+    def remove_compactsources2(self, kernelsize=None, write=None):
+        mins = filters.minimum_filter(self.image_data, size=(kernelsize, kernelsize))
+        openmp = filters.maximum_filter(mins, size=(kernelsize, kernelsize))
+        self.image_data -= openmp
+        if write:
+            self.hdu[0].data = np.expand_dims(np.expand_dims(self.image_data, axis=0), axis=0)
+            self.hdu.writeto(write, overwrite=True)
+            print('Saved: '+write)
+        return self
 
     def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None,
                    colorbar=True, save=None, text=None, subim=None, beam=True, give_scale=True, convolve=None):
@@ -1198,7 +1204,7 @@ if __name__ == '__main__':
     #10"
 
     #20"
-    # Image = Imaging('../fits/20all.fits', resolution=20)
+    Image = Imaging('../fits/20all.fits', resolution=20)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.make_image(convolve=True, save='test20.png', text=True)
     # Image.plot3d(pixelsize=35, savenumpy='radio3d_20.npy', savefig='radio3d_20.png')
@@ -1208,12 +1214,12 @@ if __name__ == '__main__':
     # Image.make_subcontour('../regions.reg', save='20subimages.png', fits_lowres='../fits/80all.fits', beamsize=False)
 
     # Image.make_image(save='20image.png', vmin=0.0001)
-    # Image.remove_compactsources(kernelsize=100, write='../fits/20median.fits')
+    Image.remove_compactsources(kernelsize=100, write='../fits/20median.fits')
     # Image.make_image()
 
     #20" median (will be substitute with bridge? for correlating)
-    Image = Imaging('../fits/20median.fits', resolution=20)
-    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    # Image = Imaging('../fits/20median.fits', resolution=20)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.make_image(save='justbridge.png', text=True)
     # Image.plot3d(pixelsize=35, savenumpy='radio3d.npy', savefig='radio3d.png')
     # Image.plot3d(pixelsize=35, savenumpy='y.npy', savefig='y3d.png', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits')
@@ -1228,8 +1234,8 @@ if __name__ == '__main__':
     # Image.plot3d(savenumpy='a401xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, halo='A401')
     # Image.plot_corr(halo='A401', savefig='A401corr.png')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    Image.make_bridge_overlay_yxr_contourplot(fits2='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', fits1='../fits/mosaic_a399_a401.fits',
-                                              show_regions='corr_area.reg', save='ymapxray.png')
+    # Image.make_bridge_overlay_yxr_contourplot(fits2='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', fits1='../fits/mosaic_a399_a401.fits',
+    #                                           show_regions='corr_area.reg', save='ymapxray.png')
 
     # Image.do_science(region='../regions/bridge.reg')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(1500, 1500))

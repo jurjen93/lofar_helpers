@@ -5,7 +5,7 @@ SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest_23_02_2022.sif
 SING_IMAGE_P2=/net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fedora31_ddf.sif
 
-TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_300kpc
+TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_500kpc
 FROM=/net/rijn5/data2/jurjendejong/A399_extracted_avg
 H5=all_directions0_freqav2.h5
 MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes
