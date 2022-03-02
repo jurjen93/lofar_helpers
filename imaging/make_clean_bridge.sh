@@ -10,7 +10,7 @@ SING_BIND=/tmp,/dev/shm,/disks/paradata,/data1,/net/lofar1,/net/rijn,/net/nederr
 SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest_23_02_2022.sif
 TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_all
-FROM=/net/rijn8/data1/rvweeren/
+FROM=/net/rijn5/data2/jurjendejong/A399_extracted_avg
 TESS=tessupdate.reg
 
 #check if directory exists
