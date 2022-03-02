@@ -132,6 +132,7 @@ cp -r ${TO} ${TO}_backup && wait
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
+-use-wgridder \
 -size 6000 6000 \
 -channels-out 6 \
 -padding 1.2 \
