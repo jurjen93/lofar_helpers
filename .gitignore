@@ -1,5 +1,7 @@
 # csv files
 *.csv
+#text files
+*.txt
 # notebooks
 *.ipynb
 .ipynb_checkpoints
