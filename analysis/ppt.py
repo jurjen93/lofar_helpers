@@ -268,16 +268,14 @@ def calc_sum_pix(hduflat, xaf_region, cellsize,
     print('Reading ' + xaf_region)
 
     xaf_mask = add_mask(hduflat, xaf_region, flat_it=False)
-    xaf_mask = hduflat.data[np.where(xaf_mask)]
-    xaf_mask = xaf_mask[~np.isnan(xaf_mask)]
-    xaf_sum = np.sum(xaf_mask)
-    xaf_mean = np.mean(xaf_mask)
-    xaf_Npix = np.count_nonzero(xaf_mask)
+    xaf_sum = np.sum(hduflat.data[np.where(xaf_mask == True)])
+    xaf_median = np.median(hduflat.data[np.where(xaf_mask == True)])
+    xaf_Npix = np.count_nonzero(hduflat.data[np.where(xaf_mask == True)])
 
     if reproj_corr_factor != 1.0:
         xaf_sum = xaf_sum * reproj_corr_factor
 
-    return xaf_sum, xaf_Npix, xaf_mean
+    return xaf_sum, xaf_Npix, xaf_median
 
 
 def make_alpha_map(hduflat, xaf_region, value):
@@ -296,13 +294,9 @@ def add_info_to_table(intable):
     hdr = hdul[0].header
 
     hdr['freq1'] = (radio1_freq, 'Frequency [Hz]')
-    hdr['freq2'] = (radio2_freq, 'Frequency [Hz]')
     hdr['rms1asec'] = (radio1_rms_jyarcsec, 'rms [Jy/arcsec^2]')
-    hdr['rms2asec'] = (radio2_rms_jyarcsec, 'rms [Jy/arcsec^2]')
     hdr['rms1beam'] = (radio1_rms_jyb, 'rms [Jy/beam]')
-    hdr['rms2beam'] = (radio2_rms_jyb, 'rms [Jy/beam]')
     hdr['sys1'] = (sys1, 'Systematic error')
-    hdr['sys2'] = (sys2, 'Systematic error')
 
     hdul.writeto(intable, overwrite=True)
     hdul.close()
@@ -329,17 +323,11 @@ required.add_argument('-cellsize',
                       help='Size of the cell, it should be AN ODD NUMER smaller than the beam! (in pixel units).',
                       type=int, required=True)
 # OPTIONAL
-optional.add_argument('-radio2', help='Second radio image (high freq). Must be at the same resolution of -radio1.',
-                      type=str, required=False, default=None)
+optional.add_argument('-median', help='take median value')
 optional.add_argument('-y', help='y-map (planck)')
 optional.add_argument('-rms1', help='Noise of first radio image (in Jy/b). If not provided, it is internally computed.',
                       type=float, required=False, default=0.0)
-optional.add_argument('-rms2',
-                      help='Noise of second radio image (in Jy/b). If not provided, it is internally computed.',
-                      type=float, required=False, default=0.0)
 optional.add_argument('-sys1', help='Systematic error on the first radio image (default=0).', type=float,
-                      required=False, default=0.0)
-optional.add_argument('-sys2', help='Systematic error on the second radio image (default=0).', type=float,
                       required=False, default=0.0)
 optional.add_argument('-excluderegion', help='ds9 region file with the regions to exclude from the grid.', type=str,
                       required=False, default=None)
@@ -354,12 +342,10 @@ optional.add_argument('-skip_reproj',
 args = vars(parser.parse_args())
 
 radio1 = args['radio1']
-radio2 = args['radio2']
+median = args['median']
 ymap = args['y']
 rms1 = args['rms1']
-rms2 = args['rms2']
 sys1 = args['sys1']
-sys2 = args['sys2']
 excluderegion = args['excluderegion']
 limitslist = args['limits']
 xsou = args['xsou']
@@ -391,45 +377,12 @@ radio1_pixscale, radio1_beam_area_pix, radio1_rms_jyb, radio1_rms_jyarcsec, radi
 radio1_hdu = fits.open(radio1)
 radio1_hduflat = flatten(radio1_hdu)
 
-if radio2 != None:
-    print('Information of ' + radio2)
-    radio2_pixscale, radio2_beam_area_pix, radio2_rms_jyb, radio2_rms_jyarcsec, radio2_freq = get_image_info(radio2)
-
-    if args['skip_reproj'] == False:
-        radio2_hdu = fits.open(radio2)
-        radio2_hduflat = flatten(radio2_hdu)
-        reproject_hdu(radio1_hduflat, radio2_hduflat, 'radio2_reproj.fits.gz')
-        radio2_hdu.close()
-
-        radio2_reproj_hdu = fits.open('radio2_reproj.fits.gz')
-        radio2_reproj_hdu[0].header['CRVAL3'] = radio2_freq
-        radio2_reproj_hdu.writeto('radio2_reproj.fits.gz', overwrite=True)
-        radio2_reproj_hdu.close()
-
-    print('IMAGE REPROJECTED, BE CAREFUL ABOUT THE DIFFERENCE IN PIXELSCALE')
-
-    print('Information of radio2_reproj.fits.gz')
-    radio2_reproj_pixscale, radio2_beam_area_pix, radio2_rms_jyb, radio2_rms_jyarcsec, radio2_freq = get_image_info(
-        'radio2_reproj.fits.gz')
-
-    radio2_reproj_corr_factor = (radio2_reproj_pixscale / radio2_pixscale) ** 2
-else:
-    radio2_rms_jyb = 0.0
-    radio2_rms_jyarcsec = 0.0
-    radio2_freq = 0.0
-
 if rms1 != 0.0:
     print('You set -rms1, so using the input value for the noise, ie:')
     radio1_rms_jyb = rms1
     radio1_rms_jyarcsec = radio1_rms_jyb / (radio1_beam_area_pix * radio1_pixscale * radio1_pixscale)
     print('The rms is: {:.3f} mJy/beam'.format(radio1_rms_jyb * 1e3))  # in mJy/beam
     print('The rms is: {:.3f} muJy/arcsec^2'.format(radio1_rms_jyarcsec * 1e6))  # in muJy/arcsec^2
-if rms2 != 0.0:
-    print('You set -rms2, so using the input value for the noise, ie:')
-    radio2_rms_jyb = rms2
-    radio2_rms_jyarcsec = radio2_rms_jyb / (radio2_beam_area_pix * radio2_reproj_pixscale * radio2_reproj_pixscale)
-    print('The rms is: {:.3f} mJy/beam'.format(radio2_rms_jyb * 1e3))  # in mJy/beam
-    print('The rms is: {:.3f} muJy/arcsec^2'.format(radio2_rms_jyarcsec * 1e6))  # in muJy/arcsec^2
 
 print('Information of ' + xsou)
 xray_pixscale = get_image_info(xsou, xray=True)
@@ -503,40 +456,12 @@ if excluderegion != None:
         exclude_mask = add_mask(y_reproj_hduflat, excluderegion, flat_it=False)
         y_reproj_hduflat.data[exclude_mask] = 0.0
 
-if radio2 != None:
-    radio2_reproj_hdu = fits.open('radio2_reproj.fits.gz')
-    radio2_reproj_hduflat = flatten(radio2_reproj_hdu)
-    log_freq12_ratio = np.log10(radio1_freq / radio2_freq)
-    ln_freq21_ratio = np.log(radio2_freq / radio1_freq)
-    alpha_hduflat = fits.PrimaryHDU(data=radio1_hduflat.data * np.nan, header=radio1_hduflat.header)
-    alpha_err_hduflat = fits.PrimaryHDU(data=radio1_hduflat.data * np.nan, header=radio1_hduflat.header)
-    if excluderegion != None:
-        exclude_mask = add_mask(radio2_reproj_hduflat, excluderegion, flat_it=False)
-        radio2_reproj_hduflat.data[exclude_mask] = 0.0
 
 # prepare table
 if os.path.isfile(grid_dir + '/' + result_name):
     os.system('rm ' + grid_dir + '/' + result_name)
 
-if radio2 != None:
-    tab_init = {'region_name': Column(dtype='S8'),
-                'xray_sb': Column(dtype=float, unit='count/s/arcsec^2'),
-                'xray_sb_err': Column(dtype=float, unit='count/s/arcsec^2'),
-                'radio1_sb': Column(dtype=float, unit='Jy/arcsec^2'),
-                'radio1_sb_err': Column(dtype=float, unit='Jy/arcsec^2'),
-                'radio1_fluxdensity': Column(dtype=float, unit='Jy'),
-                'radio1_fluxdensity_err': Column(dtype=float, unit='Jy'),
-                'radio2_sb': Column(dtype=float, unit='Jy/arcsec^2'),
-                'radio2_sb_err': Column(dtype=float, unit='Jy/arcsec^2'),
-                'radio2_fluxdensity': Column(dtype=float, unit='Jy'),
-                'radio2_fluxdensity_err': Column(dtype=float, unit='Jy'),
-                'alpha': Column(dtype=float),
-                'alpha_err': Column(dtype=float)
-                }
-    t = Table(tab_init, names=(
-    'region_name', 'xray_sb', 'xray_sb_err', 'radio1_sb', 'radio1_sb_err', 'radio1_fluxdensity', 'radio1_fluxdensity_err',
-    'radio2_sb', 'radio2_sb_err', 'radio2_fluxdensity', 'radio2_fluxdensity_err', 'alpha', 'alpha_err'))
-elif ymap:
+if ymap:
     tab_init = {'region_name': Column(dtype='S8'),
                 'xray_sb': Column(dtype=float, unit='count/s/arcsec^2'),
                 'xray_sb_err': Column(dtype=float, unit='count/s/arcsec^2'),
@@ -572,15 +497,15 @@ for xaf_region in xaf_region_list:
     print('Doing radio1 image:')
     radio1_sum, radio1_Npix, _ = calc_sum_pix(radio1_hduflat, xaf_region, cellsize)
 
-    # if radio1_Npix / (cellsize * cellsize) != 1:
-    #     print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
-    #     #        os.system('rm -rf ' + xaf_region)
-    #     #        continue
-    #     radio1_fluxdensity = np.nan
-    #     radio1_fluxdensity_err = np.nan
-    #     radio1_sb = np.nan
-    #     radio1_sb_err = np.nan
-    if radio1_sum <= 0:
+    if radio1_Npix / (cellsize * cellsize) != 1:
+        print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
+        #        os.system('rm -rf ' + xaf_region)
+        #        continue
+        radio1_fluxdensity = np.nan
+        radio1_fluxdensity_err = np.nan
+        radio1_sb = np.nan
+        radio1_sb_err = np.nan
+    elif radio1_sum <= 0:
         print('Removing region {}: the sum of pixel values is negative'.format(xaf_region))
         #        os.system('rm -rf ' + xaf_region)
         #        continue
@@ -595,77 +520,26 @@ for xaf_region in xaf_region_list:
         radio1_sb = radio1_fluxdensity / (radio1_Npix * radio1_pixscale * radio1_pixscale)
         radio1_sb_err = radio1_fluxdensity_err / (radio1_Npix * radio1_pixscale * radio1_pixscale)
 
-        print(radio1_sb_err)
-        print(radio1_sb)
-
-    # RADIO2
-    if radio2 != None:
-        print('Doing radio2 image:')
-        radio2_sum, radio2_Npix, _ = calc_sum_pix(radio2_reproj_hduflat, xaf_region, cellsize,
-                                                  reproj_corr_factor=radio2_reproj_corr_factor)
-
-        if radio2_Npix / (cellsize * cellsize) != 1:
-            print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
-            #            os.system('rm -rf ' + xaf_region)
-            #            continue
-            radio2_fluxdensity = np.nan
-            radio2_fluxdensity_err = np.nan
-            radio2_sb = np.nan
-            radio2_sb_err = np.nan
-            alpha = np.nan
-            alpha_err = np.nan
-        elif radio2_sum <= 0:
-            print('Removing region {}: the sum of pixel values is negative'.format(xaf_region))
-            #            os.system('rm -rf ' + xaf_region)
-            #            continue
-            radio2_fluxdensity = np.nan
-            radio2_fluxdensity_err = np.nan
-            radio2_sb = np.nan
-            radio2_sb_err = np.nan
-            alpha = np.nan
-            alpha_err = np.nan
-        else:
-            radio2_fluxdensity = radio2_sum / radio2_beam_area_pix
-            radio2_fluxdensity_err = np.sqrt(
-                (radio2_rms_jyb * np.sqrt(radio2_Npix / radio2_beam_area_pix)) ** 2 + (sys2 * radio2_fluxdensity) ** 2)
-            radio2_sb = radio2_fluxdensity / (radio2_Npix * radio2_pixscale * radio2_pixscale)
-            radio2_sb_err = radio2_fluxdensity_err / (radio2_Npix * radio2_pixscale * radio2_pixscale)
-
-            if np.isnan(radio1_fluxdensity):
-                alpha = np.nan
-                alpha_err = np.nan
-            else:
-                alpha = (np.log10(radio2_fluxdensity / radio1_fluxdensity)) / log_freq12_ratio
-                alpha_err = (1 / ln_freq21_ratio) * np.sqrt((radio1_fluxdensity_err / radio1_fluxdensity) ** 2 + (
-                            radio2_fluxdensity_err / radio2_fluxdensity) ** 2)
-
-                # make alpha_map only when the emission is >2.0 sigma in both images
-                if ((radio1_sb >= (2.0 * radio1_rms_jyarcsec)) and (radio2_sb >= (2.0 * radio2_rms_jyarcsec))):
-                    alpha_2sigma_map, alpha_2sigma_map_err = alpha, alpha_err
-
-                    make_alpha_map(alpha_hduflat, xaf_region, alpha_2sigma_map)
-                    make_alpha_map(alpha_err_hduflat, xaf_region, alpha_2sigma_map_err)
-
     # XRAY
     print('Doing xray images:')
     xsou_sum, xsou_Npix, _ = calc_sum_pix(xsou_reproj_hduflat, xaf_region, cellsize,
                                           reproj_corr_factor=xray_reproj_corr_factor)
     xbkg_sum, xbkg_Npix, _ = calc_sum_pix(xbkg_reproj_hduflat, xaf_region, cellsize,
                                           reproj_corr_factor=xray_reproj_corr_factor)
-    xexp_sum, xexp_Npix, xexp_mean = calc_sum_pix(xexp_reproj_hduflat, xaf_region, cellsize,
+    xexp_sum, xexp_Npix, xexp_median = calc_sum_pix(xexp_reproj_hduflat, xaf_region, cellsize,
                                                   reproj_corr_factor=xray_reproj_corr_factor)
     xray_net_count = (xsou_sum - xbkg_sum)
 
-    # if xexp_Npix / (cellsize * cellsize) != 1:
-    #     # THIS IS NOT OK FOR XMM, A SOLUTION CUOLD BE PLACE 1s WHERE THE EXPOSURE IS 0s DUE TO CCD GAPS (THEY ARE SMALL PORTIONS)
-    #     print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
-    #     #        os.system('rm -rf ' + xaf_region)
-    #     #        continue
-    #     xray_count_rate = np.nan
-    #     xray_count_rate_err = np.nan
-    #     xray_sb = np.nan
-    #     xray_sb_err = np.nan
-    if xray_net_count <= 0:
+    if xexp_Npix / (cellsize * cellsize) != 1:
+        # THIS IS NOT OK FOR XMM, A SOLUTION CUOLD BE PLACE 1s WHERE THE EXPOSURE IS 0s DUE TO CCD GAPS (THEY ARE SMALL PORTIONS)
+        print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
+        #        os.system('rm -rf ' + xaf_region)
+        #        continue
+        xray_count_rate = np.nan
+        xray_count_rate_err = np.nan
+        xray_sb = np.nan
+        xray_sb_err = np.nan
+    elif xray_net_count <= 0:
         print('Removing region {}: it has <= 0 net counts'.format(xaf_region))
         #        os.system('rm -rf ' + xaf_region)
         #        continue
@@ -674,25 +548,25 @@ for xaf_region in xaf_region_list:
         xray_sb = np.nan
         xray_sb_err = np.nan
     else:
-        xray_count_rate = (xsou_sum - xbkg_sum) / xexp_mean
-        xray_count_rate_err = np.sqrt(xsou_sum + xbkg_sum) / xexp_mean
+        xray_count_rate = (xsou_sum - xbkg_sum) / xexp_median
+        xray_count_rate_err = np.sqrt(xsou_sum + xbkg_sum) / xexp_median
         xray_sb = xray_count_rate / ((cellsize * cellsize) * xray_reproj_pixscale * xray_reproj_pixscale)
         xray_sb_err = xray_count_rate_err / ((cellsize * cellsize) * xray_reproj_pixscale * xray_pixscale)
 
 
     print('Doing y-map (SZ-effect)')
     #Ymap
-    y_sum, y_Npix, y_mean = calc_sum_pix(y_reproj_hduflat, xaf_region, cellsize,
+    y_sum, y_Npix, y_median = calc_sum_pix(y_reproj_hduflat, xaf_region, cellsize,
                                           reproj_corr_factor=y_reproj_corr_factor)
-    # if y_Npix / (cellsize * cellsize) != 1:
-    #     print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
-    #     #            os.system('rm -rf ' + xaf_region)
-    #     #            continue
-    #     y_fluxdensity = np.nan
-    #     y_fluxdensity_err = np.nan
-    #     y_sb = np.nan
-    #     y_sb_err = np.nan
-    if y_sum <= 0:
+    if y_Npix / (cellsize * cellsize) != 1:
+        print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
+        #            os.system('rm -rf ' + xaf_region)
+        #            continue
+        y_fluxdensity = np.nan
+        y_fluxdensity_err = np.nan
+        y_sb = np.nan
+        y_sb_err = np.nan
+    elif y_sum <= 0:
         print('Removing region {}: the sum of pixel values is negative'.format(xaf_region))
         #            os.system('rm -rf ' + xaf_region)
         #            continue
@@ -702,17 +576,11 @@ for xaf_region in xaf_region_list:
         y_sb_err = np.nan
     else:
         y_fluxdensity = y_sum
-        y_fluxdensity_err = rmsy
+        y_fluxdensity_err = rmsy * np.sqrt(y_Npix)
         y_sb = y_fluxdensity / (y_Npix * y_reproj_pixscale * y_reproj_pixscale)
         y_sb_err = y_fluxdensity_err / (y_Npix * y_reproj_pixscale * y_reproj_pixscale)
 
-
-    if radio2 != None:
-        t.add_row(
-            [xaf_region.replace(grid_dir + '/', '').replace('.reg', ''), xray_sb, xray_sb_err, radio1_sb, radio1_sb_err,
-             radio1_fluxdensity, radio1_fluxdensity_err, radio2_sb, radio2_sb_err, radio2_fluxdensity,
-             radio2_fluxdensity_err, alpha, alpha_err])
-    elif ymap:
+    if ymap:
         t.add_row(
             [xaf_region.replace(grid_dir + '/', '').replace('.reg', ''), xray_sb, xray_sb_err, radio1_sb, radio1_sb_err,
              radio1_fluxdensity, radio1_fluxdensity_err, y_sb, y_sb_err, y_fluxdensity,
@@ -730,26 +598,15 @@ hdul = fits.open(grid_dir + '/' + result_name)
 hdr = hdul[0].header
 
 hdr['freq1'] = (radio1_freq, 'Frequency [Hz]')
-hdr['freq2'] = (radio2_freq, 'Frequency [Hz]')
 hdr['rms1asec'] = (radio1_rms_jyarcsec, 'rms [Jy/arcsec^2]')
-hdr['rms2asec'] = (radio2_rms_jyarcsec, 'rms [Jy/arcsec^2]')
 hdr['rms1beam'] = (radio1_rms_jyb, 'rms [Jy/beam]')
-hdr['rms2beam'] = (radio2_rms_jyb, 'rms [Jy/beam]')
 hdr['sys1'] = (sys1, 'Systematic error')
-hdr['sys2'] = (sys2, 'Systematic error')
 
 hdul.writeto(grid_dir + '/' + result_name, overwrite=True)
 hdul.close()
 
 # add_info_to_table(ptp_dir + '/' + result_name) #not used because I would need to pass many variables
 
-# write alpha maps
-if radio2 != None:
-    radio2_reproj_hdu.close()
-    alpha_hduflat.writeto(grid_dir + '/' + 'grid_{}x{}_alpha_2.0_sigma_cut.fits.gz'.format(cellsize, cellsize),
-                          overwrite=True)
-    alpha_err_hduflat.writeto(grid_dir + '/' + 'grid_{}x{}_alpha_err_2.0_sigma_cut.fits.gz'.format(cellsize, cellsize),
-                              overwrite=True)
 
 radio1_hdu.close()
 xsou_reproj_hdu.close()
