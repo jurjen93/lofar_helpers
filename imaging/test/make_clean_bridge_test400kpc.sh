@@ -5,7 +5,7 @@ SING_IMAGE=/net/rijn/data2/rvweeren/data/pill-latestJune2021.simg
 SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idgtest_23_02_2022.sif
 SING_IMAGE_P2=/net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fedora31_ddf.sif
 
-TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_300kpc
+TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_400kpc
 FROM=/net/rijn5/data2/jurjendejong/A399_extracted_avg
 H5=all_directions0.h5
 MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes
@@ -63,7 +63,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 7 \
--minuvw-m 2100.0 \
+-minuv-l 707.0 \
 ${MS}
 
 #mask compact objects
@@ -100,7 +100,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 8 \
--minuvw-m 2100.0 \
+-minuv-l 707.0 \
 ${MS}
 
 rm -rf ${NAME}_compactmask-0000-model.fits
@@ -122,13 +122,13 @@ cp -r ${TO} ${TO}_backup && wait
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
 -size 6000 6000 \
--use-wgridder \
 -channels-out 6 \
 -padding 1.2 \
 -predict \
 -name ${NAME}_compactmask \
 -apply-facet-solutions ${H5} amplitude000,phase000 \
 -facet-regions ${TESS} \
+-use-wgridder \
 ${MS}
 
 #subtract

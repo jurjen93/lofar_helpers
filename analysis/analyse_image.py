@@ -1294,7 +1294,7 @@ class Imaging:
 if __name__ == '__main__':
 
     #6"
-    # Image = Imaging('../fits/6all.fits', resolution=6)
+    Image = Imaging('../fits/6all.fits', resolution=6)
     # Image.make_image()
     # Image.ptp(pixelsize=70, savenumpy='radio3d_6.npy', savefig='radio3d_6.png')
     # Image.do_science(region='../regions/bridge.reg')
