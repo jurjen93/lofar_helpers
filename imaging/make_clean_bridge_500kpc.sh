@@ -74,7 +74,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 7 \
--minuv-l 1250.0 \
+-minuvw-m 1250.0 \
 ${MS} > logcompact.txt
 
 #mask compact objects
@@ -111,7 +111,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 9 \
--minuv-l 1250.0 \
+-minuvw-m 1250.0 \
 ${MS} > logcompactmask.txt
 
 rm -rf ${NAME}_compactmask-0000-model.fits
