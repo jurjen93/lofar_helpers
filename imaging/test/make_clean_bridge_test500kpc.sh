@@ -63,7 +63,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 7 \
--minuvw-m 1250.0 \
+-minuv-l 566.0 \
 ${MS}
 
 #mask compact objects
@@ -100,7 +100,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -size 6000 6000 \
 -scale 1.5arcsec \
 -nmiter 8 \
--minuvw-m 1250.0 \
+-minuv-l 566.0 \
 ${MS}
 
 rm -rf ${NAME}_compactmask-0000-model.fits
