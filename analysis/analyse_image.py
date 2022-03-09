@@ -135,10 +135,29 @@ class Imaging:
             print('Saved: '+write)
         return self
 
-    def remove_compactsources2(self, kernelsize=None, write=None):
+    def source_subtract(self, kpc_scale=None, write=None, open=None):
+        """Multi-resolution filtering of radio images
+           technique described in Rudnick, 2002 https://iopscience.iop.org/article/10.1086/342499/pdf
+           larry@umn.edu -- please contact for assistance, as needed
+           code below courtesy of Viral Parekh, SARAO , vparekh@ska.ac.za
+
+        technique creates a diffuse emission map, called “open”;
+             for small scale features,  filtered = original_map - open
+
+         pick a box size 3x the beam-size or 3x size of features you want to remove
+         open map has an offset zero level - determine it and correct
+         open map is at original resolution - units are the same in Jy/beam
+         open map will show sharp edges to diffuse regions, but is boxy; convolve for aesthetics
+         """
+
+        kernelsize = kpc_scale/(1000*self.pix_to_size(0.072).value)
+        print(f'Kernel size is {int(kernelsize)} pixels')
         mins = filters.minimum_filter(self.image_data, size=(kernelsize, kernelsize))
         openmp = filters.maximum_filter(mins, size=(kernelsize, kernelsize))
-        self.image_data -= openmp
+        if open:
+            self.image_data = openmp
+        else:
+            self.image_data -= openmp
         if write:
             self.hdu[0].data = np.expand_dims(np.expand_dims(self.image_data, axis=0), axis=0)
             self.hdu.writeto(write, overwrite=True)
@@ -248,7 +267,7 @@ class Imaging:
             Mpc_pixels = 1 / (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value
             l1, l2 = [int(image_data.shape[0]*0.1), int(image_data.shape[0]*0.1+Mpc_pixels)], [int(image_data.shape[1]*0.9), int(image_data.shape[1]*0.9)]
             plt.plot(l1, l2, color='cyan', linewidth=1)
-            plt.text((l1[0]+l1[1])/2, 1.02*(l2[0]+l2[1])/2, 'Mpc', color='cyan', fontsize=12, horizontalalignment='center')
+            plt.text((l1[0]+l1[1])/2, 1.02*(l2[0]+l2[1])/2, '1 Mpc', color='cyan', fontsize=10, horizontalalignment='center')
 
 
         plt.xlim(0, image_data.shape[0])
@@ -645,7 +664,7 @@ class Imaging:
             Mpc_pixels = 1 / (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value
             l1, l2 = [int(image_data.shape[0]*0.1), int(image_data.shape[0]*0.1+Mpc_pixels)], [int(image_data.shape[1]*0.9), int(image_data.shape[1]*0.9)]
             plt.plot(l1, l2, color='pink', linewidth=1)
-            plt.text((l1[0] + l1[1]) / 2, 1.02 * (l2[0] + l2[1]) / 2, 'Mpc', color='cyan', fontsize=12,
+            plt.text((l1[0] + l1[1]) / 2, 1.02 * (l2[0] + l2[1]) / 2, '1 Mpc', color='cyan', fontsize=10,
                      horizontalalignment='center')
         if type(self.resolution) == int:
             beampix = self.resolution / (self.header['CDELT2'] * u.deg).to(u.arcsec).value/2
@@ -777,7 +796,7 @@ class Imaging:
         Mpc_pixels = 1 / (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value
         l1, l2 = [int(self.image_data.shape[0]*0.05), int(self.image_data.shape[0]*0.05+Mpc_pixels)], [int(self.image_data.shape[1]*0.9), int(self.image_data.shape[1]*0.9)]
         plt.plot(l1, l2, color='brown', linewidth=1)
-        plt.text((l1[0]+l1[1])/2, 1.02*(l2[0]+l2[1])/2, 'Mpc', color='brown', fontsize=12, horizontalalignment='center')
+        plt.text((l1[0]+l1[1])/2, 1.02*(l2[0]+l2[1])/2, '1 Mpc', color='brown', fontsize=10, horizontalalignment='center')
         if type(self.resolution) == int and beamsize:
             beampix = self.resolution / (self.header['CDELT2'] * u.deg).to(u.arcsec).value/2
             x, y = beampix * 1.5 + self.image_data.shape[0] * 0.03, beampix * 1.5 + self.image_data.shape[1] * 0.03
@@ -858,7 +877,7 @@ class Imaging:
         Mpc_pixels = 1 / (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value
         l1, l2 = [int(self.image_data.shape[0]*0.05), int(self.image_data.shape[0]*0.05+Mpc_pixels)], [int(self.image_data.shape[1]*0.9), int(self.image_data.shape[1]*0.9)]
         plt.plot(l1, l2, color='brown', linewidth=1)
-        plt.text((l1[0]+l1[1])/2, 1.02*(l2[0]+l2[1])/2, 'Mpc', color='brown', fontsize=12, horizontalalignment='center')
+        plt.text((l1[0]+l1[1])/2, 1.02*(l2[0]+l2[1])/2, '1 Mpc', color='brown', fontsize=10, horizontalalignment='center')
         # if type(resolution) == int:
         #     beampix = resolution / (self.header['CDELT2'] * u.deg).to(u.arcsec).value/2
         #     circle = plt.Circle((image_data.shape[0] * 0.03, image_data.shape[1] * 0.03), beampix, color='g',
@@ -975,7 +994,7 @@ class Imaging:
             y = y.flatten()
 
 
-        msk = ((xray>0) & (radio>self.rms*3) & (xray_err/xray<1))
+        msk = ((xray>0) & (radio>self.rms*3) & (xray_err/xray<1) & (radio_err/radio<1) & (radio<self.rms*15))
 
         radio=radio[msk]
         radio_err=radio_err[msk]
@@ -1300,25 +1319,23 @@ if __name__ == '__main__':
     # Image.do_science(region='../regions/bridge.reg')
     # Image.make_image(show_regions='../boxlayout.reg', vmin=0.00005, save='layout.png', colorbar=False, beam=False, give_scale=True)
     # Image.make_image(show_regions='../tessupdate.reg', vmin=0.00005, save='tess.png', colorbar=False, beam=False, give_scale=False)
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(3400, 3400))
+    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(3400, 3400))
     # Image.make_subimages(regionfile='../regions.reg', save='6cutouts.png', beamsize=True)
-    # Image.make_image(vmin=0.00005, show_regions='../regions.reg', save='subimagelayout.png', subim=True, colorbar=True)
-    # Image.make_subcontour('../regions.reg', save='6subimages.png', fits_lowres='../fits/80all.fits', beamsize=True)
+    Image.make_image(vmin=0.00005, show_regions='../regions.reg', save='subimagelayout.png', subim=True, colorbar=True)
+    # Image.make_subcontour('../regions.reg', save='6subimages.png', fits_lowres='../fits/60all.fits', beamsize=True)
     # Image = Imaging('../fits/6all.fits', resolution=6)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
     #                   size=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)))
     # Image.make_image(vmin=0.00005, text=True, save='a399a401.png')
     # Image.make_image()
 
-    #20temp
-    # Image = Imaging('../fits/20alltmp.fits', resolution=20)
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(3000, 3000))
-    # Image.remove_compactsources(kernelsize=100, write='../fits/20median.fits')
-
 
     #20"
     # Image = Imaging('../fits/20all.fits', resolution=20)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    # Image.source_subtract(50, open=True)
+    # Image.make_image()
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.make_image(show_grid=True, save='grids.png')
     # Image.make_image(convolve=True, save='test20.png', text=True)
     # Image.ptp(pixelsize=35, savenumpy='radio3d_20.npy', savefig='radio3d_20.png')
@@ -1377,6 +1394,12 @@ if __name__ == '__main__':
 
     #60"
     # Image = Imaging('../fits/60all.fits', resolution=60)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    # Image.source_subtract(100, open=True)
+    # Image.ptp(savenumpy='bridgegridradio.npy', grid='bridge')
+    # Image.ptp(savenumpy='bridgegridy.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='bridge')
+    # Image.ptp(savenumpy='bridgegridxray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='bridge')
+    # Image.analyse_corr(grid='bridgegrid', savefig='bridgecorr.png')
     # Image.ptp(savenumpy='radio3d.npy', savefig='radio3d.png', maskregion='../regions/excluderegions60.reg')
     # Image.ptp(savenumpy='y.npy', savefig='y3d.png', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', maskregion='../regions/excluderegions60.reg')
     # Image.ptp(savenumpy='xray.npy', savefig='xray3d.png', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, maskregion='../regions/excluderegions60.reg')
