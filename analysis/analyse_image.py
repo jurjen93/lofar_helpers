@@ -67,7 +67,6 @@ def flatten(f):
     return hdu
 
 def reproject_hdu(hdu1, hdu2, outputname):
-
     array, _ = reproject_interp(hdu2, hdu1.header)
     fits.writeto(outputname, array, hdu1.header, overwrite=True)
 
@@ -123,7 +122,8 @@ class Imaging:
         except:
             return self.beamarea_copy
 
-    def remove_compactsources(self, kernelsize=None, write=None):
+    def medianfilter(self, kpc_scale=None, write=None):
+        kernelsize = int(kpc_scale / (1000 * self.pix_to_size(0.072).value))
         print("Apply median kernel")
         self.image_data = sn.median_filter(self.image_data, kernelsize)
         if write:
@@ -135,7 +135,7 @@ class Imaging:
             print('Saved: '+write)
         return self
 
-    def source_subtract(self, kpc_scale=None, write=None, open=None):
+    def rudnickfilter(self, kpc_scale=None, write=None, open=None):
         """Multi-resolution filtering of radio images
            technique described in Rudnick, 2002 https://iopscience.iop.org/article/10.1086/342499/pdf
            larry@umn.edu -- please contact for assistance, as needed
@@ -160,7 +160,10 @@ class Imaging:
             self.image_data -= openmp
         if write:
             self.hdu[0].data = np.expand_dims(np.expand_dims(self.image_data, axis=0), axis=0)
-            self.hdu.writeto(write, overwrite=True)
+            try:
+                self.hdu[0].writeto(write, overwrite=True)
+            except:
+                self.hdu.writeto(write, overwrite=True)
             print('Saved: '+write)
         return self
 
@@ -181,13 +184,11 @@ class Imaging:
         if vmax is None:
             vmax = self.rms*25
 
-        print(vmin)
-
         if wcs is None:
             wcs = self.wcs
 
         if convolve:
-            image_data = self.convolve_image(image_data, 4)
+            image_data = self.convolve_image(image_data, convolve)
 
         if show_regions is not None:
             fig = plt.figure(figsize=(7, 10), dpi=200)
@@ -246,9 +247,11 @@ class Imaging:
             plt.subplot(projection=wcs)
         im = plt.imshow(image_data, origin='lower', cmap=cmap)
         if self.resolution>6:
+            # im.set_norm(SymLogNorm(linthresh=vmin*10, vmin=vmin, vmax=vmax, base=10))
             im.set_norm(PowerNorm(vmin=vmin, vmax=vmax, gamma=2/3))
         else:
-            im.set_norm(SymLogNorm(linthresh=vmin*10, vmin=vmin, vmax=vmax, base=10))
+            # im.set_norm(SymLogNorm(linthresh=vmin*10, vmin=vmin, vmax=vmax, base=10))
+            im.set_norm(PowerNorm(vmin=vmin, vmax=vmax, gamma=1/2))
         plt.xlabel('Galactic Longitude', size=15)
         plt.ylabel('Galactic Latitude', size=15)
         plt.tick_params(axis='both', which='major', labelsize=12)
@@ -260,8 +263,12 @@ class Imaging:
             cbar.update_normal(im)
             cbar.set_label('Surface brightness [Jy/beam]', size=15)
         if text:
-            plt.text(3450/4 - (6000/4-image_data.shape[0])/2, 2450/4 - (6000/4-image_data.shape[1])/2, 'A399', color='pink', fontsize=14)
-            plt.text(2200/4 - (6000/4-image_data.shape[0])/2, 3750/4 - (6000/4-image_data.shape[1])/2, 'A401', color='pink', fontsize=14)
+            if self.resolution==60:
+                plt.text(3450/4 - (6000/4-image_data.shape[0])/2, 2450/4 - (6000/4-image_data.shape[1])/2, 'A399', color='pink', fontsize=14)
+                plt.text(2200/4 - (6000/4-image_data.shape[0])/2, 3750/4 - (6000/4-image_data.shape[1])/2, 'A401', color='pink', fontsize=14)
+            if self.resolution==20:
+                plt.text(3450/2 - (6000/2-image_data.shape[0])/2, 2450/2 - (6000/2-image_data.shape[1])/2, 'A399', color='pink', fontsize=14)
+                plt.text(2200/2 - (6000/2-image_data.shape[0])/2, 3750/2 - (6000/2-image_data.shape[1])/2, 'A401', color='pink', fontsize=14)
 
         if give_scale:
             Mpc_pixels = 1 / (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value
@@ -307,7 +314,7 @@ class Imaging:
 
         return self
 
-    def make_subimages(self, regionfile, cmap='CMRmap', save=None, beamsize=None):
+    def make_subimages(self, regionfile, cmap='CMRmap', save=None, beamsize=None, convolve=None):
 
         r = pyregion.open(regionfile).as_imagecoord(header=self.hdu[0].header)
 
@@ -342,8 +349,13 @@ class Imaging:
             )
             norm = SymLogNorm(linthresh=self.rms * 5, vmin=self.rms, vmax=self.rms*30, base=10)
 
+            if convolve:
+                image_data = self.convolve_image(out.data, convolve)
+            else:
+                image_data = out.data
+
             plt.subplot(rows, cols, k+1, projection=out.wcs)
-            im = plt.imshow(out.data, origin='lower', cmap=cmap, norm=norm)
+            im = plt.imshow(image_data, origin='lower', cmap=cmap, norm=norm)
             if k%2==0 and self.resolution==6:
                 plt.ylabel('Declination (J2000)', size=14)
             else:
@@ -387,6 +399,148 @@ class Imaging:
 
         else:
             plt.show()
+
+    def make_multip_cuts(self, regionfile, cmap='CMRmap', save=None, beamsize=None, vmin=None, vmax=None):
+
+        if vmin is None:
+            vmin = self.rms
+        else:
+            vmin = vmin
+        if vmax is None:
+            vmax = self.rms*25
+
+        r = pyregion.open(regionfile).as_imagecoord(header=self.hdu[0].header)
+
+        fig = plt.figure(figsize=(9, 15))
+        fig.subplots_adjust(hspace=0.2, wspace=0.4)
+
+        for k, shape in enumerate(r):
+
+            s = np.array(shape.coord_list)
+
+            out = Cutout2D(
+                data=self.image_data,
+                position=(s[0], s[1]),
+                size=(s[3], s[2]),
+                wcs=self.wcs,
+                mode='partial'
+            )
+            figure, ax = plt.subplots(figsize=(7, 10), dpi=200)
+            plt.subplot(projection=out.wcs)
+            im = plt.imshow(out.data, origin='lower', cmap=cmap)
+            im.set_norm(PowerNorm(vmin=vmin, vmax=vmax, gamma=1/2))
+            plt.xlabel('Galactic Longitude', size=15)
+            plt.ylabel('Galactic Latitude', size=15)
+            plt.tick_params(axis='both', which='major', labelsize=12)
+            plt.grid(False)
+            cbar = plt.colorbar(orientation='horizontal', shrink=1, ticks=[7e-4, 1e-3])
+            # cbar.ax.set_xscale('log')
+            cbar.locator = LogLocator()
+            cbar.formatter = LogFormatter()
+            cbar.update_normal(im)
+            cbar.set_label('Surface brightness [Jy/beam]', size=15)
+
+            if save:
+                plt.savefig('subims/'+str(k)+save, dpi=250, bbox_inches="tight")
+                plt.close()
+
+            else:
+                plt.show()
+
+    def compare_lotss(self, regionfile, cmap='CMRmap', save=None, beamsize=None, vmin=None, vmax=None, colorbar=None):
+
+        hdu2 = fits.open('../fits/lotss.fits')
+        image_data2 = hdu2[0].data[0][0]
+        wcs2 = WCS(hdu2[0].header, naxis=2)
+
+        if vmin is None:
+            vmin = self.rms
+        else:
+            vmin = vmin
+        if vmax is None:
+            vmax = self.rms*25
+
+        r = pyregion.open(regionfile).as_imagecoord(header=self.hdu[0].header)
+
+        r2 = pyregion.open(regionfile).as_imagecoord(header=hdu2[0].header)
+
+        fig = plt.figure(figsize=(9, 15))
+        fig.subplots_adjust(hspace=0.2, wspace=0.4)
+
+        for k, shape in enumerate(r):
+
+            s = np.array(shape.coord_list)
+            s2 = np.array(r2[k].coord_list)
+
+            out = Cutout2D(
+                data=self.image_data,
+                position=(s[0], s[1]),
+                size=(s[3], s[2]),
+                wcs=self.wcs,
+                mode='partial'
+            )
+
+            out2 = Cutout2D(
+                data=image_data2,
+                position=(s2[0], s2[1]),
+                size=(s2[3], s2[2]),
+                wcs=wcs2,
+                mode='partial'
+            )
+
+            norm = PowerNorm(vmin=vmin, vmax=vmax, gamma=1/2)
+
+            fig, axes = plt.subplots(figsize=(10, 10), nrows=1, ncols=2, subplot_kw={'projection': out.wcs},
+                                     sharey='all')
+            fig.subplots_adjust(hspace=0.2, wspace=0.4)
+            axes[0].imshow(out.data,
+                           norm=norm,
+                           origin='lower',
+                           cmap='cubehelix_r')
+            axes[0].set_xlabel('Galactic Longitude', size=15)
+            axes[0].set_ylabel('Galactic Latitude', size=15)
+            axes[0].tick_params(axis='both', which='major', labelsize=12)
+            axes[0].grid(False)
+            im = axes[1].imshow(out2.data,
+                                norm=norm,
+                                origin='lower',
+                                cmap='cubehelix_r')
+            axes[1].set_xlabel('Galactic Longitude', size=15)
+            axes[1].tick_params(axis='both', which='major', labelsize=12)
+            axes[1].set_yticks([])
+            axes[1].set_ylabel(' ')
+            axes[1].yaxis.set_visible(False)
+            axes[1].grid(False)
+
+            if colorbar:
+
+                cbar = fig.colorbar(im, ax=axes, orientation='horizontal', shrink=1, ticks=[1e-4, 1e-3])
+                cbar.ax.tick_params(labelsize=15)
+                cbar.set_label('Surface brightness [Jy/beam]', size=15)
+                # cbar.locator = LogLocator()
+                cbar.formatter = LogFormatter()
+                cbar.update_normal(im)
+
+            # figure, ax = plt.subplots(figsize=(7, 10), dpi=200)
+            # plt.subplot(projection=out.wcs)
+            # im = plt.imshow(out.data, origin='lower', cmap=cmap)
+            # im.set_norm()
+            # plt.xlabel('Galactic Longitude', size=15)
+            # plt.ylabel('Galactic Latitude', size=15)
+            # plt.tick_params(axis='both', which='major', labelsize=12)
+            # plt.grid(False)
+            # cbar = plt.colorbar(orientation='horizontal', shrink=1, ticks=[7e-4, 1e-3])
+            # # cbar.ax.set_xscale('log')
+
+            # cbar.set_label('Surface brightness [Jy/beam]', size=15)
+
+            if save:
+                plt.savefig('subims/'+str(k)+save, dpi=250, bbox_inches="tight")
+                plt.close()
+
+            else:
+                plt.show()
+
 
     def make_subcontour(self, regionfile, save=None, fits_lowres=None, beamsize=None):
 
@@ -1147,7 +1301,7 @@ class Imaging:
                     data_error.append(xr_err)
                 else:
                     im_mask = im_mask[im_mask != 0]
-                    data.append(np.median(im_mask))
+                    data.append(np.mean(im_mask))
                     data_error.append(np.std(im_mask))
             arr = np.array(data)
             arr_err = np.array(data_error)
@@ -1195,13 +1349,13 @@ class Imaging:
                         #     im_mask = im_mask_old
                         else:
                             im_mask = im_mask[im_mask != 0]
-                            datatotal[N].append((structure.replace('box(', '').split(',')[0:2], np.median(im_mask), np.std(im_mask)))
+                            datatotal[N].append((structure.replace('box(', '').split(',')[0:2], np.mean(im_mask), np.std(im_mask)))
                         regionoutput+='\n'+structure
 
             arr = np.array([[d[1] for d in data] for data in datatotal])
             arr_err = np.array([[d[2] for d in data] for data in datatotal])
             arr[np.isnan(arr)]=0
-            arr[arr==0]=np.median(arr)
+            arr[arr==0]=np.mean(arr)
             arr_err[arr_err==0]=np.mean(arr_err)
             arr_err[np.isnan(arr)]=np.mean(arr_err)
             if savenumpy:
@@ -1312,16 +1466,30 @@ class Imaging:
 
 if __name__ == '__main__':
 
+    #lotss
+    # Image = Imaging('../fits/lotss.fits', resolution=6)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(3400, 3400))
+    # Image.make_image(convolve=True)
+    # Image.make_multip_cuts(regionfile='../regions/lotsscomp.reg', save='lotsscut.png', beamsize=True, vmin=2*7.8e-05, vmax=20*7.8e-05)
+    #, vmin=7.8e-05, vmax=20*7.8e-05
+    # Image.make_image(vmin=0.00005, show_regions='../regions.reg', save='lotsscut.png', subim=True, colorbar=True)
+
     #6"
-    Image = Imaging('../fits/6all.fits', resolution=6)
+    # Image = Imaging('../fits/6all.fits', resolution=6)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(3400, 3400))
+    # Image.make_image(convolve=5)
+
+    # Image.compare_lotss(regionfile='../regions/lotsscomp.reg', save='comparebar.png', beamsize=True, vmin=7.8e-05, vmax=25*7.8e-05, colorbar=True)
+    # Image.compare_lotss(regionfile='../regions/lotsscomp.reg', save='compare.png', beamsize=True, vmin=7.8e-05, vmax=25 * 7.8e-05)
+
     # Image.make_image()
     # Image.ptp(pixelsize=70, savenumpy='radio3d_6.npy', savefig='radio3d_6.png')
     # Image.do_science(region='../regions/bridge.reg')
     # Image.make_image(show_regions='../boxlayout.reg', vmin=0.00005, save='layout.png', colorbar=False, beam=False, give_scale=True)
     # Image.make_image(show_regions='../tessupdate.reg', vmin=0.00005, save='tess.png', colorbar=False, beam=False, give_scale=False)
-    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(3400, 3400))
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(3400, 3400))
     # Image.make_subimages(regionfile='../regions.reg', save='6cutouts.png', beamsize=True)
-    Image.make_image(vmin=0.00005, show_regions='../regions.reg', save='subimagelayout.png', subim=True, colorbar=True)
+    # Image.make_image(show_regions='../regions.reg', save='subimagelayout.png', subim=True, colorbar=True, convolve=2)
     # Image.make_subcontour('../regions.reg', save='6subimages.png', fits_lowres='../fits/60all.fits', beamsize=True)
     # Image = Imaging('../fits/6all.fits', resolution=6)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
@@ -1332,10 +1500,10 @@ if __name__ == '__main__':
 
     #20"
     # Image = Imaging('../fits/20all.fits', resolution=20)
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    # Image.source_subtract(50, open=True)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1700, 1700))
+    # Image.make_image(save='20image.png', text=True)
+    # Image.rudnickfilter(50, open=True)
     # Image.make_image()
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.make_image(show_grid=True, save='grids.png')
     # Image.make_image(convolve=True, save='test20.png', text=True)
     # Image.ptp(pixelsize=35, savenumpy='radio3d_20.npy', savefig='radio3d_20.png')
@@ -1345,13 +1513,15 @@ if __name__ == '__main__':
     # Image.make_subcontour('../regions.reg', save='20subimages.png', fits_lowres='../fits/80all.fits', beamsize=False)
 
     # Image.make_image(save='20image.png', vmin=0.0001)
-    # Image.remove_compactsources(kernelsize=70, write='../fits/20median.fits')
+    # Image.rudnickfilter(70, open=True, write='../fits/20rudnick.fits')
+    # Image.medianfilter(kpc_scale=70, write='../fits/20median.fits')
     # Image.make_image()
 
     #20" median (will be substitute with bridge? for correlating)
-    # Image = Imaging('../fits/20median.fits', resolution=20)
+    Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    # Image.make_image(show_grid=True, save='grids.png', vmin=0.0003)
+    # Image.medianfilter(kpc_scale=50, write='../fits/60medianrudnick.fits')
+    # Image.make_image()
     # Image.analyse_corr(A1758=True)
     # Image.make_image(save='justbridge.png', text=True)
 
@@ -1362,22 +1532,22 @@ if __name__ == '__main__':
     # Image.analyse_corr(savefig='bridgecorr.png')
 
     #BRIDGE 2
-    # Image.ptp(savenumpy='bridgegridradio.npy', grid='bridge')
-    # Image.ptp(savenumpy='bridgegridy.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='bridge')
-    # Image.ptp(savenumpy='bridgegridxray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='bridge')
-    # Image.analyse_corr(grid='bridgegrid', savefig='bridgecorr.png')
+    Image.ptp(savenumpy='bridgegridradio.npy', grid='bridge')
+    Image.ptp(savenumpy='bridgegridy.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='bridge')
+    Image.ptp(savenumpy='bridgegridxray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='bridge')
+    Image.analyse_corr(grid='bridgegrid', savefig='bridgecorr.png')
 
     #HALO A399
-    # Image.ptp(savenumpy='a399radio.npy', grid='A399')
-    # Image.ptp(savenumpy='a399y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A399')
-    # Image.ptp(savenumpy='a399xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A399')
-    # Image.analyse_corr(grid='A399', savefig='A399corr.png')
+    Image.ptp(savenumpy='a399radio.npy', grid='A399')
+    Image.ptp(savenumpy='a399y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A399')
+    Image.ptp(savenumpy='a399xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A399')
+    Image.analyse_corr(grid='A399', savefig='A399corr.png')
 
     #HALO A401
-    # Image.ptp(savenumpy='a401radio.npy', grid='A401')
-    # Image.ptp(savenumpy='a401y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A401')
-    # Image.ptp(savenumpy='a401xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A401')
-    # Image.analyse_corr(grid='A401', savefig='A401corr.png')
+    Image.ptp(savenumpy='a401radio.npy', grid='A401')
+    Image.ptp(savenumpy='a401y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A401')
+    Image.ptp(savenumpy='a401xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A401')
+    Image.analyse_corr(grid='A401', savefig='A401corr.png')
 
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.make_bridge_overlay_yxr_contourplot(fits2='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', fits1='../fits/mosaic_a399_a401.fits',
@@ -1395,7 +1565,7 @@ if __name__ == '__main__':
     #60"
     # Image = Imaging('../fits/60all.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
-    # Image.source_subtract(100, open=True)
+    # Image.rudnickfilter(100, open=True)
     # Image.ptp(savenumpy='bridgegridradio.npy', grid='bridge')
     # Image.ptp(savenumpy='bridgegridy.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='bridge')
     # Image.ptp(savenumpy='bridgegridxray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='bridge')
@@ -1404,9 +1574,9 @@ if __name__ == '__main__':
     # Image.ptp(savenumpy='y.npy', savefig='y3d.png', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', maskregion='../regions/excluderegions60.reg')
     # Image.ptp(savenumpy='xray.npy', savefig='xray3d.png', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, maskregion='../regions/excluderegions60.reg')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
-    # Image.make_image(vmin=0.002, vmax=0.03, show_regions='../regions/bridgebroken.reg', save='bridgebroken.png', text=True)
+    # Image.make_image(vmin=0.002, vmax=0.03, show_regions='../regions/bridgebroken.reg', save='bridgebroken.png')
     # Image.make_contourplot(regions='../regions.reg')
-    # Image.remove_compactsources(kernelsize=51, write='../fits/60median.fits')
+    # Image.medianfilter(kernelsize=51, write='../fits/60median.fits')
     # Image.make_image()
 
     #60median
