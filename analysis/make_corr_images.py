@@ -57,7 +57,7 @@ def calc_beamarea(hdu):
 
     return beamarea_pix
 
-f1 = fits.open('fits/20median.fits')
+f1 = fits.open('fits/60rudnick.fits')
 wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
@@ -68,7 +68,7 @@ f = fits.open(args.filein)
 header = f[0].header
 t = f[1].data
 
-t = t[(t['radio1_sb']>rms*3)]
+t = t[(t['radio1_sb']>3*rms)]
 
 # print(t['xray_sb_err']/t['xray_sb'])
 # print(t['radio1_sb_err']/t['radio1_sb'])

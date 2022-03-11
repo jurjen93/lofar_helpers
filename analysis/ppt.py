@@ -269,13 +269,13 @@ def calc_sum_pix(hduflat, xaf_region, cellsize,
 
     xaf_mask = add_mask(hduflat, xaf_region, flat_it=False)
     xaf_sum = np.sum(hduflat.data[np.where(xaf_mask == True)])
-    xaf_median = np.median(hduflat.data[np.where(xaf_mask == True)])
+    xaf_mean = np.mean(hduflat.data[np.where(xaf_mask == True)])
     xaf_Npix = np.count_nonzero(hduflat.data[np.where(xaf_mask == True)])
 
     if reproj_corr_factor != 1.0:
         xaf_sum = xaf_sum * reproj_corr_factor
 
-    return xaf_sum, xaf_Npix, xaf_median
+    return xaf_sum, xaf_Npix, xaf_mean
 
 
 def make_alpha_map(hduflat, xaf_region, value):
@@ -526,7 +526,7 @@ for xaf_region in xaf_region_list:
                                           reproj_corr_factor=xray_reproj_corr_factor)
     xbkg_sum, xbkg_Npix, _ = calc_sum_pix(xbkg_reproj_hduflat, xaf_region, cellsize,
                                           reproj_corr_factor=xray_reproj_corr_factor)
-    xexp_sum, xexp_Npix, xexp_median = calc_sum_pix(xexp_reproj_hduflat, xaf_region, cellsize,
+    xexp_sum, xexp_Npix, xexp_mean = calc_sum_pix(xexp_reproj_hduflat, xaf_region, cellsize,
                                                   reproj_corr_factor=xray_reproj_corr_factor)
     xray_net_count = (xsou_sum - xbkg_sum)
 
@@ -548,15 +548,15 @@ for xaf_region in xaf_region_list:
         xray_sb = np.nan
         xray_sb_err = np.nan
     else:
-        xray_count_rate = (xsou_sum - xbkg_sum) / xexp_median
-        xray_count_rate_err = np.sqrt(xsou_sum + xbkg_sum) / xexp_median
+        xray_count_rate = (xsou_sum - xbkg_sum) / xexp_mean
+        xray_count_rate_err = np.sqrt(xsou_sum + xbkg_sum) / xexp_mean
         xray_sb = xray_count_rate / ((cellsize * cellsize) * xray_reproj_pixscale * xray_reproj_pixscale)
         xray_sb_err = xray_count_rate_err / ((cellsize * cellsize) * xray_reproj_pixscale * xray_pixscale)
 
 
     print('Doing y-map (SZ-effect)')
     #Ymap
-    y_sum, y_Npix, y_median = calc_sum_pix(y_reproj_hduflat, xaf_region, cellsize,
+    y_sum, y_Npix, y_mean = calc_sum_pix(y_reproj_hduflat, xaf_region, cellsize,
                                           reproj_corr_factor=y_reproj_corr_factor)
     if y_Npix / (cellsize * cellsize) != 1:
         print('Removing region {}: it contains pixels with zero value'.format(xaf_region))

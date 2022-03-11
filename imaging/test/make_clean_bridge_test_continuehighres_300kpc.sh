@@ -7,7 +7,7 @@ SING_IMAGE_P2=/net/lofar1/data1/sweijen/software/LOFAR/singularity/lofar_sksp_fe
 
 TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_300kpc
 FROM=/net/rijn5/data2/jurjendejong/A399_extracted_avg
-H5=all_directions0_freqav2.h5
+H5=all_directions0.h5
 MS=Abell399-401_extr.dysco.sub.shift.avg.weights.ms.archive0.avg.goodtimes
 TESS=tessupdate.reg
 NAME=image_test_A399_cleanbridge
