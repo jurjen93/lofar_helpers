@@ -1520,7 +1520,7 @@ if __name__ == '__main__':
     # Image.make_image()
 
     #20" median (will be substitute with bridge? for correlating)
-    Image = Imaging('../fits/60cleanbridge_500kpc.fits', resolution=60)
+    Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.medianfilter(kpc_scale=280, write='../fits/60mediancleanbridge.fits')
     Image.rudnickfilter(kpc_scale=70, open=True)
@@ -1530,20 +1530,20 @@ if __name__ == '__main__':
 
     #BRIDGE
     Image.ptp(savenumpy='bridgegridradio.npy', grid='bridge')
-    Image.ptp(savenumpy='bridgegridy.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='bridge')
-    Image.ptp(savenumpy='bridgegridxray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='bridge')
+    # Image.ptp(savenumpy='bridgegridy.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='bridge')
+    Image.ptp(savenumpy='bridgegridxray.npy', fitsfile='../fits/xray.fits', xray=True, grid='bridge')
     Image.analyse_corr(grid='bridgegrid', savefig='bridgecorr.png')
     #
     # #HALO A399
     Image.ptp(savenumpy='a399radio.npy', grid='A399')
-    Image.ptp(savenumpy='a399y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A399')
-    Image.ptp(savenumpy='a399xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A399')
+    # Image.ptp(savenumpy='a399y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A399')
+    Image.ptp(savenumpy='a399xray.npy', fitsfile='../fits/xray.fits', xray=True, grid='A399')
     Image.analyse_corr(grid='A399', savefig='A399corr.png')
     #
     # #HALO A401
     Image.ptp(savenumpy='a401radio.npy', grid='A401')
-    Image.ptp(savenumpy='a401y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A401')
-    Image.ptp(savenumpy='a401xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A401')
+    # Image.ptp(savenumpy='a401y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A401')
+    Image.ptp(savenumpy='a401xray.npy', fitsfile='../fits/xray.fits', xray=True, grid='A401')
     Image.analyse_corr(grid='A401', savefig='A401corr.png')
 
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))

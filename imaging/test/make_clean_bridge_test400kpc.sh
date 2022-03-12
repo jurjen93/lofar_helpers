@@ -118,6 +118,8 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 
 cp -r ${TO}_backup ${TO} && wait
 
+cd ${TO}
+
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
 wsclean \
