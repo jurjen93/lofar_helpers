@@ -57,7 +57,7 @@ def calc_beamarea(hdu):
 
     return beamarea_pix
 
-f1 = fits.open('fits/60rudnick.fits')
+f1 = fits.open('fits/60cleanbridgerudnick.fits')
 wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
@@ -98,11 +98,11 @@ y = np.power(t['y_sb'], 2)
 
 radio_err = t['radio1_sb_err']
 xray_err = t['xray_sb_err']
-y_err = 2*np.sqrt(y)*t['y_sb_err']
+y_err = 2*np.sqrt(y)*t['y_sb_err']/35
 
 radio_err/=np.mean(radio)
-xray_err/=np.mean(xray)/6
-y_err/=np.mean(y)*31
+xray_err/=np.mean(xray)
+y_err/=np.mean(y)
 
 radio/=np.mean(radio)
 xray/=np.mean(xray)
