@@ -13,110 +13,110 @@ TESS=tessupdate.reg
 NAME=image_test_A399_cleanbridge
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
+#
+##copy files
+#mkdir -p ${TO}
+#cp ${FROM}/${H5} ${TO} && wait
+#cp -r ${FROM}/${MS} ${TO} && wait
+#
+##aoflagger
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} \
+#aoflagger ${TO}/${MS} && wait
+#
+#cd ${TO}
+#
+##make tesselation
+#singularity exec -B ${SING_BIND} ${SING_IMAGE} \
+#python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
+#--h5 ${TO}/${H5} \
+#--DS9regionout ${TO}/${TESS} \
+#--imsize 6000 \
+#--ms ${TO}/${MS}
+#
+## make first image
+#singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
+#-use-wgridder \
+#-no-update-model-required \
+#-reorder \
+#-weight briggs \
+#-0.5 \
+#-weighting-rank-filter 3 \
+#-clean-border 1 \
+#-parallel-reordering 5 \
+#-padding 1.2 \
+#-auto-mask 2.5 \
+#-auto-threshold 0.5 \
+#-pol i \
+#-niter 150000 \
+#-mgain 0.7 \
+#-fit-beam \
+#-multiscale \
+#-channels-out 6 \
+#-fit-spectral-pol 3 \
+#-join-channels \
+#-log-time \
+#-parallel-deconvolution 1600 \
+#-parallel-gridding 5 \
+#-facet-regions ${TESS} \
+#-apply-facet-solutions ${H5} amplitude000,phase000 \
+#-name ${NAME}_compact \
+#-size 6000 6000 \
+#-scale 1.5arcsec \
+#-nmiter 7 \
+#-minuv-l 707.0 \
+#${MS}
+#
+##mask compact objects
+#singularity exec -B ${SING_BIND} ${SING_IMAGE_P2} \
+#python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyModel/MakeMask.py \
+#--Th=3.0 \
+#--RestoredIm=${NAME}_compact-MFS-image.fits
+#
+#singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
+#-use-wgridder \
+#-no-update-model-required \
+#-reorder \
+#-weight briggs \
+#-0.5 \
+#-weighting-rank-filter 3 \
+#-clean-border 1 \
+#-parallel-reordering 5 \
+#-padding 1.2 \
+#-fits-mask ${NAME}_compact-MFS-image.fits.mask.fits \
+#-pol i \
+#-niter 150000 \
+#-mgain 0.7 \
+#-fit-beam \
+#-multiscale \
+#-channels-out 6 \
+#-fit-spectral-pol 3 \
+#-join-channels \
+#-log-time \
+#-parallel-deconvolution 1600 \
+#-parallel-gridding 5 \
+#-facet-regions ${TESS} \
+#-apply-facet-solutions ${H5} amplitude000,phase000 \
+#-name ${NAME}_compactmask \
+#-size 6000 6000 \
+#-scale 1.5arcsec \
+#-nmiter 8 \
+#-minuv-l 707.0 \
+#${MS}
+#
+#rm -rf ${NAME}_compactmask-0000-model.fits
+#rm -rf ${NAME}_compactmask-0001-model.fits
+#rm -rf ${NAME}_compactmask-0002-model.fits
+#rm -rf ${NAME}_compactmask-0003-model.fits
+#rm -rf ${NAME}_compactmask-0004-model.fits
+#rm -rf ${NAME}_compactmask-0005-model.fits
+#mv ${NAME}_compactmask-0000-model-pb.fits ${NAME}_compactmask-0000-model.fits
+#mv ${NAME}_compactmask-0001-model-pb.fits ${NAME}_compactmask-0001-model.fits
+#mv ${NAME}_compactmask-0002-model-pb.fits ${NAME}_compactmask-0002-model.fits
+#mv ${NAME}_compactmask-0003-model-pb.fits ${NAME}_compactmask-0003-model.fits
+#mv ${NAME}_compactmask-0004-model-pb.fits ${NAME}_compactmask-0004-model.fits
+#mv ${NAME}_compactmask-0005-model-pb.fits ${NAME}_compactmask-0005-model.fits
 
-#copy files
-mkdir -p ${TO}
-cp ${FROM}/${H5} ${TO} && wait
-cp -r ${FROM}/${MS} ${TO} && wait
-
-#aoflagger
-singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-aoflagger ${TO}/${MS} && wait
-
-cd ${TO}
-
-#make tesselation
-singularity exec -B ${SING_BIND} ${SING_IMAGE} \
-python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/ds9facetgenerator.py \
---h5 ${TO}/${H5} \
---DS9regionout ${TO}/${TESS} \
---imsize 6000 \
---ms ${TO}/${MS}
-
-# make first image
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
--use-wgridder \
--no-update-model-required \
--reorder \
--weight briggs \
--0.5 \
--weighting-rank-filter 3 \
--clean-border 1 \
--parallel-reordering 5 \
--padding 1.2 \
--auto-mask 2.5 \
--auto-threshold 0.5 \
--pol i \
--niter 150000 \
--mgain 0.7 \
--fit-beam \
--multiscale \
--channels-out 6 \
--fit-spectral-pol 3 \
--join-channels \
--log-time \
--parallel-deconvolution 1600 \
--parallel-gridding 5 \
--facet-regions ${TESS} \
--apply-facet-solutions ${H5} amplitude000,phase000 \
--name ${NAME}_compact \
--size 6000 6000 \
--scale 1.5arcsec \
--nmiter 7 \
--minuv-l 707.0 \
-${MS}
-
-#mask compact objects
-singularity exec -B ${SING_BIND} ${SING_IMAGE_P2} \
-python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyModel/MakeMask.py \
---Th=3.0 \
---RestoredIm=${NAME}_compact-MFS-image.fits
-
-singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
--use-wgridder \
--no-update-model-required \
--reorder \
--weight briggs \
--0.5 \
--weighting-rank-filter 3 \
--clean-border 1 \
--parallel-reordering 5 \
--padding 1.2 \
--fits-mask ${NAME}_compact-MFS-image.fits.mask.fits \
--pol i \
--niter 150000 \
--mgain 0.7 \
--fit-beam \
--multiscale \
--channels-out 6 \
--fit-spectral-pol 3 \
--join-channels \
--log-time \
--parallel-deconvolution 1600 \
--parallel-gridding 5 \
--facet-regions ${TESS} \
--apply-facet-solutions ${H5} amplitude000,phase000 \
--name ${NAME}_compactmask \
--size 6000 6000 \
--scale 1.5arcsec \
--nmiter 8 \
--minuv-l 707.0 \
-${MS}
-
-rm -rf ${NAME}_compactmask-0000-model.fits
-rm -rf ${NAME}_compactmask-0001-model.fits
-rm -rf ${NAME}_compactmask-0002-model.fits
-rm -rf ${NAME}_compactmask-0003-model.fits
-rm -rf ${NAME}_compactmask-0004-model.fits
-rm -rf ${NAME}_compactmask-0005-model.fits
-mv ${NAME}_compactmask-0000-model-pb.fits ${NAME}_compactmask-0000-model.fits
-mv ${NAME}_compactmask-0001-model-pb.fits ${NAME}_compactmask-0001-model.fits
-mv ${NAME}_compactmask-0002-model-pb.fits ${NAME}_compactmask-0002-model.fits
-mv ${NAME}_compactmask-0003-model-pb.fits ${NAME}_compactmask-0003-model.fits
-mv ${NAME}_compactmask-0004-model-pb.fits ${NAME}_compactmask-0004-model.fits
-mv ${NAME}_compactmask-0005-model-pb.fits ${NAME}_compactmask-0005-model.fits
-
-cp -r ${TO} ${TO}_backup && wait
+cp -r ${TO}_backup ${TO} && wait
 
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
