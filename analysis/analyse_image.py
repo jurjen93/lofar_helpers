@@ -1148,7 +1148,7 @@ class Imaging:
             y = y.flatten()
 
 
-        msk = ((xray>0) & (radio>self.rms*3) & (xray_err/xray<1) & (radio_err/radio<1) & (radio<self.rms*15))
+        msk = (radio>self.rms*3)
 
         radio=radio[msk]
         radio_err=radio_err[msk]
@@ -1206,7 +1206,7 @@ class Imaging:
         # ax.set_ylim(-0.3, 0.45)
         ax.set_ylabel('log($I_{R}$) [SB/mean(SB)]')
         # ax.set_xlabel('X-ray [SB/mean(SB)]')
-        ax.set_xlabel('log($I_{X}$) [SB/mean(SB)] and log($y^{2}$) [SZ/mean(SZ)]')
+        ax.set_xlabel('log($I_{X}$) [SB/mean(SB)] and log($I_{SZ}^{2}$) [SZ/mean(SZ)]')
         ax.legend(['Radio vs. X-ray', 'Radio vs. SZ'], loc='upper left')
         ax.plot(fity[0], fity[1], color='darkblue', linestyle='--')
         ax.plot(fitxray[0], fitxray[1], color='darkred', linestyle='--')
@@ -1266,14 +1266,16 @@ class Imaging:
 
         if grid:
 
-            region = open('../ptp_dir/'+grid+'/grid_35x35_ds9_image.reg', 'r').read()
-            print(f'Cell size is {self.pix_to_size(0.072)*35} X {self.pix_to_size(0.072)*35}')
-            print(f'Cell size is {35*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))} X {35*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))}')
+            gridsize=17
+
+            region = open('../ptp_dir/'+grid+f'/grid_{gridsize}x{gridsize}_ds9_image.reg', 'r').read()
+            print(f'Cell size is {self.pix_to_size(0.072)*gridsize} X {self.pix_to_size(0.072)*gridsize}')
+            print(f'Cell size is {gridsize*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))} X {gridsize*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))}')
             region = region.split('\n')
             region_head = region[0:2]
             structures = region[3:]
 
-            f = fits.open(f'../ptp_dir/'+grid+'/grid_35x35_results.fits')
+            f = fits.open(f'../ptp_dir/'+grid+f'/grid_{gridsize}x{gridsize}_results.fits')
             t = f[1].data
             t = t[(t['xray_sb'] > 0) & (t['radio1_sb'] > 0) & (t['xray_sb_err'] > 0) & (t['radio1_sb_err'] > 0)]
 
@@ -1518,32 +1520,27 @@ if __name__ == '__main__':
     # Image.make_image()
 
     #20" median (will be substitute with bridge? for correlating)
-    Image = Imaging('../fits/60rudnick.fits', resolution=60)
+    Image = Imaging('../fits/60cleanbridge_500kpc.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    # Image.medianfilter(kpc_scale=50, write='../fits/60medianrudnick.fits')
+    # Image.medianfilter(kpc_scale=280, write='../fits/60mediancleanbridge.fits')
+    Image.rudnickfilter(kpc_scale=70, open=True)
     # Image.make_image()
     # Image.analyse_corr(A1758=True)
     # Image.make_image(save='justbridge.png', text=True)
 
-    #BRIDGE 1
-    # Image.ptp(pixelsize=70, savenumpy='radio3d.npy', savefig='radio3d.png')
-    # Image.ptp(pixelsize=70, savenumpy='y.npy', savefig='y3d.png', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits')
-    # Image.ptp(pixelsize=70, savenumpy='xray.npy', savefig='xray3d.png', fitsfile='../fits/mosaic_a399_a401.fits', xray=True)
-    # Image.analyse_corr(savefig='bridgecorr.png')
-
-    #BRIDGE 2
+    #BRIDGE
     Image.ptp(savenumpy='bridgegridradio.npy', grid='bridge')
     Image.ptp(savenumpy='bridgegridy.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='bridge')
     Image.ptp(savenumpy='bridgegridxray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='bridge')
     Image.analyse_corr(grid='bridgegrid', savefig='bridgecorr.png')
-
-    #HALO A399
+    #
+    # #HALO A399
     Image.ptp(savenumpy='a399radio.npy', grid='A399')
     Image.ptp(savenumpy='a399y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A399')
     Image.ptp(savenumpy='a399xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A399')
     Image.analyse_corr(grid='A399', savefig='A399corr.png')
-
-    #HALO A401
+    #
+    # #HALO A401
     Image.ptp(savenumpy='a401radio.npy', grid='A401')
     Image.ptp(savenumpy='a401y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A401')
     Image.ptp(savenumpy='a401xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A401')
