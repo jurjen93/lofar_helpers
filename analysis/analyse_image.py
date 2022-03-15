@@ -25,6 +25,7 @@ import warnings
 import scipy.ndimage as sn
 from scipy.stats.stats import pearsonr, spearmanr, linregress
 from scipy.optimize import curve_fit
+from scipy import stats
 
 warnings.filterwarnings('ignore')
 plt.style.use('ggplot')
@@ -124,7 +125,7 @@ class Imaging:
 
     def medianfilter(self, kpc_scale=None, write=None):
         kernelsize = int(kpc_scale / (1000 * self.pix_to_size(0.072).value))
-        print("Apply median kernel")
+        print(f"Apply median kernel with size {kernelsize}x{kernelsize}")
         self.image_data = sn.median_filter(self.image_data, kernelsize)
         if write:
             self.hdu[0].data = np.expand_dims(np.expand_dims(self.image_data, axis=0), axis=0)
@@ -133,6 +134,7 @@ class Imaging:
             except:
                 self.hdu.writeto(write, overwrite=True)
             print('Saved: '+write)
+        self.rms = self.noise
         return self
 
     def rudnickfilter(self, kpc_scale=None, write=None, open=None):
@@ -165,10 +167,11 @@ class Imaging:
             except:
                 self.hdu.writeto(write, overwrite=True)
             print('Saved: '+write)
+        self.rms = self.noise
         return self
 
     def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None,
-                   colorbar=True, save=None, text=None, subim=None, beam=True, give_scale=True, convolve=None, show_grid=None):
+                   colorbar=True, save=None, text=None, subim=None, beam=True, give_scale=True, convolve=None, show_grid=None, ticks=None):
         """
         Image your data with this method.
         image_data -> insert your image_data or plot full image
@@ -186,6 +189,8 @@ class Imaging:
 
         if wcs is None:
             wcs = self.wcs
+
+        print(vmin, vmax)
 
         if convolve:
             image_data = self.convolve_image(image_data, convolve)
@@ -223,7 +228,7 @@ class Imaging:
             fig = plt.figure(figsize=(7, 10), dpi=200)
             plt.subplot(projection=wcs)
             WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
-            for area in [('A399', 'lightgreen'), ('A401', 'lightgreen'), ('bridge', 'forestgreen')]:
+            for area in [('A399', 'orangered'), ('A401', 'orangered'), ('bridge', 'firebrick')]:
 
                 def colorr(shape, saved_attrs):
                     attr_list, attr_dict = saved_attrs
@@ -232,11 +237,17 @@ class Imaging:
 
                     return kwargs
 
-                r = pyregion.open(f'../ptp_dir/{area[0]}/grid_35x35_ds9_image.reg').as_imagecoord(header=self.hdu[0].header)
+                if 'rudnick' in self.fitsfile:
+                    ext = 'rudnick'
+                elif 'cleanbridge' in self.fitsfile:
+                    ext = 'cb'
+                else:
+                    ext = 'cb'
+                r = pyregion.open(f'../regions/grid{area[0]}_{ext}.reg').as_imagecoord(header=self.hdu[0].header)
                 patch_list, artist_list = r.get_mpl_patches_texts(colorr)
 
                 for n, patch in enumerate(patch_list):
-                    f = fits.open(f'../ptp_dir/{area[0]}/grid_35x35_results.fits')
+                    f = fits.open(f'../analysis/{area[0]}_results_{ext}.fits')
                     t = f[1].data
                     t = t[(t['xray_sb'] > 0) & (t['radio1_sb'] > 0) & (t['xray_sb_err'] > 0) & (t['radio1_sb_err'] > 0)]
                     if n in [int(l.replace('xaf_','')) for l in list(t['region_name'])]:
@@ -248,20 +259,32 @@ class Imaging:
         im = plt.imshow(image_data, origin='lower', cmap=cmap)
         if self.resolution>6:
             # im.set_norm(SymLogNorm(linthresh=vmin*10, vmin=vmin, vmax=vmax, base=10))
-            im.set_norm(PowerNorm(vmin=vmin, vmax=vmax, gamma=2/3))
+            if cmap=='Blues':
+                im.set_norm(SymLogNorm(linthresh = self.rms * 2, vmin = self.rms, vmax = self.rms * 15, base = 10))
+            else:
+                im.set_norm(PowerNorm(vmin=vmin, vmax=vmax, gamma=2 / 3))
+
         else:
             # im.set_norm(SymLogNorm(linthresh=vmin*10, vmin=vmin, vmax=vmax, base=10))
             im.set_norm(PowerNorm(vmin=vmin, vmax=vmax, gamma=1/2))
+            if cmap=='Blues':
+                im.set_norm(SymLogNorm(linthresh = self.rms * 2, vmin = self.rms, vmax = self.rms * 15, base = 10))
+            else:
+                im.set_norm(PowerNorm(vmin=vmin, vmax=vmax, gamma=1 / 2))
+
         plt.xlabel('Galactic Longitude', size=15)
         plt.ylabel('Galactic Latitude', size=15)
         plt.tick_params(axis='both', which='major', labelsize=12)
         if colorbar:
-            cbar = plt.colorbar(orientation='horizontal', shrink=1)
+            if ticks:
+                cbar = plt.colorbar(orientation='horizontal', shrink=1, ticks=ticks)
+            else:
+                cbar = plt.colorbar(orientation='horizontal', shrink=1)
             # cbar.ax.set_xscale('log')
-            cbar.locator = LogLocator()
+            # cbar.locator = LogLocator()
+            cbar.set_label('Surface brightness [Jy/beam]', size=15)
             cbar.formatter = LogFormatter()
             cbar.update_normal(im)
-            cbar.set_label('Surface brightness [Jy/beam]', size=15)
         if text:
             if self.resolution==60:
                 plt.text(3450/4 - (6000/4-image_data.shape[0])/2, 2450/4 - (6000/4-image_data.shape[1])/2, 'A399', color='pink', fontsize=14)
@@ -671,11 +694,11 @@ class Imaging:
     def pix_to_size(self, z):
         return abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(z)
 
-    def do_science(self, region=None):
+    def do_science(self, region=None, results=None):
 
         z=0.072
 
-        t = fits.open('../regions/ptp_dir/grid_13x13/grid_13x13_results.fits')[1].data
+        t = fits.open(results)[1].data
         t = t[(t['xray_sb'] > 0)
               & (t['radio1_sb'] > 0)
               & (t['xray_sb_err'] > 0)
@@ -685,7 +708,8 @@ class Imaging:
         av_sb_arcsec = np.mean(t['radio1_sb'])*u.Jy/(u.arcsec)**2
         err_sb = np.std(t['radio1_fluxdensity'])*u.Jy/u.beam # 1*sigma of every area element
         err_sb_arcsec = np.std(t['radio1_sb'])*u.Jy/(u.arcsec)**2
-        bridge_area = 1.3*3*(u.Mpc**2) # from govoni et al
+        # bridge_area = 1.3*3*(u.Mpc**2) # from govoni et al
+        bridge_area = len(t)*(u.Mpc)**2*(105/(self.header['CDELT1']*u.deg).to(u.arcsec).value * (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value)**2
         N_pixels_bridge = int(bridge_area/(self.pix_to_size(0.072)**2))
         integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
         # integr_sb = 822
@@ -694,6 +718,7 @@ class Imaging:
                 (1.5 * u.arcsec.to(u.rad)) ** 2)).to(u.W/u.Hz)
 
         print(f'# of pixels: {N_pixels_bridge}')
+        print(f'Bridge area: {bridge_area}')
         print(f'Average surface brightness: {av_sb} $\pm$ {err_sb}')
         print(f'Average surface brightness: {av_sb_arcsec} $\pm$ {err_sb_arcsec}')
         flux_density_err = N_pixels_bridge*err_sb_arcsec*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))**2
@@ -704,33 +729,33 @@ class Imaging:
         volume = (bridge_area*12.1*u.Mpc)
         print(f'Emissivity is {(L/(volume)).to(u.erg/(u.s*u.cm*u.cm*u.cm*u.Hz))} $\pm$ {(radiopower_err/(volume)).to(u.erg/(u.s*u.cm*u.cm*u.cm*u.Hz))}')
 
-        if 'bridge' in region:
-            r = pyregion.open(region).as_imagecoord(header=self.hdu[0].header)
-            mask = r.get_mask(hdu=self.hdu[0], shape=self.image_data.shape)
-            image_data = np.where(mask, self.image_data, 0)
-            image_data = image_data[image_data!=0]
-            N_pixels_bridge = len(image_data)
-            av_sb = np.median(image_data) * u.Jy/u.beam # average surface brigthness
-            av_sb_arcsec = av_sb*u.beam / self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
-            err_sb = np.std(image_data)*u.Jy/u.beam # 1*sigma of every area element
-            err_sb_arcsec = np.std(image_data)*u.Jy/self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
-            bridge_area = N_pixels_bridge * self.pix_to_size(0.072)**2 # from govoni et al
-            integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
-
-            L=(integr_sb* self.pix_to_size(z)**2 * 4 * np.pi * (1 + z) ** (0.7 - 1) * (1 + z) ** 4 / (
-                    (1.5 * u.arcsec.to(u.rad)) ** 2)).to(u.W/u.Hz)
-            print(f'Bridge area: {bridge_area}')
-            print(f'# of pixels: {N_pixels_bridge}')
-            print(f'Average surface brightness: {av_sb} $\pm$ {err_sb}')
-            print(f'Average surface brightness: {av_sb_arcsec} $\pm$ {err_sb_arcsec}')
-            flux_density_err = N_pixels_bridge * err_sb_arcsec * abs((self.header["CDELT2"] * u.deg).to(u.arcsec)) ** 2
-            print(f'Total flux density is: {integr_sb} $\pm$ {flux_density_err}')
-            radiopower_err = (flux_density_err * self.pix_to_size(z) ** 2 * 4 * np.pi * (1 + z) ** (0.7 - 1) * (
-                        1 + z) ** 4 / ((1.5 * u.arcsec.to(u.rad)) ** 2)).to(u.W / u.Hz)
-            print(f'Radio power {L} $\pm$ {radiopower_err}')
-            # volume = (1.3/2)**2*np.pi*3*(u.Mpc**3)
-            volume = (bridge_area * 12.1 * u.Mpc)
-            print(f'Emissivity is {(L / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))} $\pm$ {(radiopower_err / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))}')
+        # if 'bridge' in region:
+        #     r = pyregion.open(region).as_imagecoord(header=self.hdu[0].header)
+        #     mask = r.get_mask(hdu=self.hdu[0], shape=self.image_data.shape)
+        #     image_data = np.where(mask, self.image_data, 0)
+        #     image_data = image_data[image_data!=0]
+        #     N_pixels_bridge = len(image_data)
+        #     av_sb = np.median(image_data) * u.Jy/u.beam # average surface brigthness
+        #     av_sb_arcsec = av_sb*u.beam / self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
+        #     err_sb = np.std(image_data)*u.Jy/u.beam # 1*sigma of every area element
+        #     err_sb_arcsec = np.std(image_data)*u.Jy/self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
+        #     bridge_area = N_pixels_bridge * self.pix_to_size(0.072)**2 # from govoni et al
+        #     integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
+        #
+        #     L=(integr_sb* self.pix_to_size(z)**2 * 4 * np.pi * (1 + z) ** (0.7 - 1) * (1 + z) ** 4 / (
+        #             (1.5 * u.arcsec.to(u.rad)) ** 2)).to(u.W/u.Hz)
+        #     print(f'\nBridge area: {bridge_area}')
+        #     print(f'# of pixels: {N_pixels_bridge}')
+        #     print(f'Average surface brightness: {av_sb} $\pm$ {err_sb}')
+        #     print(f'Average surface brightness: {av_sb_arcsec} $\pm$ {err_sb_arcsec}')
+        #     flux_density_err = N_pixels_bridge * err_sb_arcsec * abs((self.header["CDELT2"] * u.deg).to(u.arcsec)) ** 2
+        #     print(f'Total flux density is: {integr_sb} $\pm$ {flux_density_err}')
+        #     radiopower_err = (flux_density_err * self.pix_to_size(z) ** 2 * 4 * np.pi * (1 + z) ** (0.7 - 1) * (
+        #                 1 + z) ** 4 / ((1.5 * u.arcsec.to(u.rad)) ** 2)).to(u.W / u.Hz)
+        #     print(f'Radio power {L} $\pm$ {radiopower_err}')
+        #     # volume = (1.3/2)**2*np.pi*3*(u.Mpc**3)
+        #     volume = (bridge_area * 12.1 * u.Mpc)
+        #     print(f'Emissivity is {(L / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))} $\pm$ {(radiopower_err / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))}')
 
     def convolve_image(self, image_data=None, sigma=None):
         # gauss_kernel = Gaussian2DKernel(sigma)
@@ -878,16 +903,16 @@ class Imaging:
 
         return (data - data_bkg)/data_exp
 
-    def make_bridge_overlay_yxr_contourplot(self, fits1, fits2, save=None, beamsize=True, show_regions=None):
+    def make_bridge_overlay_yxr_contourplot(self, fits1, fits2=None, save=None, beamsize=True, show_regions=None):
 
         self.reproject_map(fits1, 'fits1.fits')
-        self.reproject_map(fits2, 'fits2.fits')
+        # self.reproject_map(fits2, 'fits2.fits')
 
 
         hdu1 = fits.open('fits1.fits')
         image_data1 = self.get_xray(fits1, reproject=True)
-        hdu2 = fits.open('fits2.fits')
-        image_data2 = hdu2[0].data
+        # hdu2 = fits.open('fits2.fits')
+        # image_data2 = hdu2[0].data
 
         while len(image_data1.shape) != 2:
             image_data1 = image_data1[0]
@@ -897,10 +922,10 @@ class Imaging:
         # plt.imshow(image_data1, norm = LogNorm(vmin=self.get_noise(image_data1), vmax=self.get_noise(image_data1)*10))
         # plt.savefig('xray.png')
         wcs_1 = WCS(hdu1[0].header)
-        while len(image_data2.shape) != 2:
-            image_data2 = image_data2[0]
-        image_data2 = self.convolve_image(image_data2, 30)
-        wcs_2 = WCS(hdu2[0].header)
+        # while len(image_data2.shape) != 2:
+        #     image_data2 = image_data2[0]
+        # image_data2 = self.convolve_image(image_data2, 30)
+        # wcs_2 = WCS(hdu2[0].header)
 
 
         plt.figure(figsize=(7, 10))
@@ -934,15 +959,17 @@ class Imaging:
             levels_2.append(levels_2[-1]*np.sqrt(2))
 
         plt.contour(image_data1, levels_1, colors=('red'), linestyles=('-'), linewidths=(2,))
-        plt.contour(image_data2, levels_2, colors=('orange'), linestyles=('-'), linewidths=(2,))
+        # plt.contour(image_data2, levels_2, colors=('orange'), linestyles=('-'), linewidths=(2,))
 
 
-        norm = SymLogNorm(linthresh=self.rms*2, vmin=self.rms, vmax=self.rms*10, base=10)
+        norm = SymLogNorm(linthresh=self.rms*2, vmin=self.rms, vmax=self.rms*15, base=10)
+        # norm = PowerNorm(vmin=self.rms, vmax=self.rms*15, gamma=1/2)
         plt.imshow(self.image_data, cmap='Blues', norm=norm)
         # plt.contourf(self.image_data, levels, cmap='Blues', norm=norm)
-        ticks = [self.rms*2, self.rms*6, self.rms*10]
+        ticks = [2e-3, 1e-2]
         cbar = plt.colorbar(orientation='horizontal', shrink=1, ticks=ticks)
         cbar.set_label('Surface brightness  [Jy/beam]')
+        cbar.formatter = LogFormatter()
         # cbar.ax.set_xscale('log')
         plt.xlabel('Right Ascension (J2000)')
         plt.ylabel('Declination (J2000)')
@@ -1053,6 +1080,58 @@ class Imaging:
 
     def analyse_corr(self, savefig=None, grid=None, A1758=False):
 
+        def pearsonr_ci(x, y, alpha=0.05):
+            ''' calculate Pearson correlation along with the confidence interval using scipy and numpy
+            Parameters
+            ----------
+            x, y : iterable object such as a list or np.array
+              Input for correlation calculation
+            alpha : float
+              Significance level. 0.05 by default
+            Returns
+            -------
+            r : float
+              Pearson's correlation coefficient
+            pval : float
+              The corresponding p value
+            lo, hi : float
+              The lower and upper bound of confidence intervals
+            '''
+
+            r, p = pearsonr(x, y)
+            r_z = np.arctanh(r)
+            se = 1 / np.sqrt(x.size - 3)
+            z = stats.norm.ppf(1 - alpha / 2)
+            lo_z, hi_z = r_z - z * se, r_z + z * se
+            lo, hi = np.tanh((lo_z, hi_z))
+            return r, p, lo, hi
+
+        def spearmanr_ci(x, y, alpha=0.05):
+            ''' calculate Spearman correlation along with the confidence interval using scipy and numpy
+            Parameters
+            ----------
+            x, y : iterable object such as a list or np.array
+              Input for correlation calculation
+            alpha : float
+              Significance level. 0.05 by default
+            Returns
+            -------
+            r : float
+              Spearman's correlation coefficient
+            pval : float
+              The corresponding p value
+            lo, hi : float
+              The lower and upper bound of confidence intervals
+            '''
+
+            r, p = spearmanr(x, y)
+            r_z = np.arctanh(r)
+            se = 1 / np.sqrt(x.size - 3)
+            z = stats.norm.ppf(1 - alpha / 2)
+            lo_z, hi_z = r_z - z * se, r_z + z * se
+            lo, hi = np.tanh((lo_z, hi_z))
+            return r, p, lo, hi
+
         def objective(x, a, b):
             return a * x + b
 
@@ -1067,14 +1146,17 @@ class Imaging:
         def linreg(x, y):
             res = linregress(x, y)
             print(f'Slope is {res.slope} +- {res.stderr}')
+            print(f'Based on {len(x)} elements')
             return res.slope, res.stderr
 
         if grid:
             radio = np.load(grid.lower()+'radio.npy')
+            radio2 = np.load(grid.lower()+'radio2.npy')
             y = np.power(np.load(grid.lower()+'y.npy'), 2)
             xray = np.load(grid.lower()+'xray.npy')
 
             radio_err = np.load(grid.lower()+'radio_err.npy')
+            radio2_err = np.load(grid.lower()+'radio2_err.npy')
             y_err = 2*np.sqrt(y)*np.load(grid.lower()+'y_err.npy')
             xray_err = np.load(grid.lower()+'xray_err.npy')
 
@@ -1089,8 +1171,8 @@ class Imaging:
             print('radio vs. xray')
             slopex, errx = linreg(np.log10(xray), np.log10(radio))
             fitxray = fit(np.log10(xray), np.log10(radio))
-            print('Pearson R (x-ray vs radio): ' + str(pearsonr(np.log(xray), np.log(radio))))
-            print('Spearman R (x-ray vs radio): ' + str(spearmanr(np.log(xray), np.log(radio))))
+            print('Pearson R (x-ray vs radio): ' + str(pearsonr_ci(np.log(xray), np.log(radio))))
+            print('Spearman R (x-ray vs radio): ' + str(spearmanr_ci(np.log(xray), np.log(radio))))
 
             fig, ax = plt.subplots(constrained_layout=True)
             ax.errorbar(np.log10(xray), np.log10(radio), xerr=(0.434 * xray_err / xray),
@@ -1147,45 +1229,56 @@ class Imaging:
             xray = xray.flatten()
             y = y.flatten()
 
-
         msk = (radio>self.rms*3)
 
         radio=radio[msk]
         radio_err=radio_err[msk]
-        y=y[msk]
-        y_err=y_err[msk]
+        # y=y[msk]
+        # y_err=y_err[msk]
         xray=xray[msk]
         xray_err=xray_err[msk]
 
+
         radio_err[np.isnan(radio_err)] = 0
+        radio2_err[np.isnan(radio2_err)] = 0
         xray_err[np.isnan(xray_err)] = 0
         y_err[np.isnan(y_err)] = 0
 
         print('Lin reg before dividing by mean:')
 
         linreg(np.log10(xray), np.log10(radio))
-        linreg(np.log10(y), np.log10(radio))
-        print(np.mean(radio), np.mean(xray))
+        linreg(np.log10(y), np.log10(radio2))
 
         radio_err/=np.mean(radio)
         radio/=np.mean(radio)
+        radio2_err/=np.mean(radio2)
+        radio2/=np.mean(radio2)
         y_err/=np.mean(y)
         y/=np.mean(y)
         xray_err/=np.mean(xray)
         xray/=np.mean(xray)
+
+        mask = 0.434 * xray_err / xray < 0.5
+        radio = radio[mask]
+        xray = xray[mask]
+        # y = y[mask]
+        radio_err = radio_err[mask]
+        xray_err = xray_err[mask]
+        # y_err = y_err[mask]
+
         print('radio vs. xray')
         slopex, errx = linreg(np.log10(xray), np.log10(radio))
         fitxray = fit(np.log10(xray), np.log10(radio))
         print('radio vs y')
-        slopey, erry =linreg(np.log10(y), np.log10(radio))
-        fity = fit(np.log10(y), np.log10(radio))
+        slopey, erry =linreg(np.log10(y), np.log10(radio2))
+        fity = fit(np.log10(y), np.log10(radio2))
 
 
         print('Pearson R (x-ray vs radio): ' + str(pearsonr(np.log(xray), np.log(radio))))
-        print('Pearson R (ymap vs radio): ' + str(pearsonr(np.log(radio), np.log(y))))
+        print('Pearson R (ymap vs radio): ' + str(pearsonr(np.log(radio2), np.log(y))))
 
         print('Spearman R (x-ray vs radio): ' + str(spearmanr(np.log(xray), np.log(radio))))
-        print('Spearman R (ymap vs radio): ' + str(spearmanr(np.log(radio), np.log(y))))
+        print('Spearman R (ymap vs radio): ' + str(spearmanr(np.log(radio2), np.log(y))))
 
         fig, ax = plt.subplots(constrained_layout=True)
         ax.errorbar(np.log10(xray), np.log10(radio), xerr=(0.434 * xray_err / xray),
@@ -1194,13 +1287,17 @@ class Imaging:
 
         plt.grid(False)
         # ax2 = ax.twiny()
-        ax.errorbar(np.log10(y), np.log10(radio), xerr=(0.434 * y_err / y),
-                     yerr=0.434 * radio_err / radio, fmt='.', ecolor='blue', elinewidth=0.4,
+        ax.errorbar(np.log10(y), np.log10(radio2), xerr=(0.434 * y_err / y),
+                     yerr=0.434 * radio2_err / radio2, fmt='.', ecolor='blue', elinewidth=0.4,
                      color='darkblue')
-        ax.set_ylim(np.min([np.min(np.log10(radio) - (0.434 * radio_err / radio)), np.min(np.log10(radio) - (0.434 * radio_err / radio))])-0.05,
-                     np.max([np.max(np.log10(radio) + (0.434 * radio_err / radio)),np.max(np.log10(radio) + (0.434 * radio_err / radio))])+0.05)
-        ax.set_xlim(np.min([np.min(np.log10(y) - (y_err / y)),np.min(np.log10(xray) - (xray_err / xray))])-0.05,
-                     np.max([np.max(np.log10(y) + (y_err / y)),np.max(np.log10(xray) + (xray_err / xray))])+0.05)
+        ax.set_ylim(np.min([np.min(np.log10(radio) - (0.434 * radio_err / radio)),
+                            np.min(np.log10(radio) - (0.434 * radio_err / radio))]) - 0.1,
+                    np.max([np.max(np.log10(radio) + (0.434 * radio_err / radio)),
+                            np.max(np.log10(radio) + (0.434 * radio_err / radio))]) + 0.1)
+        ax.set_xlim(np.min([np.min(np.log10(y) - (0.434 * y_err / y)),
+                            np.min(np.log10(xray) - (0.434 * xray_err / xray))]) - 0.1,
+                    np.max([np.max(np.log10(y) + (0.434 * y_err / y)),
+                            np.max(np.log10(xray) + (0.434 * xray_err / xray))]) + 0.1)
         # ax.plot(fitline[0], fitline[1], color='darkslateblue', linestyle='--')
         # ax.set_xlim(-1, 1)
         # ax.set_ylim(-0.3, 0.45)
@@ -1215,7 +1312,7 @@ class Imaging:
         plt.grid(False)
         plt.savefig(savefig, bbox_inches='tight')
 
-    def ptp(self, pixelsize=None, dYpix=300, dXpix=210, start=(1495,1275), fitsfile=None, xray=None, savenumpy=None, savefig=None, maskregion=None, grid=None):
+    def ptp(self, pixelsize=None, dYpix=300, dXpix=210, start=(1495,1275), fitsfile=None, y=None, xray=None, savenumpy=None, savefig=None, maskregion=None, grid=None):
 
         if pixelsize is None:
             pixelsize = 4*int(np.sqrt(self.beamarea/np.pi))
@@ -1266,26 +1363,37 @@ class Imaging:
 
         if grid:
 
-            gridsize=17
+            if y:
+                region = open(f'../regions/{grid.lower()}5arcmin.reg').read()
+                region = region.split('\n')
+                region_head = region[0:2]
+                structures = region[3:]
 
-            region = open('../ptp_dir/'+grid+f'/grid_{gridsize}x{gridsize}_ds9_image.reg', 'r').read()
-            print(f'Cell size is {self.pix_to_size(0.072)*gridsize} X {self.pix_to_size(0.072)*gridsize}')
-            print(f'Cell size is {gridsize*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))} X {gridsize*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))}')
-            region = region.split('\n')
-            region_head = region[0:2]
-            structures = region[3:]
+            else:
 
-            f = fits.open(f'../ptp_dir/'+grid+f'/grid_{gridsize}x{gridsize}_results.fits')
-            t = f[1].data
-            t = t[(t['xray_sb'] > 0) & (t['radio1_sb'] > 0) & (t['xray_sb_err'] > 0) & (t['radio1_sb_err'] > 0)]
+                gridsize=11
 
-            indices = [int(i[0].replace('xaf_','')) for i in t]
+                region = open('../regions/'+grid+f'6arc.reg', 'r').read()
+                print(f'Cell size is {self.pix_to_size(0.072)*gridsize} X {self.pix_to_size(0.072)*gridsize}')
+                print(f'Cell size is {gridsize*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))} X {gridsize*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))}')
+                region = region.split('\n')
+                region_head = region[0:2]
+                structures = region[3:]
+
+                f = fits.open(f'../ptp_dir/'+grid+f'/grid_{gridsize}x{gridsize}_results.fits')
+                t = f[1].data
+                t = t[(t['xray_sb'] > 0) & (t['radio1_sb'] > 0) & (t['xray_sb_err'] > 0) & (t['radio1_sb_err'] > 0)]
+
+                indices = [int(i[0].replace('xaf_','')) for i in t]
 
             data = []
             data_error = []
             for n, structure in enumerate(structures):
-                if (not 'box' in structure) or (n not in indices):
+                if (not 'box' in structure):
                     continue
+                if not y:
+                     if n not in indices:
+                        continue
                 r = pyregion.parse('\n'.join(region_head + [structure])).as_imagecoord(header=hdu[0].header)
                 mask = r.get_mask(hdu=hdu[0], shape=image_data.shape)
                 im_mask = image_data[
@@ -1417,10 +1525,10 @@ class Imaging:
         header = out.wcs.to_header()
         for key in list(header.keys()):
             self.header[key] = header[key]
-            if 'BMAJ' not in list(header.keys()):
-                self.header['BMAJ'] = .00292636961915446
-                self.header['BMIN'] = .00164009373956384
-                self.header['CRVAL3'] = 143650817.871094
+            # if 'BMAJ' not in list(header.keys()):
+            #     self.header['BMAJ'] = .00292636961915446
+            #     self.header['BMIN'] = .00164009373956384
+            #     self.header['CRVAL3'] = 143650817.871094
         self.image_data = out.data
         self.rms = self.noise
         self.hdu = [fits.PrimaryHDU(self.image_data, header=self.header)]
@@ -1519,36 +1627,50 @@ if __name__ == '__main__':
     # Image.medianfilter(kpc_scale=70, write='../fits/20median.fits')
     # Image.make_image()
 
-    #20" median (will be substitute with bridge? for correlating)
-    Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    # Image.medianfilter(kpc_scale=280, write='../fits/60mediancleanbridge.fits')
-    Image.rudnickfilter(kpc_scale=70, open=True)
+    #BRIDGE ANALYSIS
+    # Image = Imaging('../fits/20all.fits', resolution=20)
+    # Image.rudnickfilter(kpc_scale=60, open=True, write='../fits/20rudnick.fits')
     # Image.make_image()
+
+
+
+    Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
+    Image.do_science(region='../regions/bridge.reg', results='bridge_results_cb.fits')
+    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    # Image.medianfilter(kpc_scale=200)
+    # Image.rudnickfilter(kpc_scale=100, open=True, write='../fits/20rudnick.fits')
+    # Image.make_image(show_grid=True, save='60cleanbridge_grid.png', ticks=[1e-3, 2e-2, 1e-1], cmap='Blues')
     # Image.analyse_corr(A1758=True)
     # Image.make_image(save='justbridge.png', text=True)
 
-    #BRIDGE
-    Image.ptp(savenumpy='bridgegridradio.npy', grid='bridge')
-    # Image.ptp(savenumpy='bridgegridy.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='bridge')
-    Image.ptp(savenumpy='bridgegridxray.npy', fitsfile='../fits/xray.fits', xray=True, grid='bridge')
-    Image.analyse_corr(grid='bridgegrid', savefig='bridgecorr.png')
-    #
-    # #HALO A399
-    Image.ptp(savenumpy='a399radio.npy', grid='A399')
-    # Image.ptp(savenumpy='a399y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A399')
-    Image.ptp(savenumpy='a399xray.npy', fitsfile='../fits/xray.fits', xray=True, grid='A399')
-    Image.analyse_corr(grid='A399', savefig='A399corr.png')
-    #
-    # #HALO A401
-    Image.ptp(savenumpy='a401radio.npy', grid='A401')
-    # Image.ptp(savenumpy='a401y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A401')
-    Image.ptp(savenumpy='a401xray.npy', fitsfile='../fits/xray.fits', xray=True, grid='A401')
-    Image.analyse_corr(grid='A401', savefig='A401corr.png')
-
+    # Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    # Image.make_bridge_overlay_yxr_contourplot(fits2='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', fits1='../fits/mosaic_a399_a401.fits',
-    #                                           save='ymapxray.png')
+    # Image.make_image(show_grid=True, save='60rudnick_grid.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1], cmap='Blues')
+
+    #BRIDGE
+    # Image.ptp(savenumpy='bridgeradio.npy', grid='bridge')
+    # Image.ptp(savenumpy='bridgeradio2.npy', grid='bridge', y=True)
+    # Image.ptp(savenumpy='bridgey.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='bridge', y=True)
+    # Image.ptp(savenumpy='bridgexray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='bridge')
+    # Image.analyse_corr(grid='bridge', savefig='bridgecorr.png')
+
+    #HALO A399
+    # Image.ptp(savenumpy='a399radio.npy', grid='A399')
+    # Image.ptp(savenumpy='a399radio2.npy', grid='A399', y=True)
+    # Image.ptp(savenumpy='a399y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A399', y=True)
+    # Image.ptp(savenumpy='a399xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A399')
+    # Image.analyse_corr(grid='A399', savefig='A399corr.png')
+
+    #HALO A401
+    # Image.ptp(savenumpy='a401radio.npy', grid='A401')
+    # Image.ptp(savenumpy='a401radio2.npy', grid='A401', y=True)
+    # Image.ptp(savenumpy='a401y.npy', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', grid='A401', y=True)
+    # Image.ptp(savenumpy='a401xray.npy', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, grid='A401')
+    # Image.analyse_corr(grid='A401', savefig='A401corr.png')
+
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    Image.make_bridge_overlay_yxr_contourplot(fits1='../fits/mosaic_a399_a401.fits',
+                                              save='ymapxray.png')
 
     # Image.do_science(region='../regions/bridge.reg')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(1500, 1500))

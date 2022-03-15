@@ -12,6 +12,7 @@ SING_IMAGE_WSCLEAN=/net/lofar1/data1/sweijen/software/LOFAR/singularity/test/idg
 TO=/net/${HOSTNAME%%.*}/data2/jurjendejong/Abell399-401_cleanbridge_all_300kpc
 FROM=/net/rijn5/data2/jurjendejong/A399_extracted_avg
 TESS=tessupdate.reg
+NAME=final_image_A399
 
 #check if directory exists
 if [[ -f ${TO} ]]
