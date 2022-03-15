@@ -40,8 +40,8 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 #  singularity exec -B ${SING_BIND} ${SING_IMAGE} aoflagger ${TO}/${M}
 #done
 
-cd ${TO}
-
+#cd ${TO}
+echo ${TO}
 #make facet
 #cp ${FROM}/${TESS} ${TO} && wait
 #
