@@ -1204,7 +1204,10 @@ class MergeH5:
                     all_antennas = [a for a in unique(append(ms_antennas, h5_antennas), axis=0) if a[0] != 'ST001']
                     if sys.version_info.major == 3:
                         antennas_new = [all_antennas[[a[0].decode('utf8') for a in all_antennas].index(a)] for a in new_antlist] # sorting
+
                     else:
+                        print(all_antennas)
+                        print(new_antlist)
                         antennas_new = [all_antennas[[a[0] for a in all_antennas].index(a)] for a in
                                         new_antlist]
                     # if len(new_antlist)!=len(antennas_new):
