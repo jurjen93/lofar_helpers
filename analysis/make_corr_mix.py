@@ -9,6 +9,9 @@ import astropy.units as u
 from astropy.wcs import WCS
 from scipy import stats
 import argparse
+from astropy.modeling import models, fitting
+
+np.random.seed(10)
 
 parser = argparse.ArgumentParser(
     description='Perform point-to-point analysis (radio/X or radio/radio/X) and save the results in a fits table. If (i) the X-ray counts < 0, (ii) the cell is not totally inside the X-ray FoV, and (ii) the radio flux density is < 0, it saves NaNs.')
@@ -55,27 +58,6 @@ def calc_beamarea(hdu):
     beamarea_pix = beamarea / pixarea
 
     return beamarea_pix
-
-f1 = fits.open('fits/60rudnick.fits')
-wcs =WCS(f1[0].header, naxis=2)
-header = wcs.to_header()
-rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
-f1.close()
-f = fits.open(f'analysis/{obj}_results_rudnick.fits')
-header = f[0].header
-t1 = f[1].data
-t1 = t1[(t1['radio1_sb']>2*rms)]
-
-f1 = fits.open('fits/60cleanbridge_200kpc.fits')
-wcs =WCS(f1[0].header, naxis=2)
-header = wcs.to_header()
-rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
-f1.close()
-f = fits.open(f'analysis/{obj}_results_cb.fits')
-header = f[0].header
-t2 = f[1].data
-t2 = t2[(t2['radio1_sb']>2*rms)]
-
 
 def pearsonr_ci(x,y,alpha=0.05):
     ''' calculate Pearson correlation along with the confidence interval using scipy and numpy
@@ -133,15 +115,47 @@ def spearmanr_ci(x,y,alpha=0.05):
 # print(t['radio1_sb_err']/t['radio1_sb'])
 # print(t['y_sb_err']/t['y_sb'])
 
-def objective(x, a, b):
+def wlinear_fit(x,y,w):
+    """
+    Fit (x,y,w) to a linear function, using exact formulae for weighted linear
+    regression. This code was translated from the GNU Scientific Library (GSL),
+    it is an exact copy of the function gsl_fit_wlinear.
+    """
+    # compute the weighted means and weighted deviations from the means
+    # wm denotes a "weighted mean", wm(f) = (sum_i w_i f_i) / (sum_i w_i)
+    W = np.sum(w)
+    wm_x = np.average(x,weights=w)
+    wm_y = np.average(y,weights=w)
+    dx = x-wm_x
+    dy = y-wm_y
+    wm_dx2 = np.average(dx**2,weights=w)
+    wm_dxdy = np.average(dx*dy,weights=w)
+    # In terms of y = a + b x
+    b = wm_dxdy / wm_dx2
+    a = wm_y - wm_x*b
+    cov_00 = (1.0/W) * (1.0 + wm_x**2/wm_dx2)
+    cov_11 = 1.0 / (W*wm_dx2)
+    cov_01 = -wm_x / (W*wm_dx2)
+    # Compute chi^2 = \sum w_i (y_i - (a + b * x_i))^2
+    chi2 = np.sum(((y-(a+b*x))**2)/(a+b*x))
+    return a,b,cov_00,cov_11,cov_01,chi2
+
+def linear(x, a, b):
     return a * x + b
 
-
-def fit(x, y):
-    popt, _ = curve_fit(objective, x, y)
+def linearfit(x, y):
+    popt, _ = curve_fit(linear, x, y)
     a, b = popt
     x_line = np.arange(min(x) - 10, max(x) + 10, 0.01)
-    y_line = objective(x_line, a, b)
+    y_line = linear(x_line, a, b)
+    print('y = %.5f * x + %.5f' % (a, b))
+    return x_line, y_line
+
+def linearfit_w(x, y, err):
+    popt = wlinear_fit(x, y, err)
+    a, b = popt[1], popt[0]
+    x_line = np.arange(min(x) - 10, max(x) + 10, 0.01)
+    y_line = linear(x_line, a, b)
     print('y = %.5f * x + %.5f' % (a, b))
     return x_line, y_line
 
@@ -150,6 +164,32 @@ def linreg(x, y):
     res = linregress(x, y)
     print(f'Slope is {res.slope} +- {res.stderr}')
     return res.slope, res.stderr
+
+def linreg_unc(x,y, y_err):
+    fit = fitting.LinearLSQFitter()
+    line_init = models.Linear1D()
+    fitted_line = fit(line_init, x, y, weights=1/y_err)
+    return fitted_line(x)
+
+f1 = fits.open('fits/60rudnick.fits')
+wcs =WCS(f1[0].header, naxis=2)
+header = wcs.to_header()
+rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
+f1.close()
+f = fits.open(f'analysis/{obj}_results_rudnick.fits')
+header = f[0].header
+t1 = f[1].data
+t1 = t1[(t1['radio1_sb']>2*rms)]
+
+f1 = fits.open('fits/60cleanbridge_200kpc.fits')
+wcs =WCS(f1[0].header, naxis=2)
+header = wcs.to_header()
+rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
+f1.close()
+f = fits.open(f'analysis/{obj}_results_cb.fits')
+header = f[0].header
+t2 = f[1].data
+t2 = t2[(t2['radio1_sb']>2*rms)]
 
 radio1 = t1['radio1_sb']
 xray1 = t1['xray_sb']
@@ -164,23 +204,22 @@ radio_err2 = t2['radio1_sb_err']
 xray_err2 = t2['xray_sb_err']
 
 print('Number of cells used: '+str(len(t1)))
-fitlinex1 = fit(np.log10(xray1), np.log10(radio1))
+fitlinex1 = linearfit_w(np.log10(xray1), np.log10(radio1), 0.434*radio_err1/radio1)
 slopex1, errx1 = linreg(np.log10(xray1), np.log10(radio1))
+
 pr = pearsonr_ci(np.log10(xray1), np.log10(radio1))
 sr = spearmanr_ci(np.log10(xray1), np.log10(radio1))
-print(pr)
 print(f'Pearson R (x-ray vs radio): {pr[0]} +- {pr[-1]-pr[0]}')
-print(sr)
 print(f'Spearman R (x-ray vs radio): {sr[0]} +- {sr[-1]-sr[0]}')
 
 print('Number of cells used: '+str(len(t2)))
-fitlinex2 = fit(np.log10(xray2), np.log10(radio2))
+fitlinex2 = linearfit_w(np.log10(xray2), np.log10(radio2), 0.434*radio_err2/radio2)
 slopex2, errx2 = linreg(np.log10(xray2), np.log10(radio2))
+print(wlinear_fit(np.log(xray1), np.log(radio1), 0.434*radio_err1/radio1))
+print(wlinear_fit(np.log(xray2), np.log(radio2), 0.434*radio_err2/radio2))
 pr = pearsonr_ci(np.log10(xray2), np.log10(radio2))
 sr = spearmanr_ci(np.log10(xray2), np.log10(radio2))
-print(pr)
 print(f'Pearson R (x-ray vs radio): {pr[0]} +- {pr[-1]-pr[0]}')
-print(sr)
 print(f'Spearman R (x-ray vs radio): {sr[0]} +- {sr[-1]-sr[0]}')
 
 
