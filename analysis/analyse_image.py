@@ -26,6 +26,9 @@ import scipy.ndimage as sn
 from scipy.stats.stats import pearsonr, spearmanr, linregress
 from scipy.optimize import curve_fit
 from scipy import stats
+from shapely.geometry import Polygon, Point
+from shapely.ops import cascaded_union
+from matplotlib.path import Path
 
 warnings.filterwarnings('ignore')
 plt.style.use('ggplot')
@@ -108,7 +111,6 @@ class Imaging:
 
                 return beamarea_pix
 
-
             bmaj = self.hdu[0].header['BMAJ']
             bmin = self.hdu[0].header['BMIN']
 
@@ -171,7 +173,8 @@ class Imaging:
         return self
 
     def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None,
-                   colorbar=True, save=None, text=None, subim=None, beam=True, give_scale=True, convolve=None, show_grid=None, ticks=None):
+                   colorbar=True, save=None, text=None, subim=None, beam=True, give_scale=True, convolve=None, show_grid=None, ticks=None,
+                   savefits=None):
         """
         Image your data with this method.
         image_data -> insert your image_data or plot full image
@@ -228,7 +231,11 @@ class Imaging:
             fig = plt.figure(figsize=(7, 10), dpi=200)
             plt.subplot(projection=wcs)
             WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
-            for area in [('A399', 'orangered'), ('A401', 'orangered'), ('bridge', 'firebrick')]:
+            if cmap=='Blues':
+                objts = [('A399', 'orangered'), ('A401', 'orangered'), ('bridge', 'firebrick')]
+            else:
+                objts = [('A399', 'lightcyan'), ('A401', 'lightcyan'), ('bridge', 'azure')]
+            for area in objts:
 
                 def colorr(shape, saved_attrs):
                     attr_list, attr_dict = saved_attrs
@@ -328,6 +335,12 @@ class Imaging:
             plt.gcf().gca().add_artist(circle)
 
         plt.grid(False)
+
+        if savefits:
+            self.header['CRVAL3'] = 143650817.871094
+            image_data = np.expand_dims(np.expand_dims(image_data, axis=0), axis=0)
+            fits.writeto(savefits, image_data, self.header, overwrite=True)
+
         if save:
             plt.savefig(save, dpi=250, bbox_inches="tight")
             plt.close()
@@ -694,68 +707,185 @@ class Imaging:
     def pix_to_size(self, z):
         return abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(z)
 
-    def do_science(self, region=None, results=None):
+    def make_polygon(self, points=None, subtract_points=None, sigma=None, sigma2=None, do_science=None, make_image=None, spectralindex=None, save=None, regionmask=None, size=None, make_cutout=True, savefits=None):
+        if not points:
+            sys.exit('Error: no point given in pix')
+
+        if not sigma:
+            sigma=5
+
+        mask = self.image_data*0
+
+        for point in points:
+            point = WCS(self.header).wcs_world2pix(point[0], point[1], 1)
+
+            cs = plt.contour(self.image_data, [self.rms*sigma], colors='white', linewidths=0.7)
+            plt.close()
+            cs_list = cs.collections[0].get_paths()
+            correct_cs = []
+            for cs in cs_list:
+                if len(cs) > 2:
+                    cs = cs.vertices
+                    if Polygon(cs).contains(Point(point[0], point[1])):
+                        correct_cs = cs
+
+            x, y = np.meshgrid(np.arange(self.image_data.shape[0]), np.arange(self.image_data.shape[1]))
+            x, y = x.flatten(), y.flatten()
+
+            points = np.vstack((x, y)).T
+
+            path = Path(correct_cs)
+            grid = path.contains_points(points).astype(int)
+            mask += grid.reshape(self.image_data.shape[0], self.image_data.shape[1])
+
+            if subtract_points:
+                for subtract_point in subtract_points:
+                    if not sigma2:
+                        sigma2=10
+                    subtract_point = WCS(self.header).wcs_world2pix(subtract_point[0], subtract_point[1], 1)
+                    cs = plt.contour(self.image_data, [self.rms * sigma2], colors='white', linewidths=0.7)
+                    plt.close()
+                    cs_list = cs.collections[0].get_paths()
+                    correct_cs = []
+                    for cs in cs_list:
+                        if len(cs) > 2:
+                            cs = cs.vertices
+                            if Polygon(cs).contains(Point(subtract_point[0], subtract_point[1])):
+                                correct_cs = cs
+
+                    x, y = np.meshgrid(np.arange(self.image_data.shape[0]), np.arange(self.image_data.shape[1]))
+                    x, y = x.flatten(), y.flatten()
+
+                    points = np.vstack((x, y)).T
+                    try:
+                        path = Path(correct_cs)
+                        grid = path.contains_points(points).reshape(self.image_data.shape[0], self.image_data.shape[1])
+                        mask -= grid.astype(int)
+                    except:
+                        pass
+
+        if regionmask:
+            r = pyregion.open(regionmask).as_imagecoord(header=self.hdu[0].header)
+            mask -= r.get_mask(hdu=self.hdu[0], shape=self.image_data.shape).astype(int)
+
+        image_data = np.where(mask>0, 1, 0)*self.image_data
+
+        if make_image:
+            rms = self.rms
+            if size is None:
+                size = (180, 180)
+            if make_cutout:
+                self.make_cutout(image_data=image_data, pos=(int(point[0]), int(point[1])), size=size)
+                self.make_image(vmin=rms, vmax=rms*25, save=save, beam=False, give_scale=False, savefits=savefits)
+            else:
+                self.make_image(image_data=image_data, vmin=rms, vmax=rms*25, save=save, beam=False, give_scale=False, savefits=savefits)
+
+        if do_science:
+            if spectralindex:
+                self.do_science(image_data=image_data, spectralindex=spectralindex)
+            else:
+                self.do_science(image_data=image_data)
+
+
+    def do_science(self, image_data=None, region='', results=None, spectralindex=1.5):
 
         z=0.072
 
-        t = fits.open(results)[1].data
-        t = t[(t['xray_sb'] > 0)
-              & (t['radio1_sb'] > 0)
-              & (t['xray_sb_err'] > 0)
-              & (t['radio1_sb_err'] > 0)]
+        def radiopower(fluxdensity):
+            return (fluxdensity * self.pix_to_size(z) ** 2 * 4 * np.pi * (1 + z) ** (spectralindex - 1) * (1 + z) ** 4 / (
+                    (abs(self.header['CDELT1']*3600) * u.arcsec.to(u.rad)) ** 2)).to(u.W / u.Hz)
 
-        av_sb = np.mean(t['radio1_fluxdensity'])*u.Jy/u.beam # average surface brigthness
-        av_sb_arcsec = np.mean(t['radio1_sb'])*u.Jy/(u.arcsec)**2
-        err_sb = np.std(t['radio1_fluxdensity'])*u.Jy/u.beam # 1*sigma of every area element
-        err_sb_arcsec = np.std(t['radio1_sb'])*u.Jy/(u.arcsec)**2
-        # bridge_area = 1.3*3*(u.Mpc**2) # from govoni et al
-        bridge_area = len(t)*(u.Mpc)**2*(105/(self.header['CDELT1']*u.deg).to(u.arcsec).value * (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value)**2
-        N_pixels_bridge = int(bridge_area/(self.pix_to_size(0.072)**2))
-        integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
-        # integr_sb = 822
+        if not image_data is None:
+            image_data = image_data[image_data!=0]
+            N_pixels_bridge = len(image_data)
+            av_sb = np.mean(image_data) * u.Jy/u.beam # average surface brigthness
+            av_sb_arcsec = av_sb*u.beam / self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)**2
+            err_sb = self.rms*u.Jy/u.beam # 1*sigma of every area element
+            err_sb_arcsec = self.rms*u.Jy/self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
+            bridge_area = N_pixels_bridge * self.pix_to_size(0.072)**2 # from govoni et al
+            integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
 
-        L=(integr_sb* self.pix_to_size(z)**2 * 4 * np.pi * (1 + z) ** (0.7 - 1) * (1 + z) ** 4 / (
-                (1.5 * u.arcsec.to(u.rad)) ** 2)).to(u.W/u.Hz)
+            L=radiopower(integr_sb)
 
-        print(f'# of pixels: {N_pixels_bridge}')
-        print(f'Bridge area: {bridge_area}')
-        print(f'Average surface brightness: {av_sb} $\pm$ {err_sb}')
-        print(f'Average surface brightness: {av_sb_arcsec} $\pm$ {err_sb_arcsec}')
-        flux_density_err = N_pixels_bridge*err_sb_arcsec*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))**2
-        print(f'Total flux density is: {integr_sb} $\pm$ {flux_density_err}')
-        radiopower_err = (flux_density_err*self.pix_to_size(z)**2 * 4 * np.pi * (1 + z) ** (0.7 - 1) * (1 + z) ** 4 / ((1.5 * u.arcsec.to(u.rad)) ** 2)).to(u.W/u.Hz)
-        print(f'Radio power {L} $\pm$ {radiopower_err}')
-        # volume = (1.3/2)**2*np.pi*3*(u.Mpc**3)
-        volume = (bridge_area*12.1*u.Mpc)
-        print(f'Emissivity is {(L/(volume)).to(u.erg/(u.s*u.cm*u.cm*u.cm*u.Hz))} $\pm$ {(radiopower_err/(volume)).to(u.erg/(u.s*u.cm*u.cm*u.cm*u.Hz))}')
+            print(f'\nArea: {bridge_area}, {len(image_data)*(self.header["CDELT1"]*u.deg).to(u.arcmin)**2}')
+            print(f'# of pixels: {N_pixels_bridge}')
+            print(f'Average surface brightness: {av_sb} $\pm$ {err_sb}')
+            print(f'Average surface brightness: {av_sb_arcsec} $\pm$ {err_sb_arcsec}')
+            flux_density_err = N_pixels_bridge * err_sb_arcsec * abs((self.header["CDELT2"] * u.deg).to(u.arcsec)) ** 2
+            print(f'Total flux density is: {integr_sb} $\pm$ {flux_density_err}')
+            radiopower_err = radiopower(flux_density_err)
 
-        # if 'bridge' in region:
-        #     r = pyregion.open(region).as_imagecoord(header=self.hdu[0].header)
-        #     mask = r.get_mask(hdu=self.hdu[0], shape=self.image_data.shape)
-        #     image_data = np.where(mask, self.image_data, 0)
-        #     image_data = image_data[image_data!=0]
-        #     N_pixels_bridge = len(image_data)
-        #     av_sb = np.median(image_data) * u.Jy/u.beam # average surface brigthness
-        #     av_sb_arcsec = av_sb*u.beam / self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
-        #     err_sb = np.std(image_data)*u.Jy/u.beam # 1*sigma of every area element
-        #     err_sb_arcsec = np.std(image_data)*u.Jy/self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
-        #     bridge_area = N_pixels_bridge * self.pix_to_size(0.072)**2 # from govoni et al
-        #     integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
-        #
-        #     L=(integr_sb* self.pix_to_size(z)**2 * 4 * np.pi * (1 + z) ** (0.7 - 1) * (1 + z) ** 4 / (
-        #             (1.5 * u.arcsec.to(u.rad)) ** 2)).to(u.W/u.Hz)
-        #     print(f'\nBridge area: {bridge_area}')
-        #     print(f'# of pixels: {N_pixels_bridge}')
-        #     print(f'Average surface brightness: {av_sb} $\pm$ {err_sb}')
-        #     print(f'Average surface brightness: {av_sb_arcsec} $\pm$ {err_sb_arcsec}')
-        #     flux_density_err = N_pixels_bridge * err_sb_arcsec * abs((self.header["CDELT2"] * u.deg).to(u.arcsec)) ** 2
-        #     print(f'Total flux density is: {integr_sb} $\pm$ {flux_density_err}')
-        #     radiopower_err = (flux_density_err * self.pix_to_size(z) ** 2 * 4 * np.pi * (1 + z) ** (0.7 - 1) * (
-        #                 1 + z) ** 4 / ((1.5 * u.arcsec.to(u.rad)) ** 2)).to(u.W / u.Hz)
-        #     print(f'Radio power {L} $\pm$ {radiopower_err}')
-        #     # volume = (1.3/2)**2*np.pi*3*(u.Mpc**3)
-        #     volume = (bridge_area * 12.1 * u.Mpc)
-        #     print(f'Emissivity is {(L / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))} $\pm$ {(radiopower_err / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))}')
+            print(f'Radio power {L} $\pm$ {radiopower_err}')
+            # volume = (1.3/2)**2*np.pi*3*(u.Mpc**3)
+            volume = (bridge_area * 12.1 * u.Mpc)
+            print(f'Emissivity is {(L / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))} $\pm$ {(radiopower_err / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))}')
+
+        if results:
+            print('\n' + results.split('_')[0])
+            t = fits.open(results)[1].data
+            t = t[(t['xray_sb'] > 0)
+                  & (t['radio1_sb']>0)
+                  & (t['xray_sb_err'] > 0)
+                  & (t['radio1_sb_err'] > 0)]
+
+            num_areas = len(t)
+
+            t = t[(t['radio1_fluxdensity']>2*self.rms)]
+
+
+            av_sb = np.mean(t['radio1_fluxdensity'])*u.Jy/u.beam # average surface brigthness
+            av_sb_arcsec = np.mean(t['radio1_sb'])*u.Jy/(u.arcsec)**2
+            err_sb = np.mean(t['radio1_fluxdensity_err'])*u.Jy/u.beam # 1*sigma of every area element
+            err_sb_arcsec = np.mean(t['radio1_sb_err'])*u.Jy/(u.arcsec)**2
+            # bridge_area = 1.3*3*(u.Mpc**2) # from govoni et al
+            bridge_area = num_areas*(u.Mpc)**2*(105/(self.header['CDELT1']*u.deg).to(u.arcsec).value * (abs((self.header['CDELT2'] * u.deg).to(u.rad).value) * self.cosmo.angular_diameter_distance(0.072)).value)**2
+            N_pixels_bridge = int(bridge_area/(self.pix_to_size(0.072)**2))
+            N_beams = N_pixels_bridge/self.beamarea
+            # integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
+            integr_sb = N_beams * av_sb.value * u.Jy
+
+            L = radiopower(integr_sb)
+
+            print(f'\n# of pixels: {N_pixels_bridge}')
+            print(f'Bridge area: {bridge_area} or {(105*u.arcsec).to(u.arcmin)**2*num_areas}')
+            print(f'Average surface brightness: {av_sb} $\pm$ {err_sb}')
+            print(f'Average surface brightness: {av_sb_arcsec} $\pm$ {err_sb_arcsec}')
+            flux_density_err = N_pixels_bridge*err_sb_arcsec*abs((self.header["CDELT2"] * u.deg).to(u.arcsec))**2
+            print(f'Total flux density is: {integr_sb} $\pm$ {flux_density_err}')
+            radiopower_err = radiopower(flux_density_err)
+            print(f'Radio power {L} $\pm$ {radiopower_err}')
+            # volume = (1.3/2)**2*np.pi*3*(u.Mpc**3)
+            volume = (bridge_area*12.1*u.Mpc)
+            print(f'Emissivity is {(L/(volume)).to(u.erg/(u.s*u.cm*u.cm*u.cm*u.Hz))} $\pm$ {(radiopower_err/(volume)).to(u.erg/(u.s*u.cm*u.cm*u.cm*u.Hz))}')
+
+        if 'bridge' in region:
+            r = pyregion.open(region).as_imagecoord(header=self.hdu[0].header)
+            mask = r.get_mask(hdu=self.hdu[0], shape=self.image_data.shape)
+            image_data = np.where(self.image_data<self.rms*5, self.image_data, 0)
+            self.make_image(image_data=image_data, colorbar=False, show_regions=region)
+            image_data = np.where(mask, image_data, 0)
+            image_data = image_data[image_data!=0]
+            N_pixels_bridge = len(image_data)
+            av_sb = np.mean(image_data) * u.Jy/u.beam # average surface brigthness
+            av_sb_arcsec = av_sb*u.beam / self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
+            err_sb = np.std(image_data)*u.Jy/u.beam # 1*sigma of every area element
+            err_sb_arcsec = np.std(image_data)*u.Jy/self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
+            bridge_area = N_pixels_bridge * self.pix_to_size(0.072)**2 # from govoni et al
+            integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
+
+            L=radiopower(integr_sb)
+            print(f'\nBridge area: {bridge_area}')
+            print(f'# of pixels: {N_pixels_bridge}')
+            print(f'Average surface brightness: {av_sb} $\pm$ {err_sb}')
+            print(f'Average surface brightness: {av_sb_arcsec} $\pm$ {err_sb_arcsec}')
+            flux_density_err = N_pixels_bridge * err_sb_arcsec * abs((self.header["CDELT2"] * u.deg).to(u.arcsec)) ** 2
+            print(f'Total flux density is: {integr_sb} $\pm$ {flux_density_err}')
+            radiopower_err = radiopower(flux_density_err)
+
+            print(f'Radio power {L} $\pm$ {radiopower_err}')
+            # volume = (1.3/2)**2*np.pi*3*(u.Mpc**3)
+            volume = (bridge_area * 12.1 * u.Mpc)
+            print(f'Emissivity is {(L / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))} $\pm$ {(radiopower_err / (volume)).to(u.erg / (u.s * u.cm * u.cm * u.cm * u.Hz))}')
 
     def convolve_image(self, image_data=None, sigma=None):
         # gauss_kernel = Gaussian2DKernel(sigma)
@@ -1507,14 +1637,17 @@ class Imaging:
             # plt.legend(['line '+str(i) for i in list(range(Nlines))])
             # plt.show()
 
-    def make_cutout(self, pos: tuple = None, size: tuple = (1000, 1000)):
+    def make_cutout(self, image_data=None, pos: tuple = None, size: tuple = (1000, 1000)):
         """
         Make cutout from your image with this method.
         pos (tuple) -> position in pixels
         size (tuple) -> size of your image in pixel size, default=(1000,1000)
         """
+        if image_data is None:
+            image_data = self.image_data
+
         out = Cutout2D(
-            data=self.image_data,
+            data=image_data,
             position=pos,
             size=size,
             wcs=self.wcs,
@@ -1525,10 +1658,14 @@ class Imaging:
         header = out.wcs.to_header()
         for key in list(header.keys()):
             self.header[key] = header[key]
-            # if 'BMAJ' not in list(header.keys()):
-            #     self.header['BMAJ'] = .00292636961915446
-            #     self.header['BMIN'] = .00164009373956384
-            #     self.header['CRVAL3'] = 143650817.871094
+        if 'BMAJ' not in list(header.keys()):
+            if self.resolution==60:
+                self.header['BMAJ'] = 0.0210939002735131
+                self.header['BMIN'] = 0.0202202375560568
+            else:
+                self.header['BMAJ'] = .00292636961915446
+                self.header['BMIN'] = .00164009373956384
+            # self.header['CRVAL3'] = 143650817.871094
         self.image_data = out.data
         self.rms = self.noise
         self.hdu = [fits.PrimaryHDU(self.image_data, header=self.header)]
@@ -1635,16 +1772,36 @@ if __name__ == '__main__':
 
 
     Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
-    Image.do_science(region='../regions/bridge.reg', results='bridge_results_cb.fits')
     Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    Image.make_polygon(points=[[44.75, 13.56]], subtract_points=[[44.82, 13.49]],
+                       do_science=True, make_image=True, spectralindex=1.63, sigma2=8.53, save='A401.png', regionmask='../regions/maska401.reg',
+                       savefits='../fits/A401.fits') #A401
+
+    Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
+    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    Image.make_polygon(points=[[44.497, 13.03]], do_science=True, make_image=True, spectralindex=1.75, save='A399.png', savefits='../fits/A399.fits')  # A399
+
+    Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
+    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    Image.make_polygon(points=[[44.587, 13.27598]],
+                       subtract_points=[[44.5377, 13.2926], [44.497, 13.013], [44.82, 13.49],
+                                        [44.7857, 13.1997], [44.597, 13.507], [44.587, 12.856], [44.441, 13.4262]],
+                       sigma=2, sigma2=5, do_science=True, save='Bridge.png', make_image=True, make_cutout=True,
+                       regionmask='../regions/maskbridge.reg', savefits='../fits/Bridge.fits', size=(400, 400)) #bridge
+
+    # Image.do_science(region='../regions/bridge.reg')
+
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.medianfilter(kpc_scale=200)
     # Image.rudnickfilter(kpc_scale=100, open=True, write='../fits/20rudnick.fits')
-    # Image.make_image(show_grid=True, save='60cleanbridge_grid.png', ticks=[1e-3, 2e-2, 1e-1], cmap='Blues')
+    # Image.make_image(show_grid=True, save='60rudnick_grid.png', ticks=[1e-3, 2e-2, 1e-1])
     # Image.analyse_corr(A1758=True)
     # Image.make_image(save='justbridge.png', text=True)
 
     # Image = Imaging('../fits/60rudnick.fits', resolution=60)
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    # Image.do_science(results='A401_results_rudnick.fits', spectralindex=1.63)
+    # Image.do_science(results='A399_results_rudnick.fits', spectralindex=1.75)
+    # Image.do_science(region='../regions/bridge.reg', results='bridge_results_rudnick.fits')    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.make_image(show_grid=True, save='60rudnick_grid.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1], cmap='Blues')
 
     #BRIDGE
@@ -1669,8 +1826,8 @@ if __name__ == '__main__':
     # Image.analyse_corr(grid='A401', savefig='A401corr.png')
 
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
-    Image.make_bridge_overlay_yxr_contourplot(fits1='../fits/mosaic_a399_a401.fits',
-                                              save='ymapxray.png')
+    # Image.make_bridge_overlay_yxr_contourplot(fits1='../fits/mosaic_a399_a401.fits',
+    #                                           save='ymapxray.png')
 
     # Image.do_science(region='../regions/bridge.reg')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(1500, 1500))

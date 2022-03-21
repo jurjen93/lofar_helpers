@@ -261,16 +261,20 @@ def make_grid(regionfile, xmin, ymin, xmax, ymax, size):
 
 
 def calc_sum_pix(hduflat, xaf_region, cellsize,
-                 reproj_corr_factor=1.0):  # merge with function below, need to pass hduflatten
+                 reproj_corr_factor=1.0, radio=None):  # merge with function below, need to pass hduflatten
     # reporject dont conserve sum! https://reproject.readthedocs.io/en/stable/celestial.html
     # as reprojection does not conserve flux, we need to use a correction (new pixel area/old pixel area) when we compute the sum
 
     print('Reading ' + xaf_region)
 
+    data = hduflat.data
     xaf_mask = add_mask(hduflat, xaf_region, flat_it=False)
-    xaf_sum = np.sum(hduflat.data[np.where(xaf_mask == True)])
-    xaf_mean = np.mean(hduflat.data[np.where(xaf_mask == True)])
-    xaf_Npix = np.count_nonzero(hduflat.data[np.where(xaf_mask == True)])
+    data = data[np.where(xaf_mask == True)]
+    # if radio:
+    #     data = data[(data > rms1)]
+    xaf_sum = np.sum(data)
+    xaf_mean = np.mean(data)
+    xaf_Npix = np.count_nonzero(data)
 
     if reproj_corr_factor != 1.0:
         xaf_sum = xaf_sum * reproj_corr_factor
@@ -495,7 +499,7 @@ for xaf_region in xaf_region_list:
 
     # RADIO1
     print('Doing radio1 image:')
-    radio1_sum, radio1_Npix, _ = calc_sum_pix(radio1_hduflat, xaf_region, cellsize)
+    radio1_sum, radio1_Npix, _ = calc_sum_pix(radio1_hduflat, xaf_region, cellsize, radio=True)
 
     if radio1_Npix / (cellsize * cellsize) != 1:
         print('Removing region {}: it contains pixels with zero value'.format(xaf_region))

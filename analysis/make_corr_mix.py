@@ -64,7 +64,7 @@ f1.close()
 f = fits.open(f'analysis/{obj}_results_rudnick.fits')
 header = f[0].header
 t1 = f[1].data
-t1 = t1[(t1['radio1_sb']>3*rms)]
+t1 = t1[(t1['radio1_sb']>2*rms)]
 
 f1 = fits.open('fits/60cleanbridge_200kpc.fits')
 wcs =WCS(f1[0].header, naxis=2)
@@ -74,7 +74,7 @@ f1.close()
 f = fits.open(f'analysis/{obj}_results_cb.fits')
 header = f[0].header
 t2 = f[1].data
-t2 = t2[(t2['radio1_sb']>3*rms)]
+t2 = t2[(t2['radio1_sb']>2*rms)]
 
 
 def pearsonr_ci(x,y,alpha=0.05):

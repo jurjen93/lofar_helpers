@@ -18,6 +18,7 @@ optional = parser.add_argument_group('optional arguments')
 # REQUIRED
 required.add_argument('-filein', type=str, required=True)
 required.add_argument('-fileout', type=str, required=True)
+required.add_argument('-noisefits', type=str, required=True)
 required.add_argument('-no_y', action='store_true')
 args = parser.parse_args()
 
@@ -57,7 +58,7 @@ def calc_beamarea(hdu):
 
     return beamarea_pix
 
-f1 = fits.open('fits/60cleanbridgerudnick.fits')
+f1 = fits.open(args.noisefits)
 wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
@@ -68,7 +69,7 @@ f = fits.open(args.filein)
 header = f[0].header
 t = f[1].data
 
-t = t[(t['radio1_sb']>3*rms)]
+t = t[(t['radio1_sb']>2*rms)]
 
 
 def pearsonr_ci(x,y,alpha=0.05):
