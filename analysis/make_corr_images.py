@@ -128,22 +128,54 @@ def spearmanr_ci(x,y,alpha=0.05):
 # print(t['radio1_sb_err']/t['radio1_sb'])
 # print(t['y_sb_err']/t['y_sb'])
 
-def objective(x, a, b):
+def linear(x, a, b):
     return a * x + b
 
-
-def fit(x, y):
-    popt, _ = curve_fit(objective, x, y)
+def linearfit(x, y):
+    popt, _ = curve_fit(linear, x, y)
     a, b = popt
     x_line = np.arange(min(x) - 10, max(x) + 10, 0.01)
-    y_line = objective(x_line, a, b)
+    y_line = linear(x_line, a, b)
+    print('y = %.5f * x + %.5f' % (a, b))
+    return x_line, y_line
+
+def wlinear_fit(x,y,w):
+    """
+    Fit (x,y,w) to a linear function, using exact formulae for weighted linear
+    regression. This code was translated from the GNU Scientific Library (GSL),
+    it is an exact copy of the function gsl_fit_wlinear.
+    """
+    # compute the weighted means and weighted deviations from the means
+    # wm denotes a "weighted mean", wm(f) = (sum_i w_i f_i) / (sum_i w_i)
+    W = np.sum(w)
+    wm_x = np.average(x,weights=w)
+    wm_y = np.average(y,weights=w)
+    dx = x-wm_x
+    dy = y-wm_y
+    wm_dx2 = np.average(dx**2,weights=w)
+    wm_dxdy = np.average(dx*dy,weights=w)
+    # In terms of y = a + b x
+    b = wm_dxdy / wm_dx2
+    a = wm_y - wm_x*b
+    cov_00 = (1.0/W) * (1.0 + wm_x**2/wm_dx2)
+    cov_11 = 1.0 / (W*wm_dx2)
+    cov_01 = -wm_x / (W*wm_dx2)
+    # Compute chi^2 = \sum w_i (y_i - (a + b * x_i))^2
+    chi2 = np.sum(((y-(a+b*x))**2)/(a+b*x))
+    return a,b,cov_00,cov_11,cov_01,chi2
+
+def linearfit_w(x, y, err):
+    popt = wlinear_fit(x, y, err)
+    a, b = popt[1], popt[0]
+    x_line = np.arange(min(x) - 10, max(x) + 10, 0.01)
+    y_line = linear(x_line, a, b)
     print('y = %.5f * x + %.5f' % (a, b))
     return x_line, y_line
 
 
 def linreg(x, y):
     res = linregress(x, y)
-    print(f'Slope is {res.slope} +- {res.stderr}')
+    print(f'Linear regression slope is {res.slope} +- {res.stderr}')
     return res.slope, res.stderr
 
 radio = t['radio1_sb']
@@ -175,7 +207,7 @@ if not args.no_y:
 print('Number of cells used: '+str(len(t)))
 
 print('XRAY VERSUS RADIO')
-fitlinex = fit(np.log10(xray), np.log10(radio))
+fitlinex = linearfit(np.log10(xray), np.log10(radio))
 slopex, errx = linreg(np.log10(xray), np.log10(radio))
 pr = pearsonr_ci(np.log10(xray), np.log10(radio))
 sr = spearmanr_ci(np.log10(xray), np.log10(radio))
@@ -185,7 +217,7 @@ print(sr)
 print(f'Spearman R (x-ray vs radio): {sr[0]} +- {sr[-1]-sr[0]}')
 if not args.no_y:
     print('Y VERSUS RADIO')
-    fitliney = fit(np.log10(y), np.log10(radio))
+    fitliney = linearfit(np.log10(y), np.log10(radio))
     slopex, errx = linreg(np.log10(y), np.log10(radio))
     pr = pearsonr_ci(np.log10(y), np.log10(radio))
     sr = spearmanr_ci(np.log10(y), np.log10(radio))

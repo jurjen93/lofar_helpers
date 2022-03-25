@@ -271,7 +271,7 @@ def calc_sum_pix(hduflat, xaf_region, cellsize,
     xaf_mask = add_mask(hduflat, xaf_region, flat_it=False)
     data = data[np.where(xaf_mask == True)]
     # if radio:
-    #     data = data[(data > rms1)]
+    #     data = data[(data<25*radio1_rms_jyb)]
     xaf_sum = np.sum(data)
     xaf_mean = np.mean(data)
     xaf_Npix = np.count_nonzero(data)
@@ -356,6 +356,8 @@ xsou = args['xsou']
 xbkg = args['xbkg']
 xexp = args['xexp']
 cellsize = args['cellsize']
+
+
 
 xmin, ymin, xmax, ymax = limitslist[0], limitslist[1], limitslist[2], limitslist[3]
 
