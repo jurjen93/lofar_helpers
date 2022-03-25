@@ -176,7 +176,7 @@ wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
 f1.close()
-f = fits.open(f'analysis/{obj}_results_rudnick.fits')
+f = fits.open(f'ptp_results/{obj}_results_rudnick.fits')
 header = f[0].header
 t1 = f[1].data
 t1 = t1[(t1['radio1_sb']>2*rms)]
@@ -186,7 +186,7 @@ wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
 f1.close()
-f = fits.open(f'analysis/{obj}_results_cb.fits')
+f = fits.open(f'ptp_results/{obj}_results_cb.fits')
 header = f[0].header
 t2 = f[1].data
 t2 = t2[(t2['radio1_sb']>2*rms)]
@@ -252,11 +252,11 @@ plt.grid(False)
 
 ax.set_ylabel('log($I_{R}$) (Jy/arcsec$^{2}$)', fontsize=14)
 # ax.set_xlabel('X-ray [SB/mean(SB)]')
-ax.set_xlabel('log($I_{R}$) (counts/s/arcsec$^{2}$)', fontsize=14)
+ax.set_xlabel('log($I_{X}$) (counts/s/arcsec$^{2}$)', fontsize=14)
 ax.legend(['Rudnick', 'UV-cut'], loc='upper left', fontsize=14)
 
 plt.setp(ax.get_xticklabels(), fontsize=14)
 plt.setp(ax.get_yticklabels(), fontsize=14)
 plt.tight_layout()
 plt.grid(False)
-plt.savefig('analysis/combicorr'+obj+'.png', bbox_inches='tight')
+plt.savefig('ptp_results/combicorr'+obj+'.png', bbox_inches='tight')
