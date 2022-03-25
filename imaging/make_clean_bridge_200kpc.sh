@@ -14,6 +14,7 @@ FROM=/net/rijn5/data2/jurjendejong/A399_extracted_avg
 TESS=tessupdate.reg
 NAME=final_image_A399
 
+
 #check if directory exists
 if [[ -f ${TO} ]]
 then
@@ -21,17 +22,20 @@ then
   exit 0
 fi
 
+
 #cache
 singularity exec -B ${SING_BIND} ${SING_IMAGE} CleanSHM.py
 
 #make directory
 mkdir -p ${TO}
 
+
 #copy files
 for H in ${H5}
 do
   cp ${FROM}/${H} ${TO}
 done
+
 
 #aoflagger
 for M in ${MS}
@@ -40,10 +44,13 @@ do
   singularity exec -B ${SING_BIND} ${SING_IMAGE} aoflagger ${TO}/${M}
 done
 
+
 cd ${TO}
+
 
 #make facet
 cp ${FROM}/${TESS} ${TO} && wait
+
 
 # make first image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
@@ -78,11 +85,13 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -minuv-l 1415.0 \
 ${MS} > logcompact.txt
 
+
 #mask compact objects
 singularity exec -B ${SING_BIND} ${SING_IMAGE_P2} \
 python /net/para10/data1/shimwell/software/killmsddf/new-install/DDFacet/SkyModel/MakeMask.py \
 --Th=3.0 \
 --RestoredIm=${NAME}_compact-MFS-image.fits
+
 
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -use-wgridder \
@@ -115,6 +124,7 @@ singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} wsclean \
 -minuv-l 1415.0 \
 ${MS} > logcompactmask.txt
 
+
 rm -rf ${NAME}_compactmask-0000-model.fits
 rm -rf ${NAME}_compactmask-0001-model.fits
 rm -rf ${NAME}_compactmask-0002-model.fits
@@ -128,7 +138,9 @@ mv ${NAME}_compactmask-0003-model-pb.fits ${NAME}_compactmask-0003-model.fits
 mv ${NAME}_compactmask-0004-model-pb.fits ${NAME}_compactmask-0004-model.fits
 mv ${NAME}_compactmask-0005-model-pb.fits ${NAME}_compactmask-0005-model.fits
 
+
 cp -r ${TO} ${TO}_backup && wait
+
 
 #predict
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
@@ -144,9 +156,11 @@ wsclean \
 -facet-regions ${TESS} \
 ${MS} > logpredict.txt
 
+
 #subtract
 singularity exec -B ${SING_BIND} ${SING_IMAGE} \
 python ~/scripts/lofar_helpers/supporting_scripts/substract_mscols.py --ms ${MS} --colname DIFFUSE_SUB
+
 
 #make final image
 singularity exec -B ${SING_BIND} ${SING_IMAGE_WSCLEAN} \
