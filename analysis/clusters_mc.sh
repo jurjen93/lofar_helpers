@@ -5,7 +5,7 @@ cd /home/jurjen/Documents/Python/lofar_helpers
 F=fits/60rudnick.fits #fits/60rudnick.fits
 CELLSIZE=25
 
-for N in {39..100}
+for N in {84..100}
 do
     rm -rf ptp_dir && wait
     #A399
