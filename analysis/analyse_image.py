@@ -807,8 +807,8 @@ class Imaging:
             N_pixels_bridge = len(image_data)
             av_sb = np.mean(image_data) * u.Jy/u.beam # average surface brigthness
             av_sb_arcsec = av_sb*u.beam / self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)**2
-            err_sb = self.rms*u.Jy/u.beam # 1*sigma of every area element
-            err_sb_arcsec = self.rms*u.Jy/self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
+            err_sb = np.std(image_data)*u.Jy/u.beam # 1*sigma of every area element
+            err_sb_arcsec = np.std(image_data)*u.Jy/self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
             bridge_area = N_pixels_bridge * self.pix_to_size(0.072)**2 # from govoni et al
             integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
 
@@ -1458,8 +1458,12 @@ class Imaging:
         plt.grid(False)
         plt.savefig(savefig, bbox_inches='tight')
 
-    def ps(self, xray=None):
-        region = open(f'../regions/lines.reg').read()
+    def ps(self, xray=None, region=None, save=None):
+        if region is None:
+            region = f'../regions/lines.reg'
+        if save is None:
+            save = 'slicesbridge.png'
+        region = open(region).read()
         region = region.split('\n')
         region_head = region[0:2]
         structures = region[3:]
@@ -1468,12 +1472,16 @@ class Imaging:
         data_xray = []
         data_xray_err = []
         for n, structure in enumerate(structures):
-            if (not 'box' in structure):
+            if (not 'box' in structure) and (not 'annulus' in structure):
                 continue
             r = pyregion.parse('\n'.join(region_head + [structure])).as_imagecoord(header=self.hdu[0].header)
             mask_radio = r.get_mask(hdu=self.hdu[0], shape=self.image_data.shape)
             # im_mask_radio = np.clip(self.image_data[mask_radio], a_max=self.rms*5, a_min=None)
-            im_mask_radio_sub = np.where((self.image_data<self.rms*5), self.image_data, 0)[mask_radio]
+            if 'bridge' in save:
+                im_mask_radio_sub = np.where((self.image_data<self.rms*5), self.image_data, 0)[mask_radio]
+            else:
+                im_mask_radio_sub = self.image_data[mask_radio]
+
             im_mask_radio_sub = im_mask_radio_sub[im_mask_radio_sub!=0]
             data_radio_err.append(np.std(im_mask_radio_sub))
             data_radio.append(np.mean(im_mask_radio_sub))
@@ -1523,14 +1531,14 @@ class Imaging:
         else:
             plt.ylabel('$I_{R}$ (Jy/arcsec$^{2}$)')
         plt.grid(False)
-        plt.savefig('slicesbridge.png', bbox_inches="tight")
+        plt.savefig(save, bbox_inches="tight")
+        plt.close()
 
-        hdu = fits.open('../fits/Bridge.fits')
-        image_data = hdu[0].data
-        while len(image_data.shape) != 2:
-            image_data = image_data[0]
-        wcs = WCS(hdu[0].header, naxis=2)
-
+        # hdu = fits.open(f'../fits/Bridge.fits')
+        # image_data = hdu[0].data
+        # while len(image_data.shape) != 2:
+        #     image_data = image_data[0]
+        # wcs = WCS(hdu[0].header, naxis=2)
 
 
 
@@ -1863,10 +1871,12 @@ if __name__ == '__main__':
 
 
 
-    # Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
+    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.ps(xray='../fits/mosaic_a399_a401.fits')
-    # Image.ps()
+    Image.ps(region='../regions/circles_A399.reg', save='A399annulus.png', xray='../fits/mosaic_a399_a401.fits')
+    Image.ps(region='../regions/circles_A401.reg', save='A401annulus.png', xray='../fits/mosaic_a399_a401.fits')
+
     # Image.make_bridge_overlay_yxr_contourplot(fits1='../fits/mosaic_a399_a401.fits',
     #                                           save='ymapxray.png', show_regions='../regions/lines_2.reg')
 
@@ -1895,13 +1905,13 @@ if __name__ == '__main__':
     # Image.analyse_corr(A1758=True)
     # Image.make_image(save='justbridge.png', text=True)
 
-    Image = Imaging('../fits/60rudnick.fits', resolution=60)
+    # Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.do_science(results='A401_results_rudnick.fits', spectralindex=1.63)
     # Image.do_science(results='A399_results_rudnick.fits', spectralindex=1.75)
     # Image.do_science(region='../regions/bridge.reg', results='bridge_results_rudnick.fits')
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    for i in range(1,100):
-        Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid_{i}.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1], sub=f'_{i}')
+    # for i in range(1,100):
+    #     Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid_{i}.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1], sub=f'_{i}')
 
     #BRIDGE
     # Image.ptp(savenumpy='bridgeradio.npy', grid='bridge')
