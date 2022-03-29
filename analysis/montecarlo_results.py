@@ -1,5 +1,7 @@
 from glob import glob
 import numpy as np
+import matplotlib.pyplot as plt
+import scipy.stats
 
 def uncertainty(d_err):
     unc = 1/np.power(d_err, 2)
@@ -152,3 +154,8 @@ print(f'Pearson R Bridge: {np.sum(np.divide(bridge_pearson_tot, np.power(bridge_
       f'{uncertainty(bridge_pearson_err)}')
 print(f'Spearman R Bridge: {np.sum(np.divide(bridge_spearman_tot, np.power(bridge_spearman_err, 2)))/np.sum(1/np.power(bridge_spearman_err,2))} +- '
       f'{uncertainty(bridge_spearman_err)}')
+
+print(scipy.stats.normaltest(bridge_results_cb))
+plt.hist(bridge_results_rudnick)
+plt.hist(bridge_results_cb)
+plt.show()
