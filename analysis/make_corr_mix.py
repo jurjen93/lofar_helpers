@@ -176,7 +176,7 @@ wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
 f1.close()
-f = fits.open(f'ptp_results/{obj}_results_rudnick.fits')
+f = fits.open(f'ptp_results_25/{obj}_results_rudnick_1.fits')
 header = f[0].header
 t1 = f[1].data
 t1 = t1[(t1['radio1_sb']>2*rms)]
@@ -186,7 +186,7 @@ wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
 f1.close()
-f = fits.open(f'ptp_results/{obj}_results_cb.fits')
+f = fits.open(f'ptp_results_25/{obj}_results_cb_1.fits')
 header = f[0].header
 t2 = f[1].data
 t2 = t2[(t2['radio1_sb']>2*rms)]

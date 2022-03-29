@@ -155,7 +155,7 @@ class Imaging:
          """
 
         kernelsize = kpc_scale/(1000*self.pix_to_size(0.072).value)
-        print(f'Kernel size is {int(kernelsize)} pixels')
+        print(f'Kernel size is {int(kernelsize)} pixels ({self.header["CDELT2"]*int(kernelsize)*3600})')
         mins = filters.minimum_filter(self.image_data, size=(kernelsize, kernelsize))
         openmp = filters.maximum_filter(mins, size=(kernelsize, kernelsize))
         if open:
@@ -231,9 +231,9 @@ class Imaging:
             plt.subplot(projection=wcs)
             WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
             if cmap=='Blues':
-                objts = [('A399', 'orangered'), ('A401', 'orangered'), ('bridge', 'firebrick'), ('a399trail', 'yellow')]
+                objts = [('A399', 'orangered'), ('A401', 'orangered'), ('bridge', 'firebrick'), ('A399trail', 'yellow')]
             else:
-                objts = [('A399', 'lightcyan'), ('A401', 'lightcyan'), ('bridge', 'green'), ('a399trail', 'yellow')]
+                objts = [('A399', 'lightcyan'), ('A401', 'lightcyan'), ('bridge', 'green'), ('A399trail', 'yellow')]
             for area in objts:
 
                 try:
@@ -262,11 +262,11 @@ class Imaging:
                             ext = 'cb'
                         else:
                             ext = 'cb'
-                        r = pyregion.open(f'../ptp_results/grid{area[0]}_{ext}{sub}.reg').as_imagecoord(header=self.hdu[0].header)
+                        r = pyregion.open(f'../ptp_results_25/grid{area[0]}_{ext}{sub}.reg').as_imagecoord(header=self.hdu[0].header)
                         patch_list, artist_list = r.get_mpl_patches_texts(colorr)
 
                         for n, patch in enumerate(patch_list):
-                            f = fits.open(f'../ptp_results/{area[0]}_results_{ext}{sub}.fits')
+                            f = fits.open(f'../ptp_results_25/{area[0]}_results_{ext}{sub}.fits')
                             t = f[1].data
                             t = t[(t['xray_sb'] > 0) & (t['radio1_sb'] > 0) & (t['xray_sb_err'] > 0) & (t['radio1_sb_err'] > 0)]
                             if n in [int(l.replace('xaf_','')) for l in list(t['region_name'])]:
@@ -1860,7 +1860,7 @@ if __name__ == '__main__':
     # Image = Imaging('../fits/20all.fits', resolution=20)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1700, 1700))
     # Image.make_image(save='20image.png', text=True)
-    # Image.rudnickfilter(50, open=True)
+    # Image.rudnickfilter(300, open=True)
     # Image.make_image()
     # Image.make_image(show_grid=True, save='grids.png')
     # Image.make_image(convolve=True, save='test20.png', text=True)
@@ -1921,10 +1921,10 @@ if __name__ == '__main__':
     # Image.do_science(results='A399_results_rudnick.fits', spectralindex=1.75)
     # Image.do_science(region='../regions/bridge.reg', results='bridge_results_rudnick.fits')
     Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
-    Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1])
+    # Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1])
 
-    # for i in range(1,100):
-    #     Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid_{i}.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1], sub=f'_{i}')
+    for i in range(1,2):
+        Image.make_image(show_grid=True, save=f'../ptp_results_25/60rudnick_grid_{i}.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1], sub=f'_{i}')
 
     #BRIDGE
     # Image.ptp(savenumpy='bridgeradio.npy', grid='bridge')
