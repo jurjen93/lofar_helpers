@@ -1,0 +1,14 @@
+pol = [XX,YY]
+soltab = [sol000/*]
+Ncpu = 0
+
+
+[plotphase]
+operation = PLOT
+soltab = [sol000/phase000]
+axesInPlot = [time,freq]
+axisInTable = ant
+minmax = [-3.14,3.14]
+figSize=[120,20]
+prefix = plotlosotoILTJ135759.65+364949.9_L662482_SB001_uv_12C649BF7t_121MHz_12C649C06t_143MHz.msdpppconcat.copy/scalarphase1_selfcalcyle009
+refAnt = ST001
