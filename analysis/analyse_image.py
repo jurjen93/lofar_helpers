@@ -231,9 +231,9 @@ class Imaging:
             plt.subplot(projection=wcs)
             WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
             if cmap=='Blues':
-                objts = [('A399', 'orangered'), ('A401', 'orangered'), ('bridge', 'firebrick')]
+                objts = [('A399', 'orangered'), ('A401', 'orangered'), ('bridge', 'firebrick'), ('a399trail', 'yellow')]
             else:
-                objts = [('A399', 'lightcyan'), ('A401', 'lightcyan'), ('bridge', 'azure')]
+                objts = [('A399', 'lightcyan'), ('A401', 'lightcyan'), ('bridge', 'green'), ('a399trail', 'yellow')]
             for area in objts:
 
                 try:
@@ -245,21 +245,32 @@ class Imaging:
 
                         return kwargs
 
-                    if 'rudnick' in self.fitsfile:
-                        ext = 'rudnick'
-                    elif 'cleanbridge' in self.fitsfile:
-                        ext = 'cb'
+                    if area[0]=='trail':
+                        r = pyregion.open(f'../ptp_results_a399_trail/gridA399_cb_.reg').as_imagecoord(
+                            header=self.hdu[0].header)
+                        patch_list, artist_list = r.get_mpl_patches_texts(colorr)
+                        for n, patch in enumerate(patch_list):
+                            f = fits.open(f'../ptp_results_a399_trail/A399_results_cb_.fits')
+                            t = f[1].data
+                            t = t[(t['xray_sb'] > 0) & (t['radio1_sb'] > 0) & (t['xray_sb_err'] > 0) & (t['radio1_sb_err'] > 0)]
+                            if n in [int(l.replace('xaf_','')) for l in list(t['region_name'])]:
+                                plt.gca().add_patch(patch)
                     else:
-                        ext = 'cb'
-                    r = pyregion.open(f'../ptp_results/grid{area[0]}_{ext}{sub}.reg').as_imagecoord(header=self.hdu[0].header)
-                    patch_list, artist_list = r.get_mpl_patches_texts(colorr)
+                        if 'rudnick' in self.fitsfile:
+                            ext = 'rudnick'
+                        elif 'cleanbridge' in self.fitsfile:
+                            ext = 'cb'
+                        else:
+                            ext = 'cb'
+                        r = pyregion.open(f'../ptp_results/grid{area[0]}_{ext}{sub}.reg').as_imagecoord(header=self.hdu[0].header)
+                        patch_list, artist_list = r.get_mpl_patches_texts(colorr)
 
-                    for n, patch in enumerate(patch_list):
-                        f = fits.open(f'../ptp_results/{area[0]}_results_{ext}{sub}.fits')
-                        t = f[1].data
-                        t = t[(t['xray_sb'] > 0) & (t['radio1_sb'] > 0) & (t['xray_sb_err'] > 0) & (t['radio1_sb_err'] > 0)]
-                        if n in [int(l.replace('xaf_','')) for l in list(t['region_name'])]:
-                            plt.gca().add_patch(patch)
+                        for n, patch in enumerate(patch_list):
+                            f = fits.open(f'../ptp_results/{area[0]}_results_{ext}{sub}.fits')
+                            t = f[1].data
+                            t = t[(t['xray_sb'] > 0) & (t['radio1_sb'] > 0) & (t['xray_sb_err'] > 0) & (t['radio1_sb_err'] > 0)]
+                            if n in [int(l.replace('xaf_','')) for l in list(t['region_name'])]:
+                                plt.gca().add_patch(patch)
                 except:
                     print(f'{area[0]} does not exist.')
 
@@ -1871,11 +1882,11 @@ if __name__ == '__main__':
 
 
 
-    Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
-    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    # Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.ps(xray='../fits/mosaic_a399_a401.fits')
-    Image.ps(region='../regions/circles_A399.reg', save='A399annulus.png', xray='../fits/mosaic_a399_a401.fits')
-    Image.ps(region='../regions/circles_A401.reg', save='A401annulus.png', xray='../fits/mosaic_a399_a401.fits')
+    # Image.ps(region='../regions/circles_A399.reg', save='A399annulus.png', xray='../fits/mosaic_a399_a401.fits')
+    # Image.ps(region='../regions/circles_A401.reg', save='A401annulus.png', xray='../fits/mosaic_a399_a401.fits')
 
     # Image.make_bridge_overlay_yxr_contourplot(fits1='../fits/mosaic_a399_a401.fits',
     #                                           save='ymapxray.png', show_regions='../regions/lines_2.reg')
@@ -1905,11 +1916,13 @@ if __name__ == '__main__':
     # Image.analyse_corr(A1758=True)
     # Image.make_image(save='justbridge.png', text=True)
 
-    # Image = Imaging('../fits/60rudnick.fits', resolution=60)
+    Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.do_science(results='A401_results_rudnick.fits', spectralindex=1.63)
     # Image.do_science(results='A399_results_rudnick.fits', spectralindex=1.75)
     # Image.do_science(region='../regions/bridge.reg', results='bridge_results_rudnick.fits')
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1])
+
     # for i in range(1,100):
     #     Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid_{i}.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1], sub=f'_{i}')
 
