@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd /home/jurjen/Documents/Python/lofar_helpers
+#cd /home/jurjen/Documents/Python/lofar_helpers
 
 F=fits/60rudnick.fits #fits/60rudnick.fits
 CELLSIZE=25
