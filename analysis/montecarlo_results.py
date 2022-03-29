@@ -7,12 +7,21 @@ def uncertainty(d_err):
     unc = 1/np.power(d_err, 2)
     return np.sqrt(np.sum(unc)/(np.sum(unc)**2)*len(d_err))
 
-a399_rudnick = glob('../ptp_results/a399results_rudnick_*.txt')
-a401_rudnick = glob('../ptp_results/a401results_rudnick_*.txt')
-bridge_rudnick = glob('../ptp_results/bridgeresults_rudnick_*.txt')
-a399_cb = glob('../ptp_results/a399results_cb_*.txt')
-a401_cb = glob('../ptp_results/a401results_cb_*.txt')
-bridge_cb = glob('../ptp_results/bridgeresults_cb_*.txt')
+cellsize=25
+
+a399_rudnick = glob(f'../ptp_results_{cellsize}/a399results_rudnick_*.txt')
+a401_rudnick = glob(f'../ptp_results_{cellsize}/a401results_rudnick_*.txt')
+bridge_rudnick = glob(f'../ptp_results_{cellsize}/bridgeresults_rudnick_*.txt')
+a399_cb = glob(f'../ptp_results_{cellsize}/a399results_cb_*.txt')
+a401_cb = glob(f'../ptp_results_{cellsize}/a401results_cb_*.txt')
+bridge_cb = glob(f'../ptp_results_{cellsize}/bridgeresults_cb_*.txt')
+
+# a399_rudnick = glob(f'../ptp_results/a399results_rudnick_*.txt')
+# a401_rudnick = glob('../ptp_results/a401results_rudnick_*.txt')
+# bridge_rudnick = glob('../ptp_results/bridgeresults_rudnick_*.txt')
+# a399_cb = glob('../ptp_results/a399results_cb_*.txt')
+# a401_cb = glob('../ptp_results/a401results_cb_*.txt')
+# bridge_cb = glob('../ptp_results/bridgeresults_cb_*.txt')
 
 a399_results_rudnick, a399_rudnick_err, a399_pearson, a399_pearson_err, a399_spearman, a399_spearman_err = [], [], [], [], [], []
 a401_results_rudnick, a401_rudnick_err, a401_pearson, a401_pearson_err, a401_spearman, a401_spearman_err = [], [], [], [], [], []

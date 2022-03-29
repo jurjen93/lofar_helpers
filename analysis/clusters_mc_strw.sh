@@ -18,10 +18,10 @@ do
     python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399corr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/a399results_rudnick_${N}.txt
     mv ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399_results_rudnick_${N}.fits
 
-    python analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1450)) $(($((1+$RANDOM % 10))+1040)) $(($((1+$RANDOM % 10))+1890)) $(($((1+$RANDOM % 10))+1480)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
+    python ~/scripts/lofar_helpers/analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1450)) $(($((1+$RANDOM % 10))+1040)) $(($((1+$RANDOM % 10))+1890)) $(($((1+$RANDOM % 10))+1480)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
     mv ptp_dir/grid_${CELLSIZE}x${CELLSIZE} ptp_dir/A399_trail && wait
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_ds9_image.reg ${OUTFILE}/gridA399trail_rudnick_${N}.reg
-    python analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_rudnick_${N}.txt
+    python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_rudnick_${N}.txt
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399trail_results_rudnick_${N}.fits
 
     #A401
@@ -52,10 +52,10 @@ do
     python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399corr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/a399results_cb_${N}.txt
     mv ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399_results_cb_${N}.fits
 
-    python analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1450)) $(($((1+$RANDOM % 10))+1040)) $(($((1+$RANDOM % 10))+1890)) $(($((1+$RANDOM % 10))+1480)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
+    python ~/scripts/lofar_helpers/analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+725)) $(($((1+$RANDOM % 10))+520)) $(($((1+$RANDOM % 10))+945)) $(($((1+$RANDOM % 10))+740)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
     mv ptp_dir/grid_${CELLSIZE}x${CELLSIZE} ptp_dir/A399_trail && wait
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_ds9_image.reg ${OUTFILE}/gridA399trail_cb_${N}.reg
-    python analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_cb_${N}.txt
+    python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_cb_${N}.txt
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399trail_results_cb_${N}.fits
 
     #A401
@@ -89,10 +89,10 @@ do
     python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399corr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/a399results_rudnick_${N}.txt
     mv ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399_results_rudnick_${N}.fits
 
-    python analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1450)) $(($((1+$RANDOM % 10))+1040)) $(($((1+$RANDOM % 10))+1890)) $(($((1+$RANDOM % 10))+1480)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
+    python ~/scripts/lofar_helpers/analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1450)) $(($((1+$RANDOM % 10))+1040)) $(($((1+$RANDOM % 10))+1890)) $(($((1+$RANDOM % 10))+1480)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
     mv ptp_dir/grid_${CELLSIZE}x${CELLSIZE} ptp_dir/A399_trail && wait
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_ds9_image.reg ${OUTFILE}/gridA399trail_rudnick_${N}.reg
-    python analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_rudnick_${N}.txt
+    python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_rudnick_${N}.txt
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399trail_results_rudnick_${N}.fits
 
     #A401
@@ -123,10 +123,10 @@ do
     python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399corr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/a399results_cb_${N}.txt
     mv ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399_results_cb_${N}.fits
 
-    python analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1450)) $(($((1+$RANDOM % 10))+1040)) $(($((1+$RANDOM % 10))+1890)) $(($((1+$RANDOM % 10))+1480)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
+    python ~/scripts/lofar_helpers/analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+725)) $(($((1+$RANDOM % 10))+520)) $(($((1+$RANDOM % 10))+945)) $(($((1+$RANDOM % 10))+740)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
     mv ptp_dir/grid_${CELLSIZE}x${CELLSIZE} ptp_dir/A399_trail && wait
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_ds9_image.reg ${OUTFILE}/gridA399trail_cb_${N}.reg
-    python analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_cb_${N}.txt
+    python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_cb_${N}.txt
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399trail_results_cb_${N}.fits
 
     #A401
@@ -160,11 +160,12 @@ do
     python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399corr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/a399results_rudnick_${N}.txt
     mv ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399_results_rudnick_${N}.fits
 
-    python analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1450)) $(($((1+$RANDOM % 10))+1040)) $(($((1+$RANDOM % 10))+1890)) $(($((1+$RANDOM % 10))+1480)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
+    python ~/scripts/lofar_helpers/analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1450)) $(($((1+$RANDOM % 10))+1040)) $(($((1+$RANDOM % 10))+1890)) $(($((1+$RANDOM % 10))+1480)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
     mv ptp_dir/grid_${CELLSIZE}x${CELLSIZE} ptp_dir/A399_trail && wait
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_ds9_image.reg ${OUTFILE}/gridA399trail_rudnick_${N}.reg
-    python analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_rudnick_${N}.txt
+    python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_rudnick_${N}.txt
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399trail_results_rudnick_${N}.fits
+
 
     #A401
     python ~/scripts/lofar_helpers/analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1200)) $(($((1+$RANDOM % 10))+1700)) $(($((1+$RANDOM % 10))+1430)) $(($((1+$RANDOM % 10))+2050)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -sys1 0.2 -excluderegion regions/excluderegionshalo.reg
@@ -194,10 +195,10 @@ do
     python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399corr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/a399results_cb_${N}.txt
     mv ptp_dir/A399/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399_results_cb_${N}.fits
 
-    python analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+1450)) $(($((1+$RANDOM % 10))+1040)) $(($((1+$RANDOM % 10))+1890)) $(($((1+$RANDOM % 10))+1480)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
+    python ~/scripts/lofar_helpers/analysis/ppt.py -radio1 ${F} -limits $(($((1+$RANDOM % 10))+725)) $(($((1+$RANDOM % 10))+520)) $(($((1+$RANDOM % 10))+945)) $(($((1+$RANDOM % 10))+740)) -xsou fits/mosaic_a399_a401.fits -xbkg fits/mosaic_a399_a401_bkg.fits -xexp fits/mosaic_a399_a401_exp.fits -cellsize ${CELLSIZE} -y fits/a401_curdecmaps_0.2_1.5s_sz.fits -sys1 0.2 -excluderegion regions/excluderegionshalo_trail.reg
     mv ptp_dir/grid_${CELLSIZE}x${CELLSIZE} ptp_dir/A399_trail && wait
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_ds9_image.reg ${OUTFILE}/gridA399trail_cb_${N}.reg
-    python analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_cb_${N}.txt
+    python ~/scripts/lofar_helpers/analysis/make_corr_images.py -filein ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits -fileout ${OUTFILE}/A399trailcorr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/A399trailresults_cb_${N}.txt
     mv ptp_dir/A399_trail/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/A399trail_results_cb_${N}.fits
 
     #A401
