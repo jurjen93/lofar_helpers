@@ -562,31 +562,31 @@ for xaf_region in xaf_region_list:
 
     print('Doing y-map (SZ-effect)')
     #Ymap
-    y_sum, y_Npix, y_mean = calc_sum_pix(y_reproj_hduflat, xaf_region, cellsize,
-                                          reproj_corr_factor=y_reproj_corr_factor)
-    if y_Npix / (cellsize * cellsize) != 1:
-        print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
-        #            os.system('rm -rf ' + xaf_region)
-        #            continue
-        y_fluxdensity = np.nan
-        y_fluxdensity_err = np.nan
-        y_sb = np.nan
-        y_sb_err = np.nan
-    elif y_sum <= 0:
-        print('Removing region {}: the sum of pixel values is negative'.format(xaf_region))
-        #            os.system('rm -rf ' + xaf_region)
-        #            continue
-        y_fluxdensity = np.nan
-        y_fluxdensity_err = np.nan
-        y_sb = np.nan
-        y_sb_err = np.nan
-    else:
-        y_fluxdensity = y_sum
-        y_fluxdensity_err = rmsy * np.sqrt(y_Npix)
-        y_sb = y_fluxdensity / (y_Npix * y_reproj_pixscale * y_reproj_pixscale)
-        y_sb_err = y_fluxdensity_err / (y_Npix * y_reproj_pixscale * y_reproj_pixscale)
-
     if ymap:
+        y_sum, y_Npix, y_mean = calc_sum_pix(y_reproj_hduflat, xaf_region, cellsize,
+                                              reproj_corr_factor=y_reproj_corr_factor)
+        if y_Npix / (cellsize * cellsize) != 1:
+            print('Removing region {}: it contains pixels with zero value'.format(xaf_region))
+            #            os.system('rm -rf ' + xaf_region)
+            #            continue
+            y_fluxdensity = np.nan
+            y_fluxdensity_err = np.nan
+            y_sb = np.nan
+            y_sb_err = np.nan
+        elif y_sum <= 0:
+            print('Removing region {}: the sum of pixel values is negative'.format(xaf_region))
+            #            os.system('rm -rf ' + xaf_region)
+            #            continue
+            y_fluxdensity = np.nan
+            y_fluxdensity_err = np.nan
+            y_sb = np.nan
+            y_sb_err = np.nan
+        else:
+            y_fluxdensity = y_sum
+            y_fluxdensity_err = rmsy * np.sqrt(y_Npix)
+            y_sb = y_fluxdensity / (y_Npix * y_reproj_pixscale * y_reproj_pixscale)
+            y_sb_err = y_fluxdensity_err / (y_Npix * y_reproj_pixscale * y_reproj_pixscale)
+
         t.add_row(
             [xaf_region.replace(grid_dir + '/', '').replace('.reg', ''), xray_sb, xray_sb_err, radio1_sb, radio1_sb_err,
              radio1_fluxdensity, radio1_fluxdensity_err, y_sb, y_sb_err, y_fluxdensity,
