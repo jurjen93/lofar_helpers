@@ -180,13 +180,13 @@ def linreg(x, y):
 
 radio = t['radio1_sb']
 xray = t['xray_sb']
-y = np.power(t['y_sb'], 2)
 
 radio_err = t['radio1_sb_err']
 xray_err = t['xray_sb_err']
-y_err = 2*np.sqrt(y)*t['y_sb_err']/35
 
 if not args.no_y:
+    y = np.power(t['y_sb'], 2)
+    y_err = 2*np.sqrt(y)*t['y_sb_err']/35
 
     radio_err/=np.mean(radio)
     xray_err/=np.mean(xray)
