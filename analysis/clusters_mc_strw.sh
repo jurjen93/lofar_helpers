@@ -8,7 +8,7 @@ OUTFILE=ptp_results_${CELLSIZE}
 
 mkdir ${OUTFILE}
 
-for N in {1..100}
+for N in {20..100}
 do
     rm -rf ptp_dir && wait
     #A399
