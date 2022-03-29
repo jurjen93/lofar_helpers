@@ -109,7 +109,8 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
 class MergeH5:
     """Merge multiple h5 tables"""
 
-    def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False, solset='sol000', filtered_dir=None):
+    def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
+                 solset='sol000', filtered_dir=None):
         """
         :param h5_out: name of merged output h5 table
         :param files: h5 tables to merge, can be both list and string
@@ -1338,6 +1339,42 @@ class MergeH5:
             T.close()
         return self
 
+    def upsample_weights(self):
+        H = tables.open_file(self.h5name_out, 'r+')
+        for solset in H.root._v_groups.keys():
+            ss = H.root._f_get_child(solset)
+            for n, soltab in enumerate(ss._v_groups.keys()):
+                st = ss._f_get_child(soltab)
+                shape = st.val.shape
+                weight_out = ones(shape)
+                axes_new = st.val.attrs["AXES"].decode('utf8').split(',')
+                for input_h5 in self.h5_tables:
+                    T = tables.open_file(input_h5)
+                    if soltab not in list(T.root._f_get_child(solset)._v_groups.keys()):
+                        T.close()
+                        continue
+                    st2 = T.root._f_get_child(solset)._f_get_child(soltab)
+                    axes = st2.val.attrs["AXES"].decode('utf8').split(',')
+                    weight = st2.weight[:]
+                    weight = reorderAxes(weight, axes, [a for a in axes_new if a in axes])
+
+                    newvals = self._interp_along_axis(weight, st2.time[:], st.time[:], axes_new.index('time'))
+                    newvals = self._interp_along_axis(newvals, st2.freq[:], st.freq[:], axes_new.index('freq'))
+
+                    if weight.ndim!=weight_out.ndim:
+                        newvals = expand_dims(newvals, axis=axes_new.index('pol'))
+                        if newvals.shape[-1]!=weight_out.shape[-1]:
+                            temp = ones(shape)
+                            for n in range(temp.shape[-1]):
+                                temp[..., n] *= newvals[..., 0]
+                            newvals = temp
+                        weight_out *= newvals
+                    else:
+                        weight_out *= newvals
+                    T.close()
+                st.weight[:] = weight_out
+
+        H.close()
 
 
 def _create_h5_name(h5_name):
@@ -1787,7 +1824,7 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=True):
+             check_flagged_station=True, propagate_flags=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -1855,6 +1892,12 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
                 merge.create_new_dataset('sol000', 'phase')
             else:
                 merge.create_new_dataset('sol000', st)
+
+    try:
+        if propagate_flags:
+            merge.upsample_weights()
+    except:
+        sys.exit('ERROR: Upsampling of weights bug. Please contact jurjendejong@strw.leidenuniv.nl when you see this message.')
 
     tables.file._open_files.close_all()
 
@@ -1964,6 +2007,7 @@ if __name__ == '__main__':
     parser.add_argument('--use_ants_from_ms', action='store_true', default=None, help='Use only antenna stations from measurement set (use --ms)')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     parser.add_argument('--not_flagstation', action='store_true', default=None, help='Do not flag any station if station is flagged in input h5')
+    parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and add to output file')
     args = parser.parse_args()
 
     # check if solset name is accepted
@@ -2027,4 +2071,5 @@ if __name__ == '__main__':
              check_output=args.check_output,
              time_av=args.time_av,
              freq_av=args.freq_av,
-             check_flagged_station=not args.not_flagstation)
+             check_flagged_station=not args.not_flagstation,
+             propagate_flags=args.propagate_flags)
