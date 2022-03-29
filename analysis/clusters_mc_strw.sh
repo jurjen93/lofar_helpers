@@ -8,7 +8,7 @@ OUTFILE=ptp_results_${CELLSIZE}
 
 mkdir ${OUTFILE}
 
-for N in {84..100}
+for N in {1..100}
 do
     rm -rf ptp_dir && wait
     #A399
@@ -67,7 +67,7 @@ OUTFILE=ptp_results_${CELLSIZE}
 
 mkdir ${OUTFILE}
 
-for N in {84..100}
+for N in {1..100}
 do
     rm -rf ptp_dir && wait
     #A399
@@ -126,7 +126,7 @@ OUTFILE=ptp_results_${CELLSIZE}
 
 mkdir ${OUTFILE}
 
-for N in {84..100}
+for N in {1..100}
 do
     rm -rf ptp_dir && wait
     #A399
