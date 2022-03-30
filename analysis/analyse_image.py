@@ -1899,8 +1899,8 @@ if __name__ == '__main__':
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.make_polygon(points=[[44.497, 13.03]], do_science=True, make_image=True, spectralindex=1.75, save='A399.png', savefits='../fits/A399.fits')  # A399
     # #
-    # Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    Image = Imaging('../fits/60cleanbridge_200kpc.fits', resolution=60)
+    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.make_polygon(points=[[44.587, 13.27598]],
     #                    subtract_points=[[44.5377, 13.2926], [44.497, 13.013], [44.82, 13.49],
     #                                     [44.7857, 13.1997], [44.597, 13.507], [44.587, 12.856], [44.441, 13.4262]],
@@ -1916,15 +1916,15 @@ if __name__ == '__main__':
     # Image.analyse_corr(A1758=True)
     # Image.make_image(save='justbridge.png', text=True)
 
-    Image = Imaging('../fits/60rudnick.fits', resolution=60)
+    # Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.do_science(results='A401_results_rudnick.fits', spectralindex=1.63)
     # Image.do_science(results='A399_results_rudnick.fits', spectralindex=1.75)
     # Image.do_science(region='../regions/bridge.reg', results='bridge_results_rudnick.fits')
-    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1])
 
-    for i in range(1,2):
-        Image.make_image(show_grid=True, save=f'../ptp_results_25/60rudnick_grid_{i}.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1], sub=f'_{i}')
+    # for i in range(1,2):
+    #     Image.make_image(show_grid=True, save=f'../ptp_results_25/60rudnick_grid_{i}.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1], sub=f'_{i}')
 
     #BRIDGE
     # Image.ptp(savenumpy='bridgeradio.npy', grid='bridge')
