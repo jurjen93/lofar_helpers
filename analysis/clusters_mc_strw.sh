@@ -3,12 +3,12 @@
 #cd /home/jurjen/Documents/Python/lofar_helpers
 
 F=fits/60rudnick.fits #fits/60rudnick.fits
-CELLSIZE=25
+CELLSIZE=27
 OUTFILE=ptp_results_${CELLSIZE}
 
 mkdir ${OUTFILE}
 
-for N in {20..100}
+for N in {50..100}
 do
     rm -rf ptp_dir && wait
     #A399
@@ -40,7 +40,7 @@ do
 done
 
 F=fits/60cleanbridge_200kpc.fits
-CELLSIZE=11
+CELLSIZE=13
 
 for N in {1..100}
 do
@@ -74,7 +74,7 @@ do
 done
 
 F=fits/60rudnick.fits #fits/60rudnick.fits
-CELLSIZE=31
+CELLSIZE=35
 OUTFILE=ptp_results_${CELLSIZE}
 
 mkdir ${OUTFILE}
@@ -111,7 +111,7 @@ do
 done
 
 F=fits/60cleanbridge_200kpc.fits
-CELLSIZE=15
+CELLSIZE=17
 
 for N in {1..100}
 do
@@ -145,7 +145,7 @@ do
 done
 
 F=fits/60rudnick.fits #fits/60rudnick.fits
-CELLSIZE=37
+CELLSIZE=43
 OUTFILE=ptp_results_${CELLSIZE}
 
 mkdir ${OUTFILE}
@@ -183,7 +183,7 @@ do
 done
 
 F=fits/60cleanbridge_200kpc.fits
-CELLSIZE=19
+CELLSIZE=21
 
 for N in {1..100}
 do
