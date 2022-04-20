@@ -2,12 +2,14 @@ from glob import glob
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.stats
+from scipy.stats import sem
 
 def uncertainty(d_err):
     unc = 1/np.power(d_err, 2)
-    return np.sqrt(np.sum(unc)/(np.sum(unc)**2)*len(d_err))
+    return np.sqrt(1/np.sum(unc))
+    # return np.sqrt(np.sum(unc)/(np.sum(unc)**2))
 
-cellsize=25
+cellsize=27
 
 a399_rudnick = glob(f'../ptp_results_{cellsize}/a399results_rudnick_*.txt')
 a401_rudnick = glob(f'../ptp_results_{cellsize}/a401results_rudnick_*.txt')
@@ -17,9 +19,11 @@ a401_cb = glob(f'../ptp_results_{cellsize}/a401results_cb_*.txt')
 bridge_cb = glob(f'../ptp_results_{cellsize}/bridgeresults_cb_*.txt')
 
 # a399_rudnick = glob(f'../ptp_results/a399results_rudnick_*.txt')
+# a399trail_rudnick = glob(f'../ptp_results/a399trailresults_rudnick_*.txt')
 # a401_rudnick = glob('../ptp_results/a401results_rudnick_*.txt')
 # bridge_rudnick = glob('../ptp_results/bridgeresults_rudnick_*.txt')
 # a399_cb = glob('../ptp_results/a399results_cb_*.txt')
+# a399trail_cb = glob('../ptp_results/a399trailresults_cb_*.txt')
 # a401_cb = glob('../ptp_results/a401results_cb_*.txt')
 # bridge_cb = glob('../ptp_results/bridgeresults_cb_*.txt')
 
@@ -94,34 +98,34 @@ for bridgerudnick in bridge_rudnick:
 
 print('UV-Subtract:')
 print(f'Slope A399: {np.sum(np.divide(a399_results_cb, np.power(a399_cb_err, 2)))/np.sum(1/np.power(a399_cb_err,2))} +- '
-      f'{np.std(a399_results_cb)*np.sqrt(np.sum(np.power(a399_cb_err/np.sum(np.power(a399_cb_err, 2)), 2)))}')
-print(f'Pearson R A399: {np.mean(a399_pearson_cb)} +- {np.std(a399_pearson_cb)}')
-print(f'Spearman R A399: {np.mean(a399_spearman_cb)} +- {np.std(a399_spearman_cb)}')
+      f'{sem(a399_results_cb)*np.sqrt(np.sum(np.power(a399_cb_err/np.sum(np.power(a399_cb_err, 2)), 2)))}')
+print(f'Pearson R A399: {np.mean(a399_pearson_cb)} +- {sem(a399_pearson_cb)}')
+print(f'Spearman R A399: {np.mean(a399_spearman_cb)} +- {sem(a399_spearman_cb)}')
 
 print(f'Slope A401: {np.sum(np.divide(a401_results_cb, np.power(a401_cb_err, 2)))/np.sum(1/np.power(a401_cb_err,2))} +- '
-      f'{np.std(a401_results_cb)*np.sqrt(np.sum(np.power(a401_cb_err/np.sum(np.power(a401_cb_err, 2)), 2)))}')
-print(f'Pearson R A401: {np.mean(a401_pearson_cb)} +- {np.std(a401_pearson_cb)}')
-print(f'Spearman R A401: {np.mean(a401_spearman_cb)} +- {np.std(a401_spearman_cb)}')
+      f'{sem(a401_results_cb)*np.sqrt(np.sum(np.power(a401_cb_err/np.sum(np.power(a401_cb_err, 2)), 2)))}')
+print(f'Pearson R A401: {np.mean(a401_pearson_cb)} +- {sem(a401_pearson_cb)}')
+print(f'Spearman R A401: {np.mean(a401_spearman_cb)} +- {sem(a401_spearman_cb)}')
 
 print(f'Slope Bridge: {np.sum(np.divide(bridge_results_cb, np.power(bridge_cb_err, 2)))/np.sum(1/np.power(bridge_cb_err,2))} +- '
-      f'{np.std(bridge_results_cb)*np.sqrt(np.sum(np.power(bridge_cb_err/np.sum(np.power(bridge_cb_err, 2)), 2)))}')
-print(f'Pearson R bridge: {np.mean(bridge_pearson_cb)} +- {np.std(bridge_pearson_cb)}')
-print(f'Spearman R bridge: {np.mean(bridge_spearman_cb)} +- {np.std(bridge_spearman_cb)}')
+      f'{sem(bridge_results_cb)*np.sqrt(np.sum(np.power(bridge_cb_err/np.sum(np.power(bridge_cb_err, 2)), 2)))}')
+print(f'Pearson R bridge: {np.mean(bridge_pearson_cb)} +- {sem(bridge_pearson_cb)}')
+print(f'Spearman R bridge: {np.mean(bridge_spearman_cb)} +- {sem(bridge_spearman_cb)}')
 
 print('\nRudnick:')
 print(f'Slope A399: {np.sum(np.divide(a399_results_rudnick, np.power(a399_rudnick_err, 2)))/np.sum(1/np.power(a399_rudnick_err,2))} +- '
-      f'{np.std(a399_results_rudnick)*np.sqrt(np.sum(np.power(a399_rudnick_err/np.sum(np.power(a399_rudnick_err, 2)), 2)))}')
-print(f'Pearson R A399: {np.mean(a399_pearson)} +- {np.std(a399_pearson)}')
-print(f'Spearman R A399: {np.mean(a399_spearman)} +- {np.std(a399_spearman)}')
+      f'{sem(a399_results_rudnick)*np.sqrt(np.sum(np.power(a399_rudnick_err/np.sum(np.power(a399_rudnick_err, 2)), 2)))}')
+print(f'Pearson R A399: {np.mean(a399_pearson)} +- {sem(a399_pearson)}')
+print(f'Spearman R A399: {np.mean(a399_spearman)} +- {sem(a399_spearman)}')
 
 print(f'Slope A401: {np.sum(np.divide(a401_results_rudnick, np.power(a401_rudnick_err, 2)))/np.sum(1/np.power(a401_rudnick_err,2))} +- '
-      f'{np.std(a401_results_rudnick)*np.sqrt(np.sum(np.power(a401_rudnick_err/np.sum(np.power(a401_rudnick_err, 2)), 2)))}')
-print(f'Pearson R A401: {np.mean(a401_pearson)} +- {np.std(a401_pearson)}')
-print(f'Spearman R A401: {np.mean(a401_spearman)} +- {np.std(a401_spearman)}')
+      f'{sem(a401_results_rudnick)*np.sqrt(np.sum(np.power(a401_rudnick_err/np.sum(np.power(a401_rudnick_err, 2)), 2)))}')
+print(f'Pearson R A401: {np.mean(a401_pearson)} +- {sem(a401_pearson)}')
+print(f'Spearman R A401: {np.mean(a401_spearman)} +- {sem(a401_spearman)}')
 
-print(f'Slope bridge: {np.sum(np.divide(bridge_results_rudnick, np.power(bridge_rudnick_err, 2)))/np.sum(1/np.power(bridge_rudnick_err,2))} +- {np.std(bridge_results_rudnick)*np.sqrt(np.sum(np.power(bridge_rudnick_err/np.sum(np.power(bridge_rudnick_err, 2)), 2)))}')
-print(f'Pearson R bridge: {np.mean(bridge_pearson)} +- {np.std(bridge_pearson)}')
-print(f'Spearman R bridge: {np.mean(bridge_spearman)} +- {np.std(bridge_spearman)}')
+print(f'Slope bridge: {np.sum(np.divide(bridge_results_rudnick, np.power(bridge_rudnick_err, 2)))/np.sum(1/np.power(bridge_rudnick_err,2))} +- {sem(bridge_results_rudnick)*np.sqrt(np.sum(np.power(bridge_rudnick_err/np.sum(np.power(bridge_rudnick_err, 2)), 2)))}')
+print(f'Pearson R bridge: {np.mean(bridge_pearson)} +- {sem(bridge_pearson)}')
+print(f'Spearman R bridge: {np.mean(bridge_spearman)} +- {sem(bridge_spearman)}')
 
 print('\nTotal:')
 a399_tot = a399_results_rudnick+a399_results_cb
@@ -164,7 +168,8 @@ print(f'Pearson R Bridge: {np.sum(np.divide(bridge_pearson_tot, np.power(bridge_
 print(f'Spearman R Bridge: {np.sum(np.divide(bridge_spearman_tot, np.power(bridge_spearman_err, 2)))/np.sum(1/np.power(bridge_spearman_err,2))} +- '
       f'{uncertainty(bridge_spearman_err)}')
 
-print(scipy.stats.normaltest(bridge_results_cb))
-plt.hist(bridge_results_rudnick)
-plt.hist(bridge_results_cb)
-plt.show()
+
+# print(scipy.stats.normaltest(bridge_results_cb))
+# plt.hist(bridge_results_rudnick)
+# plt.hist(bridge_results_cb)
+# plt.show()
