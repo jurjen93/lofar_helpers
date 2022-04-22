@@ -227,9 +227,9 @@ if not args.no_y:
     print(f'Spearman R (x-ray vs radio): {sr[0]} +- {sr[-1] - sr[0]}')
 
 fig, ax = plt.subplots(constrained_layout=True)
-ax.errorbar(np.log10(xray), np.log10(radio), xerr=(0.434*xray_err/xray), yerr=0.434*radio_err/radio, fmt='.', ecolor='red', elinewidth=0.4, color='darkred')
+ax.errorbar(np.log10(xray), np.log10(radio), xerr=(0.434*xray_err/xray), yerr=0.434*radio_err/radio, fmt='.', ecolor='red', elinewidth=0.4, color='darkred', capsize=2, markersize=4)
 if not args.no_y:
-    ax.errorbar(np.log10(y), np.log10(radio), xerr=(0.434*y_err/y), yerr=0.434*radio_err/radio, fmt='.', ecolor='blue', elinewidth=0.4, color='darkblue')
+    ax.errorbar(np.log10(y), np.log10(radio), xerr=(0.434*y_err/y), yerr=0.434*radio_err/radio, fmt='.', ecolor='blue', elinewidth=0.4, color='darkblue', capsize=2, markersize=4)
 ax.plot(fitlinex[0], fitlinex[1], color='darkred', linestyle='--')
 if not args.no_y:
     ax.plot(fitliney[0], fitliney[1], color='darkblue', linestyle='--')

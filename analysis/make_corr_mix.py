@@ -176,7 +176,7 @@ wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
 f1.close()
-f = fits.open(f'ptp_results_25/{obj}_results_rudnick_1.fits')
+f = fits.open(f'ptp_results_27/{obj}_results_rudnick_1.fits')
 header = f[0].header
 t1 = f[1].data
 t1 = t1[(t1['radio1_sb']>2*rms)]
@@ -186,7 +186,7 @@ wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
 f1.close()
-f = fits.open(f'ptp_results_25/{obj}_results_cb_1.fits')
+f = fits.open(f'ptp_results_27/{obj}_results_cb_1.fits')
 header = f[0].header
 t2 = f[1].data
 t2 = t2[(t2['radio1_sb']>2*rms)]
@@ -224,8 +224,8 @@ print(f'Spearman R (x-ray vs radio): {sr[0]} +- {sr[-1]-sr[0]}')
 
 
 fig, ax = plt.subplots(constrained_layout=True)
-ax.errorbar(np.log10(xray1), np.log10(radio1), xerr=(0.434*xray_err1/xray1), yerr=0.434*radio_err1/radio1, fmt='.', ecolor='red', elinewidth=0.4, color='darkred')
-ax.errorbar(np.log10(xray2), np.log10(radio2), xerr=(0.434*xray_err2/xray2), yerr=0.434*radio_err2/radio2, fmt='.', ecolor='blue', elinewidth=0.4, color='darkblue')
+ax.errorbar(np.log10(xray1), np.log10(radio1), xerr=(0.434*xray_err1/xray1), yerr=0.434*radio_err1/radio1, fmt='.', ecolor='red', elinewidth=0.4, color='darkred', capsize=2, markersize=4)
+ax.errorbar(np.log10(xray2), np.log10(radio2), xerr=(0.434*xray_err2/xray2), yerr=0.434*radio_err2/radio2, fmt='.', ecolor='blue', elinewidth=0.4, color='darkblue', capsize=2, markersize=4)
 
 ax.plot(fitlinex1[0], fitlinex1[1], color='darkred', linestyle='--')
 ax.plot(fitlinex2[0], fitlinex2[1], color='darkblue', linestyle='--')
