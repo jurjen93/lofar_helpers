@@ -16,8 +16,7 @@ from matplotlib.colors import SymLogNorm
 import warnings
 
 warnings.filterwarnings('ignore')
-plt.style.use('seaborn')
-plt.rcParams.update({'axes.facecolor':'white'})
+plt.style.use('seaborn-deep')
 
 class Imaging:
     def __init__(self, fits_file: str = None, vmin: float = None, vmax: float = None):
