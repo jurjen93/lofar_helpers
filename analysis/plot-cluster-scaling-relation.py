@@ -286,9 +286,9 @@ lc = (10**lc)*10**(24.5)
 uc = (10**uc)*10**(24.5)
 plt.fill_between(xc, lc, uc, alpha=0.2, facecolor='red')
 
-plt.errorbar(np.array([planck_A399]), np.array([radio_A399*((144/150)**1.75)]), yerr=np.array([np.sqrt(radio_A399_err**2+(0.1*radio_A399)**2)]), xerr=np.array([planck_A399_err]), capsize=2,markersize=4, color='darkgreen', ecolor='darkgreen', label='A399')
-plt.errorbar(np.array([planck_A401]), np.array([radio_A401*((144/150)**1.63)]), yerr=np.array([np.sqrt(radio_A401_err**2+(0.1*radio_A401)**2)]), xerr=np.array([planck_A401_err]), capsize=2,markersize=4, ecolor='black', color='black', label='A401')
-plt.errorbar(np.array([bridge_hincks]), np.array([radio_bridge*((144/150)**1.5)]), yerr=np.array([np.sqrt(radio_bridge_err**2+(0.1*radio_bridge)**2)]), xerr=np.array([bridge_hincks_err]), capsize=2, markersize=4, ecolor='darkblue', color='darkblue', label='Bridge')
+plt.errorbar(np.array([planck_A399]), np.array([radio_A399*((144/150)**1.75)]), yerr=np.array([np.sqrt(radio_A399_err**2)]), xerr=np.array([planck_A399_err]), capsize=2,markersize=4, color='darkgreen', ecolor='darkgreen', label='A399')
+plt.errorbar(np.array([planck_A401]), np.array([radio_A401*((144/150)**1.63)]), yerr=np.array([np.sqrt(radio_A401_err**2)]), xerr=np.array([planck_A401_err]), capsize=2,markersize=4, ecolor='black', color='black', label='A401')
+# plt.errorbar(np.array([bridge_hincks]), np.array([radio_bridge*((144/150)**1.5)]), yerr=np.array([np.sqrt(radio_bridge_err**2+(0.1*radio_bridge)**2)]), xerr=np.array([bridge_hincks_err]), capsize=2, markersize=4, ecolor='darkblue', color='darkblue', label='Bridge')
 
 
 plt.legend(loc='upper left')
