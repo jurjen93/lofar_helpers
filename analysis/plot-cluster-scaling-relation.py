@@ -188,22 +188,6 @@ p150err_h  = np.abs(0.5*(p150_upp_h - p150_low_h))
 #plt.plot(data['Mass']*1e14,p150,'ro')
 
 
-# plt.errorbar(np.array(data['Mass'])*1e14, np.array(p150), xerr=np.array([data['Mass_err_down'],data['Mass_err_up']])*1e14, yerr=np.array(p150err), fmt='o',capsize=2,markersize=4,  label='this work (candidates)', c=candidates_plotcolor)
-
-# plt.errorbar(np.array(data['Mass'][idx])*1e14, np.array(p150_h), xerr=np.array([data['Mass_err_down'][idx],data['Mass_err_up'][idx]])*1e14, yerr=np.array(p150err_h), fmt='o',capsize=2,markersize=4,  label='this work')
-
-
-
-
-literature = ascii.read("literature150mhz.txt",fast_reader=False,  format='csv', comment='#',header_start=0)
-
-p150lit     = radiopower150(1e-3*literature['Flux'], literature['z'], alpha, literature['Freq'])
-p150lit_upp = radiopower150(1e-3*(literature['Flux']+literature['Flux_err']),  literature['z'], alpha, literature['Freq'])
-p150lot_low =  radiopower150(1e-3*(literature['Flux']-literature['Flux_err']), literature['z'], alpha, literature['Freq'])
-p150literr  = np.abs(0.5*(p150lit_upp - p150lot_low))
-
-# plt.errorbar(np.array(literature['Mass'])*1e14, np.array(p150lit), xerr=np.array([literature['Mass_err_down'],literature['Mass_err_up']])*1e14, yerr=np.array(p150literr), fmt='ok',capsize=2,markersize=4, label='literature')
-
 #plt.plot(literature['Mass']*1e14,power_lit,'bo')
 
 #print 'Abell697', np.where(literature['Name'] == 'Abell697')
@@ -211,6 +195,8 @@ p150literr  = np.abs(0.5*(p150lit_upp - p150lot_low))
 #plt.plot(literature['Mass'][np.where(literature['Name'] == 'Abell521')]*1e14,power_lit[np.where(literature['Name'] == 'Abell521')],'go')
 #plt.plot(literature['Mass'][np.where(literature['Name'] == 'Abell1132')]*1e14,power_lit[np.where(literature['Name'] == 'Abell1132')],'go')
 
+plt.style.use('seaborn')
+plt.rcParams.update({'axes.facecolor':'white'})
 
 #line
 #B, A = 3.70, 0.09 #BCES bisector Cassano et al. (2013); $\alpha$=-1.3
@@ -235,6 +221,19 @@ print (A, B)
 #plt.plot(massvec, p150sc10, color='k', label='C2013; '+ r'$\alpha=-1.0$',alpha=0.5,ls='dashdot')
 #plt.plot(massvec, p150sc14, color='k', label='C2013; '+ r'$\alpha=-1.4$',alpha=0.5, ls=(0, (3, 1, 1, 1, 1, 1)))
 #plt.plot(massvec, p150sc16, color='k', label='C2013; '+ r'$\alpha=-1.6$',alpha=0.5,ls='dotted' )
+
+
+plt.errorbar(np.array(data['Mass'])*1e14, np.array(p150), xerr=np.array([data['Mass_err_down'],data['Mass_err_up']])*1e14, yerr=np.array(p150err), fmt='o',capsize=2,markersize=4,  label='van Weeren et al. 2021 (candidates)', c=candidates_plotcolor)
+plt.errorbar(np.array(data['Mass'][idx])*1e14, np.array(p150_h), xerr=np.array([data['Mass_err_down'][idx],data['Mass_err_up'][idx]])*1e14, yerr=np.array(p150err_h), fmt='o',capsize=2,markersize=4,  label='van Weeren et al. 2021')
+
+literature = ascii.read("literature150mhz.txt",fast_reader=False,  format='csv', comment='#',header_start=0)
+
+p150lit     = radiopower150(1e-3*literature['Flux'], literature['z'], alpha, literature['Freq'])
+p150lit_upp = radiopower150(1e-3*(literature['Flux']+literature['Flux_err']),  literature['z'], alpha, literature['Freq'])
+p150lot_low =  radiopower150(1e-3*(literature['Flux']-literature['Flux_err']), literature['z'], alpha, literature['Freq'])
+p150literr  = np.abs(0.5*(p150lit_upp - p150lot_low))
+
+plt.errorbar(np.array(literature['Mass'])*1e14, np.array(p150lit), xerr=np.array([literature['Mass_err_down'],literature['Mass_err_up']])*1e14, yerr=np.array(p150literr), fmt='ok',capsize=2,markersize=4, label='literature')
 
 
 # -- DO BCES fit --
@@ -274,12 +273,11 @@ bridge_hincks, bridge_hincks_err = 3.3e14, 7e13
 radio_A399, radio_A399_err = 1.63e+25, 5e+23
 radio_A401, radio_A401_err = 1.28e+25, 4e+23
 radio_bridge, radio_bridge_err = 8.3e24, 2e23
-plt.style.use('ggplot')
 
 p150sc = (10**(24.5)) * 10**((slope*np.log10(massvec/(10**(14.9)))) + offset)
 plt.grid(False)
 
-plt.plot(massvec, p150sc, color='darkred', label='van Weeren et al. 2021')
+plt.plot(massvec, p150sc, color='darkred', label='van Weeren et al. 2021 fit')
 
 xc = (10**xc)*10**(14.9)
 lc = (10**lc)*10**(24.5)
