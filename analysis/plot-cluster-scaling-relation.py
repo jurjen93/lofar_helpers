@@ -195,8 +195,8 @@ p150err_h  = np.abs(0.5*(p150_upp_h - p150_low_h))
 #plt.plot(literature['Mass'][np.where(literature['Name'] == 'Abell521')]*1e14,power_lit[np.where(literature['Name'] == 'Abell521')],'go')
 #plt.plot(literature['Mass'][np.where(literature['Name'] == 'Abell1132')]*1e14,power_lit[np.where(literature['Name'] == 'Abell1132')],'go')
 
-plt.style.use('seaborn')
-plt.rcParams.update({'axes.facecolor':'white'})
+plt.style.use('seaborn-deep')
+
 
 #line
 #B, A = 3.70, 0.09 #BCES bisector Cassano et al. (2013); $\alpha$=-1.3
@@ -223,7 +223,7 @@ print (A, B)
 #plt.plot(massvec, p150sc16, color='k', label='C2013; '+ r'$\alpha=-1.6$',alpha=0.5,ls='dotted' )
 
 
-plt.errorbar(np.array(data['Mass'])*1e14, np.array(p150), xerr=np.array([data['Mass_err_down'],data['Mass_err_up']])*1e14, yerr=np.array(p150err), fmt='o',capsize=2,markersize=4,  label='van Weeren et al. 2021 (candidates)', c=candidates_plotcolor)
+# plt.errorbar(np.array(data['Mass'])*1e14, np.array(p150), xerr=np.array([data['Mass_err_down'],data['Mass_err_up']])*1e14, yerr=np.array(p150err), fmt='o',capsize=2,markersize=4,  label='van Weeren et al. 2021 (candidates)', c=candidates_plotcolor)
 plt.errorbar(np.array(data['Mass'][idx])*1e14, np.array(p150_h), xerr=np.array([data['Mass_err_down'][idx],data['Mass_err_up'][idx]])*1e14, yerr=np.array(p150err_h), fmt='o',capsize=2,markersize=4,  label='van Weeren et al. 2021')
 
 literature = ascii.read("literature150mhz.txt",fast_reader=False,  format='csv', comment='#',header_start=0)
@@ -233,7 +233,7 @@ p150lit_upp = radiopower150(1e-3*(literature['Flux']+literature['Flux_err']),  l
 p150lot_low =  radiopower150(1e-3*(literature['Flux']-literature['Flux_err']), literature['z'], alpha, literature['Freq'])
 p150literr  = np.abs(0.5*(p150lit_upp - p150lot_low))
 
-plt.errorbar(np.array(literature['Mass'])*1e14, np.array(p150lit), xerr=np.array([literature['Mass_err_down'],literature['Mass_err_up']])*1e14, yerr=np.array(p150literr), fmt='ok',capsize=2,markersize=4, label='literature')
+plt.errorbar(np.array(literature['Mass'])*1e14, np.array(p150lit), xerr=np.array([literature['Mass_err_down'],literature['Mass_err_up']])*1e14, yerr=np.array(p150literr), fmt='ok',capsize=2,markersize=4, label='Other literature')
 
 
 # -- DO BCES fit --
@@ -246,12 +246,12 @@ if candidates:
   masslit_avg_err =  np.array(0.5*(literature['Mass_err_up'] + literature['Mass_err_down']))
   massallerr = np.concatenate((mass_avg_err,masslit_avg_err), axis=0)
 else:
-  massall =  np.concatenate((np.array(data['Mass'][idx]), np.array(literature['Mass'])), axis=0)
-  p150all =  np.concatenate((np.array(p150_h), np.array(p150lit)), axis=0)
-  p150allerr =  np.concatenate((np.array(p150err_h), np.array(p150literr)), axis=0)
+  massall =  np.concatenate((np.array(data['Mass'][idx]), np.array(literature['Mass']), np.array([5.2e14/1e14, 6.7e14/1e14])), axis=0)
+  p150all =  np.concatenate((np.array(p150_h), np.array(p150lit), np.array([1.63e25, 1.28e25])), axis=0)
+  p150allerr =  np.concatenate((np.array(p150err_h), np.array(p150literr), np.array([5e23, 4e23])), axis=0)
   mass_avg_err    =  np.array(0.5*(data['Mass_err_up'][idx] + data['Mass_err_down'][idx]))
   masslit_avg_err =  np.array(0.5*(literature['Mass_err_up'] + literature['Mass_err_down']))
-  massallerr = np.concatenate((mass_avg_err,masslit_avg_err), axis=0)
+  massallerr = np.concatenate((mass_avg_err,masslit_avg_err, np.array([2.6e13/1e14, 2.0e13/1e14])), axis=0)
 
 
 # DO fit
@@ -277,15 +277,15 @@ radio_bridge, radio_bridge_err = 8.3e24, 2e23
 p150sc = (10**(24.5)) * 10**((slope*np.log10(massvec/(10**(14.9)))) + offset)
 plt.grid(False)
 
-plt.plot(massvec, p150sc, color='darkred', label='van Weeren et al. 2021 fit')
+plt.plot(massvec, p150sc, color='darkgreen', label='van Weeren et al. 2021 fit')
 
 xc = (10**xc)*10**(14.9)
 lc = (10**lc)*10**(24.5)
 uc = (10**uc)*10**(24.5)
-plt.fill_between(xc, lc, uc, alpha=0.2, facecolor='red')
+plt.fill_between(xc, lc, uc, alpha=0.2, facecolor='green')
 
-plt.errorbar(np.array([planck_A399]), np.array([radio_A399*((144/150)**1.75)]), yerr=np.array([np.sqrt(radio_A399_err**2)]), xerr=np.array([planck_A399_err]), capsize=2,markersize=4, color='darkgreen', ecolor='darkgreen', label='A399')
-plt.errorbar(np.array([planck_A401]), np.array([radio_A401*((144/150)**1.63)]), yerr=np.array([np.sqrt(radio_A401_err**2)]), xerr=np.array([planck_A401_err]), capsize=2,markersize=4, ecolor='black', color='black', label='A401')
+plt.errorbar(np.array([planck_A399]), np.array([radio_A399*((144/150)**1.75)]), yerr=np.array([np.sqrt(radio_A399_err**2)]), xerr=np.array([planck_A399_err]), fmt='or', capsize=2,markersize=4, label='A399')
+plt.errorbar(np.array([planck_A401]), np.array([radio_A401*((144/150)**1.63)]), yerr=np.array([np.sqrt(radio_A401_err**2)]), xerr=np.array([planck_A401_err]), fmt='om', capsize=2,markersize=4, label='A401')
 # plt.errorbar(np.array([bridge_hincks]), np.array([radio_bridge*((144/150)**1.5)]), yerr=np.array([np.sqrt(radio_bridge_err**2+(0.1*radio_bridge)**2)]), xerr=np.array([bridge_hincks_err]), capsize=2, markersize=4, ecolor='darkblue', color='darkblue', label='Bridge')
 
 

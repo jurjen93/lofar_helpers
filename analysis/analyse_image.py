@@ -32,8 +32,7 @@ from matplotlib.path import Path
 from shapely.ops import cascaded_union
 
 warnings.filterwarnings('ignore')
-plt.style.use('seaborn')
-plt.rcParams.update({'axes.facecolor':'white'})
+plt.style.use('seaborn-deep')
 
 def flatten(f):
     """ Flatten a fits file so that it becomes a 2D image. Return new header and data """

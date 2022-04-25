@@ -25,8 +25,7 @@ args = parser.parse_args()
 obj = args.obj
 
 warnings.filterwarnings('ignore')
-plt.style.use('seaborn')
-plt.rcParams.update({'axes.facecolor':'white'})
+plt.style.use('seaborn-deep')
 
 def findrms(mIn, maskSup=1e-7):
     """
