@@ -191,7 +191,8 @@ class Imaging:
 
     def make_image(self, image_data=None, cmap: str = 'CMRmap', vmin=None, vmax=None, show_regions=None, wcs=None,
                    colorbar=True, save=None, text=None, subim=None, beam=True, give_scale=True, convolve=None, show_grid=None, ticks=None,
-                   savefits=None, sub='', show_clustername=None):
+                   savefits=None, sub='', show_clustername=None, bigim=None):
+        plt.style.use('ggplot')
         """
         Image your data with this method.
         image_data -> insert your image_data or plot full image
@@ -303,16 +304,20 @@ class Imaging:
                     ext = 'cb'
                 else:
                     ext = 'cb'
-                try:
-                    r = pyregion.open(f'../regions/grid{area[0]}_{ext}{sub}.reg').as_imagecoord(header=self.hdu[0].header)
-                except:
-                    r = pyregion.open(f'../regions/grid{area[0]}_{ext}_1.reg').as_imagecoord(
-                        header=self.hdu[0].header)
-                    sub="_1"
+                # try:
+
+                r = pyregion.open(f'../regions2/grid{area[0]}_{ext}{sub}.reg').as_imagecoord(header=self.hdu[0].header)
+                # except:
+                #     r = pyregion.open(f'../regions/grid{area[0]}_{ext}_1.reg').as_imagecoord(
+                #         header=self.hdu[0].header)
+                #     sub="_1"
                 patch_list, artist_list = r.get_mpl_patches_texts(colorr)
 
                 for n, patch in enumerate(patch_list):
-                    f = fits.open(f'../ptp_results_27/{area[0]}_results_{ext}{sub}.fits')
+                    if 'trail' in area[0]:
+                        f = fits.open(f'../ptp_results_27/{area[0]}_results_{ext}_60.fits')
+                    else:
+                        f = fits.open(f'../ptp_results_27/{area[0]}_results_{ext}{sub}.fits')
                     t = f[1].data
                     t = t[(t['xray_sb'] > 0) & (t['radio1_sb'] > 0) & (t['xray_sb_err'] > 0) & (t['radio1_sb_err'] > 0)]
                     if n in [int(l.replace('xaf_','')) for l in list(t['region_name'])]:
@@ -339,9 +344,14 @@ class Imaging:
         else:
             im.set_norm(PowerNorm(vmin=0, vmax=vmax, gamma=1 / 2))
 
-        plt.xlabel('Right Ascension (J2000)', size=14)
-        plt.ylabel('Declination (J2000)', size=14)
-        plt.tick_params(axis='both', which='major', labelsize=12)
+        if bigim:
+            plt.xlabel('Right Ascension (J2000)', size=11)
+            plt.ylabel('Declination (J2000)', size=11)
+            plt.tick_params(axis='both', which='major', labelsize=10)
+        else:
+            plt.xlabel('Right Ascension (J2000)', size=14)
+            plt.ylabel('Declination (J2000)', size=14)
+            plt.tick_params(axis='both', which='major', labelsize=12)
         if colorbar:
             if ticks:
                 cbar = plt.colorbar(orientation='horizontal', shrink=1, ticks=ticks)
@@ -349,7 +359,11 @@ class Imaging:
                 cbar = plt.colorbar(orientation='horizontal', shrink=1)
             # cbar.ax.set_xscale('log')
             # cbar.locator = LogLocator()
-            cbar.set_label('Surface brightness [Jy/beam]', size=14)
+            if bigim:
+                cbar.set_label('Surface brightness [Jy/beam]', size=11)
+
+            else:
+                cbar.set_label('Surface brightness [Jy/beam]', size=14)
             # cbar.formatter = LogFormatter()
             cbar.update_normal(im)
         if text:
@@ -359,6 +373,7 @@ class Imaging:
             if self.resolution==20:
                 plt.text(3450/2 - (6000/2-image_data.shape[0])/2, 2450/2 - (6000/2-image_data.shape[1])/2, 'A399', color='pink', fontsize=14)
                 plt.text(2200/2 - (6000/2-image_data.shape[0])/2, 3750/2 - (6000/2-image_data.shape[1])/2, 'A401', color='pink', fontsize=14)
+
 
         if give_scale:
             if cmap=='Blues':
@@ -400,6 +415,9 @@ class Imaging:
             plt.gcf().gca().add_artist(circle)
 
         plt.grid(False)
+
+        if bigim:
+            plt.rc('font', size=12)
 
         if savefits:
             self.header['CRVAL3'] = 143650817.871094
@@ -1141,6 +1159,7 @@ class Imaging:
         return (data - data_bkg)/data_exp
 
     def make_bridge_overlay_yxr_contourplot(self, fits1, fits2=None, save=None, beamsize=True, show_regions=None):
+        plt.style.use('ggplot')
 
         self.reproject_map(fits1, 'fits1.fits')
         # self.reproject_map(fits2, 'fits2.fits')
@@ -1175,7 +1194,7 @@ class Imaging:
 
             def fixed_color(shape, saved_attrs):
                 attr_list, attr_dict = saved_attrs
-                attr_dict["color"] = "darkred"
+                attr_dict["color"] = "red"
                 kwargs = properties_func_default(shape, (attr_list, attr_dict))
 
                 return kwargs
@@ -1191,39 +1210,39 @@ class Imaging:
                 plt.gca().add_artist(artist)
 
 
-            def fixed_color(shape, saved_attrs):
-                attr_list, attr_dict = saved_attrs
-                attr_dict["color"] = "red"
-                kwargs = properties_func_default(shape, (attr_list, attr_dict))
+            # def fixed_color(shape, saved_attrs):
+            #     attr_list, attr_dict = saved_attrs
+            #     attr_dict["color"] = "red"
+            #     kwargs = properties_func_default(shape, (attr_list, attr_dict))
+            #
+            #     return kwargs
 
-                return kwargs
+            # r = pyregion.open('../regions/slices_inverse.reg').as_imagecoord(header=self.hdu[0].header)
+            # patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
+            #
+            # # fig.add_axes(ax)
+            # for patch in patch_list:
+            #     print(patch)
+            #     plt.gcf().gca().add_patch(patch)
+            # for artist in artist_list:
+            #     plt.gca().add_artist(artist)
+            #
+            # def fixed_color(shape, saved_attrs):
+            #     attr_list, attr_dict = saved_attrs
+            #     attr_dict["color"] = "orange"
+            #     kwargs = properties_func_default(shape, (attr_list, attr_dict))
+            #
+            #     return kwargs
 
-            r = pyregion.open('../regions/slices_inverse.reg').as_imagecoord(header=self.hdu[0].header)
-            patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
-
-            # fig.add_axes(ax)
-            for patch in patch_list:
-                print(patch)
-                plt.gcf().gca().add_patch(patch)
-            for artist in artist_list:
-                plt.gca().add_artist(artist)
-
-            def fixed_color(shape, saved_attrs):
-                attr_list, attr_dict = saved_attrs
-                attr_dict["color"] = "orange"
-                kwargs = properties_func_default(shape, (attr_list, attr_dict))
-
-                return kwargs
-
-            r = pyregion.open('../regions/a399extensionslices.reg').as_imagecoord(header=self.hdu[0].header)
-            patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
-
-            # fig.add_axes(ax)
-            for patch in patch_list:
-                print(patch)
-                plt.gcf().gca().add_patch(patch)
-            for artist in artist_list:
-                plt.gca().add_artist(artist)
+            # r = pyregion.open('../regions/a399extensionslices.reg').as_imagecoord(header=self.hdu[0].header)
+            # patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
+            #
+            # # fig.add_axes(ax)
+            # for patch in patch_list:
+            #     print(patch)
+            #     plt.gcf().gca().add_patch(patch)
+            # for artist in artist_list:
+            #     plt.gca().add_artist(artist)
 
         levels_1 = [self.get_noise(image_data1)]
         for _ in range(10):
@@ -1606,6 +1625,7 @@ class Imaging:
             data_radio_rudnick = []
             data_radio_err_rudnick = []
             rud_noise = self.get_noise(image_data_rud)
+            rud_beam = self.get_beamarea(hdu_rud)
         data_xray = []
         data_xray_err = []
         for n, structure in enumerate(structures):
@@ -1625,19 +1645,20 @@ class Imaging:
             err = np.sqrt((self.rms * np.sqrt(len(im_mask_radio_sub) / self.beamarea)) ** 2 +
                           (0.1 * fluxdens) ** 2)
             # err = np.std(im_mask_radio_sub)/np.sqrt(len(im_mask_radio_sub) / self.beamarea)
-            print(np.sum(im_mask_radio_sub)/self.beamarea, err)
             data_radio_err_cb.append(err)
 
             if rudnick:
                 r = pyregion.parse('\n'.join(region_head + [structure])).as_imagecoord(header=hdu_rud[0].header)
                 mask_radio = r.get_mask(hdu=hdu_rud[0], shape=image_data_rud.shape)
                 # im_mask_radio = np.clip(self.image_data[mask_radio], a_max=self.rms*5, a_min=None)
-                image_data_rud_sub = np.where((image_data_rud < rud_noise * 5), image_data_rud, 0)[mask_radio]
+                image_data_rud_sub = np.where((image_data_rud < rud_noise * 4), image_data_rud, 0)[mask_radio]
                 image_data_rud_sub = image_data_rud_sub[image_data_rud_sub != 0]
-                data_radio_rudnick.append(np.mean(image_data_rud_sub))
+                fluxdens_rud = len(image_data_rud[mask_radio])*np.mean(image_data_rud_sub)/rud_beam
+                data_radio_rudnick.append(fluxdens_rud)
                 # err = np.sqrt((rud_noise * np.sqrt(len(image_data_rud_sub) / self.get_beamarea(hdu_rud))) ** 2 +
                 #               (0.15 * np.sum(image_data_rud_sub) / self.get_beamarea(hdu_rud)) ** 2)/(len(im_mask_radio_sub) / self.beamarea)
-                err = np.std(image_data_rud_sub) / np.sqrt(len(image_data_rud_sub) / self.beamarea)
+                err = np.sqrt((rud_noise * np.sqrt(len(image_data_rud_sub) / rud_beam)) ** 2 +
+                          (0.1 * fluxdens_rud) ** 2)
 
                 data_radio_err_rudnick.append(err)
 
@@ -1670,7 +1691,7 @@ class Imaging:
         radiodat = [[n, d / np.mean(data_radio_cb) - 1] for n, d in enumerate(data_radio_cb)]
         radiodat_err = [d / np.mean(data_radio_cb) for d in data_radio_err_cb]
 
-        lgnd = ['Radio']
+        lgnd = ['UV-subtract']
 
         plt.errorbar([i[0] for i in radiodat], [i[1] for i in radiodat],
                      yerr=radiodat_err, fmt='.', ecolor='darkblue', elinewidth=0.4,
@@ -2014,7 +2035,7 @@ if __name__ == '__main__':
     # Image.make_image(show_regions='../tessupdate.reg', vmin=0.00005, save='tess.png', colorbar=False, beam=False, give_scale=False)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(3400, 3400))
     # Image.make_subimages(regionfile='../regions.reg', save='6cutouts.png', beamsize=True)
-    # Image.make_image(show_regions='../regions.reg', save='6image.png', subim=True, convolve=2, cmap='cubehelix_r', ticks=[0., 0.0001, 0.0005, 0.007, 0.001, 0.002], show_clustername=True)
+    # Image.make_image(show_regions='../regions.reg', save='6image.png', subim=True, convolve=2, cmap='cubehelix_r', ticks=[0., 0.0001, 0.0005, 0.007, 0.001, 0.002], show_clustername=True, bigim=True)
     # Image.make_subcontour('../regions.reg', save='6subimages.png', fits_lowres='../fits/60all.fits', beamsize=True, cmap='cubehelix')
     # Image = Imaging('../fits/6all.fits', resolution=6)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)),
@@ -2049,11 +2070,11 @@ if __name__ == '__main__':
 
 
 
-    Image = Imaging('../fits/60cleanbridge_300kpc.fits', resolution=60)
-    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
+    # Image = Imaging('../fits/60cleanbridge_300kpc.fits', resolution=60)
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.make_image(vmin=0., show_regions='../regions/slicegrid.reg', save='cleanbridgesliced.png', cmap='Blues', ticks=[2e-3, 4e-3, 1e-2])
-    Image.ps(xray='../fits/mosaic_a399_a401.fits', region='../regions/slices_inverse.reg', save='slicesbridge_inv.png')
-    Image.ps(xray='../fits/mosaic_a399_a401.fits', region='../regions/slices.reg', save='slicesbridge.png')
+    # Image.ps(xray='../fits/mosaic_a399_a401.fits', region='../regions/slices_inverse.reg', save='slicesbridge_inv.png')
+    # Image.ps(region='../regions/slices.reg', save='slicesbridge.png', rudnick=True)
 
     # Image.ps(xray='../fits/mosaic_a399_a401.fits', region='../regions/a399extensionslices.reg', save='slicesa399.png')
 
@@ -2081,7 +2102,7 @@ if __name__ == '__main__':
     #                    regionmask='../regions/maskbridge.reg', savefits='../fits/Bridge.fits', size=(400, 400)) #bridge
 
     # Image.do_science(region='../regions/bridge.reg')
-
+    # Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.medianfilter(kpc_scale=200)
     # Image.rudnickfilter(kpc_scale=100, open=True, write='../fits/20rudnick.fits')
@@ -2089,7 +2110,7 @@ if __name__ == '__main__':
     # Image.analyse_corr(A1758=True)
     # Image.make_image(save='justbridge.png', text=True)
 
-    # Image = Imaging('../fits/60rudnick.fits', resolution=60)
+    Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.make_image(show_regions='../regions/slices_inverse.reg', save='rudnicksliced.png', cmap='Blues', ticks=[2e-3, 4e-3, 1e-2])
     # Image.ps(xray='../fits/mosaic_a399_a401.fits', region='../regions/slices_inverse.reg', save='slicesbridge_inv_rudnick.png')
@@ -2100,11 +2121,14 @@ if __name__ == '__main__':
     # Image.do_science(results='A401_results_rudnick.fits', spectralindex=1.63)
     # Image.do_science(results='A399_results_rudnick.fits', spectralindex=1.75)
     # Image.do_science(region='../regions/bridge.reg', results='bridge_results_rudnick.fits')
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1])
 
-    # for i in range(52,60):
-    # Image.make_image(show_grid=True, save=f'60rudnick_grid.png', ticks=[2e-3, 1e-2], sub=f'_53', cmap='Blues')
+    for i in range(11,12):
+        try:
+            Image.make_image(show_grid=True, save=f'../analysis/60rudnick_grid.png', ticks=[2e-3, 1e-2], sub=f'_11', cmap='Blues')
+        except:
+            pass
 
     #BRIDGE
     # Image.ptp(savenumpy='bridgeradio.npy', grid='bridge')

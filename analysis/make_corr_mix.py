@@ -14,7 +14,7 @@ from astropy.modeling import models, fitting
 np.random.seed(10)
 
 parser = argparse.ArgumentParser(
-    description='Perform point-to-point analysis (radio/X or radio/radio/X) and save the results in a fits table. If (i) the X-ray counts < 0, (ii) the cell is not totally inside the X-ray FoV, and (ii) the radio flux density is < 0, it saves NaNs.')
+    description='make corr plots')
 parser._action_groups.pop()
 required = parser.add_argument_group('required arguments')
 optional = parser.add_argument_group('optional arguments')
@@ -176,7 +176,7 @@ wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
 rms = findrms(f1[0].data)/calc_beamarea(f1)/((header['CDELT2']*u.deg).to(u.arcsec)**2).value
 f1.close()
-f = fits.open(f'ptp_results_27/{obj}_results_rudnick_1.fits')
+f = fits.open(f'ptp_results_27/{obj}_results_rudnick_7.fits')
 header = f[0].header
 t1 = f[1].data
 t1 = t1[(t1['radio1_sb']>2*rms)]
@@ -259,4 +259,5 @@ plt.setp(ax.get_xticklabels(), fontsize=14)
 plt.setp(ax.get_yticklabels(), fontsize=14)
 plt.tight_layout()
 plt.grid(False)
-plt.savefig('ptp_results/combicorr'+obj+'.png', bbox_inches='tight')
+# plt.xticks([-6.7, -6.4, -6.1,-5.8, -5.5, -5.1, -4.8])
+plt.savefig('analysis/combicorr'+obj+'.png', bbox_inches='tight')
