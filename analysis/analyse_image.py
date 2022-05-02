@@ -998,14 +998,14 @@ class Imaging:
             err_sb = np.std(image_data)/np.sqrt(N_pixels_bridge/self.beamarea)*u.Jy/u.beam # 1*sigma of every area element
             err_sb_arcsec = np.std(image_data)/np.sqrt(N_pixels_bridge/self.beamarea)*u.Jy/self.beamarea/(abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec * abs(self.hdu[0].header['CDELT1'] * 3600.)*u.arcsec)
             bridge_area = N_pixels_bridge * self.pix_to_size(0.072)**2 # from govoni et al
-            integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)
+            integr_sb = N_pixels_bridge*av_sb_arcsec*(abs((self.header['CDELT2'] * u.deg).to(u.arcsec))**2)*3.9/bridge_area.value
 
             L=radiopower(integr_sb)
             print(f'\nArea: {bridge_area}, {N_pixels_bridge*(self.header["CDELT1"]*u.deg).to(u.arcmin)**2}')
             print(f'# of pixels: {N_pixels_bridge}')
             print(f'Average surface brightness: {av_sb} $\pm$ {err_sb}')
             print(f'Average surface brightness: {av_sb_arcsec} $\pm$ {err_sb_arcsec}')
-            flux_density_err = N_pixels_bridge * err_sb_arcsec * abs((self.header["CDELT2"] * u.deg).to(u.arcsec)) ** 2
+            flux_density_err = np.sqrt((N_pixels_bridge * err_sb_arcsec * abs((self.header["CDELT2"] * u.deg).to(u.arcsec)) ** 2)**2 + (integr_sb*0.1)**2)
             print(f'Total flux density is: {integr_sb} $\pm$ {flux_density_err}')
             radiopower_err = radiopower(flux_density_err)
 
@@ -2093,7 +2093,7 @@ if __name__ == '__main__':
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.make_polygon(points=[[44.497, 13.03]], sigma=3, do_science=True, make_image=True, spectralindex=1.75, save='A399.png', savefits='../fits/A399.fits')  # A399
     # # #
-    # Image = Imaging('../fits/60cleanbridge_300kpc.fits', resolution=60)
+    Image = Imaging('../fits/60cleanbridge_300kpc.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.make_polygon(points=[[44.587, 13.27598]],
     #                    subtract_points=[[44.5377, 13.2926], [44.497, 13.013], [44.82, 13.49],
@@ -2101,7 +2101,7 @@ if __name__ == '__main__':
     #                    sigma=2, sigma2=5, do_science=True, save='Bridge.png', make_image=True, make_cutout=True,
     #                    regionmask='../regions/maskbridge.reg', savefits='../fits/Bridge.fits', size=(400, 400)) #bridge
 
-    # Image.do_science(region='../regions/bridge.reg')
+    Image.do_science(region='../regions/bridge.reg')
     # Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.medianfilter(kpc_scale=200)
@@ -2110,7 +2110,7 @@ if __name__ == '__main__':
     # Image.analyse_corr(A1758=True)
     # Image.make_image(save='justbridge.png', text=True)
 
-    Image = Imaging('../fits/60rudnick.fits', resolution=60)
+    # Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.make_image(show_regions='../regions/slices_inverse.reg', save='rudnicksliced.png', cmap='Blues', ticks=[2e-3, 4e-3, 1e-2])
     # Image.ps(xray='../fits/mosaic_a399_a401.fits', region='../regions/slices_inverse.reg', save='slicesbridge_inv_rudnick.png')
@@ -2121,14 +2121,14 @@ if __name__ == '__main__':
     # Image.do_science(results='A401_results_rudnick.fits', spectralindex=1.63)
     # Image.do_science(results='A399_results_rudnick.fits', spectralindex=1.75)
     # Image.do_science(region='../regions/bridge.reg', results='bridge_results_rudnick.fits')
-    Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
+    # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.make_image(show_grid=True, save=f'../ptp_results/60rudnick_grid.png', vmin=1e-3, ticks=[1e-3, 2e-2, 1e-1])
 
-    for i in range(11,12):
-        try:
-            Image.make_image(show_grid=True, save=f'../analysis/60rudnick_grid.png', ticks=[2e-3, 1e-2], sub=f'_11', cmap='Blues')
-        except:
-            pass
+    # for i in range(11,12):
+    #     try:
+    #         Image.make_image(show_grid=True, save=f'../analysis/60rudnick_grid.png', ticks=[2e-3, 1e-2], sub=f'_11', cmap='Blues')
+    #     except:
+    #         pass
 
     #BRIDGE
     # Image.ptp(savenumpy='bridgeradio.npy', grid='bridge')
