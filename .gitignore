@@ -20,11 +20,11 @@ __pycache__
 #python
 *.pyc
 #surveys
-database/surveys
+database/surveys*
 #test scripts
 test.sh
 #deep learning data
-/deeplearning/DL_data
+/deeplearning_test/DL_data
 #pickles
 *.sav
 *.npy
