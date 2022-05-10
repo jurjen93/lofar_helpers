@@ -270,8 +270,8 @@ planck_A401, planck_A401_err = 6.7e14, 2.0e13
 # xray_A399, xray_A399_err = 5.7e14, 0
 # xray_A401, xray_A401_err = 9.3e14, 0
 bridge_hincks, bridge_hincks_err = 3.3e14, 7e13
-radio_A399, radio_A399_err = 1.63e+25, 5e+23
-radio_A401, radio_A401_err = 1.28e+25, 4e+23
+radio_A399, radio_A399_err = 1.26e+25, 1.3e+24
+radio_A401, radio_A401_err = 0.99e+25, 0.11e+25
 radio_bridge, radio_bridge_err = 8.3e24, 2e23
 
 p150sc = (10**(24.5)) * 10**((slope*np.log10(massvec/(10**(14.9)))) + offset)

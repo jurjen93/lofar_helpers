@@ -10,6 +10,8 @@ from astropy.wcs import WCS
 from scipy import stats
 import argparse
 from astropy.modeling import models, fitting
+import nmmn.stats
+import bces.bces
 
 np.random.seed(10)
 
@@ -171,6 +173,51 @@ def linreg_unc(x,y, y_err):
     fitted_line = fit(line_init, x, y, weights=1/y_err)
     return fitted_line(x)
 
+def func(x):
+    return x[1]*x[0]+x[2]
+
+
+def bcesfit(x, xerr, y, yerr, i=3):
+    # Values for i documentation
+    # 0 y|x Assumes x as the independent variable
+    # 1 x|y Assumes y as the independent variable
+    # 2 bissector Line that bisects the y|x and x|y. This approach is self-inconsistent.
+    # 3 orthogonal Orthogonal least squares: line that minimizes orthogonal distances. Should be used when it is not clear which variable should be treated as the independent one
+
+    if i == 0:
+        label = 'Y | X'
+    if i == 1:
+        label = 'X | Y'
+    if i == 2:
+        label = 'bisector'
+    if i == 3:
+        label = 'orthogonal'
+
+    cov = cov = np.zeros_like(x)
+
+    # number of bootstrapping trials
+    nboot = 10000
+
+    xlog = np.log10(x)
+    ylog = np.log10(y)
+    xerrlog = xerr / (x * np.log(10.))
+    yerrlog = yerr / (y * np.log(10.))
+
+    slope, offset, slopeerr, offseterr, covab = bces.bces.bcesp(xlog, xerrlog, ylog, yerrlog, cov, nboot)
+
+    # array with best-fit parameters
+    fitm = np.array([slope[i], offset[i]])
+    # covariance matrix of parameter uncertainties
+    covm = np.array([(slopeerr[i] ** 2, covab[i]), (covab[i], offseterr[i] ** 2)])
+    # Gets lower and upper bounds on the confidence band
+
+    xvec = np.linspace(xlog.min() - 1., xlog.max() + 1.)
+    # lcb,ucb,xcb=nmmn.stats.confbandnl(xlog,ylog,func,fitm,covm,2,0.954,xvec)
+
+    lcb, ucb, xcb = nmmn.stats.confbandnl(xlog, ylog, func, fitm, covm, 2, 0.95, xvec)
+
+    return slope[i], slopeerr[i], offset[i], offseterr[i], lcb, ucb, xcb
+
 f1 = fits.open('fits/60rudnick.fits')
 wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
@@ -203,61 +250,77 @@ xray2 = t2['xray_sb']
 radio_err2 = t2['radio1_sb_err']
 xray_err2 = t2['xray_sb_err']
 
-print('Number of cells used: '+str(len(t1)))
-fitlinex1 = linearfit_w(np.log10(xray1), np.log10(radio1), 0.434*radio_err1/radio1)
-slopex1, errx1 = linreg(np.log10(xray1), np.log10(radio1))
+# print('Number of cells used: '+str(len(t1)))
+# fitlinex1 = linearfit_w(np.log10(xray1), np.log10(radio1), 0.434*radio_err1/radio1)
+# slopex1, errx1 = linreg(np.log10(xray1), np.log10(radio1))
+#
+# pr = pearsonr_ci(np.log10(xray1), np.log10(radio1))
+# sr = spearmanr_ci(np.log10(xray1), np.log10(radio1))
+# print(f'Pearson R (x-ray vs radio): {pr[0]} +- {pr[-1]-pr[0]}')
+# print(f'Spearman R (x-ray vs radio): {sr[0]} +- {sr[-1]-sr[0]}')
 
-pr = pearsonr_ci(np.log10(xray1), np.log10(radio1))
-sr = spearmanr_ci(np.log10(xray1), np.log10(radio1))
-print(f'Pearson R (x-ray vs radio): {pr[0]} +- {pr[-1]-pr[0]}')
-print(f'Spearman R (x-ray vs radio): {sr[0]} +- {sr[-1]-sr[0]}')
+xray=np.append(xray1,xray2)
+radio=np.append(radio1,radio2)
+radio_err =np.append(radio_err1, radio_err2)
+xray_err = np.append(xray_err1, xray_err2)
 
 print('Number of cells used: '+str(len(t2)))
-fitlinex2 = linearfit_w(np.log10(xray2), np.log10(radio2), 0.434*radio_err2/radio2)
-slopex2, errx2 = linreg(np.log10(xray2), np.log10(radio2))
-print(wlinear_fit(np.log(xray1), np.log(radio1), 0.434*radio_err1/radio1))
-print(wlinear_fit(np.log(xray2), np.log(radio2), 0.434*radio_err2/radio2))
-pr = pearsonr_ci(np.log10(xray2), np.log10(radio2))
-sr = spearmanr_ci(np.log10(xray2), np.log10(radio2))
+fitlinex2 = linearfit_w(np.log10(xray), np.log10(radio), 0.434*radio_err/radio)
+slopex2, errx2 = linreg(np.log10(xray), np.log10(radio))
+# print(wlinear_fit(np.log(xray1), np.log(radio1), 0.434*radio_err1/radio1))
+print(wlinear_fit(np.log(xray), np.log(radio), 0.434*radio_err/radio))
+pr = pearsonr_ci(np.log10(xray), np.log10(radio))
+sr = spearmanr_ci(np.log10(xray), np.log10(radio))
 print(f'Pearson R (x-ray vs radio): {pr[0]} +- {pr[-1]-pr[0]}')
 print(f'Spearman R (x-ray vs radio): {sr[0]} +- {sr[-1]-sr[0]}')
+
+slope, slopeerr, offset, offseterr,  lc, uc, xc = bcesfit(xray, xray_err, radio, radio_err, i=3)
+
+
+print ('M-P (slope, slope_err, offset, offset_err)',  slope, slopeerr, offset, offseterr)
 
 
 fig, ax = plt.subplots(constrained_layout=True)
-ax.errorbar(np.log10(xray1), np.log10(radio1), xerr=(0.434*xray_err1/xray1), yerr=0.434*radio_err1/radio1, fmt='.', ecolor='red', elinewidth=0.4, color='darkred', capsize=2, markersize=4)
-ax.errorbar(np.log10(xray2), np.log10(radio2), xerr=(0.434*xray_err2/xray2), yerr=0.434*radio_err2/radio2, fmt='.', ecolor='blue', elinewidth=0.4, color='darkblue', capsize=2, markersize=4)
+ax.errorbar(np.log10(xray1), np.log10(radio1), xerr=(0.434*xray_err1/xray1), yerr=0.434*radio_err1/radio1, fmt='.', ecolor='red', elinewidth=0.4, color='darkred', capsize=2, markersize=4, label='R02')
+ax.errorbar(np.log10(xray2), np.log10(radio2), xerr=(0.434*xray_err2/xray2), yerr=0.434*radio_err2/radio2, fmt='.', ecolor='blue', elinewidth=0.4, color='darkblue', capsize=2, markersize=4, label='uv-subtract')
 
-ax.plot(fitlinex1[0], fitlinex1[1], color='darkred', linestyle='--')
-ax.plot(fitlinex2[0], fitlinex2[1], color='darkblue', linestyle='--')
+# ax.plot(fitlinex1[0], fitlinex1[1], color='darkred', linestyle='--')
+# ax.plot(fitlinex2[0], fitlinex2[1], color='darkblue', linestyle='--', label='Best fit')
+x_line = np.arange(- 10, 10, 0.01)
+y_line = linear(x_line, slope, offset)
+ax.plot(x_line, y_line, color='black', linestyle='--', label='Best fit')
 
-ax.set_ylim(np.min([np.min(np.log10(radio2) - (0.434*radio_err2 / radio2)),
-                    np.min(np.log10(radio2) - (0.434*radio_err2 / radio2)),
-                    np.min(np.log10(radio1) - (0.434*radio_err1 / radio1)),
-                    np.min(np.log10(radio1) - (0.434*radio_err1 / radio1))]) - 0.1,
-            np.max([np.max(np.log10(radio2) + (0.434*radio_err2 / radio2)),
-                    np.max(np.log10(radio2) + (0.434*radio_err2 / radio2)),
-                    np.max(np.log10(radio1) + (0.434 * radio_err1 / radio1)),
-                    np.max(np.log10(radio1) + (0.434 * radio_err1 / radio1))
-                    ]) + 0.1)
-ax.set_xlim(np.min([np.min(np.log10(xray1) - (0.434 * xray_err1 / xray1)),
-                    np.min(np.log10(xray1) - (0.434 * xray_err1 / xray1)),
-                    np.min(np.log10(xray2) - (0.434 * xray_err2 / xray2)),
-                    np.min(np.log10(xray2) - (0.434 * xray_err2 / xray2))]) - 0.1,
-            np.max([np.max(np.log10(xray2) + (0.434 * xray_err2 / xray2)),
-                    np.max(np.log10(xray2) + (0.434 * xray_err2/ xray2)),
-                    np.max(np.log10(xray1) + (0.434 * xray_err1 / xray1)),
-                    np.max(np.log10(xray1) + (0.434 * xray_err1 / xray1))
-                    ]) + 0.1)
+ax.set_ylim(np.log10(rms/1.5),
+            -5)
+# ax.set_xlim(np.min([np.min(np.log10(xray1) - (0.434 * xray_err1 / xray1)),
+#                     np.min(np.log10(xray1) - (0.434 * xray_err1 / xray1)),
+#                     np.min(np.log10(xray2) - (0.434 * xray_err2 / xray2)),
+#                     np.min(np.log10(xray2) - (0.434 * xray_err2 / xray2))]) - 0.1,
+#             np.max([np.max(np.log10(xray2) + (0.434 * xray_err2 / xray2)),
+#                     np.max(np.log10(xray2) + (0.434 * xray_err2/ xray2)),
+#                     np.max(np.log10(xray1) + (0.434 * xray_err1 / xray1)),
+#                     np.max(np.log10(xray1) + (0.434 * xray_err1 / xray1))
+#                     ]) + 0.1)
+ax.set_xlim(-6.8, -4.4)
 plt.grid(False)
+
+ax.plot((-10, -3), (np.log10(rms), np.log10(rms)), linestyle='--', color='orange', label='$2\sigma$')
+ax.fill_between(xc, lc, uc, alpha=0.2, facecolor='green')
 
 ax.set_ylabel('log($I_{R}$) (Jy/arcsec$^{2}$)', fontsize=14)
 # ax.set_xlabel('X-ray [SB/mean(SB)]')
 ax.set_xlabel('log($I_{X}$) (counts/s/arcsec$^{2}$)', fontsize=14)
-ax.legend(['Rudnick', 'UV-cut'], loc='upper left', fontsize=14)
+ax.legend(loc='upper left', fontsize=14)
 
 plt.setp(ax.get_xticklabels(), fontsize=14)
 plt.setp(ax.get_yticklabels(), fontsize=14)
 plt.tight_layout()
 plt.grid(False)
 # plt.xticks([-6.7, -6.4, -6.1,-5.8, -5.5, -5.1, -4.8])
+if 'trail' in args.obj:
+    plt.title('A399 northwest extension')
+elif 'bridge' in args.obj:
+    plt.title('Radio bridge')
+else:
+    plt.title(args.obj.title())
 plt.savefig('analysis/combicorr'+obj+'.png', bbox_inches='tight')
