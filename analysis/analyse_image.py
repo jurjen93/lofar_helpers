@@ -267,6 +267,22 @@ class Imaging:
                 for artist in artist_list:
                     plt.gca().add_artist(artist)
 
+            def white_color(shape, saved_attrs):
+                attr_list, attr_dict = saved_attrs
+                attr_dict["color"] = 'yellow'
+                kwargs = properties_func_default(shape, (attr_list, attr_dict))
+
+                return kwargs
+
+            r = pyregion.open('../regions/bridge.reg').as_imagecoord(header=self.hdu[0].header)
+            patch_list, artist_list = r.get_mpl_patches_texts(white_color)
+
+            # fig.add_axes(ax)
+            for patch in patch_list:
+                plt.gcf().gca().add_patch(patch)
+            for artist in artist_list:
+                plt.gca().add_artist(artist)
+
 
         elif show_grid is not None:
             fig = plt.figure(figsize=(7, 10), dpi=200)
@@ -1700,7 +1716,7 @@ class Imaging:
         if rudnick:
             radiodat2 = [[n, d / np.mean(data_radio_rudnick) - 1] for n, d in enumerate(data_radio_rudnick)]
             radiodat_err2 = [d / np.mean(data_radio_rudnick) for d in data_radio_err_rudnick]
-            lgnd.append('Rudnick')
+            lgnd.append('R02')
             plt.errorbar([i[0] for i in radiodat], [i[1] for i in radiodat2],
                          yerr=radiodat_err2, fmt='.', ecolor='darkgreen', elinewidth=0.4,
                          color='darkgreen', capsize=2, markersize=4)
@@ -2093,7 +2109,7 @@ if __name__ == '__main__':
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.make_polygon(points=[[44.497, 13.03]], sigma=3, do_science=True, make_image=True, spectralindex=1.75, save='A399.png', savefits='../fits/A399.fits')  # A399
     # # #
-    Image = Imaging('../fits/60cleanbridge_300kpc.fits', resolution=60)
+    # Image = Imaging('../fits/60cleanbridge_300kpc.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(750, 750))
     # Image.make_polygon(points=[[44.587, 13.27598]],
     #                    subtract_points=[[44.5377, 13.2926], [44.497, 13.013], [44.82, 13.49],
@@ -2101,7 +2117,7 @@ if __name__ == '__main__':
     #                    sigma=2, sigma2=5, do_science=True, save='Bridge.png', make_image=True, make_cutout=True,
     #                    regionmask='../regions/maskbridge.reg', savefits='../fits/Bridge.fits', size=(400, 400)) #bridge
 
-    Image.do_science(region='../regions/bridge.reg')
+    # Image.do_science(region='../regions/bridge.reg')
     # Image = Imaging('../fits/60rudnick.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(1500, 1500))
     # Image.medianfilter(kpc_scale=200)
@@ -2171,7 +2187,7 @@ if __name__ == '__main__':
     #                                           show_regions='../ptp_dir/grid_35x35/grid_35x35_ds9_image.reg', save='ymapxray.png')
 
     #60"
-    # Image = Imaging('../fits/60all.fits', resolution=60)
+    Image = Imaging('../fits/60all.fits', resolution=60)
     # Image.make_cutout(pos=(int(Image.image_data.shape[0] / 2), int(Image.image_data.shape[0] / 2)), size=(850, 850))
     # Image.rudnickfilter(100, open=True)
     # Image.ptp(savenumpy='bridgegridradio.npy', grid='bridge')
@@ -2181,8 +2197,8 @@ if __name__ == '__main__':
     # Image.ptp(savenumpy='radio3d.npy', savefig='radio3d.png', maskregion='../regions/excluderegions60.reg')
     # Image.ptp(savenumpy='y.npy', savefig='y3d.png', fitsfile='../fits/a401_curdecmaps_0.2_1.5s_sz.fits', maskregion='../regions/excluderegions60.reg')
     # Image.ptp(savenumpy='xray.npy', savefig='xray3d.png', fitsfile='../fits/mosaic_a399_a401.fits', xray=True, maskregion='../regions/excluderegions60.reg')
-    # Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
-    # Image.make_image(show_regions='../regions/60regions.reg', save='60image.png', cmap='cubehelix_r')
+    Image.make_cutout(pos=(int(Image.image_data.shape[0]/2), int(Image.image_data.shape[0]/2)), size=(850, 850))
+    Image.make_image(show_regions='../regions/60regions.reg', save='60image.png', cmap='cubehelix_r')
     # Image.make_contourplot(regions='../regions.reg')
     # Image.medianfilter(kernelsize=51, write='../fits/60median.fits')
     # Image.make_image()
