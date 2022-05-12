@@ -12,6 +12,7 @@ import argparse
 from astropy.modeling import models, fitting
 import nmmn.stats
 import bces.bces
+import linmix
 
 np.random.seed(10)
 
@@ -218,6 +219,25 @@ def bcesfit(x, xerr, y, yerr, i=3):
 
     return slope[i], slopeerr[i], offset[i], offseterr[i], lcb, ucb, xcb
 
+def linmix_f(x, y, xerr, yerr):
+    alpha = 1.0
+    beta = 0.5
+    lm = linmix.LinMix(np.log10(x), np.log10(y), 0.434*xerr/x, 0.434*yerr/y)
+    lm.run_mcmc(silent=True)
+    print("{}, {}".format(lm.chain['alpha'].mean(), lm.chain['alpha'].std()))
+    print("{}, {}".format(lm.chain['beta'].mean(), lm.chain['beta'].std()))
+    print("{}, {}".format(lm.chain['sigsqr'].mean(), lm.chain['sigsqr'].std()))
+    # plt.scatter(x, y, alpha=0.5)
+    # plt.errorbar(x, y, xerr=xerr, yerr=yerr, ls=' ', alpha=0.5)
+    # for i in range(0, len(lm.chain), 25):
+    #     xs = np.arange(-10, 11)
+    #     ys = lm.chain[i]['alpha'] + xs * lm.chain[i]['beta']
+    #     plt.plot(xs, ys, color='r', alpha=0.02)
+    # ys = alpha + xs * beta
+    # plt.plot(xs, ys, color='k')
+    # plt.show
+    return lm.chain['beta'].mean(), lm.chain['beta'].std(), lm.chain['alpha'].mean(), lm.chain['alpha'].std()
+
 f1 = fits.open('fits/60rudnick.fits')
 wcs =WCS(f1[0].header, naxis=2)
 header = wcs.to_header()
@@ -274,10 +294,11 @@ sr = spearmanr_ci(np.log10(xray), np.log10(radio))
 print(f'Pearson R (x-ray vs radio): {pr[0]} +- {pr[-1]-pr[0]}')
 print(f'Spearman R (x-ray vs radio): {sr[0]} +- {sr[-1]-sr[0]}')
 
-slope, slopeerr, offset, offseterr,  lc, uc, xc = bcesfit(xray, xray_err, radio, radio_err, i=3)
+# slope, slopeerr, offset, offseterr,  lc, uc, xc = bcesfit(xray, xray_err, radio, radio_err, i=3)
+slope, slopeerr, offset, offseterr = linmix_f(np.log10(xray), np.log10(radio), 0.434*xray_err/xray, 0.434*radio_err/radio)
 
 
-print ('M-P (slope, slope_err, offset, offset_err)',  slope, slopeerr, offset, offseterr)
+# print ('(slope, slope_err, offset, offset_err)',  slope, slopeerr, offset, offseterr)
 
 
 fig, ax = plt.subplots(constrained_layout=True)
@@ -290,8 +311,7 @@ x_line = np.arange(- 10, 10, 0.01)
 y_line = linear(x_line, slope, offset)
 ax.plot(x_line, y_line, color='black', linestyle='--', label='Best fit')
 
-ax.set_ylim(np.log10(rms/1.5),
-            -5)
+ax.set_ylim(np.log10(rms/1.5), -5)
 # ax.set_xlim(np.min([np.min(np.log10(xray1) - (0.434 * xray_err1 / xray1)),
 #                     np.min(np.log10(xray1) - (0.434 * xray_err1 / xray1)),
 #                     np.min(np.log10(xray2) - (0.434 * xray_err2 / xray2)),
@@ -305,7 +325,7 @@ ax.set_xlim(-6.8, -4.4)
 plt.grid(False)
 
 ax.plot((-10, -3), (np.log10(rms), np.log10(rms)), linestyle='--', color='orange', label='$2\sigma$')
-ax.fill_between(xc, lc, uc, alpha=0.2, facecolor='green')
+# ax.fill_between(xc, lc, uc, alpha=0.2, facecolor='green')
 
 ax.set_ylabel('log($I_{R}$) (Jy/arcsec$^{2}$)', fontsize=14)
 # ax.set_xlabel('X-ray [SB/mean(SB)]')
