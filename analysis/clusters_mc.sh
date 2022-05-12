@@ -6,7 +6,7 @@ F=fits/60rudnick.fits #fits/60rudnick.fits
 CELLSIZE=27
 OUTFILE=ptp_results_${CELLSIZE}
 
-mkdir ${OUTFILE}
+mkdir -p ${OUTFILE}
 
 for N in {1..100}
 do
@@ -37,7 +37,7 @@ do
 #    mv ptp_dir/bridge/grid_${CELLSIZE}x${CELLSIZE}_ds9_image.reg ${OUTFILE}/gridbridge_rudnick_${N}.reg
 #    mv ptp_dir/bridge/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/bridge_results_rudnick_${N}.fits
     python analysis/make_corr_images.py -filein ${OUTFILE}/bridge_results_rudnick_${N}.fits -fileout ${OUTFILE}/bridgecorr_rudnick_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/bridgeresults_rudnick_${N}.txt
-
+    echo $N
 done
 
 F=fits/60cleanbridge_200kpc.fits
@@ -72,5 +72,5 @@ do
 #    mv ptp_dir/bridge/grid_${CELLSIZE}x${CELLSIZE}_ds9_image.reg ${OUTFILE}/gridbridge_cb_${N}.reg
 #    mv ptp_dir/bridge/grid_${CELLSIZE}x${CELLSIZE}_results.fits ${OUTFILE}/bridge_results_cb_${N}.fits
     python analysis/make_corr_images.py -filein ${OUTFILE}/bridge_results_cb_${N}.fits -fileout ${OUTFILE}/bridgecorr_cb_${N}.png -no_y -noisefits ${F} > ${OUTFILE}/bridgeresults_cb_${N}.txt
-
+    echo $N
 done

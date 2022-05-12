@@ -9,6 +9,7 @@ import astropy.units as u
 from astropy.wcs import WCS
 import argparse
 from scipy import stats
+import linmix
 
 parser = argparse.ArgumentParser(
     description='Perform point-to-point analysis (radio/X or radio/radio/X) and save the results in a fits table. If (i) the X-ray counts < 0, (ii) the cell is not totally inside the X-ray FoV, and (ii) the radio flux density is < 0, it saves NaNs.')
@@ -164,19 +165,33 @@ def wlinear_fit(x,y,w):
     chi2 = np.sum(((y-(a+b*x))**2)/(a+b*x))
     return a,b,cov_00,cov_11,cov_01,chi2
 
-def linearfit_w(x, y, err):
-    popt = wlinear_fit(x, y, err)
-    a, b = popt[1], popt[0]
-    x_line = np.arange(min(x) - 10, max(x) + 10, 0.01)
-    y_line = linear(x_line, a, b)
-    print('y = %.5f * x + %.5f' % (a, b))
-    return x_line, y_line
+# def linearfit_w(x, y, err):
+#     popt = wlinear_fit(x, y, err)
+#     a, b = popt[1], popt[0]
+#     x_line = np.arange(min(x) - 10, max(x) + 10, 0.01)
+#     y_line = linear(x_line, a, b)
+#     print('y = %.5f * x + %.5f' % (a, b))
+#     return x_line, y_line
 
 
 def linreg(x, y):
     res = linregress(x, y)
     print(f'Linear regression slope is {res.slope} +- {res.stderr}')
     return res.slope, res.stderr
+
+def linmix_f(x, y, xerr, yerr):
+    lm = linmix.LinMix(np.log10(x), np.log10(y), 0.434*xerr/x, 0.434*yerr/y)
+    lm.run_mcmc(silent=True)
+    x_line = np.arange(min(x) - 10, max(x) + 10, 0.01)
+    y_line = linear(x_line, lm.chain['beta'].mean(), lm.chain['alpha'].mean())
+    # print("{}, {}".format(lm.chain['alpha'].mean(), lm.chain['alpha'].std()))
+    # print("{}, {}".format(lm.chain['beta'].mean(), lm.chain['beta'].std()))
+    # print("{}, {}".format(lm.chain['sigsqr'].mean(), lm.chain['sigsqr'].std()))
+    print('y = %.5f * x + %.5f' % (lm.chain['beta'].mean(), lm.chain['alpha'].mean()))
+    print(f"Linear regression slope is {lm.chain['beta'].mean()} +- {lm.chain['beta'].std()}")
+
+    return lm.chain['beta'].mean(), lm.chain['beta'].std(), lm.chain['alpha'].mean(), lm.chain['alpha'].std(), x_line, y_line
+
 
 radio = t['radio1_sb']
 xray = t['xray_sb']
@@ -207,8 +222,8 @@ if not args.no_y:
 print('Number of cells used: '+str(len(t)))
 
 print('XRAY VERSUS RADIO')
-fitlinex = linearfit(np.log10(xray), np.log10(radio))
-slopex, errx = linreg(np.log10(xray), np.log10(radio))
+# fitlinex = linearfit(np.log10(xray), np.log10(radio))
+slopex, errx, offset, offseterr, fitlinex, fitliney = linmix_f(xray, radio, xray_err, radio_err)
 pr = pearsonr_ci(np.log10(xray), np.log10(radio))
 sr = spearmanr_ci(np.log10(xray), np.log10(radio))
 print(pr)
@@ -230,7 +245,7 @@ fig, ax = plt.subplots(constrained_layout=True)
 ax.errorbar(np.log10(xray), np.log10(radio), xerr=(0.434*xray_err/xray), yerr=0.434*radio_err/radio, fmt='.', ecolor='red', elinewidth=0.4, color='darkred', capsize=2, markersize=4)
 if not args.no_y:
     ax.errorbar(np.log10(y), np.log10(radio), xerr=(0.434*y_err/y), yerr=0.434*radio_err/radio, fmt='.', ecolor='blue', elinewidth=0.4, color='darkblue', capsize=2, markersize=4)
-ax.plot(fitlinex[0], fitlinex[1], color='darkred', linestyle='--')
+ax.plot(fitlinex, fitliney, color='darkred', linestyle='--')
 if not args.no_y:
     ax.plot(fitliney[0], fitliney[1], color='darkblue', linestyle='--')
 ax.set_ylim(np.min([np.min(np.log10(radio) - (0.434*radio_err / radio)),

@@ -29,6 +29,8 @@ def bootstrap(values, err):
 
     return np.mean(res), np.std(res)
 
+
+
 a399trail_rudnick = glob(f'ptp_results_{cellsize}/A399trailresults_rudnick_*.txt')
 a399_rudnick = glob(f'ptp_results_{cellsize}/a399results_rudnick_*.txt')
 a401_rudnick = glob(f'ptp_results_{cellsize}/a401results_rudnick_*.txt')
