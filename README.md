@@ -5,8 +5,8 @@ Most scripts were used for imaging and recalibrating of A399-401 but are written
 
 Clone this full repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git```
 
-For these two scripts you need a few other important (LOFAR/astronomy) Python packages, 
-or work in a singularity containing all the software
+For these scripts you need a few other important (LOFAR/astronomy) Python packages, 
+or work in a singularity containing all the software.
 
 Two standalone scripts are briefly discussed below:
 
