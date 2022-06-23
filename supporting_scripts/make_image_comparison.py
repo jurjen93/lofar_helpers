@@ -83,13 +83,15 @@ image_4 = Imaging('../image_007-MFS-image.fits', vmin=vmin, vmax=vmax)
 
 
 fig, axes = plt.subplots(figsize=(10, 10), nrows=1, ncols=2, subplot_kw={'projection': image_1.wcs}, sharey='all')
+plt.rcParams['axes.grid'] = False
+plt.grid('off')
 axes[0].imshow(image_1.image_data, norm=SymLogNorm(linthresh=image_1.vmin / 10, vmin=image_1.vmin / 10, vmax=image_1.vmax / 2),
            origin='lower',
            cmap='CMRmap')
-axes[0].set_xlabel('Galactic Longitude', size=15)
-axes[0].set_ylabel('Galactic Latitude', size=15)
+axes[0].set_xlabel('Right Ascension (J2000)', size=15)
+axes[0].set_ylabel('Declination (J2000)', size=15)
 axes[0].tick_params(axis='both', which='major', labelsize=12)
-axes[0].grid(False)
+# axes[0].grid(False)
 
 # axes[0].tick_params(axis='both', which='minor', labelsize=15)
 # axes[1].imshow(image_2.image_data, norm=SymLogNorm(linthresh=image_2.vmin / 10, vmin=image_2.vmin / 20, vmax=image_2.vmax),
@@ -98,13 +100,15 @@ axes[0].grid(False)
 im = axes[1].imshow(image_4.image_data, norm=SymLogNorm(linthresh=image_1.vmin / 10, vmin=image_1.vmin / 20, vmax=image_1.vmax),
            origin='lower',
            cmap='CMRmap')
-axes[1].set_xlabel('Galactic Longitude', size=15)
+axes[1].set_xlabel('Right Ascension (J2000)', size=15)
 # axes[1].set_ylabel('Galactic Latitude', size=15)
 axes[1].tick_params(axis='both', which='major', labelsize=12)
 axes[1].set_yticks([])
 axes[1].axes.yaxis.set_visible(False)
 axes[1].yaxis.set_visible(False)
 axes[1].grid(False)
+
+
 
 
 # axes[1].tick_params(axis='both', which='minor', labelsize=15)
