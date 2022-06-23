@@ -46,7 +46,7 @@ done
 wait
 
 #MERGE ALL H5 FILES
-singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/merge_selfcals.py -d ${TO}/selfcal
+singularity exec -B ${SING_BIND} ${SING_IMAGE} python ${SCRIPT_FOLDER}/merge_selfcals/merge_selfcals.py -d ${TO}/selfcal
 
 #MOVE H5 SOLUTION DONE ON STRW
 #srun ${SCRIPT_FOLDER}/move_files/move_result/move_result_selfcal_surf-strw.sh /project/lofarvwf/Share/jdejong/output/${SOURCE}/selfcal/all_directions.h5 /net/tussenrijn/data2/jurjendejong/${SOURCE}

@@ -19,12 +19,8 @@ __pycache__
 *.png
 #python
 *.pyc
-#surveys
-database/surveys
 #test scripts
 test.sh
-#deep learning data
-/deeplearning/DL_data
 #pickles
 *.sav
 *.npy
