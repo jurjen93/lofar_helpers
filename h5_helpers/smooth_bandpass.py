@@ -4,6 +4,8 @@ import numpy as np
 from scipy.signal import medfilt
 import os
 from argparse import ArgumentParser
+from tqdm import tqdm
+
 
 tables.file._open_files.close_all()
 
@@ -33,6 +35,9 @@ freq = H.root.calibrator.bandpass.freq[:]
 
 new_bandpass = np.zeros(H.root.calibrator.bandpass.val.shape)
 
+N=0
+shape = H.root.calibrator.bandpass.val.shape
+T=shape[0]*shape[2]*shape[3]
 for bb_pol in range(len(H.root.calibrator.bandpass.pol)):
     for time in range(len(H.root.calibrator.bandpass.time)):
         for antenna in range(len(H.root.calibrator.bandpass.ant)):
@@ -45,6 +50,8 @@ for bb_pol in range(len(H.root.calibrator.bandpass.pol)):
                 new_bandpass[time, :, antenna, bb_pol] = bp_new
             else:
                 new_bandpass[time, :, antenna, bb_pol] = bp
+            N+=1
+            print(f'{int(100*N/T)}/{100}%', end='\r')
 
 overwrite_val(H, 'bandpass', new_bandpass)
 
@@ -68,6 +75,5 @@ if not args.no_plot:
     plt.show()
 
     T.close()
-
 
 H.close()
