@@ -515,7 +515,6 @@ class MergeH5:
     def get_number_of_directions(st):
         """
         Get number of directions in solution table
-
         :param st: solution table
         """
 
