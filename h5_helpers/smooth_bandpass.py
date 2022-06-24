@@ -13,8 +13,6 @@ parser.add_argument('--no_plot', action='store_true', help='Do not make plot at 
 parser.add_argument('--h5', type=str, help='h5 table', required=True )
 args = parser.parse_args()
 
-print(args.antennas)
-
 change_antennas = [int(a) for a in args.antennas]
 # change_antennas = [56, 57, 58, 73] # indices of antennas to fix
 
