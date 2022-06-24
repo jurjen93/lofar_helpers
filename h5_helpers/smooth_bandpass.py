@@ -1,11 +1,21 @@
+"""
+Script for smoothing bandpass with median filter.
+Useful for fitting on strange patterns in bandpass.
+
+Be careful with usage and always check the results in the plots given at the end.
+
+For questions --> jurjendejong@strw.leidenuniv.nl
+
+Example:
+python smooth_bandpass.py --antennas 56 57 58 73 --h5 solutions.h5
+"""
+
 import matplotlib.pyplot as plt
 import tables
 import numpy as np
 from scipy.signal import medfilt
 import os
 from argparse import ArgumentParser
-from tqdm import tqdm
-
 
 tables.file._open_files.close_all()
 
