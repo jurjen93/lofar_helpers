@@ -404,7 +404,6 @@ class MergeH5:
 
         if 'pol' in st.getAxesNames():
             self.polarizations = st.getAxisValues('pol')
-            print(self.polarizations)
         else:
             self.polarizations = []
 

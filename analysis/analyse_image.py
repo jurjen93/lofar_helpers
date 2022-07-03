@@ -82,7 +82,7 @@ class Imaging:
         self.image_data = self.hdu[0].data
         while len(self.image_data.shape) != 2:
             self.image_data = self.image_data[0]
-        self.wcs = WCS(self.hdu[0].header, naxis=2)
+        self. wcs = WCS(self.hdu[0].header, naxis=2)
         self.header = self.wcs.to_header()
         self.rms = self.noise
         self.rms_full = self.rms.copy()
