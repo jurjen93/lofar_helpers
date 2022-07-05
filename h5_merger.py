@@ -119,6 +119,7 @@ class MergeH5:
         :param convert_tec: convert TEC to phase or not
         :param merge_all_in_one: merge all in one direction
         :param solset: solset number
+        :param filtered_dir:
         """
 
         self.h5name_out = h5_out
@@ -427,7 +428,7 @@ class MergeH5:
         if 'error' in soltab:
             self.error = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
-        self.n = 0  # direction number reset
+        self.n = len(self.directions)  # direction number reset
 
         return self
 
@@ -514,6 +515,7 @@ class MergeH5:
     def get_number_of_directions(st):
         """
         Get number of directions in solution table
+
         :param st: solution table
         """
 
@@ -603,8 +605,6 @@ class MergeH5:
 
         for h5_name in self.h5_tables:
 
-            print(h5_name)
-
             h5 = h5parm(h5_name)
             if solset not in h5.getSolsetNames():
                 h5.close()
@@ -660,6 +660,8 @@ class MergeH5:
                 elif len(dirs)>1 and (sys.version_info.major == 2 or (sys.version_info.major == 3 and sys.version_info.minor<6)):
                     print('WARNING: Order of source directions from h5 table might not be ordered. This is an old Python issue.'
                           '\nSuggest to switch to Python 3.6 or higher')
+
+                # source_name = list(dirs.keys())[dir_idx]
                 source_coords = dirs[list(dirs.keys())[dir_idx]]
 
                 if self.merge_all_in_one and self.n == 1:
@@ -672,12 +674,16 @@ class MergeH5:
                     # Direction already exists, add to the existing solutions.
                     print('Direction {:f},{:f} already exists. Adding to this direction.'.format(*source_coords))
                     # We are matching on 5 decimals rounding
+                    # print(list([[round(l[0],5), round(l[1],5)] for l in self.directions.values()]))
                     idx = list([[round(l[0],5), round(l[1],5)] for l in self.directions.values()]).\
                         index([round(source_coords[0], 5), round(source_coords[1], 5)])
                 else:  # new direction
                     if abs(source_coords[0]) > 0 and abs(source_coords[1]) > 0:
                         print('Adding new direction {:f},{:f}'.format(*source_coords))
                     idx = self.n
+                    # if self.keep_sourcenames:
+                    #     self.add_direction({source_name: source_coords})
+                    # else:
                     self.add_direction({'Dir{:02d}'.format(self.n): source_coords})
                     if not self.merge_all_in_one:
                         self.n += 1
@@ -726,7 +732,6 @@ class MergeH5:
                                 shape[dir_index] = 1
                                 self.error = append(self.error, zeros(shape),
                                                         axis=dir_index)  # add clean phase to merge with
-
 
                 # Now we will add the solution table axis --> tec, phase, rotation, or amplitude
 
@@ -944,7 +949,7 @@ class MergeH5:
         del_index = []
         for coor in current_sources_coor:
             for n, source in enumerate(new_sources):
-                if round(coor[0], 4) == round(new_sources[1][0], 4) and round(coor[1], 4) == round(new_sources[1][1], 4):
+                if round(coor[0], 5) == round(source[1][0], 5) and round(coor[1], 5) == round(source[1][1], 5):
                     del_index.append(n)
 
         return [source for i, source in enumerate(new_sources) if i not in del_index]
@@ -1037,7 +1042,7 @@ class MergeH5:
             return self
 
         h5 = h5parm(self.h5name_out, readonly=True)
-        filetemp = self.h5name_out.replace('.h5','_temp.h5')
+        filetemp = self.h5name_out.replace('.h5','_temph5merger.h5')
         h5_temp = h5parm(filetemp, readonly=False)
         solset = h5.getSolset(self.solset)
         solsettemp = h5_temp.makeSolset(self.solset)
@@ -1374,6 +1379,53 @@ class MergeH5:
 
         H.close()
 
+    def equal_dir_tables(self):
+        H = tables.open_file(self.h5name_out, 'r+')
+        for solset in H.root._v_groups.keys():
+            ss = H.root._f_get_child(solset)
+            sources = ss.source[:]['name']
+            for soltab in ss._v_groups.keys():
+                st = ss._f_get_child(soltab)
+                dirs = st._f_get_child('dir')[:]
+                if len(sources[:]) > len(dirs):
+                    diff = list(set(sources)-set(dirs))
+
+                    newdir = list(st._f_get_child('dir')[:])+diff
+                    st._f_get_child('dir')._f_remove()
+                    H.create_array(st, 'dir', array(newdir).astype('|S5'))
+
+                    dir_ind = st.val.attrs['AXES'].decode('utf8').split(',').index('dir')
+
+                    for axes in ['val', 'weight']:
+                        axs = st._f_get_child(axes).attrs['AXES']
+                        newval = st._f_get_child(axes)[:]
+
+                        shape = list(newval.shape)
+                        for _ in diff:
+                            shape[dir_ind] = 1
+                            if 'amplitude' in soltab or axes=='weight':
+                                newval = append(newval, ones(shape),
+                                                     axis=dir_ind)
+                            else:
+                                newval = append(newval, zeros(shape),
+                                                     axis=dir_ind)
+
+                        valtype = str(st._f_get_child(axes).dtype)
+                        if '16' in valtype:
+                            atomtype = tables.Float16Atom()
+                        elif '32' in valtype:
+                            atomtype = tables.Float32Atom()
+                        elif '64' in valtype:
+                            atomtype = tables.Float64Atom()
+                        else:
+                            atomtype = tables.Float64Atom()
+
+                        st._f_get_child(axes)._f_remove()
+                        H.create_array(st, axes, newval.astype(valtype), atom=atomtype)
+                        st._f_get_child(axes).attrs['AXES'] = axs
+                elif len(sources[:]) < len(dirs):
+                    output_check(self.h5name_out)
+        H.close()
 
 def _create_h5_name(h5_name):
     if '.h5' != h5_name[-3:]:
@@ -1684,7 +1736,6 @@ class PolChange:
             elif circ2lin:
                 print('Convert circular polarization to linear polarization')
                 G_new = self.circ2lin(self.G)
-                print(G_new.dtype)
             else:
                 sys.exit('ERROR: No conversion given')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
@@ -1851,7 +1902,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if type(h5_tables)==str:
         h5_tables = glob(h5_tables)
 
-    print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################\n\nMerging the following tables:\n'+'\n'.join(h5_tables)+'\n')
+    print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################'
+          '\n\nMerging the following tables:\n'+'\n'.join(h5_tables)+'\n')
 
     h5_out = _create_h5_name(h5_out)
 
@@ -1864,7 +1916,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     #if alternative solset number is given, we will make a temp h5 file that has the alternative solset number because the code runs on sol000
     if use_solset != 'sol000':
         for h5_ind, h5 in enumerate(h5_tables):
-            temph5 = h5.replace('.h5', 'temp.h5')
+            temph5 = h5.replace('.h5', '_temph5merger.h5')
             print('Using different solset. Make temporary h5 file: '+temph5)
             os.system('cp '+h5+' '+temph5)
             _change_solset(temph5, use_solset, 'sol000')
@@ -1890,6 +1942,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
                 merge.create_new_dataset('sol000', 'phase')
             else:
                 merge.create_new_dataset('sol000', st)
+
+    merge.equal_dir_tables()
 
     try:
         if propagate_flags:
@@ -1962,10 +2016,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     # if not merge_all_in_one:
     #     _test_h5_output(h5_out, h5_tables)
 
-    if use_solset != 'sol000':
-        for h5 in h5_tables:
-            if 'temp.h5' in h5:
-                os.system('rm '+h5)
+    for h5 in h5_tables:
+        if '_temph5merger.h5' in h5:
+            os.system('rm '+h5)
 
     if check_output:
         output_check(h5_out)
@@ -2006,6 +2059,7 @@ if __name__ == '__main__':
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     parser.add_argument('--not_flagstation', action='store_true', default=None, help='Do not flag any station if station is flagged in input h5')
     parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and add to output file')
+    # parser.add_argument('--keep_sourcenames', action='store_true', default=None, help='Keep the name of the input sources')
     args = parser.parse_args()
 
     # check if solset name is accepted
