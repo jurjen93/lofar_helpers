@@ -1744,6 +1744,7 @@ class PolChange:
             # G_new = where(abs(imag(G_new))<1e-14, real(G_new), G_new)
             # G_new = where(abs(real(G_new))<1e-14, imag(G_new)*1j, G_new)
             phase = arctan(imag(G_new)/real(G_new)).astype(float64)
+            print(phase-angle(G_new).astype(float64))
             amplitude = abs(G_new).astype(float64)
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
