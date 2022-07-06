@@ -1571,7 +1571,7 @@ class PolChange:
         LR /= 2
         LL /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex64)
+        G_new = zeros(G.shape[0:-1] + (4,))
         G_new[..., 0] += RR
         G_new[..., 1] += RL
         G_new[..., 2] += LR
@@ -1611,7 +1611,7 @@ class PolChange:
         YX /= 2
         YY /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex64)
+        G_new = zeros(G.shape[0:-1] + (4,))
         G_new[..., 0] += XX
         G_new[..., 1] += XY
         G_new[..., 2] += YX
@@ -1651,10 +1651,10 @@ class PolChange:
                     try:
                         if 'pol' in solutiontable.getAxesNames():
                             values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
-                            self.G = ones(values.shape).astype(complex64)
+                            self.G = ones(values.shape)
                         else:
                             values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
-                            self.G = ones(values.shape+(2,)).astype(complex64)
+                            self.G = ones(values.shape+(2,))
                     except:
                         sys.exit('ERROR: Received '+str(solutiontable.getAxesNames())+', but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]')
 
