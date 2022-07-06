@@ -1571,7 +1571,7 @@ class PolChange:
         LR /= 2
         LL /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,))
+        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex64)
         G_new[..., 0] += RR
         G_new[..., 1] += RL
         G_new[..., 2] += LR
@@ -1611,7 +1611,7 @@ class PolChange:
         YX /= 2
         YY /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,))
+        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex64)
         G_new[..., 0] += XX
         G_new[..., 1] += XY
         G_new[..., 2] += YX
