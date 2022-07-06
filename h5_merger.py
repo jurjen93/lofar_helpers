@@ -30,7 +30,7 @@ import re
 import tables
 from collections import OrderedDict
 import warnings
-from numpy import zeros, ones, round, unique, array_equal, append, where, imag, isfinite, real, complex64, expand_dims, \
+from numpy import zeros, ones, round, unique, array_equal, append, where, imag, isfinite, real, complex128, expand_dims, \
     pi, array, all, exp, angle, sort, power, sum, argmin, float64, finfo, arctan
 
 warnings.filterwarnings('ignore')
@@ -1571,7 +1571,7 @@ class PolChange:
         LR /= 2
         LL /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex64)
+        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += RR
         G_new[..., 1] += RL
         G_new[..., 2] += LR
@@ -1611,7 +1611,7 @@ class PolChange:
         YX /= 2
         YY /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex64)
+        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
         G_new[..., 0] += XX
         G_new[..., 1] += XY
         G_new[..., 2] += YX
@@ -1651,10 +1651,10 @@ class PolChange:
                     try:
                         if 'pol' in solutiontable.getAxesNames():
                             values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
-                            self.G = ones(values.shape).astype(complex64)
+                            self.G = ones(values.shape).astype(complex128)
                         else:
                             values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
-                            self.G = ones(values.shape+(2,)).astype(complex64)
+                            self.G = ones(values.shape+(2,)).astype(complex128)
                     except:
                         sys.exit('ERROR: Received '+str(solutiontable.getAxesNames())+', but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]')
 
