@@ -1651,10 +1651,10 @@ class PolChange:
                     try:
                         if 'pol' in solutiontable.getAxesNames():
                             values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names)
-                            self.G = ones(values.shape)
+                            self.G = ones(values.shape).astype(complex64)
                         else:
                             values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), self.axes_names[0:-1])
-                            self.G = ones(values.shape+(2,))
+                            self.G = ones(values.shape+(2,)).astype(complex64)
                     except:
                         sys.exit('ERROR: Received '+str(solutiontable.getAxesNames())+', but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]')
 
