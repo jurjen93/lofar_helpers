@@ -1741,8 +1741,8 @@ class PolChange:
                 sys.exit('ERROR: No conversion given')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
-            G_new = where(abs(imag(G_new))<1e-14, real(G_new), G_new)
-            G_new = where(abs(real(G_new))<1e-14, imag(G_new)*1j, G_new)
+            # G_new = where(abs(imag(G_new))<1e-14, real(G_new), G_new)
+            # G_new = where(abs(real(G_new))<1e-14, imag(G_new)*1j, G_new)
             phase = angle(G_new).astype(float128)
             amplitude = abs(G_new).astype(float128)
 
