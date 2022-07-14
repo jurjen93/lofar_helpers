@@ -63,10 +63,10 @@ Note that this script only works with Python 3.
 
 Use ```make_boxes.py``` as a standalone script with Python 3, by running on the command line:\
 ```python make_boxes.py <FLAGS>``` \
-You can use the following flags: \
+You can use the following flags:
 * ```--file``` --> followed by the fits file name (and path)
-* ```--location``` --> followed by the location (path) to store the data \
-* ```--no_images``` --> don't save the images locally \
+* ```--location``` --> followed by the location (path) to store the data
+* ```--no_images``` --> don't save the images locally
 * ```--ds9``` --> interactive mode to validate the box selection in ds9
 * ```--max_boxes``` --> max number of boxes
 
