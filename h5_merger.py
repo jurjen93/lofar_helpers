@@ -189,7 +189,7 @@ class MergeH5:
             sys.exit('ERROR: Cannot read frequency axis from input MS set or input H5.')
         if len(self.ax_time) == 0:
             sys.exit('ERROR: Cannot read time axis from input MS or input H5.')
-        if not self.have_same_antennas and no_antenna_check:
+        if not self.have_same_antennas and not no_antenna_check:
             sys.exit('ERROR: Antenna tables are not the same')
 
         self.convert_tec = convert_tec  # convert tec or not
