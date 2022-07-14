@@ -111,7 +111,7 @@ class MergeH5:
     """Merge multiple h5 tables"""
 
     def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
-                 solset='sol000', filtered_dir=None):
+                 solset='sol000', filtered_dir=None, no_antenna_check=None):
         """
         :param h5_out: name of merged output h5 table
         :param files: h5 tables to merge, can be both list and string
@@ -189,7 +189,7 @@ class MergeH5:
             sys.exit('ERROR: Cannot read frequency axis from input MS set or input H5.')
         if len(self.ax_time) == 0:
             sys.exit('ERROR: Cannot read time axis from input MS or input H5.')
-        if not self.have_same_antennas:
+        if not self.have_same_antennas and no_antenna_check:
             sys.exit('ERROR: Antenna tables are not the same')
 
         self.convert_tec = convert_tec  # convert tec or not
@@ -1874,7 +1874,7 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=True, propagate_flags=None):
+             check_flagged_station=True, propagate_flags=None, no_antenna_check=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -1924,7 +1924,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             h5_tables[h5_ind] = temph5
 
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
-                    merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir)
+                    merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir,
+                    no_antenna_check=no_antenna_check)
 
     if time_av:
         merge.ax_time = merge.ax_time[::int(time_av)]
@@ -2060,6 +2061,7 @@ if __name__ == '__main__':
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     parser.add_argument('--not_flagstation', action='store_true', default=None, help='Do not flag any station if station is flagged in input h5')
     parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and add to output file')
+    parser.add_argument('--no_antenna_check', action='store_true', default=None, help='Do not compare antennas')
     # parser.add_argument('--keep_sourcenames', action='store_true', default=None, help='Keep the name of the input sources')
     args = parser.parse_args()
 
@@ -2125,4 +2127,5 @@ if __name__ == '__main__':
              time_av=args.time_av,
              freq_av=args.freq_av,
              check_flagged_station=not args.not_flagstation,
-             propagate_flags=args.propagate_flags)
+             propagate_flags=args.propagate_flags,
+             no_antenna_check=args.no_antenna_check)
