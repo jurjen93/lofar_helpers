@@ -1572,10 +1572,13 @@ class PolChange:
         LL /= 2
 
         G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
+
         G_new[..., 0] += RR
         G_new[..., 1] += RL
         G_new[..., 2] += LR
         G_new[..., 3] += LL
+
+        G_new = where(abs(G_new) < 10 * finfo(float).eps, 0, G_new)
 
         return G_new
 
@@ -1612,10 +1615,13 @@ class PolChange:
         YY /= 2
 
         G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
+
         G_new[..., 0] += XX
         G_new[..., 1] += XY
         G_new[..., 2] += YX
         G_new[..., 3] += YY
+
+        G_new = where(abs(G_new) < 10 * finfo(float).eps, 0, G_new)
 
         return G_new
 
