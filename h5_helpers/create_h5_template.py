@@ -1,26 +1,53 @@
 import tables
+import os
+import numpy as np
+from argparse import ArgumentParser
+
 
 class Template:
-    def __init__(self, name):
-        if name[-3:]!='.h5':
-            name+='.h5'
-        self.h5 = tables.open_file(name, 'r+')
-        pass
+    """
+    Make template based on given h5parm file
+    Currently it only sets the phases to 0 and the amplitudes to 1
+    """
+    def __init__(self, name_in, name_out):
+        os.system(' '.join(['cp', name_in, name_out]))
+        self.h5 = tables.open_file(name_out, 'r+')
 
-    def create_group(self, name, shape):
-        "For example sol000"
+    def make_phase_amplitude_dummies(self):
+        for solset in self.h5.root._v_groups.keys():
+            ss = self.h5.root._f_get_child(solset)
+            for soltab in ss._v_groups.keys():
+                st = ss._f_get_child(soltab)
+                valtype = str(st._f_get_child('val').dtype)
+                if '16' in valtype:
+                    atomtype = tables.Float16Atom()
+                elif '32' in valtype:
+                    atomtype = tables.Float32Atom()
+                elif '64' in valtype:
+                    atomtype = tables.Float64Atom()
+                else:
+                    atomtype = tables.Float64Atom()
+
+                if 'phase' in soltab:
+                    new_val = np.zeros(st.val[:].shape)
+                elif 'amplitude' in soltab:
+                    new_val = np.ones(st.val[:].shape)
+                else:
+                    continue
+
+                st._f_get_child('val')._f_remove()
+                self.h5.create_array(st, 'val', new_val.astype(valtype), atom=atomtype)
+
         return self
 
-    def create_table(self, name, shape):
-        "For example phase000"
-        return self
-
-    def create_array(self, name, shape):
-        "For example val, weight, pol, ..."
-        return self
 
 if __name__ == '__main__':
-    test = Template('test.h5')
-    # test.create_group
 
+    parser = ArgumentParser()
+    parser.add_argument('--input', type=str, help='input name', required=True)
+    parser.add_argument('--output', type=str, help='output name', required=True)
+    args = parser.parse_args()
 
+    test = Template(args.input, args.output)
+    test.make_phase_amplitude_dummies()
+    test.h5.close()
