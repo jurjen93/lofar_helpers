@@ -19,6 +19,7 @@ class Template:
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
                 valtype = str(st._f_get_child('val').dtype)
+                attrsaxes = st.val.attrs['AXES']
                 if '16' in valtype:
                     atomtype = tables.Float16Atom()
                 elif '32' in valtype:
@@ -37,6 +38,7 @@ class Template:
 
                 st._f_get_child('val')._f_remove()
                 self.h5.create_array(st, 'val', new_val.astype(valtype), atom=atomtype)
+                st._f_get_child('val').attrs['AXES'] = attrsaxes
 
         return self
 
