@@ -30,8 +30,8 @@ import re
 import tables
 from collections import OrderedDict
 import warnings
-from numpy import zeros, ones, round, unique, array_equal, append, where, imag, isfinite, real, complex128, expand_dims, \
-    pi, array, all, exp, angle, sort, power, sum, argmin, float64, float128, finfo, arctan
+from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
+    pi, array, all, exp, angle, sort, power, sum, argmin, finfo
 
 warnings.filterwarnings('ignore')
 
@@ -1747,8 +1747,8 @@ class PolChange:
                 sys.exit('ERROR: No conversion given')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
-            phase = angle(G_new).astype(float128)
-            amplitude = abs(G_new).astype(float128)
+            phase = angle(G_new)
+            amplitude = abs(G_new)
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
 
