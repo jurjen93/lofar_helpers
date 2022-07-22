@@ -15,7 +15,6 @@ merge_h5(h5_out='test.h5',
 """
 
 # TODO: test convert_tec==False  ---> now they are deleted if convert_tec==false
-# TODO: test circ2lin and vice versa
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
