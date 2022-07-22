@@ -1,9 +1,9 @@
 """
 USE THIS SCRIPT PREFERABLY WITH PYTHON 3, AS ALL TESTS ARE DONE WITH PYTHON 3.
 
-After one has created solution files from self calling on the extracted boxes,
-one can use this script to merge solution files
-Do this by importing the function merge_h5 from this script:
+Use this script to merge h5parm solution files.
+
+You can do this by importing the function merge_h5 from this script:
 -------------------------
 EXAMPLE:
 
