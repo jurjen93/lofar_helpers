@@ -202,6 +202,8 @@ class MergeH5:
 
         self.directions = OrderedDict()  # directions in a dictionary
 
+        self.debug_message = 'Please contact jurjendejong@strw.leidenuniv.nl.'
+
     @property
     def have_same_antennas(self):
         """
@@ -386,7 +388,7 @@ class MergeH5:
                     if n == 0:
                         self.ant = st.getAxisValues('ant')  # check if same for all h5
                     elif list(self.ant) != list(st.getAxisValues('ant')):
-                        sys.exit('ERROR: antennas not the same')
+                        sys.exit('ERROR: antennas not the same.')
             h5.close()
         self.all_soltabs = self._sort_soltabs(self.all_soltabs)
         self.all_solsets = set(self.all_solsets)
@@ -483,7 +485,7 @@ class MergeH5:
 
                 if solset not in h5_to_merge.getSolsetNames():
                     h5_to_merge.close()
-                    sys.exit('ERROR ' + solset + ' does not exist in '+h5_name_to_merge)
+                    sys.exit('ERROR ' + solset + ' does not exist in ' + h5_name_to_merge)
                 else:
                     ss = h5_to_merge.getSolset(solset)
                 if soltab not in ss.getSoltabNames():
@@ -544,7 +546,7 @@ class MergeH5:
                     values[..., 0][(~isfinite(values[..., 0])) | (values[..., 0] == 0.)] = 1.
                     values[..., -1][(~isfinite(values[..., -1])) | (values[..., -1] == 0.)] = 1.
                 else:
-                    sys.exit('ERROR: polarization found at unexpected axis '+str(axlist))
+                    sys.exit('ERROR: polarization found at unexpected axis ' + str(axlist))
             else:
                 values[(~isfinite(values)) | (values == 0.)] = 1.
 
@@ -574,7 +576,7 @@ class MergeH5:
             elif type == 'phase':
                 values_new = zeros((dim_pol,) + values.shape)
             else:
-                sys.exit('ERROR: Only type in [amplitude, phase] allowed')
+                sys.exit('ERROR: Only type in [amplitude, phase] allowed.')
             for i in range(dim_pol):
                 values_new[i, ...] = values
         elif values.shape[0] in [1, 2] and dim_pol in [2, 4] and haspol:
@@ -583,7 +585,7 @@ class MergeH5:
             elif type == 'phase':
                 values_new = zeros((dim_pol,) + values.shape[1:])
             else:
-                sys.exit('ERROR: Only type in [amplitude, phase] allowed')
+                sys.exit('ERROR: Only type in [amplitude, phase] allowed.')
             values_new[0, ...] = values[0, ...]
             if values.shape[0] == 2:
                 values_new[-1, ...] = values[1, ...]
@@ -692,7 +694,7 @@ class MergeH5:
                             shape = list(self.phases.shape)
                             dir_index = self.phases.ndim - 4
                             if dir_index < 0:
-                                sys.exit('ERROR: Missing dir axes')
+                                sys.exit('ERROR: Missing dir axes.')
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
                                 self.phases = append(self.phases, zeros(shape),
@@ -701,7 +703,7 @@ class MergeH5:
                             shape = list(self.phases.shape)
                             dir_index = self.phases.ndim - 4
                             if dir_index < 0:
-                                sys.exit('ERROR: Missing dir axes')
+                                sys.exit('ERROR: Missing dir axes.')
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
                                 self.phases = append(self.phases, zeros(shape),
@@ -710,7 +712,7 @@ class MergeH5:
                             shape = list(self.gains.shape)
                             dir_index = self.gains.ndim - 4
                             if dir_index < 0:
-                                sys.exit('ERROR: Missing dir axes')
+                                sys.exit('ERROR: Missing dir axes.')
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
                                 self.gains = append(self.gains, ones(shape),
@@ -719,7 +721,7 @@ class MergeH5:
                             shape = list(self.tec.shape)
                             dir_index = self.tec.ndim - 4
                             if dir_index < 0:
-                                sys.exit('ERROR: Missing dir axes')
+                                sys.exit('ERROR: Missing dir axes.')
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
                                 self.tec = append(self.tec, zeros(shape),
@@ -727,7 +729,7 @@ class MergeH5:
                         elif st.getType() == 'error':
                             dir_index = self.error.ndim - 4
                             if dir_index < 0:
-                                sys.exit('ERROR: Missing dir axes')
+                                sys.exit('ERROR: Missing dir axes.')
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
                                 self.error = append(self.error, zeros(shape),
@@ -1119,7 +1121,7 @@ class MergeH5:
                         sys.exit('WARNING: ' + '/'.join([soltab, axes]) +
                                  ' has not the same values for XX and YY polarization.'
                                  '\nERROR: No polarization reduction will be done.'
-                                 '\nERROR: Do not use --no_pol or --single_pol')
+                                 '\nERROR: Do not use --no_pol or --single_pol.')
                     if single:
                         print('/'.join([soltab, axes])+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
                     else:
@@ -1220,7 +1222,7 @@ class MergeH5:
                 try:
                     superstation_index = h5_antlist.index('ST001')
                 except ValueError:
-                    sys.exit('ERROR: No super station in antennas (denoted by ST001)')
+                    sys.exit('ERROR: No super station in antennas (denoted by ST001).')
 
                 for axes in ['val', 'weight']:
                     assert axes in list(st._v_children.keys()), axes+' not in .root.'+solset+'.'+soltab+' (not in axes)'
@@ -1300,6 +1302,7 @@ class MergeH5:
         """
         Verify if station weights are fully flagged. If so, flag in output as well.
         """
+
         for input_h5 in self.h5_tables:
             T = tables.open_file(input_h5)
             for solset in T.root._v_groups.keys():
@@ -1343,15 +1346,25 @@ class MergeH5:
         return self
 
     def upsample_weights(self):
+        """
+        Upsample weights (propagate flags to weights)
+        This function is not tested on exotic cases, so when it breaks here, please contact
+        jurjendejong@strw.leidenuniv.nl
+        """
+
+        print("\nPropagating weights in:")
+
         H = tables.open_file(self.h5name_out, 'r+')
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
             for n, soltab in enumerate(ss._v_groups.keys()):
+                print(soltab+', from:')
                 st = ss._f_get_child(soltab)
                 shape = st.val.shape
                 weight_out = ones(shape)
                 axes_new = st.val.attrs["AXES"].decode('utf8').split(',')
                 for input_h5 in self.h5_tables:
+                    print(input_h5)
                     T = tables.open_file(input_h5)
                     if soltab not in list(T.root._f_get_child(solset)._v_groups.keys()):
                         T.close()
@@ -1364,20 +1377,55 @@ class MergeH5:
                     newvals = self._interp_along_axis(weight, st2.time[:], st.time[:], axes_new.index('time'))
                     newvals = self._interp_along_axis(newvals, st2.freq[:], st.freq[:], axes_new.index('freq'))
 
-                    if weight.ndim!=weight_out.ndim:
-                        newvals = expand_dims(newvals, axis=axes_new.index('pol'))
-                        if newvals.shape[-1]!=weight_out.shape[-1]:
-                            temp = ones(shape)
-                            for n in range(temp.shape[-1]):
-                                temp[..., n] *= newvals[..., 0]
-                            newvals = temp
-                        weight_out *= newvals
+                    if weight.ndim != weight_out.ndim: # not the same value shape
+                        if 'pol' not in axes and 'pol' in axes_new:
+                            newvals = expand_dims(newvals, axis=axes_new.index('pol'))
+                            if newvals.shape[-1] != weight_out.shape[-1]:
+                                temp = ones(shape)
+                                for n in range(temp.shape[-1]):
+                                    temp[..., n] *= newvals[..., 0]
+                                newvals = temp
+                            weight_out *= newvals
+                        else:
+                            sys.exit('ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from '
+                                     + input_h5 + ': ' + str(axes) + '\n axes from '
+                                     + self.h5name_out + ': ' + str(axes_new) + '.\n'
+                                     + self.debug_message)
+                    elif set(axes) == set(axes_new): # same axes
+                        pol_index = axes_new.index('pol')
+                        if weight_out.shape[pol_index] == newvals.shape[pol_index]: # same pol numbers
+                            weight_out *= newvals
+                        else: # not the same polarization axis
+                            if newvals.shape[pol_index] != newvals.shape[-1]:
+                                sys.exit('ERROR: Upsampling of weights bug due to polarization axis mismatch.\n'
+                                         + self.debug_message)
+                            if newvals.shape[pol_index] == 1: # new values have only 1 pol axis
+                                for i in range(weight_out.shape[pol_index]):
+                                    weight_out[:, :, :, :, i] *= newvals[:, :, :, :, 0]
+                            elif newvals.shape[pol_index] == 2 and weight_out.shape[pol_index] == 1:
+                                for i in range(newvals.shape[pol_index]):
+                                    weight_out[:, :, :, :, 0] *= newvals[:, :, :, :, i]
+                            elif newvals.shape[pol_index] == 2 and weight_out.shape[pol_index] == 4:
+                                weight_out[:, :, :, :, 0] *= newvals[:, :, :, :, 0]
+                                weight_out[:, :, :, :, 1] *= newvals[:, :, :, :, 0] * newvals[:, :, :, :, -1]
+                                weight_out[:, :, :, :, 2] *= newvals[:, :, :, :, 0] * newvals[:, :, :, :, -1]
+                                weight_out[:, :, :, :, -1] *= newvals[:, :, :, :, -1]
+                            else:
+                                sys.exit('ERROR: Upsampling of weights bug due to unexpected polarization mismatch.\n'
+                                         + self.debug_message)
                     else:
-                        weight_out *= newvals
+                        sys.exit('ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from '
+                                + input_h5 +': '+str(axes) +'\n axes from '
+                                + self.h5name_out +': '+str(axes_new)+'.\n'
+                                + self.debug_message)
+
+
                     T.close()
                 st.weight[:] = weight_out
 
         H.close()
+        print('')
+        return self
 
     def equal_dir_tables(self):
         H = tables.open_file(self.h5name_out, 'r+')
@@ -1743,7 +1791,7 @@ class PolChange:
                 print('Convert circular polarization to linear polarization')
                 G_new = self.circ2lin(self.G)
             else:
-                sys.exit('ERROR: No conversion given')
+                sys.exit('ERROR: No conversion given.')
             print('Value shape after --> {shape}'.format(shape=G_new.shape))
 
             phase = angle(G_new)
@@ -1798,7 +1846,7 @@ def _test_h5_output(h5_out, tables_to_merge):
         H5in.close()
     if len(sources_out) == source_count:
         if type(tables_to_merge) != list:
-            sys.exit('h5_tables type is not list. Might be bug in code.')
+            sys.exit('h5_tables type is not list.')
         for h5 in tables_to_merge:
             H5in = tables.open_file(h5)
             sources = H5in.root.sol000.source[:]
@@ -1950,11 +1998,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     merge.equal_dir_tables()
 
-    try:
-        if propagate_flags:
-            merge.upsample_weights()
-    except:
-        sys.exit('ERROR: Upsampling of weights bug. Please contact jurjendejong@strw.leidenuniv.nl when you see this message.')
+    if propagate_flags:
+        merge.upsample_weights()
 
     tables.file._open_files.close_all()
 
@@ -1963,7 +2008,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     #Add antennas
     if (add_cs or use_ants_from_ms) and len(merge.ms)==0:
-        sys.exit('ERROR: --add_CS needs MS, given with --ms')
+        sys.exit('ERROR: --add_CS needs MS, given with --ms.')
     if add_cs:
         merge.add_ms_antennas(keepLB=True)
     elif use_ants_from_ms:
@@ -2106,7 +2151,7 @@ if __name__ == '__main__':
         add_direction = args.add_direction.replace('[','').replace(']','').split(',')
         add_direction = [float(add_direction[0]), float(add_direction[1])]
         if add_direction[0]>pi*6 or add_direction[1]>pi*6:
-            sys.exit('ERROR: Please give values in radian')
+            sys.exit('ERROR: Please give --add_direction values in radian.')
     else:
         add_direction = None
 
