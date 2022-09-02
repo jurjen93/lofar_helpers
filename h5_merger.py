@@ -322,8 +322,13 @@ class MergeH5:
         if 'dir' in st.getAxesNames():
             values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_current)
         else:
-            print('No direction axis, we will add this.')
+            print('No dir axis, we will add this.')
             origin_values = st.getValues()[0]
+            if 'dir' not in axes_current:
+                if 'pol' not in axes_current:
+                    axes_current.insert(0, 'dir')
+                else:
+                    axes_current.insert(1, 'dir')
             values = reorderAxes(origin_values.reshape(origin_values.shape+(1,)), st.getAxesNames()+['dir'], axes_current)
 
         return values, time_axes, freq_axes
@@ -1493,7 +1498,7 @@ def _change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
     print('Succesfully copied ' + solset_in + ' to ' + solset_out)
     if delete:
         H.root._f_get_child(solset_in)._f_remove(recursive=True)
-        print('Removed ' + solset_in)
+        print('Removed ' + solset_in +' in output')
     H.close()
 
 def output_check(h5):
