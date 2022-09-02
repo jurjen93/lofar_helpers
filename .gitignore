@@ -25,3 +25,5 @@ test.sh
 *.sav
 *.npy
 *.h5
+#rvw scripts
+lofar_facet_selfcal
