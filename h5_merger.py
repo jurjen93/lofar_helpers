@@ -322,7 +322,7 @@ class MergeH5:
         if 'dir' in st.getAxesNames():
             values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_current)
         else:
-            print('No dir axis, so this is being added.')
+            print('Add dir axis.')
             origin_values = st.getValues()[0]
             if 'dir' not in axes_current:
                 if 'pol' not in axes_current:
