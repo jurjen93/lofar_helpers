@@ -42,8 +42,8 @@ class bcolors(object):
 
 def die(s,database=True):
     print(bcolors.FAIL+s+bcolors.ENDC)
-    if database and use_database():
-        update_status(None,'Failed')
+    # if database and use_database():
+    #     update_status(None,'Failed')
     raise Exception(s)
 
 def report(s):
@@ -52,7 +52,7 @@ def report(s):
 def warn(s):
     print(bcolors.OKBLUE+s+bcolors.ENDC)
 
-def run(s,proceed=False,dryrun=False,log=None,quiet=False):
+def run(s, proceed=False,dryrun=False,log=None,quiet=False):
     report('Running: '+s)
     if not dryrun:
 #      retval=os.system(s)
@@ -63,7 +63,7 @@ def run(s,proceed=False,dryrun=False,log=None,quiet=False):
         if not(proceed) and retval!=0:
            os.system('CleanSHM.py')
            die('FAILED to run '+s+': return value is '+str(retval))
-        return retval
+        return retvalcd
     else:
         warn('Dry run, skipping this step')
 
@@ -594,12 +594,12 @@ if args['indico'] != None:
 if args['HMPmodelfits'] != None:
   fullmask = args['HMPmodelfits']
 
-if not os.path.isfile(args['mslist']):
-    # try to make it
-    from make_mslists import make_list
-    success=make_list(workdir=os.getcwd())
-    if not os.path.isfile(args['mslist']):
-      raise IOError('File', args['mslist'], 'does not exist and could not be created')
+# if not os.path.isfile(args['mslist']):
+#     # try to make it
+#     from make_mslists import make_list
+#     success=make_list(workdir=os.getcwd())
+#     if not os.path.isfile(args['mslist']):
+#       raise IOError('File', args['mslist'], 'does not exist and could not be created')
 
 boxfile     = args['boxfile']
 ncpu        = args['ncpu']

@@ -137,7 +137,7 @@ class MergeH5:
         elif type(h5_tables) == str:
             self.h5_tables = glob(h5_tables)
         else:
-            print('No h5 table given. We will use all h5 tables in current folder.')
+            print('No h5 table given. Use all h5 tables in current folder.')
             self.h5_tables = glob('*.h5')
         if h5_time_freq:
             if len(self.ms)>0:
@@ -1396,7 +1396,8 @@ class MergeH5:
                                      + input_h5 + ': ' + str(axes) + '\n axes from '
                                      + self.h5name_out + ': ' + str(axes_new) + '.\n'
                                      + self.debug_message)
-                    elif set(axes) == set(axes_new): # same axes
+                    elif set(axes) == set(axes_new) and 'pol' in axes: # same axes
+
                         pol_index = axes_new.index('pol')
                         if weight_out.shape[pol_index] == newvals.shape[pol_index]: # same pol numbers
                             weight_out *= newvals
@@ -1418,12 +1419,13 @@ class MergeH5:
                             else:
                                 sys.exit('ERROR: Upsampling of weights bug due to unexpected polarization mismatch.\n'
                                          + self.debug_message)
+                    elif set(axes) == set(axes_new) and 'pol' not in axes: # same axes but no pol
+                        weight_out *= newvals
                     else:
                         sys.exit('ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from '
                                 + input_h5 +': '+str(axes) +'\n axes from '
                                 + self.h5name_out +': '+str(axes_new)+'.\n'
                                 + self.debug_message)
-
 
                     T.close()
                 st.weight[:] = weight_out
