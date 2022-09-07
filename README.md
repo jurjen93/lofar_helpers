@@ -52,6 +52,10 @@ Or you can run the script on the command line with
 More functionalities have been added recently, which can be all listed with the help function:\
 ```python h5_merger.py -h```
 
+This script is being used in:\
+https://github.com/rvweeren/lofar_facet_selfcal \
+https://github.com/lmorabit/lofar-vlbi
+
 -------------------------------
 
 ## 2. Make boxes for LOFAR self-calibration
