@@ -6,4 +6,4 @@ SING_BIND=/project/lofarvwf/Share/jdejong
 
 MS_IN=$1
 
-singularity exec -B ${SING_BIND} ${SING_IMAGE} DP3 msin=${MS_IN} msout=avg_${MS_IN} steps=[av] msout.storagemanager=dysco steps=[av] av.type=averager av.freqstep=16 av.timestep=16
+singularity exec -B ${SING_BIND} ${SING_IMAGE} DPPP msin=${MS_IN} msout=avg_${MS_IN} steps=[av] msout.storagemanager=dysco steps=[av] av.type=averager av.freqstep=16 av.timestep=16
