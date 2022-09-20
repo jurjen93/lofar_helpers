@@ -126,7 +126,6 @@ class PolConv(Step):
 
 
         if self.circ2lin:
-
             """
             circ2lin
             XX =   RR +  RL +  LR +  LL
