@@ -6,8 +6,6 @@ To use this script in DPPP/DP3, you can save this file in the same folder as fro
 Or you save this python file somewhere you like and run:
 export PYTHONPATH=/somewhere/you/like:$PYTHONPATH
 
-Or run dp3_helpers/setup.sh in the same folder with polconv.py
-
 """
 
 try:
