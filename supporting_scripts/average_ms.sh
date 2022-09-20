@@ -1,5 +1,5 @@
 #!/bin/bash
-#SBATCH -c 1
+#SBATCH -c 4
 
 SING_IMAGE=/home/lofarvwf-jdejong/singularities/pill-latest.simg
 SING_BIND=/project/lofarvwf/Share/jdejong
