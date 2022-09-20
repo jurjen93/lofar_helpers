@@ -1,21 +1,14 @@
-# Based on MockPyStep.py from https://dp3.readthedocs.io/en/latest/steps/PythonStep.html
+"This code is based on MockPyStep.py from https://dp3.readthedocs.io/en/latest/steps/PythonStep.html"
 
-#export PYTHONPATH=/path/to/dp3/lib64/python3.6/site-packages:$PYTHONPATH
+try:
+    from dppp import DPStep as Step
+except:
+    from dp3 import Step
 
-import parameterset
-from pydp3 import Step
 import numpy as np
 
-class DataConv(Step):
-    """
-    Convert data.
-
-    datafactor --> multiply data with a specific factor
-    weightfactor --> multiply weights with a specific factor
-
-    lin2circ --> convert from linear to circular data
-    circ2lin --> convert from circular to linear data
-    """
+class MockPyStep(Step):
+    """Example python DPStep that multiplies DATA and WEIGHT_SPECTRUM"""
     def __init__(self, parset, prefix):
         """
         Set up the step (constructor). Read the parset here.
@@ -26,12 +19,9 @@ class DataConv(Step):
           parset: Parameter set for the entire pipeline
           prefix: Prefix for this step, e.g. "thisstepname."
         """
-
         super().__init__()
         self.datafactor = parset.getDouble(prefix + "datafactor")
         self.weightsfactor = parset.getDouble(prefix + "weightsfactor")
-        self.lin2circ = parset.getDouble(prefix + "lin2circ")
-        self.circ2lin = parset.getDouble(prefix + "circ2lin")
 
         self.fetch_weights = True
         self.fetch_uvw = False
@@ -70,40 +60,6 @@ class DataConv(Step):
         weights = np.array(dpbuffer.get_weights(), copy=False)
 
         # Do the operation on data
-
-        if self.circ2lin:
-
-            """
-            circ2lin
-            XX =   RR +  RL +  LR +  LL
-            XY =  iRR - iRL + iLR - iLL
-            YX = -iRR - iRL + iLR + iLL
-            YY =   RR -  RL -  LR +  LL
-            """
-
-            data = np.transpose(np.array([
-                0.5 * (data[:, :, 0] + data[:, :, 1] + data[:, :, 2] + data[:, :, 3]),
-                0.5 * (1j * data[:, :, 0] - 1j * data[:, :, 1] + 1j * data[:, :, 2] - 1j * data[:, :, 3]),
-                0.5 * (-1j * data[:, :, 0] - 1j * data[:, :, 1] + 1j * data[:, :, 2] + 1j * data[:, :, 3]),
-                0.5 * (data[:, :, 0] - data[:, :, 1] - data[:, :, 2] + data[:, :, 3])]),
-                (1, 2, 0))
-
-        elif self.lin2circ:
-            """
-            lin2circ
-            RR = XX - iXY + iYX + YY
-            RL = XX + iXY + iYX - YY
-            LR = XX - iXY - iYX - YY
-            LL = XX + iXY - iYX + YY
-            """
-
-            data = np.transpose(np.array([
-                0.5 * (data[:, :, 0] - 1j * data[:, :, 1] + 1j * data[:, :, 2] + data[:, :, 3]),
-                0.5 * (data[:, :, 0] + 1j * data[:, :, 1] + 1j * data[:, :, 2] - data[:, :, 3]),
-                0.5 * (data[:, :, 0] - 1j * data[:, :, 1] - 1j * data[:, :, 2] - data[:, :, 3]),
-                0.5 * (data[:, :, 0] + 1j * data[:, :, 1] - 1j * data[:, :, 2] + data[:, :, 3])]),
-                (1, 2, 0))
-
         data *= self.datafactor
         weights *= self.weightsfactor
 
