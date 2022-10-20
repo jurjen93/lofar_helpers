@@ -1333,40 +1333,45 @@ class MergeH5:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
                                     st_out = H.root._f_get_child(solset)._f_get_child(soltab)
-                                    ant_idx = list(st_out.ant[:]).index(antenna)
-                                    st_out.weight[ant_idx, ...] = 0.
+                                    if antenna in list(st_out.ant[:]):
+                                        ant_idx = list(st_out.ant[:]).index(antenna)
+                                        st_out.weight[ant_idx, ...] = 0.
                                 H.close()
                         elif ant_index==1:
                             if sum(weight[:, a, ...])==0.:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
                                     st_out = H.root._f_get_child(solset)._f_get_child(soltab)
-                                    ant_idx = list(st_out.ant[:]).index(antenna)
-                                    st_out.weight[:, ant_idx, ...] = 0.
+                                    if antenna in list(st_out.ant[:]):
+                                        ant_idx = list(st_out.ant[:]).index(antenna)
+                                        st_out.weight[:, ant_idx, ...] = 0.
                                 H.close()
                         elif ant_index==2:
                             if sum(weight[:, :, a, ...])==0.:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
                                     st_out = H.root._f_get_child(solset)._f_get_child(soltab)
-                                    ant_idx = list(st_out.ant[:]).index(antenna)
-                                    st_out.weight[:, :, ant_idx, ...] = 0.
+                                    if antenna in list(st_out.ant[:]):
+                                        ant_idx = list(st_out.ant[:]).index(antenna)
+                                        st_out.weight[:, :, ant_idx, ...] = 0.
                                 H.close()
                         elif ant_index==3:
                             if sum(weight[:, :, :, a, ...])==0.:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
                                     st_out = H.root._f_get_child(solset)._f_get_child(soltab)
-                                    ant_idx = list(st_out.ant[:]).index(antenna)
-                                    st_out.weight[:, :, :, ant_idx, ...] = 0.
+                                    if antenna in list(st_out.ant[:]):
+                                        ant_idx = list(st_out.ant[:]).index(antenna)
+                                        st_out.weight[:, :, :, ant_idx, ...] = 0.
                                 H.close()
                         elif ant_index==4:
                             if sum(weight[:, :, :, :, a, ...])==0.:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
                                     st_out = H.root._f_get_child(solset)._f_get_child(soltab)
-                                    ant_idx = list(st_out.ant[:]).index(antenna)
-                                    st_out.weight[:, :, :, :, ant_idx, ...] = 0.
+                                    if antenna in list(st_out.ant[:]):
+                                        ant_idx = list(st_out.ant[:]).index(antenna)
+                                        st_out.weight[:, :, :, :, ant_idx, ...] = 0.
                                 H.close()
             T.close()
         return self
