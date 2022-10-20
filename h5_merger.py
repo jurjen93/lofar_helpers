@@ -37,6 +37,9 @@ warnings.filterwarnings('ignore')
 __all__ = ['merge_h5', 'output_check', 'move_source_in_sourcetable']
 
 def remove_numbers(inp):
+    """
+    Remove numbers from string (keep only letters)
+    """
     return "".join(re.findall("[a-zA-z]+", inp))
 
 def overwrite_table(T, solset, table, values, title=None):
@@ -163,7 +166,7 @@ class MergeH5:
             self.ax_time = array(sorted(unique(self.ax_time)))
             self.ax_freq = array(sorted(unique(self.ax_freq)))
 
-        else:  # if we dont have ms files, we use the time and frequency axis of the longest h5 table
+        else:  # if no ms files, use the time and frequency axis of the longest h5 table
             print('No MS or h5 file given for time/freq axis.\nWill make a frequency and time axis by combining all input h5 tables.')
             self.ax_time = array([])
             self.ax_freq = array([])
@@ -533,11 +536,17 @@ class MergeH5:
             return 1
 
     def add_direction(self, source):
+        """
+        Add direction to dictionary
+        """
         self.directions.update(source)
         self.directions = OrderedDict(sorted(self.directions.items()))
 
     @staticmethod
     def correct_invalid_values(soltab, values, axlist):
+        """
+        Correct invalid values in values
+        """
         if soltab == 'phase' or 'tec':
             values[~isfinite(values)] = 0.
         elif soltab == 'amplitude':
@@ -680,7 +689,7 @@ class MergeH5:
                 elif any([array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
                     # Direction already exists, add to the existing solutions.
                     print('Direction {:f},{:f} already exists. Adding to this direction.'.format(*source_coords))
-                    # We are matching on 5 decimals rounding
+                    # Matching on 5 decimals rounding
                     # print(list([[round(l[0],5), round(l[1],5)] for l in self.directions.values()]))
                     idx = list([[round(l[0],5), round(l[1],5)] for l in self.directions.values()]).\
                         index([round(source_coords[0], 5), round(source_coords[1], 5)])
@@ -694,7 +703,7 @@ class MergeH5:
                     self.add_direction({'Dir{:02d}'.format(self.n): source_coords})
                     if not self.merge_all_in_one:
                         self.n += 1
-                    if self.n > 1:  # for self.n==1 we dont have to do anything
+                    if self.n > 1:  # for self.n==1 --> dont have to do anything
                         if st.getType() in ['tec', 'phase', 'rotation'] and self.convert_tec:
                             shape = list(self.phases.shape)
                             dir_index = self.phases.ndim - 4
@@ -740,7 +749,7 @@ class MergeH5:
                                 self.error = append(self.error, zeros(shape),
                                                         axis=dir_index)  # add clean phase to merge with
 
-                # Now we will add the solution table axis --> tec, phase, rotation, or amplitude
+                # Add the solution table axis --> tec, phase, rotation, or amplitude
 
                 if st.getType() == 'tec':
 
@@ -895,7 +904,7 @@ class MergeH5:
 
     def reorder_directions(self):
         """
-        This method will be called when the user is using Python 2, as there was a bug in the direction that we can resolve
+        This method will be called when the user is using Python 2, as there was a bug in the direction that can be resolved
         with this extra step.
         """
 
@@ -927,7 +936,7 @@ class MergeH5:
 
     def reduce_memory_source(self):
         """
-        We need to store the data in 136 bytes per directions.
+        Store the data in 136 bytes per directions.
         Python 3 saves it automatically in more than that number.
         """
 
@@ -944,7 +953,7 @@ class MergeH5:
         """
         Remove sources from new_sources that are already in current_sources
 
-        :param current_sources: current sources that we need to compare with new_sources
+        :param current_sources: current sources that need to be compared with new_sources
         :param new_sources: new sources to be add
 
         :return: New unique sources
@@ -1108,7 +1117,7 @@ class MergeH5:
         """
         Reduce table to one single polarization
 
-        :param single: if single==True we leave a single pole such that values have shape=(..., 1), if False we remove pol-axis entirely
+        :param single: if True --> leave a single pole such that values have shape=(..., 1), if False --> remove pol-axis entirely
         """
 
         T = tables.open_file(self.h5name_out, 'r+')
@@ -1315,37 +1324,49 @@ class MergeH5:
                 for soltab in ss._v_groups.keys():
                     st = ss._f_get_child(soltab)
                     weight = st.weight
+                    antennas_in = list(st.ant[:])
                     ant_index = str(weight.attrs['AXES']).split(',').index('ant')
                     for a in range(weight.shape[ant_index]):
+                        antenna=antennas_in[a]
                         if ant_index==0:
                             if sum(weight[a, ...])==0.:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
-                                    H.root._f_get_child(solset)._f_get_child(soltab).weight[a, ...] = 0.
+                                    st_out = H.root._f_get_child(solset)._f_get_child(soltab)
+                                    ant_idx = list(st_out.ant[:]).index(antenna)
+                                    st_out.weight[ant_idx, ...] = 0.
                                 H.close()
                         elif ant_index==1:
                             if sum(weight[:, a, ...])==0.:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
-                                    H.root._f_get_child(solset)._f_get_child(soltab).weight[:, a, ...] = 0.
+                                    st_out = H.root._f_get_child(solset)._f_get_child(soltab)
+                                    ant_idx = list(st_out.ant[:]).index(antenna)
+                                    st_out.weight[:, ant_idx, ...] = 0.
                                 H.close()
                         elif ant_index==2:
                             if sum(weight[:, :, a, ...])==0.:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
-                                    H.root._f_get_child(solset)._f_get_child(soltab).weight[:, :, a, ...] = 0.
+                                    st_out = H.root._f_get_child(solset)._f_get_child(soltab)
+                                    ant_idx = list(st_out.ant[:]).index(antenna)
+                                    st_out.weight[:, :, ant_idx, ...] = 0.
                                 H.close()
                         elif ant_index==3:
                             if sum(weight[:, :, :, a, ...])==0.:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
-                                    H.root._f_get_child(solset)._f_get_child(soltab).weight[:, :, :, a, ...] = 0.
+                                    st_out = H.root._f_get_child(solset)._f_get_child(soltab)
+                                    ant_idx = list(st_out.ant[:]).index(antenna)
+                                    st_out.weight[:, :, :, ant_idx, ...] = 0.
                                 H.close()
                         elif ant_index==4:
                             if sum(weight[:, :, :, :, a, ...])==0.:
                                 H = tables.open_file(self.h5name_out, 'r+')
                                 if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
-                                    H.root._f_get_child(solset)._f_get_child(soltab).weight[:, :, :, :, a, ...] = 0.
+                                    st_out = H.root._f_get_child(solset)._f_get_child(soltab)
+                                    ant_idx = list(st_out.ant[:]).index(antenna)
+                                    st_out.weight[:, :, :, :, ant_idx, ...] = 0.
                                 H.close()
             T.close()
         return self
@@ -1353,6 +1374,7 @@ class MergeH5:
     def upsample_weights(self):
         """
         Upsample weights (propagate flags to weights)
+
         This function is not tested on exotic cases, so when it breaks here, please contact
         jurjendejong@strw.leidenuniv.nl
         """
@@ -1435,6 +1457,9 @@ class MergeH5:
         return self
 
     def equal_dir_tables(self):
+        """
+        Standardise direction tables
+        """
         H = tables.open_file(self.h5name_out, 'r+')
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
@@ -1483,6 +1508,12 @@ class MergeH5:
         H.close()
 
 def _create_h5_name(h5_name):
+    """
+    Correct such that output has always .h5 as extension
+
+    :param h5_name: h5 input file name
+    :return : h5 corrected name with .h5 extension
+    """
     if '.h5' != h5_name[-3:]:
         h5_name += '.h5'
     return h5_name
@@ -1490,6 +1521,12 @@ def _create_h5_name(h5_name):
 def _change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
     """
     This function is to change the solset numbers.
+
+    :param h5: h5 input file
+    :param solset_in: solution set name input
+    :param solset_out: solution set name output
+    :param delete: delete solution set input
+    :param overwrite: overwrite if solution set out already exists
 
     1) Copy solset_in to solset_out (overwriting if overwrite==True)
     2) Delete solset_in if delete==True
@@ -1951,7 +1988,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param use_solset: use specific solset number
     :param filtered_dir: filter a specific list of directions from h5 file. Only lists allowed.
     :param add_cs: use MS to replace super station with core station
-    :param use_ants_from_ms: use only stations from Measurement set
+    :param use_ants_from_ms: return only stations from Measurement set
     :param check_output: check if output has all correct output information
     :param check_flagged_station: check if input stations are flagged, if so flag same stations in output
     """
@@ -2010,7 +2047,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     tables.file._open_files.close_all()
 
-    #If amplitude000 or phase000 are missing, we can add a template for these
+    #If amplitude000 or phase000 are missing --> add a template for these
     merge.create_missing_template()
 
     #Add antennas
