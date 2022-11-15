@@ -1,9 +1,10 @@
 ## LOFAR helper scripts
 
 These scripts are helper script for LOFAR data reduction.\
-Most scripts were used for imaging and recalibrating of A399-401 but are written in a way that they are re-usable for other pointings as well.
+Most scripts were used for imaging and recalibrating of A399-401 (see paper https://arxiv.org/abs/2209.13930) but can be used for other purposes for reducing LOFAR data as well.
 
-Clone this full repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git```
+Clone repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git``` \
+If you are only interested in h5_merger, use: ```wget "https://raw.githubusercontent.com/jurjen93/lofar_helpers/master/h5_merger.py"```
 
 For these scripts you need a few other important (LOFAR/astronomy) Python packages, 
 or work in a singularity containing all the software.
