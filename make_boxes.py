@@ -618,5 +618,5 @@ if __name__ == '__main__':
 
 
     if args.ds9:
-        from supporting_scripts.move_boxes import move_boxes
+        from box_helpers.move_boxes import move_boxes
         move_boxes(args.file, folder)
