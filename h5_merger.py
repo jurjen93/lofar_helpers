@@ -18,19 +18,19 @@ merge_h5(h5_out='test.h5',
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
-import os
 from casacore import tables as ct
+from collections import OrderedDict
 from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
-from scipy.interpolate import interp1d
-import sys
-import re
-import tables
-from collections import OrderedDict
-import warnings
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
     pi, array, all, exp, angle, sort, power, sum, argmin, finfo
+import os
+import re
+from scipy.interpolate import interp1d
+import sys
+import tables
+import warnings
 
 warnings.filterwarnings('ignore')
 
@@ -116,13 +116,14 @@ class MergeH5:
                  solset='sol000', filtered_dir=None, no_antenna_check=None):
         """
         :param h5_out: name of merged output h5 table
-        :param files: h5 tables to merge, can be both list and string
+        :param h5_tables: h5 tables to merge, can be both list and string
         :param ms_files: read time and frequency from measurement set
         :param h5_time_freq: read time and frequency from h5
         :param convert_tec: convert TEC to phase or not
         :param merge_all_in_one: merge all in one direction
-        :param solset: solset number
-        :param filtered_dir:
+        :param solset: solset name
+        :param filtered_dir: directions to filter (needs to be list with indices)
+        :param no_antenna_check: do not check antennas
         """
 
         self.h5name_out = h5_out
@@ -212,6 +213,8 @@ class MergeH5:
         """
         Compare antenna tables with each other.
         These should be the same.
+
+        :return: boolean if antennas are the same (True/False).
         """
 
         for h5_name1 in self.h5_tables:
@@ -343,6 +346,8 @@ class MergeH5:
         Dont touch if you dont have to.
 
         :param soltabs: solutions tables
+
+        :return: sorted phase, tec, amplitude, rotation, error tables
         """
 
         soltabs = set(soltabs)
@@ -369,6 +374,13 @@ class MergeH5:
 
     @staticmethod
     def has_integer(input):
+        """
+        Check if string has integer
+
+        :param input: input string
+
+        :return: return boolean (True/False) if integer in string
+        """
         try:
             for s in str(input):
                 if s.isdigit():
@@ -457,7 +469,7 @@ class MergeH5:
     @staticmethod
     def _interp_along_axis(x, interp_from, interp_to, axis):
         """
-        Interpolate along axis
+        Interpolate along axis.
 
         :param x: frequency or time axis. Must be equal to the length of interp_from.
         :param interp_from: interpolate from this axis.
@@ -479,7 +491,7 @@ class MergeH5:
 
     def get_model_h5(self, solset, soltab):
         """
-        Get model (clean) h5 table
+        Get model (clean) h5 table.
 
         :param solset: solution set name (sol000)
         :param soltab: solution table name
@@ -521,12 +533,16 @@ class MergeH5:
                 h5_to_merge.close()
                 break
 
+        return self
+
     @staticmethod
     def get_number_of_directions(st):
         """
         Get number of directions in solution table
 
         :param st: solution table
+
+        :return: number of directions
         """
 
         if 'dir' in st.getAxesNames():
@@ -538,9 +554,13 @@ class MergeH5:
     def add_direction(self, source):
         """
         Add direction to dictionary
+
+        :param source: source direction
         """
         self.directions.update(source)
         self.directions = OrderedDict(sorted(self.directions.items()))
+
+        return self
 
     @staticmethod
     def correct_invalid_values(soltab, values, axlist):
@@ -750,7 +770,6 @@ class MergeH5:
                                                         axis=dir_index)  # add clean phase to merge with
 
                 # Add the solution table axis --> tec, phase, rotation, or amplitude
-
                 if st.getType() == 'tec':
 
                     # add frequencies
@@ -795,7 +814,6 @@ class MergeH5:
                         self.phases[:, idx, ...] += newvals[:, 0, ...]
 
                     else:
-
                         newvals = self._interp_along_axis(values, time_axes, self.ax_time, -1)
                         # add values
                         self.tec[idx, ...] += newvals[0, ...]
@@ -804,7 +822,6 @@ class MergeH5:
                     newvals = self._interp_along_axis(values, time_axes, self.ax_time, -1)
                     # add values
                     self.error[idx, ...] += newvals[0, ...]
-
 
                 elif st.getType() == 'phase' or st.getType() == 'rotation':
 
@@ -837,7 +854,6 @@ class MergeH5:
                     # add values
                     self.phases[:, idx, ...] += newvals[:, 0, ...]
 
-
                 elif st.getType() == 'amplitude':
 
                     # check and correct pol axis
@@ -869,7 +885,6 @@ class MergeH5:
                     # add values
                     self.gains[:, idx, ...] *= newvals[:, 0, ...]
 
-
             h5.close()
 
         return self
@@ -877,9 +892,11 @@ class MergeH5:
 
     def _DPPP_style(self, soltab):
         """
-        Reorder the axes in DPPP style because that is needed in most LOFAR software
+        Reorder the axes in the same way as DPPP because that is needed in other LOFAR software
 
-        :param soltab: solution table
+        :param soltab: Solution table
+
+        :return: New DPPP axes
         """
 
         if 'pol' in self.axes_final and len(self.axes_final) == 5:
@@ -937,7 +954,7 @@ class MergeH5:
     def reduce_memory_source(self):
         """
         Store the data in 136 bytes per directions.
-        Python 3 saves it automatically in more than that number.
+        Python 3 saves it automatically in more than that number (for yet some unknown reason).
         """
 
         T = tables.open_file(self.h5name_out, 'r+')
@@ -1169,7 +1186,7 @@ class MergeH5:
 
     def add_h5_antennas(self):
         """
-        Add antennas to output table from H5 list
+        Add antennas to output table from H5 list.
         """
 
         print('Add antenna table from '+self.h5_tables[0])
@@ -1185,7 +1202,7 @@ class MergeH5:
 
     def add_ms_antennas(self, keepLB=None):
         """
-        Add antennas from MS
+        Add antennas from MS.
 
         :param keepLB: keep long baseline stations from h5
         """
@@ -1218,13 +1235,11 @@ class MergeH5:
                 antenna_index = attrsaxes.decode('utf8').split(',').index('ant')
                 h5_antlist = [v.decode('utf8') for v in list(st.ant[:])]
 
-                if keepLB:  # keep international stations if these are not in MS
+                if keepLB: # keep international stations if these are not in MS
                     new_antlist = [station for station in ms_antlist if 'CS' in station] + \
                                   [station for station in h5_antlist if 'ST' not in station]
                     all_antennas = [a for a in unique(append(ms_antennas, h5_antennas), axis=0) if a[0] != 'ST001']
                     antennas_new = [all_antennas[[a[0].decode('utf8') for a in all_antennas].index(na)] for na in new_antlist] # sorting
-                    # if len(new_antlist)!=len(antennas_new):
-                    #     print('ERROR: core stations could not be added due to bug or incorrect antenna tables from h5 and MS files')
                 else:
                     new_antlist = ms_antlist
                     antennas_new = ms_antennas
@@ -1291,7 +1306,7 @@ class MergeH5:
 
     def create_missing_template(self):
         """
-        Make template for phase000 and/or amplitude000 if missing
+        Make template for phase000 and/or amplitude000 if missing.
         """
 
         H = tables.open_file(self.h5name_out, 'r+')
@@ -1458,12 +1473,12 @@ class MergeH5:
                 st.weight[:] = weight_out
 
         H.close()
-        print('')
+        print('\n')
         return self
 
     def equal_dir_tables(self):
         """
-        Standardise direction tables
+        Standardise direction tables (making sure dir and sources are the same).
         """
         H = tables.open_file(self.h5name_out, 'r+')
         for solset in H.root._v_groups.keys():
@@ -1512,12 +1527,15 @@ class MergeH5:
                     output_check(self.h5name_out)
         H.close()
 
+        return self
+
 def _create_h5_name(h5_name):
     """
     Correct such that output has always .h5 as extension
 
     :param h5_name: h5 input file name
-    :return : h5 corrected name with .h5 extension
+
+    :return: h5 corrected name with .h5 extension
     """
     if '.h5' != h5_name[-3:]:
         h5_name += '.h5'
@@ -1545,7 +1563,16 @@ def _change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
         print('Removed ' + solset_in +' in output')
     H.close()
 
+    return
+
 def output_check(h5):
+    """
+    Validate output by checking and comparing tables.
+
+    :param h5: h5 file
+
+    :return: True if output passed
+    """
 
     print('\nChecking output...')
 
@@ -1741,7 +1768,8 @@ class PolChange:
 
     def create_template(self, soltab):
         """
-        Make template of the Gain matrix with only ones
+        Make template of the gains with only ones
+
         :param soltab: solution table (phase, amplitude)
         """
 
@@ -1773,6 +1801,8 @@ class PolChange:
 
     def add_tec(self, solutiontable):
         """
+        Add TEC
+
         :param solutiontable: the solution table for the TEC
         """
 
@@ -1798,8 +1828,10 @@ class PolChange:
 
         return self
 
-    def create_new_gains(self, lin2circ, circ2lin):
+    def create_new_gain_table(self, lin2circ, circ2lin):
         """
+        Create new gain tables with polarization conversion.
+
         :param lin2circ: boolean for linear to circular conversion
         :param circ2lin: boolean for circular to linear conversion
         """
@@ -1859,7 +1891,10 @@ class PolChange:
 
         return self
 
-    def create_extra_tables(self):
+    def add_antenna_source_tables(self):
+        """
+        Add antenna and source table to output file
+        """
 
         T = tables.open_file(self.h5in_name)
         H = tables.open_file(self.h5out_name, 'r+')
@@ -1871,6 +1906,8 @@ class PolChange:
 
         T.close()
         H.close()
+
+        return
 
 
 def _test_h5_output(h5_out, tables_to_merge):
@@ -1922,9 +1959,15 @@ def _test_h5_output(h5_out, tables_to_merge):
         print('Received at least once the same source coordinates of two directions, which have been merged together.')
     H5out.close()
 
+    return
+
 def _checknan_input(h5):
     """
     Check h5 on nan or 0 values
+
+    :param h5: h5parm file
+
+    :return: 'Done' (to print)
     """
     H = tables.open_file(h5)
 
@@ -1949,6 +1992,13 @@ def _checknan_input(h5):
     return 'Done'
 
 def _degree_to_radian(d):
+    """
+    Convert degree to radio
+
+    :param d: value in degrees
+
+    :return: return value in radian
+    """
     return pi*d/180
 
 def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0, ddec_degrees=0):
@@ -1971,6 +2021,8 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
     overwrite_table(H, 'sol000', 'source', sources)
     H.close()
 
+    return
+
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None, freq_av=None, time_av=None,
@@ -1990,12 +2042,15 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param circ2lin: boolean for circular to linear conversion
     :param add_directions: add default directions by giving a list of directions (coordinates)
     :param single_pol: only one polarization
+    :param no_pol: no polarization output
     :param use_solset: use specific solset number
     :param filtered_dir: filter a specific list of directions from h5 file. Only lists allowed.
     :param add_cs: use MS to replace super station with core station
     :param use_ants_from_ms: return only stations from Measurement set
     :param check_output: check if output has all correct output information
     :param check_flagged_station: check if input stations are flagged, if so flag same stations in output
+    :param propagate_flags: interpolate weights and return in output file
+    :param no_antenna_check: do not compare antennas
     """
 
     tables.file._open_files.close_all()
@@ -2006,15 +2061,17 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################'
           '\n\nMerging the following tables:\n'+'\n'.join(h5_tables)+'\n')
 
-    h5_out = _create_h5_name(h5_out)
+    # Make sure .h5 is the end of the output file
+    # h5_out = _create_h5_name(h5_out)
 
+    # Make sure that the h5 output file is not in the input list (as that will cause conflicts)
     if h5_out in h5_tables:
         sys.exit('ERROR: output h5 file cannot be in the list of input h5 files.\n'
                  'Change your --h5_out and --h5_tables input.')
     elif h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
         os.system('rm {}'.format(h5_out))
 
-    #if alternative solset number is given, we will make a temp h5 file that has the alternative solset number because the code runs on sol000
+    # If alternative solset number is given, we will make a temp h5 file that has the alternative solset number because the code runs on sol000 (will be cleaned up in the end)
     if use_solset != 'sol000':
         for h5_ind, h5 in enumerate(h5_tables):
             temph5 = h5.replace('.h5', '_temph5merger.h5')
@@ -2023,18 +2080,27 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             _change_solset(temph5, use_solset, 'sol000')
             h5_tables[h5_ind] = temph5
 
+    #################################################
+    #################### MERGING ####################
+    #################################################
+
+    # Merge class setup
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
                     merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir,
                     no_antenna_check=no_antenna_check)
 
+    # Time averaging
     if time_av:
         merge.ax_time = merge.ax_time[::int(time_av)]
 
+    # Freq averaging
     if freq_av:
         merge.ax_freq = merge.ax_freq[::int(freq_av)]
 
+    # Get all key names
     merge.get_allkeys()
 
+    # Merging
     for st_group in merge.all_soltabs:
         if len(st_group) > 0:
             for st in st_group:
@@ -2045,11 +2111,14 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             else:
                 merge.create_new_dataset('sol000', st)
 
+    # Make sure direction tables are the same
     merge.equal_dir_tables()
 
+    # Propagate weight flags from input into output
     if propagate_flags:
         merge.upsample_weights()
 
+    # Close all open h5 files
     tables.file._open_files.close_all()
 
     #If amplitude000 or phase000 are missing --> add a template for these
@@ -2057,7 +2126,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     #Add antennas
     if (add_cs or use_ants_from_ms) and len(merge.ms)==0:
-        sys.exit('ERROR: --add_CS needs MS, given with --ms.')
+        sys.exit('ERROR: --add_cs and --use_ants_from_ms need an MS, given with --ms.')
     if add_cs:
         merge.add_ms_antennas(keepLB=True)
     elif use_ants_from_ms:
@@ -2065,6 +2134,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     else:
         merge.add_h5_antennas()
 
+    # Add mock direction
     if add_directions:
         merge.add_empty_directions(add_directions)
 
@@ -2087,6 +2157,10 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         print('Remove polarization')
         merge.remove_pol()
 
+    #################################################
+    ############ POLARIZATION CONVERSION ############
+    #################################################
+
     if lin2circ and circ2lin:
         sys.exit('Both polarization conversions are given, please choose 1.')
 
@@ -2099,14 +2173,15 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             h5_polchange = h5_out[0:-3]+'_lin.h5'
             print('\nPolarization will be converted from circular to linear')
 
+        # Polarization conversion setup
         Pol = PolChange(h5_in=h5_out, h5_out=h5_polchange)
 
         Pol.create_template('phase')
         if Pol.G.ndim > 1:
             Pol.create_template('amplitude')
 
-        Pol.create_new_gains(lin2circ, circ2lin)
-        Pol.create_extra_tables()
+        Pol.create_new_gain_table(lin2circ, circ2lin)
+        Pol.add_antenna_source_tables()
 
         os.system('rm '+h5_out+' && cp '+h5_polchange+' '+h5_out+' && rm '+h5_polchange)
 
@@ -2115,16 +2190,19 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     # if not merge_all_in_one:
     #     _test_h5_output(h5_out, h5_tables)
 
+    # Cleanup temp files
     for h5 in h5_tables:
         if '_temph5merger.h5' in h5:
             os.system('rm '+h5)
 
+    # Validate output
     if check_output:
         output_check(h5_out)
 
     print('\nSee output file --> '+h5_out+'\n\n###################\nEND MERGE H5 TABLES \n###################\n')
 
     try:
+        # Close all tables that are still open
         tables.file._open_files.close_all()
     except:
         pass
@@ -2137,28 +2215,28 @@ if __name__ == '__main__':
         print('WARNING: This code is optimized for Python 3. Please switch to Python 3 if possible.')
 
     parser = ArgumentParser()
-    parser.add_argument('-out', '--h5_out', type=str, help='h5 table name for output.', required=True)
-    parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='h5 tables to merge.', required=True)
-    parser.add_argument('-ms', '--ms', type=str, help='ms files input.')
-    parser.add_argument('--h5_time_freq', type=str, help='h5 file to use time and frequency arrays from.')
-    parser.add_argument('--time_av', type=int, help='time averaging')
-    parser.add_argument('--freq_av', type=int, help='frequency averaging')
-    parser.add_argument('--keep_tec', action='store_true', help='do not convert tec to phase.')
-    parser.add_argument('--merge_all_in_one', action='store_true', help='merge all solutions in one direction.')
-    parser.add_argument('--lin2circ', action='store_true', help='transform linear polarization to circular.')
-    parser.add_argument('--circ2lin', action='store_true', help='transform circular polarization to linear.')
-    parser.add_argument('--add_direction', default=None, help='add direction with amplitude 1 and phase 0 [ex: --add_direction [0.73,0.12]')
+    parser.add_argument('-out', '--h5_out', type=str, help='H5 file output name. This name cannot be in the list of input H5 files.', required=True)
+    parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='H5 tables input files (can be both given as list with wildcard or string).', required=True)
+    parser.add_argument('-ms', '--ms', type=str, help='MS input files (can be both given as list with wildcard or string).')
+    parser.add_argument('--h5_time_freq', type=str, help='H5 file to use time and frequency arrays from. This is useful if the input h5 files do not have the preferred time/freq resolution.')
+    parser.add_argument('--time_av', type=int, help='Time averaging factor.')
+    parser.add_argument('--freq_av', type=int, help='Frequency averaging factor.')
+    parser.add_argument('--keep_tec', action='store_true', help='Do not convert TEC to phase.')
+    parser.add_argument('--merge_all_in_one', action='store_true', help='Merge all solutions into one direction.')
+    parser.add_argument('--lin2circ', action='store_true', help='Transform linear polarization to circular.')
+    parser.add_argument('--circ2lin', action='store_true', help='Transform circular polarization to linear.')
+    parser.add_argument('--add_direction', default=None, help='Add direction with amplitude 1 and phase 0 (example: --add_direction [0.73,0.12]).')
     parser.add_argument('--single_pol', action='store_true', default=None, help='Return only a single polarization axis if both polarizations are the same.')
     parser.add_argument('--no_pol', action='store_true', default=None, help='Remove polarization axis if both polarizations are the same.')
-    parser.add_argument('--combine_h5', action='store_true', default=None, help='Combine h5 with different time axis into 1.')
-    parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input h5 files.')
-    parser.add_argument('--filter_directions', type=str, default=None, help='Filter a specific list of directions from h5 file. Only lists allowed.')
-    parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output')
-    parser.add_argument('--use_ants_from_ms', action='store_true', default=None, help='Use only antenna stations from measurement set (use --ms)')
+    # parser.add_argument('--combine_h5', action='store_true', default=None, help='Merge H5 files with different time axis into 1.')
+    parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input H5 files.')
+    parser.add_argument('--filter_directions', type=str, default=None, help='Filter out a list of indexed directions from your H5 file. Only lists allowed (example: --filter_directions [2, 3]).')
+    parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output from MS (needs --ms).')
+    parser.add_argument('--use_ants_from_ms', action='store_true', default=None, help='Use only antenna stations from measurement set (needs --ms). Note that this is different to --add_cs, as it does not keep the international stations if these are not in the MS.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
-    parser.add_argument('--not_flagstation', action='store_true', default=None, help='Do not flag any station if station is flagged in input h5')
-    parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and add to output file')
-    parser.add_argument('--no_antenna_check', action='store_true', default=None, help='Do not compare antennas')
+    parser.add_argument('--not_flagstation', action='store_true', default=None, help='Do not flag any station if station is flagged in input h5.')
+    parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and return in output file.')
+    parser.add_argument('--no_antenna_check', action='store_true', default=None, help='Do not compare antennas.')
     # parser.add_argument('--keep_sourcenames', action='store_true', default=None, help='Keep the name of the input sources')
     args = parser.parse_args()
 
@@ -2192,18 +2270,17 @@ if __name__ == '__main__':
     elif type(h5tables) == list and len(h5tables) == 1:
         h5tables = glob(h5tables[0])
     elif type(h5tables) == list:
-        h5tablestemp=[]
+        h5tablestemp = []
         for h5 in h5tables:
-            h5tablestemp+=glob(h5)
+            h5tablestemp += glob(h5)
 
     if args.add_direction:
         add_direction = args.add_direction.replace('[','').replace(']','').split(',')
         add_direction = [float(add_direction[0]), float(add_direction[1])]
-        if add_direction[0]>pi*6 or add_direction[1]>pi*6:
+        if add_direction[0] > pi*6 or add_direction[1] > pi*6:
             sys.exit('ERROR: Please give --add_direction values in radian.')
     else:
         add_direction = None
-
 
     merge_h5(h5_out=args.h5_out,
              h5_tables=h5tables,

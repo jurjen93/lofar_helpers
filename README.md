@@ -14,43 +14,81 @@ Two standalone scripts are briefly discussed below:
 -------------------------------
 ## 1. Merge solutions
 
-With ```h5_merger.py``` it is possible to merge h5 solutions, which are a result from self-calibrating the different 
-directions that are extracted with the boxes.\
-This script is compatible with both Python 2 and Python 3.
+With ```h5_merger.py``` it is possible to merge H5parm solution files (often ending on .h5), which are used in LOFAR (self-)calibration.
+These files contain 'sol000' or 'sol001' or other solution set names. Within these solution sets there has to be a source and antenna table. 
+They should also contain amplitude000 and/or phase000 solution tables. The script will most likely crash or not perform well when one of the above is not satisfied.
+If you want to see the structure of your input solution file, you can run ```h5_helpers/test_input.py```.
+This script has also other functionalities, such as time and frequency averaging or linear to circular conversion and vice versa. 
+These can be independently used from the merging functionality. Find all the options below.
+
+```h5_merger.py``` is compatible with both Python 2 and Python 3.
 
 ### Special requirements
 
-```h5_mergers.py``` relies heavily on losoto: https://github.com/revoltek/losoto
-which works really well to work with .h5 files.
+```h5_mergers.py``` uses the following libraries:
+* ```losoto``` (install with ```pip install lososto```)
+* ```casacore.tables``` (install with ```pip install python-casacore```)
+* ```numpy```
+* ```scipy```
+* ```tables```
 
 #### Usage
 
-There are two ways to use this script. To use it within your script, you can
-just import the most important function with:
-```from h5_merger import merge_h5```
+There are two ways to use this script, by importing directly into your python script or by using the command line. 
 
-And use the following parameters:
-* ```h5_out``` --> output file name
-* ```h5_tables``` --> h5 tables to merge in list form or string (with/without wildcard)
-* ```ms_files``` --> ms files to use in list form or string (with/without wildcard)
-* ```convert_tec``` --> convert tec to phase (boolean)
-* ```merge_all_in_one``` --> choose to merge al directions into one direction
-* ```lin2circ``` --> linear to circular polarization transformation
-* ```circ2lin``` --> circular to linear polarization transformation
-* ```add_direction``` --> add default direction (phase 0 and amplitude 1)
+#### Python script
+Import the main function with: \
+```from h5_merger import merge_h5```\
+\
+You can use these variables:
 
-Or you can run the script on the command line with
-```python h5_merger.py <FLAGS>```
-* ```-out``` --> output file name
-* ```-in``` --> h5 tables to merge in list form or string (with/without wildcard)
-* ```-ms``` --> ms files to use in list form or string (with/without wildcard)
-* ```-ct``` --> convert tec to phase
-* ```-merge_all_in_one``` --> choose to merge al directions into one direction
-* ```--lin2circ``` --> linear to circular polarization transformation
-* ```--circ2lin``` --> circular to linear polarization transformation
-* ```--add_direction``` --> add default direction (phase 0 and amplitude 1)
+* ```h5_out``` --> H5 file output name. This name cannot be in the list of input H5 files.
+* ```h5_tables``` --> H5 tables input files (can be both given as list with wildcard or string).
+* ```ms_files``` --> MS input files (can be both given as list with wildcard or string).
+* ```h5_time_freq``` --> H5 file to use time and frequency arrays from. This is useful if the input h5 files do not have the preferred time/freq resolution.
+* ```convert_tec``` --> Convert TEC to phase.
+* ```merge_all_in_one``` --> Merge all solutions into one single direction.
+* ```lin2circ``` --> Transform linear polarization to circular.
+* ```circ2lin``` --> Transform circular polarization to linear.
+* ```add_directions``` --> Add direction with amplitude 1 and phase 0 (example: --add_direction [0.73,0.12]).
+* ```single_pol``` --> Return only a single polarization axis if both polarizations are the same.
+* ```no_pol``` --> Remove polarization axis if both polarizations are the same.
+* ```use_solset``` --> Choose a solset to merge from your input H5 files.
+* ```filtered_dir``` --> Filter out a list of indexed directions from your H5 file. Only lists allowed (example: --filter_directions [2,3]).
+* ```add_cs``` --> Add core stations to antenna output from MS (needs --ms).
+* ```use_ants_from_ms``` --> Use only antenna stations from measurement set (needs --ms). Note that this is different to --add_cs, as it does not keep the international stations if these are not in the MS.
+* ```check_output``` --> Check if the output has all the correct output information.
+* ```time_av``` --> Time averaging factor.
+* ```freq_av``` --> Frequency averaging factor.
+* ```check_flagged_station``` --> Check if input stations are flagged, if so flag same stations in output.
+* ```propagate_flags``` --> Interpolate weights and return in output file.
+* ```no_antenna_check``` --> Do not compare antennas.
 
-More functionalities have been added recently, which can be all listed with the help function:\
+#### Command line
+Use the script with the command line with the following parameters with ```python h5_merger.py <PARAM>```:
+* ```--h5_out``` --> H5 file output name. This name cannot be in the list of input H5 files.
+* ```--h5_tables``` --> H5 tables input files (can be both given as list with wildcard or string).
+* ```--ms``` --> MS input files (can be both given as list with wildcard or string).
+* ```--h5_time_freq``` --> H5 file to use time and frequency arrays from. This is useful if the input h5 files do not have the preferred time/freq resolution.
+* ```--time_av``` --> Time averaging factor.
+* ```--freq_av``` --> Frequency averaging factor.
+* ```--keep_tec``` --> Do not convert TEC to phase.
+* ```--merge_all_in_one``` --> Merge all solutions into one single direction.
+* ```--lin2circ``` --> Transform linear polarization to circular.
+* ```--circ2lin``` --> Transform circular polarization to linear.
+* ```--add_direction``` --> Add direction with amplitude 1 and phase 0 (example: --add_direction [0.73,0.12]).
+* ```--single_pol``` --> Return only a single polarization axis if both polarizations are the same.
+* ```--no_pol``` --> Remove polarization axis if both polarizations are the same.
+* ```--usesolset``` --> Choose a solset to merge from your input H5 files.
+* ```--filter_directions``` --> Filter out a list of indexed directions from your H5 file. Only lists allowed (example: --filter_directions [2,3]).
+* ```--add_cs``` --> Add core stations to antenna output from MS (needs --ms).
+* ```--use_ants_from_ms``` --> Use only antenna stations from measurement set (needs --ms). Note that this is different to --add_cs, as it does not keep the international stations if these are not in the MS.
+* ```--check_output``` --> Check if the output has all the correct output information.
+* ```--not_flagstation``` --> Do not flag any station if station is flagged in input h5.
+* ```--propagate_flags``` --> Interpolate weights and return in output file.
+* ```--no_antenna_check``` --> Do not compare antennas.
+
+Or use the help function to list all the funcationalities in your version of ```h5_merger.py``` with:\
 ```python h5_merger.py -h```
 
 This script is being used in:\

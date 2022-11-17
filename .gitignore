@@ -27,3 +27,5 @@ test.sh
 *.h5
 #rvw scripts
 lofar_facet_selfcal/*
+#sphinx
+/docs
