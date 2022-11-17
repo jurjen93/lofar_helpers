@@ -28,5 +28,5 @@ test.sh
 #rvw scripts
 lofar_facet_selfcal/*
 #sphinx
-/docs/*
-/.venve/*
+docs/
+.venv/
