@@ -29,3 +29,4 @@ test.sh
 lofar_facet_selfcal/*
 #sphinx
 /docs
+/.venve
