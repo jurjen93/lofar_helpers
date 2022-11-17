@@ -1,6 +1,7 @@
 "This code is based on MockPyStep.py from https://dp3.readthedocs.io/en/latest/steps/PythonStep.html"
 
 try:
+
     from dppp import DPStep as Step
 except:
     from dp3 import Step
