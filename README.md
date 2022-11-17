@@ -34,7 +34,7 @@ These can be independently used from the merging functionality. Find all the opt
 
 There are two ways to use this script, by importing directly into your python script or by using the command line. 
 
-#### Python script
+#### Python import
 Import the main function with: \
 ```from h5_merger import merge_h5```\
 \
