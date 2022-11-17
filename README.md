@@ -4,10 +4,8 @@ These scripts are helper script for LOFAR data reduction.\
 Scripts were used for imaging and recalibrating A399-401 (see paper https://arxiv.org/abs/2209.13930) but can be used for other purposes for reducing LOFAR data as well.
 
 Clone repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git``` \
-If you are only interested in h5_merger, use: ```wget "https://raw.githubusercontent.com/jurjen93/lofar_helpers/master/h5_merger.py"```
-
-For these scripts you need a few other important (LOFAR/astronomy) Python packages, 
-or work in a singularity containing all the software.
+If you are only interested in ```h5_merger.py```, use:\
+```wget "https://raw.githubusercontent.com/jurjen93/lofar_helpers/master/h5_merger.py"```
 
 Two standalone scripts are briefly discussed below:
 
@@ -16,7 +14,7 @@ Two standalone scripts are briefly discussed below:
 
 With ```h5_merger.py``` it is possible to merge H5parm solution files (often ending on .h5), which are used in LOFAR (self-)calibration.
 These files contain 'sol000' or 'sol001' or other solution set names. Within these solution sets there has to be a source and antenna table. 
-They should also contain amplitude000 and/or phase000 solution tables. The script will most likely crash or not perform well when one of the above is not satisfied.
+They should also contain 'amplitude000' and/or 'phase000' solution tables. The script will most likely crash or not perform well when one of the above is not satisfied.
 If you want to see the structure of your input solution file, you can run ```h5_helpers/test_input.py```.
 This script has also other functionalities, such as time and frequency averaging or linear to circular conversion and vice versa. 
 These can be independently used from the merging functionality. Find all the options below.
