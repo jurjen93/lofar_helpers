@@ -39,9 +39,10 @@ Import the main function with: \
 ```from h5_merger import merge_h5```\
 \
 You can use these variables:
-
+##### REQUIRED
 * ```h5_out``` --> H5 file output name. This name cannot be in the list of input H5 files.
 * ```h5_tables``` --> H5 tables input files (can be both given as list with wildcard or string).
+##### OPTIONAL
 * ```ms_files``` --> MS input files (can be both given as list with wildcard or string).
 * ```h5_time_freq``` --> H5 file to use time and frequency arrays from. This is useful if the input h5 files do not have the preferred time/freq resolution.
 * ```convert_tec``` --> Convert TEC to phase.
@@ -51,7 +52,7 @@ You can use these variables:
 * ```add_directions``` --> Add direction with amplitude 1 and phase 0 (example: --add_direction [0.73,0.12]).
 * ```single_pol``` --> Return only a single polarization axis if both polarizations are the same.
 * ```no_pol``` --> Remove polarization axis if both polarizations are the same.
-* ```use_solset``` --> Choose a solset to merge from your input H5 files.
+* ```use_solset``` --> Choose a solset to merge from your input H5 files. Default is sol000.
 * ```filtered_dir``` --> Filter out a list of indexed directions from your H5 file. Only lists allowed (example: --filter_directions [2,3]).
 * ```add_cs``` --> Add core stations to antenna output from MS (needs --ms).
 * ```use_ants_from_ms``` --> Use only antenna stations from measurement set (needs --ms). Note that this is different to --add_cs, as it does not keep the international stations if these are not in the MS.
@@ -64,8 +65,10 @@ You can use these variables:
 
 #### Command line
 Use the script with the command line with the following parameters with ```python h5_merger.py <PARAM>```:
+##### REQUIRED
 * ```--h5_out``` --> H5 file output name. This name cannot be in the list of input H5 files.
 * ```--h5_tables``` --> H5 tables input files (can be both given as list with wildcard or string).
+##### OPTIONAL
 * ```--ms``` --> MS input files (can be both given as list with wildcard or string).
 * ```--h5_time_freq``` --> H5 file to use time and frequency arrays from. This is useful if the input h5 files do not have the preferred time/freq resolution.
 * ```--time_av``` --> Time averaging factor.
@@ -77,7 +80,7 @@ Use the script with the command line with the following parameters with ```pytho
 * ```--add_direction``` --> Add direction with amplitude 1 and phase 0 (example: --add_direction [0.73,0.12]).
 * ```--single_pol``` --> Return only a single polarization axis if both polarizations are the same.
 * ```--no_pol``` --> Remove polarization axis if both polarizations are the same.
-* ```--usesolset``` --> Choose a solset to merge from your input H5 files.
+* ```--usesolset``` --> Choose a solset to merge from your input H5 files. Default is sol000.
 * ```--filter_directions``` --> Filter out a list of indexed directions from your H5 file. Only lists allowed (example: --filter_directions [2,3]).
 * ```--add_cs``` --> Add core stations to antenna output from MS (needs --ms).
 * ```--use_ants_from_ms``` --> Use only antenna stations from measurement set (needs --ms). Note that this is different to --add_cs, as it does not keep the international stations if these are not in the MS.
