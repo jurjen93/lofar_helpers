@@ -39,10 +39,10 @@ Import the main function with: \
 ```from h5_merger import merge_h5```\
 \
 You can use these variables:
-##### REQUIRED
+###### REQUIRED
 * ```h5_out``` --> H5 file output name. This name cannot be in the list of input H5 files.
 * ```h5_tables``` --> H5 tables input files (can be both given as list with wildcard or string).
-##### OPTIONAL
+###### OPTIONAL
 * ```ms_files``` --> MS input files (can be both given as list with wildcard or string).
 * ```h5_time_freq``` --> H5 file to use time and frequency arrays from. This is useful if the input h5 files do not have the preferred time/freq resolution.
 * ```convert_tec``` --> Convert TEC to phase.
@@ -65,10 +65,10 @@ You can use these variables:
 
 #### Command line
 Use the script with the command line with the following parameters with ```python h5_merger.py <PARAM>```:
-##### REQUIRED
+###### REQUIRED
 * ```--h5_out``` --> H5 file output name. This name cannot be in the list of input H5 files.
 * ```--h5_tables``` --> H5 tables input files (can be both given as list with wildcard or string).
-##### OPTIONAL
+###### OPTIONAL
 * ```--ms``` --> MS input files (can be both given as list with wildcard or string).
 * ```--h5_time_freq``` --> H5 file to use time and frequency arrays from. This is useful if the input h5 files do not have the preferred time/freq resolution.
 * ```--time_av``` --> Time averaging factor.
