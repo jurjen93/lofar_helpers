@@ -67,9 +67,15 @@ class PolConv(Step):
         super().__init__()
 
         try: self.lin2circ = bool(parset.getInt(prefix + "lin2circ"))
-        except RuntimeError: self.lin2circ = False
+        except AttributeError:
+            # DP3 Python bindings have been renamed.
+            try: self.lin2circ = bool(parset.get_int(prefix + "lin2circ"))
+            except RuntimeError: self.lin2circ = False
         try: self.circ2lin = bool(parset.getInt(prefix + "circ2lin"))
-        except RuntimeError: self.circ2lin=False
+        except AttributeError:
+            # DP3 Python bindings have been renamed.
+            try: self.circ2lin = bool(parset.get_int(prefix + "circ2lin"))
+            except RuntimeError: self.circ2lin=False
 
         if self.lin2circ and self.circ2lin:
             sys.exit("Cannot do both lin2circ and circ2lin."
@@ -173,5 +179,4 @@ class PolConv(Step):
             print('Converted UV data from circular (RR,RL,LR,LL) to linear polarization (XX,XY,YX,YY)')
         elif self.lin2circ:
             print('Converted UV data from linear (XX,XY,YX,YY) to circular polarization (RR,RL,LR,LL)')
-
         pass
