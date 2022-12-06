@@ -179,5 +179,4 @@ class PolConv(Step):
             print('Converted UV data from circular (RR,RL,LR,LL) to linear polarization (XX,XY,YX,YY)')
         elif self.lin2circ:
             print('Converted UV data from linear (XX,XY,YX,YY) to circular polarization (RR,RL,LR,LL)')
-
         pass
