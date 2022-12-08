@@ -67,10 +67,12 @@ class PolConv(Step):
         super().__init__()
 
         try:
+            print('Trying getInt lin2circ')
             self.lin2circ = bool(parset.getInt(prefix + "lin2circ"))
         except RuntimeError:
             self.lin2circ = False
         except AttributeError:
+            print('Trying get_int lin2circ')
             # DP3 Python bindings have been renamed.
             try:
                 self.lin2circ = bool(parset.get_int(prefix + "lin2circ"))
