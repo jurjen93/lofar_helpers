@@ -66,16 +66,29 @@ class PolConv(Step):
 
         super().__init__()
 
-        try: self.lin2circ = bool(parset.getInt(prefix + "lin2circ"))
+        try:
+            self.lin2circ = bool(parset.getInt(prefix + "lin2circ"))
+        except RuntimeError:
+            self.lin2circ = False
         except AttributeError:
             # DP3 Python bindings have been renamed.
-            try: self.lin2circ = bool(parset.get_int(prefix + "lin2circ"))
-            except RuntimeError: self.lin2circ = False
-        try: self.circ2lin = bool(parset.getInt(prefix + "circ2lin"))
+            try:
+                self.lin2circ = bool(parset.get_int(prefix + "lin2circ"))
+            except RuntimeError:
+                self.lin2circ = False
+
+        try:
+            print('Trying getInt circ2lin')
+            self.circ2lin = bool(parset.getInt(prefix + "circ2lin"))
+        except RuntimeError:
+            self.circ2lin=False
         except AttributeError:
+            print('Trying get_int circ2lin')
             # DP3 Python bindings have been renamed.
-            try: self.circ2lin = bool(parset.get_int(prefix + "circ2lin"))
-            except RuntimeError: self.circ2lin=False
+            try:
+                self.circ2lin = bool(parset.get_int(prefix + "circ2lin"))
+            except RuntimeError:
+                self.circ2lin=False
 
         if self.lin2circ and self.circ2lin:
             sys.exit("Cannot do both lin2circ and circ2lin."
