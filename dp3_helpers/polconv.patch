@@ -1,0 +1,44 @@
+--- polconv.py	2023-01-18 19:50:52.076108955 +0100
++++ polconv.py.new	2023-01-18 20:06:22.613497605 +0100
+@@ -7,16 +7,11 @@
+ export PYTHONPATH=/somewhere/you/like:$PYTHONPATH
+ 
+ """
+-
+-try:
+-    from dppp import DPStep as Step
+-except:
+-    from dp3 import Step
+-
++import dp3
+ import numpy as np
+ import sys
+ 
+-class PolConv(Step):
++class PolConv(dp3.Step):
+     """
+     Convert UV data polarization.
+     lin2circ --> convert from linear to circular UV data
+@@ -129,6 +124,11 @@
+         elif self.circ2lin:
+             print("\nConverting UV data polarization from circular to linear\n")
+ 
++    def get_required_fields(self):
++        return (dp3.Fields.DATA | dp3.Fields.FLAGS | dp3.Fields.WEIGHTS | dp3.Fields.UVW)
++
++    def get_provided_fields(self):
++        return dp3.Fields()
+ 
+     def process(self, dpbuffer):
+         """
+@@ -178,7 +178,9 @@
+         data += newdata
+ 
+         # Send processed data to the next step
+-        self.process_next_step(dpbuffer)
++        next_step = self.get_next_step()
++        if next_step is not None:
++            next_step.process(dpbuffer)
+ 
+     def finish(self):
+         """
