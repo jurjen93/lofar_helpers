@@ -10,11 +10,23 @@ export PYTHONPATH=/somewhere/you/like:$PYTHONPATH
 
 try:
     from dppp import DPStep as Step
+    DP3name='DPPP' # default
 except:
     from dp3 import Step
+    DP3name='DPPP'
 
+from subprocess import check_output
+import re
 import numpy as np
 import sys
+
+#hacky way to figure out the DPPP/DP3 version (important to run this script properly)
+rgx = '[0-9]+(\.[0-9]+)+'
+grep_version_string = str(check_output(DP3name+' --version', shell=True), 'utf-8')
+DP3_VERSION = float(re.search(rgx, grep_version_string).group()[0:3])
+
+if DP3_VERSION > 5.3:
+    from dp3 import Fields
 
 class PolConv(Step):
     """
@@ -104,6 +116,18 @@ class PolConv(Step):
 
         self.fetch_uvw = True
 
+    def get_required_fields(self):
+        if DP3_VERSION>5.3:
+            return (Fields.DATA | Fields.FLAGS | Fields.WEIGHTS | Fields.UVW)
+        else:
+            pass
+
+    def get_provided_fields(self):
+        if DP3_VERSION>5.3:
+            return Fields()
+        else:
+            pass
+
     def update_info(self, dpinfo):
         """
         Process metadata. This will be called before any call to process.
@@ -178,7 +202,12 @@ class PolConv(Step):
         data += newdata
 
         # Send processed data to the next step
-        self.process_next_step(dpbuffer)
+        if DP3_VERSION>5.3:
+            next_step = self.get_next_step()
+            if next_step is not None:
+                next_step.process(dpbuffer)
+        else:
+            self.process_next_step(dpbuffer)
 
     def finish(self):
         """
