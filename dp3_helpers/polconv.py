@@ -13,7 +13,7 @@ try:
     DP3name='DPPP' # default
 except:
     from dp3 import Step
-    DP3name='DPPP'
+    DP3name='DP3'
 
 from subprocess import check_output
 import re
