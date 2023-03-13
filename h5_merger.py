@@ -188,6 +188,22 @@ class MergeH5:
                         print('No freq axis in {solset}/{soltab}'.format(solset=solset, soltab=soltab))
                 h5.close()
 
+        # get polarization
+        self.polarizations, polarizations = [], []
+        for h5_name in self.h5_tables:
+            h5 = tables.open_file(h5_name)
+            if 'phase000' in h5.root.sol000._v_children.keys():
+                if 'pol' in h5.root.sol000.phase000.val.attrs["AXES"].decode('utf8').split(','):
+                    polarizations = h5.root.sol000.phase000.pol[:]
+            elif 'amplitude000' in h5.root.sol000._v_children.keys():
+                if 'pol' in h5.root.sol000.amplitude000.val.attrs["AXES"].decode('utf8').split(','):
+                    polarizations = h5.root.sol000.amplitude000.pol[:]
+            if len(polarizations)>len(self.polarizations):
+                self.polarizations = polarizations.copy()
+            h5.close()
+
+        print('Output polarization:\n'+str(self.polarizations))
+
         if len(self.ax_freq) == 0:
             sys.exit('ERROR: Cannot read frequency axis from input MS set or input H5.')
         if len(self.ax_time) == 0:
@@ -425,11 +441,6 @@ class MergeH5:
 
         num_dir = max(len(self.directions), 1)
 
-        if 'pol' in st.getAxesNames():
-            self.polarizations = st.getAxisValues('pol')
-        else:
-            self.polarizations = []
-
         if 'amplitude' in soltab and 'pol' in st.getAxesNames():
             self.gains = ones(
                 (len(self.polarizations), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
@@ -596,10 +607,13 @@ class MergeH5:
         :param values: values which need to get a polarization
         :param dim_pol: number of dimensions
         :param type: phase or amplitude
-        :param hasnopol: has polarization
+        :param haspol: has polarization in input values
 
         :return: input values with extra polarization axis
         """
+
+        if dim_pol==3:
+            sys.exit('ERROR: Cannot have 3 polarization axis')
 
         if dim_pol == 4:
             print("Make fulljones type with 4 polarizations")
@@ -612,7 +626,12 @@ class MergeH5:
             else:
                 sys.exit('ERROR: Only type in [amplitude, phase] allowed.')
             for i in range(dim_pol):
-                values_new[i, ...] = values
+                if dim_pol==4:
+                    if i in [0, 3]:
+                        values_new[i, ...] = values
+                else:
+                    values_new[i, ...] = values
+
         elif values.shape[0] in [1, 2] and dim_pol in [2, 4] and haspol:
             if type == 'amplitude':
                 values_new = ones((dim_pol,) + values.shape[1:])
@@ -793,9 +812,9 @@ class MergeH5:
                             if st.getAxisLen('pol') > self.phases.shape[0]:
                                 self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
                             elif self.phases.shape[0] > st.getAxisLen('pol'):
-                                values = self._expand_poldim(values, self.phases.shape[0], 'phase', True)
+                                values = self._expand_poldim(values, len(self.polarizations), 'phase', True)
                         elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
-                            values = self._expand_poldim(values, self.phases.shape[0], 'phase', False)
+                            values = self._expand_poldim(values, len(self.polarizations), 'phase', False)
                             self.axes_current.insert(0, 'pol')
                         elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
                             self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
@@ -830,9 +849,9 @@ class MergeH5:
                         if st.getAxisLen('pol') > self.phases.shape[0]:
                             self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
                         elif self.phases.shape[0] > st.getAxisLen('pol'):
-                            values = self._expand_poldim(values, self.phases.shape[0], 'phase', True)
+                            values = self._expand_poldim(values, len(self.polarizations), 'phase', True)
                     elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
-                        values = self._expand_poldim(values, self.phases.shape[0], 'phase', False)
+                        values = self._expand_poldim(values, len(self.polarizations), 'phase', False)
                         self.axes_current.insert(0, 'pol')
                     elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
                         self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
@@ -861,9 +880,9 @@ class MergeH5:
                         if st.getAxisLen('pol') > self.gains.shape[0]:
                             self.gains = self._expand_poldim(self.gains, st.getAxisLen('pol'), 'amplitude', True)
                         elif self.gains.shape[0] > st.getAxisLen('pol'):
-                            values = self._expand_poldim(values, self.gains.shape[0], 'amplitude', True)
+                            values = self._expand_poldim(values, len(self.polarizations), 'amplitude', True)
                     elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
-                        values = self._expand_poldim(values, self.gains.shape[0], 'amplitude', False)
+                        values = self._expand_poldim(values, len(self.polarizations), 'amplitude', False)
                         self.axes_current.insert(0, 'pol')
                     elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
                         self.gains = self._expand_poldim(self.gains, st.getAxisLen('pol'), 'amplitude', False)
