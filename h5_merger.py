@@ -255,7 +255,7 @@ class MergeH5:
             if len(polarizations)>len(self.polarizations):
                 try:
                     self.polarizations = polarizations.copy()
-                except AttributeError:
+                except AttributeError: # list error
                     self.polarizations = polarizations
 
             h5.close()
