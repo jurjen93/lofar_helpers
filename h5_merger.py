@@ -253,7 +253,10 @@ class MergeH5:
                     sys.exit("ERROR: merging 2 fulljones is not implemented")
 
             if len(polarizations)>len(self.polarizations):
-                self.polarizations = polarizations.copy()
+                try:
+                    self.polarizations = polarizations.copy()
+                except AttributeError:
+                    self.polarizations = polarizations
 
             h5.close()
 
