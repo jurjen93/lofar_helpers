@@ -2,7 +2,7 @@ import tables
 from glob import glob
 import numpy as np
 import csv
-from scipy.stats import circstd, circmean
+from scipy.stats import circstd
 import sys
 import pandas as pd
 
