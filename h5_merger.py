@@ -516,7 +516,7 @@ class MergeH5:
 
         if 'amplitude' in soltab and len(self.polarizations)>0:
             self.gains = ones(
-                (len(self.polarizations), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+                (max(len(self.polarizations), 1), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
             # if len(self.polarizations) == 4:
             #     self.gains[1, ...] = 0
             #     self.gains[2, ...] = 0
@@ -531,10 +531,14 @@ class MergeH5:
         else:
             self.phases = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
-        if 'tec' in soltab and not self.convert_tec:
+        if 'tec' in soltab and not self.convert_tec and len(self.polarizations)>0:
+            self.tec = zeros((max(len(self.polarizations), 1), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+        elif 'tec' in soltab and not self.convert_tec:
             self.tec = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
-        if 'error' in soltab:
+        if 'error' in soltab and len(self.polarizations)>0:
+            self.error = zeros((max(len(self.polarizations), 1), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+        elif 'error' in soltab:
             self.error = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
 
         self.n = len(self.directions)  # direction number reset
@@ -911,27 +915,62 @@ class MergeH5:
                             self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
                             self.axes_final.insert(0, 'pol')
                         elif 'pol' not in self.axes_current and 'pol' not in self.axes_final and len(self.polarizations)>0:
-                            self.phases = self._expand_poldim(self.phases, 2, 'phase', False)
-                            values = self._expand_poldim(values, 2, 'phase', False)
+                            if len(self.phases.shape) != 5:
+                                self.phases = self._expand_poldim(self.phases, len(self.polarizations), 'phase', False)
+                                if 'pol' not in self.axes_final:
+                                    self.axes_final.insert(0, 'pol')
+                            values = self._expand_poldim(values, len(self.polarizations), 'phase', False)
                             self.axes_current.insert(0, 'pol')
-                            self.axes_final.insert(0, 'pol')
 
                         # interpolate time axis
                         newvals = self._interp_along_axis(values, time_axes, self.ax_time,
                                                           self.axes_current.index('time'))
 
                         # add values
-                        self.phases[:, idx, ...] += newvals[:, 0, ...]
+                        if self.fulljones and not self.doublefulljones:
+
+                            self.phases[0, idx, ...] += newvals[0, 0, ...]  # Axx * Bxx
+                            self.phases[-1, idx, ...] += newvals[-1, 0, ...]  # Ayy * Byy
+
+                            if 'pol' in st.getAxesNames() and not fulljones_done:
+                                if st.getAxisLen('pol') == 4:
+                                    self.phases[1, idx, ...] = self.phases[0, idx, ...] + newvals[
+                                        1, 0, ...]  # Axx * Bxy
+                                    self.phases[2, idx, ...] = self.phases[-1, idx, ...] + newvals[
+                                        2, 0, ...]  # Ayy * Byx
+                                    fulljones_done = True
+                                    print(diagfull_math)
+
+                            elif fulljones_done:
+                                self.phases[1, idx, ...] += newvals[-1, 0, ...]  # Axy * Byy
+                                self.phases[2, idx, ...] += newvals[0, 0, ...]  # Ayx * Bxx
+                                print(fulldiag_math)
+
+                        elif not self.doublefulljones:
+                            if 'pol' in self.axes_current:
+                                self.phases[:, idx, ...] += newvals[:, 0, ...]
+                            else:
+                                self.phases[idx, ...] += newvals[0, ...]
+                        else:
+                            # TODO: add fulljones
+                            break
 
                     else:
                         newvals = self._interp_along_axis(values, time_axes, self.ax_time, -1)
                         # add values
-                        self.tec[idx, ...] += newvals[0, ...]
+                        if len(self.polarizations)>0:
+                            self.tec[:, idx, ...] += newvals[:, 0, ...]
+                        else:
+                            self.tec[idx, ...] += newvals[0, ...]
 
                 elif st.getType() == 'error':
                     newvals = self._interp_along_axis(values, time_axes, self.ax_time, -1)
                     # add values
-                    self.error[idx, ...] += newvals[0, ...]
+                    if len(self.polarizations)>0:
+                        for i in range(len(self.polarizations)):
+                            self.error[i, idx, ...] += newvals[0, ...]
+                    else:
+                        self.error[idx, ...] += newvals[0, ...]
 
                 elif st.getType() == 'phase' or st.getType() == 'rotation':
 
@@ -953,10 +992,12 @@ class MergeH5:
                     elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
                         self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
                         self.axes_final.insert(0, 'pol')
-                    elif 'pol' not in self.axes_current and 'pol' not in self.axes_final and len(self.polarizations)>0:
-                        self.phases = self._expand_poldim(self.phases, 2, 'phase', False)
-                        values = self._expand_poldim(values, 2, 'phase', False)
-                        self.axes_current.insert(0, 'pol')
+                    elif 'pol' not in self.axes_current and 'pol' not in self.axes_final  and len(self.polarizations)>0:
+                        if len(self.phases.shape) != 5:
+                            self.phases = self._expand_poldim(self.phases, len(self.polarizations), 'phase', False)
+                            if 'pol' not in self.axes_final:
+                                self.axes_final.insert(0, 'pol')
+                        values = self._expand_poldim(values, len(self.polarizations), 'phase', False)
                         self.axes_final.insert(0, 'pol')
 
                     # interpolate time axis
@@ -987,7 +1028,10 @@ class MergeH5:
                             print(fulldiag_math)
 
                     elif not self.doublefulljones:
-                        self.phases[:, idx, ...] += newvals[:, 0, ...]
+                        if 'pol' in self.axes_current:
+                            self.phases[:, idx, ...] += newvals[:, 0, ...]
+                        else:
+                            self.phases[idx, ...] += newvals[0, ...]
                     else:
                         #TODO: add fulljones
                         break
@@ -1013,10 +1057,13 @@ class MergeH5:
                         self.gains = self._expand_poldim(self.gains, st.getAxisLen('pol'), 'amplitude', False)
                         self.axes_final.insert(0, 'pol')
                     elif 'pol' not in self.axes_current and 'pol' not in self.axes_final and len(self.polarizations)>0:
-                        self.gains = self._expand_poldim(self.gains, 2, 'amplitude', False)
-                        values = self._expand_poldim(values, 2, 'amplitude', False)
+                        if len(self.gains.shape) != 5:
+                            self.gains = self._expand_poldim(self.gains, len(self.polarizations), 'phase', False)
+                            if 'pol' not in self.axes_final:
+                                self.axes_final.insert(0, 'pol')
+                        values = self._expand_poldim(values, len(self.polarizations), 'amplitude', False)
                         self.axes_current.insert(0, 'pol')
-                        self.axes_final.insert(0, 'pol')
+
 
                     # interpolate time axis
                     newvals = self._interp_along_axis(values, time_axes, self.ax_time,
@@ -1047,7 +1094,10 @@ class MergeH5:
                             print(fulldiag_math)
 
                     elif not self.doublefulljones:
-                        self.gains[:, idx, ...] *= newvals[:, 0, ...]
+                        if 'pol' in self.axes_current:
+                            self.gains[:, idx, ...] *= newvals[:, 0, ...]
+                        else:
+                            self.gains[idx, ...] *= newvals[0, ...]
                     else:
                         #TODO: add fulljones
                         break
@@ -1478,19 +1528,15 @@ class MergeH5:
 
         H = tables.open_file(self.h5name_out, 'r+')
         soltabs = list(H.root.sol000._v_groups.keys())
-        H.close()
         if 'amplitude000' not in soltabs:
-            self.gains = ones((2, len(self.directions.keys()), len(self.ant), len(self.ax_freq), len(self.ax_time)))
-            self.axes_final = ['time', 'freq', 'ant', 'dir', 'pol']
-            self.polarizations = ['XX', 'YY']
-            self.gains = reorderAxes(self.gains, self.solaxnames, self.axes_final)
-            self.create_new_dataset('sol000', 'amplitude')
+            if 'phase000' in soltabs:
+                self.gains = ones(H.root.sol000.phase000.val.shape)
+                self.create_new_dataset('sol000', 'amplitude')
         if 'phase000' not in soltabs:
-            self.phases = zeros((2, len(self.directions.keys()), len(self.ant), len(self.ax_freq), len(self.ax_time)))
-            self.axes_final = ['time', 'freq', 'ant', 'dir', 'pol']
-            self.polarizations = ['XX', 'YY']
-            self.phases = reorderAxes(self.phases, self.solaxnames, self.axes_final)
-            self.create_new_dataset('sol000', 'phase')
+            if 'amplitude000' in soltabs:
+                self.phases = zeros(H.root.sol000.amplitude000.val.shape)
+                self.create_new_dataset('sol000', 'phase')
+        H.close()
 
         return self
 
