@@ -892,11 +892,17 @@ class MergeH5:
                         shape[-2] = -1
                         values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
 
-                        # check and correct pol axis
-                        if 'pol' in self.axes_current and 'pol' in self.axes_final:
+                        # expand pol dimensions
+                        if self.fulljones:
+                            if 'pol' not in self.axes_current:
+                                values = self._expand_poldim(values, 4, 'phase', False)
+                                self.axes_current.insert(0, 'pol')
+                            elif st.getAxisLen('pol') != 4:
+                                values = self._expand_poldim(values, 4, 'phase', True)
+                        elif 'pol' in self.axes_current and 'pol' in self.axes_final:
                             if st.getAxisLen('pol') > self.phases.shape[0]:
                                 self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
-                            elif self.phases.shape[0] > st.getAxisLen('pol'):
+                            elif len(self.polarizations) > st.getAxisLen('pol'):
                                 values = self._expand_poldim(values, len(self.polarizations), 'phase', True)
                         elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
                             values = self._expand_poldim(values, len(self.polarizations), 'phase', False)
@@ -904,7 +910,7 @@ class MergeH5:
                         elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
                             self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
                             self.axes_final.insert(0, 'pol')
-                        elif 'pol' not in self.axes_current and 'pol' not in self.axes_final:
+                        elif 'pol' not in self.axes_current and 'pol' not in self.axes_final and len(self.polarizations)>0:
                             self.phases = self._expand_poldim(self.phases, 2, 'phase', False)
                             values = self._expand_poldim(values, 2, 'phase', False)
                             self.axes_current.insert(0, 'pol')
@@ -930,14 +936,12 @@ class MergeH5:
                 elif st.getType() == 'phase' or st.getType() == 'rotation':
 
                     # expand pol dimensions
-
                     if self.fulljones:
                         if 'pol' not in self.axes_current:
                             values = self._expand_poldim(values, 4, 'phase', False)
                             self.axes_current.insert(0, 'pol')
                         elif st.getAxisLen('pol')!=4:
                             values = self._expand_poldim(values, 4, 'phase', True)
-
                     elif 'pol' in self.axes_current and 'pol' in self.axes_final:
                         if st.getAxisLen('pol') > self.phases.shape[0]:
                             self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', True)
@@ -949,7 +953,7 @@ class MergeH5:
                     elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
                         self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), 'phase', False)
                         self.axes_final.insert(0, 'pol')
-                    elif 'pol' not in self.axes_current and 'pol' not in self.axes_final:
+                    elif 'pol' not in self.axes_current and 'pol' not in self.axes_final and len(self.polarizations)>0:
                         self.phases = self._expand_poldim(self.phases, 2, 'phase', False)
                         values = self._expand_poldim(values, 2, 'phase', False)
                         self.axes_current.insert(0, 'pol')
@@ -1008,7 +1012,7 @@ class MergeH5:
                     elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
                         self.gains = self._expand_poldim(self.gains, st.getAxisLen('pol'), 'amplitude', False)
                         self.axes_final.insert(0, 'pol')
-                    elif 'pol' not in self.axes_current and 'pol' not in self.axes_final:
+                    elif 'pol' not in self.axes_current and 'pol' not in self.axes_final and len(self.polarizations)>0:
                         self.gains = self._expand_poldim(self.gains, 2, 'amplitude', False)
                         values = self._expand_poldim(values, 2, 'amplitude', False)
                         self.axes_current.insert(0, 'pol')
