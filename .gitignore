@@ -28,3 +28,4 @@ test.sh
 #test
 performance_test/testoutput.py
 performance_test/*
+h5_merger_old.py
