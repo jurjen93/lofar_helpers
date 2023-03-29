@@ -26,4 +26,5 @@ test.sh
 *.npy
 *.h5
 #test
-tests/*
+performance_test/testoutput.py
+performance_test/*

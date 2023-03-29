@@ -40,11 +40,11 @@ Import the main function with: \
 \
 You can use these variables:
 ###### REQUIRED
-* ```h5_out``` --> H5 file output name. This name cannot be in the list of input H5 files.
-* ```h5_tables``` --> H5 tables input files (can be both given as list with wildcard or string).
+* ```h5_out``` --> Solution file output name. This name cannot be in the list of input solution files.
+* ```h5_tables``` --> Solution input files (can be both given as list with wildcard or string).
 ###### OPTIONAL
-* ```ms_files``` --> MS input files (can be both given as list with wildcard or string).
-* ```h5_time_freq``` --> H5 file to use time and frequency arrays from. This is useful if the input h5 files do not have the preferred time/freq resolution.
+* ```ms_files``` --> Measurement set input files (can be both given as list with wildcard or string).
+* ```h5_time_freq``` --> Solution file to use time and frequency arrays from. This is useful if the input solution files do not have the preferred time/freq resolution.
 * ```convert_tec``` --> Convert TEC to phase.
 * ```merge_all_in_one``` --> Merge all solutions into one single direction.
 * ```lin2circ``` --> Transform linear polarization to circular.
@@ -52,25 +52,32 @@ You can use these variables:
 * ```add_directions``` --> Add direction with amplitude 1 and phase 0 (example: --add_direction [0.73,0.12]).
 * ```single_pol``` --> Return only a single polarization axis if both polarizations are the same.
 * ```no_pol``` --> Remove polarization axis if both polarizations are the same.
-* ```use_solset``` --> Choose a solset to merge from your input H5 files. Default is sol000.
-* ```filtered_dir``` --> Filter out a list of indexed directions from your H5 file. Only lists allowed (example: --filter_directions [2,3]).
-* ```add_cs``` --> Add core stations to antenna output from MS (needs --ms).
-* ```use_ants_from_ms``` --> Use only antenna stations from measurement set (needs --ms). Note that this is different to --add_cs, as it does not keep the international stations if these are not in the MS.
-* ```check_output``` --> Check if the output has all the correct output information.
+* ```use_solset``` --> Choose a solset to merge from your input solution files. Default is sol000.
+* ```filtered_dir``` --> Filter out a list of indexed directions from your solution file. Only lists allowed (example: --filter_directions [2,3]).
+* ```add_cs``` --> Add core stations to antenna output from measurement set (needs --ms).
+* ```use_ants_from_ms``` --> Use only antenna stations from measurement set (needs --ms). Note that this is different to --add_cs, as it does not keep the international stations if these are not in the measurement set.
 * ```time_av``` --> Time averaging factor.
 * ```freq_av``` --> Frequency averaging factor.
 * ```check_flagged_station``` --> Check if input stations are flagged, if so flag same stations in output.
 * ```propagate_flags``` --> Interpolate weights and return in output file.
 * ```no_antenna_check``` --> Do not compare antennas.
+* ```check_output``` --> Check if the output has all the correct output information.
+* ```output_summary``` --> Give summary of solution file content
+
+You can also import the functionalities to perform the output check and to get the summary of the solution file separately:\
+```from h5_merger import h5_check```\
+or \
+```from h5_merger import output_check``` \
+where you can insert an solution file in the function.
 
 #### Command line
 Use the script with the command line with the following parameters with ```python h5_merger.py <PARAM>```:
 ###### REQUIRED
-* ```--h5_out``` --> H5 file output name. This name cannot be in the list of input H5 files.
-* ```--h5_tables``` --> H5 tables input files (can be both given as list with wildcard or string).
+* ```--h5_out``` --> Solution file output name. This name cannot be in the list of input H5 files.
+* ```--h5_tables``` --> Solution input files (can be both given as list with wildcard or string).
 ###### OPTIONAL
-* ```--ms``` --> MS input files (can be both given as list with wildcard or string).
-* ```--h5_time_freq``` --> H5 file to use time and frequency arrays from. This is useful if the input h5 files do not have the preferred time/freq resolution.
+* ```--ms``` --> Measurement set input files (can be both given as list with wildcard or string).
+* ```--h5_time_freq``` --> Solution file to use time and frequency arrays from. This is useful if the input solution files do not have the preferred time/freq resolution.
 * ```--time_av``` --> Time averaging factor.
 * ```--freq_av``` --> Frequency averaging factor.
 * ```--keep_tec``` --> Do not convert TEC to phase.
@@ -88,6 +95,8 @@ Use the script with the command line with the following parameters with ```pytho
 * ```--not_flagstation``` --> Do not flag any station if station is flagged in input h5.
 * ```--propagate_flags``` --> Interpolate weights and return in output file.
 * ```--no_antenna_check``` --> Do not compare antennas.
+* ```--output_summary``` --> Give output summary.
+* ```--check_output``` --> Check if the output has all the correct output information.
 
 Or use the help function to list all the funcationalities in your version of ```h5_merger.py``` with:\
 ```python h5_merger.py -h```
