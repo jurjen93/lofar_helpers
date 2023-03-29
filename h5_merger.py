@@ -2206,7 +2206,7 @@ def h5_check(h5):
         ss = H.root._f_get_child(solset)
         soltabs = list(ss._v_groups.keys())
         print('\nFollowing solution tables in '+solset+':\n' + '\n'.join(soltabs))
-        print('\nFollowing antennas in '+solset+':\n'+'\n'.join([make_utf8(a) for a in list(ss.antenna[:]['name'])]))
+        print('\nFollowing stations in '+solset+':\n'+'\n'.join([make_utf8(a) for a in list(ss.antenna[:]['name'])]))
         print('\nFollowing sources in ' + solset + ':\n' + '\n'.join([make_utf8(a['name'])+'-->'+str([a['dir'][0], a['dir'][1]]) for a in list(ss.source[:])]))
         for soltab in soltabs:
             st = ss._f_get_child(soltab)
