@@ -2206,7 +2206,7 @@ def h5_check(h5):
         ss = H.root._f_get_child(solset)
         soltabs = list(ss._v_groups.keys())
         print('\nFollowing solution tables in '+solset+':\n' + '\n'.join(soltabs))
-        print('\nFollowing stations in '+solset+':\n'+'\n'.join([make_utf8(a) for a in list(ss.antenna[:]['name'])]))
+        print('\nFollowing stations in '+solset+':\n'+', '.join([make_utf8(a) for a in list(ss.antenna[:]['name'])]))
         print('\nFollowing sources in ' + solset + ':\n' + '\n'.join([make_utf8(a['name'])+'-->'+str([a['dir'][0], a['dir'][1]]) for a in list(ss.source[:])]))
         for soltab in soltabs:
             st = ss._f_get_child(soltab)
@@ -2223,19 +2223,19 @@ def h5_check(h5):
                     flagged = round(sum(weights==0.)/element_sum*100, 2)
                     print('/'.join([solset, soltab, table])+' flagged:\n'+str(flagged)+'%')
                 if 'pol' in axes:
-                    print('/'.join([solset, soltab, 'pol'])+' polarization:\n'+','.join([make_utf8(p) for p in list(st._f_get_child('pol')[:])]))
+                    print('/'.join([solset, soltab, 'pol'])+':\n'+','.join([make_utf8(p) for p in list(st._f_get_child('pol')[:])]))
                 if 'time' in axes:
                     time = st._f_get_child('time')[:]
-                    print('/'.join([solset, soltab, 'time']) + ' time start:\n' + str(time[0]))
-                    print('/'.join([solset, soltab, 'time']) + ' time end:\n' + str(time[-1]))
+                    # print('/'.join([solset, soltab, 'time']) + ' start:\n' + str(time[0]))
+                    # print('/'.join([solset, soltab, 'time']) + ' end:\n' + str(time[-1]))
                     if len(st._f_get_child('time')[:])>1:
                         print('/'.join([solset, soltab, 'time']) + ' time resolution:\n' + str(diff(st._f_get_child('time')[:])[0]))
                 if 'freq' in axes:
                     freq = st._f_get_child('freq')[:]
-                    print('/'.join([solset, soltab, 'freq']) + ' freq start:\n' + str(freq[0]))
-                    print('/'.join([solset, soltab, 'freq']) + ' freq end:\n' + str(freq[-1]))
+                    # print('/'.join([solset, soltab, 'freq']) + ' start:\n' + str(freq[0]))
+                    # print('/'.join([solset, soltab, 'freq']) + ' end:\n' + str(freq[-1]))
                     if len(st._f_get_child('freq')[:])>1:
-                        print('/'.join([solset, soltab, 'freq']) + ' freq resolution:\n' + str(diff(st._f_get_child('freq')[:])[0]))
+                        print('/'.join([solset, soltab, 'freq']) + ' resolution:\n' + str(diff(st._f_get_child('freq')[:])[0]))
 
     H.close()
     print('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%\nSOLUTION FILE CHECK FINISHED\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
