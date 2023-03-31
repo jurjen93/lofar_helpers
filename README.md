@@ -68,7 +68,7 @@ You can also import the functionalities to perform the output check and to get t
 ```from h5_merger import h5_check```\
 or \
 ```from h5_merger import output_check``` \
-where you can insert an solution file in the function.
+where you can insert a solution file in the function.
 
 #### Command line
 Use the script with the command line with the following parameters with ```python h5_merger.py <PARAM>```:

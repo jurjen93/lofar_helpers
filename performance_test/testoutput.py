@@ -157,7 +157,37 @@ else:
     sys.exit('Values scalartest double fulljones phase:\n'+str(values.round(4))+'\nVS\n'+str(np.array([1, 1, 1, 1])))
 H.close()
 
-# #scalartest
+#double fulljones
+merge_h5(h5_out='doublefulljones.h5',
+         h5_tables=glob('doublefulljonestest/*dummy*.h5'),
+         ms_files=None,
+             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
+             filtered_dir=None, add_cs=None, check_output=True, freq_av=None, time_av=None,
+             check_flagged_station=True, propagate_flags=None, output_summary=True)
+H = tables.open_file('doublefulljones.h5')
+values = H.root.sol000.phase000.val[0,0,0,0,...]
+if np.all(np.array([1, 1, 1, 1]) == values.round(4)):
+    print('CORRECT TEST')
+else:
+    sys.exit('Values scalartest double fulljones phase:\n'+str(values.round(4))+'\nVS\n'+str(np.array([1, 1, 1, 1])))
+H.close()
+
+#triple fulljones
+merge_h5(h5_out='doublefulljones.h5',
+         h5_tables=glob('doublefulljonestest/*.h5'),
+         ms_files=None,
+             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
+             filtered_dir=None, add_cs=None, check_output=True, freq_av=None, time_av=None,
+             check_flagged_station=True, propagate_flags=None, output_summary=True)
+H = tables.open_file('doublefulljones.h5')
+values = H.root.sol000.phase000.val[0,0,0,0,...]
+if np.all(np.array([1.1318, 1.1184, 1.1318, 1.1184]) == values.round(4)):
+    print('CORRECT TEST')
+else:
+    sys.exit('Values scalartest double fulljones phase:\n'+str(values.round(4))+'\nVS\n'+str(np.array([1.1318, 1.1184, 1.1318, 1.1184])))
+H.close()
+
+#scalartest
 merge_h5(h5_out='scalartest.h5', h5_tables=['scalartest/scalarphase1_selfcalcyle011_LBCS_120_168MHz_averaged.ms.avg.phaseup.h5'], ms_files=None,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=True, no_pol=None,
              filtered_dir=None, add_cs=None, check_output=True, freq_av=None, time_av=None,
@@ -209,10 +239,22 @@ else:
 H.close()
 
 #tectest
-merge_h5(h5_out='tectest.h5', h5_tables=tectest, ms_files=None,
+merge_h5(h5_out='tectest.h5', h5_tables=tectest[0], ms_files='tectest/basenametestP17*',
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
              filtered_dir=None, add_cs=None, check_output=True, freq_av=8, time_av=None,
-             check_flagged_station=True, propagate_flags=True, output_summary=True)
+             check_flagged_station=True, propagate_flags=True)
+H = tables.open_file('tectest.h5')
+values = H.root.sol000.phase000.val[0,-4,0,0,...]
+if np.all(8.6688 == values.round(4)):
+    print('CORRECT TEST')
+else:
+    sys.exit('Values tec diff:\n'+str(values.round(4))+'\nVS\n'+str(8.6688))
+H.close()
+
+merge_h5(h5_out='tectest.h5', h5_tables=tectest[1], ms_files=None,
+             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
+             filtered_dir=None, add_cs=None, check_output=True, freq_av=8, time_av=None,
+             check_flagged_station=True, propagate_flags=True)
 H = tables.open_file('tectest.h5')
 values = H.root.sol000.phase000.val[0,-4,0,0,...]
 if np.all(29.424 == values.round(4)):
@@ -222,10 +264,10 @@ else:
 H.close()
 
 #no convert
-merge_h5(h5_out='tecnoconverttest.h5', h5_tables=tectest, ms_files=None, convert_tec=False,
+merge_h5(h5_out='tecnoconverttest.h5', h5_tables=tectest[1], ms_files=None, convert_tec=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
              filtered_dir=None, add_cs=None, check_output=True, freq_av=3, time_av=2,
-             check_flagged_station=True, propagate_flags=True, output_summary=True)
+             check_flagged_station=True, propagate_flags=True)
 H = tables.open_file('tecnoconverttest.h5')
 values = H.root.sol000.tec000.val[0,-4,0,0,...]
 if np.all(-0.5744 == values.round(4)):

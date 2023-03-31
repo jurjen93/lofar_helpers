@@ -485,6 +485,8 @@ class MergeH5:
         if len(st.getAxesNames()) != len(st.getValues()[0].shape):
             sys.exit('ERROR: Axes ({axlen}) and Value dimensions ({vallen}) are not equal'.format(axlen=len(st.getAxesNames()), vallen=len(st.getValues()[0].shape)))
 
+        print('Value shape before --> {values}'.format(values=st.getValues()[0].shape))
+
         # Reorder and add dir
         axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
         if 'dir' in st.getAxesNames():
@@ -559,11 +561,13 @@ class MergeH5:
         values = self._interp_along_axis(values, time_axes, self.ax_time,
                                           self.axes_current.index('time'))
 
-        # interpolate freq axis
-        values = self._interp_along_axis(values, freq_axes, self.ax_freq,
-                                          self.axes_current.index('freq'))
+        if remove_numbers(st.getType()) != 'tec' and remove_numbers(st.getType()) != 'error':
 
-        return values, time_axes, freq_axes
+            # interpolate freq axis
+            values = self._interp_along_axis(values, freq_axes, self.ax_freq,
+                                              self.axes_current.index('freq'))
+
+        return values
 
     def _sort_soltabs(self, soltabs):
         """
@@ -934,10 +938,8 @@ class MergeH5:
             num_dirs = self.get_number_of_directions(st)  # number of directions
             print('This table has {dircount} direction(s)'.format(dircount=num_dirs))
 
-            # get values, time, and freq axis from h5 file
-            table_values, time_axes, freq_axes = self._extract_h5(st, solset, soltab)
-
-            print('Value shape before --> {values}'.format(values=table_values.shape))
+            # get values from h5 file
+            table_values = self._extract_h5(st, solset, soltab)
 
             for dir_idx in range(num_dirs): # loop over all directions in h5
 
