@@ -513,7 +513,7 @@ class MergeH5:
         # remove invalid values
         values = self.remove_invalid_values(st.getType(), values, self.axes_current)
 
-        if remove_numbers(st.getType())=='tec' and self.convert_tec:
+        if remove_numbers(st.getType())=='tec':
             # add frequencies
             if 'freq' not in st.getAxesNames():
                 ax = self.axes_final.index('freq') - len(self.axes_final)
@@ -523,12 +523,12 @@ class MergeH5:
                 for _ in range(len(self.ax_freq) - 1):
                     values = append(values, valuestmp, axis=-2)
 
-            # convert tec to phase
-            shape = [1 for _ in range(values.ndim)]
-            shape[self.axes_current.index('freq')] = -1
-            values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
-
-            soltab = 'phase'
+            if self.convert_tec:
+                # convert tec to phase
+                shape = [1 for _ in range(values.ndim)]
+                shape[self.axes_current.index('freq')] = -1
+                values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
+                soltab = 'phase'
 
         # expand pol dimensions
         if self.fulljones:
@@ -2383,10 +2383,12 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     # Time averaging
     if time_av:
+        print("Time averaging with factor "+str(time_av))
         merge.ax_time = merge.ax_time[::int(time_av)]
 
     # Freq averaging
     if freq_av:
+        print("Frequency averaging with factor "+str(freq_av))
         merge.ax_freq = merge.ax_freq[::int(freq_av)]
 
     # Get all keynames

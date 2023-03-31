@@ -241,7 +241,7 @@ H.close()
 #tectest
 merge_h5(h5_out='tectest.h5', h5_tables=tectest[0], ms_files='tectest/basenametestP17*',
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
-             filtered_dir=None, add_cs=None, check_output=True, freq_av=8, time_av=None,
+             filtered_dir=None, add_cs=None, check_output=True, freq_av=1, time_av=None,
              check_flagged_station=True, propagate_flags=True)
 H = tables.open_file('tectest.h5')
 values = H.root.sol000.phase000.val[0,-4,0,0,...]
