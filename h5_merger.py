@@ -312,8 +312,8 @@ class MergeH5:
                 # having two fulljones solution files to merge --> we will use a matrix multiplication for this type of merge
                 if len(polarizations) == len(self.polarizations) == 4:
                     self.doublefulljones = True
-                    self.fulljones_phases = {}
-                    self.fulljones_amplitudes = {}
+                    self.fulljones_phases = OrderedDict()
+                    self.fulljones_amplitudes = OrderedDict()
 
             # take largest polarization list/array
             if len(polarizations)>len(self.polarizations):
@@ -360,6 +360,8 @@ class MergeH5:
 
         # directions in an ordered dictionary
         self.directions = OrderedDict()
+        if len(self.directions)>1 and self.doublefulljones:
+            sys.exit("ERROR: Merging not compatitable with multiple directions and double fuljones merge") #TODO: update
 
         self.debug_message = 'Please contact jurjendejong@strw.leidenuniv.nl.'
 
@@ -1120,6 +1122,15 @@ class MergeH5:
         Matrix multiplication for double fulljones matrices
         """
 
+        def reshape_dir(arr):
+            """
+            Reshape with dir in it
+            """
+            shape = list(arr.shape)
+            shape.insert(1, 1)
+            return arr.reshape(shape)
+
+
         print(doublefulljones_math)
 
         tables = []
@@ -1141,15 +1152,21 @@ class MergeH5:
         Axy = zeros(Axx.shape).astype(complex128)
         Ayx = zeros(Axx.shape).astype(complex128)
         Ayy = take(output_table, indices=[3], axis=pol_ax)
-        print(str(0) + '%', end='...')
+
+        # if sys.version_info.major > 2:
+        #     print('0%', end='...')
+        # else:
+        #     print('Start merging ...')
 
         # Looping over tables to construct output
         for n, input_table in enumerate(tables):
-            print(str(int((n+1)*100/len(tables)))+'%', end='...')
-            Bxx = take(input_table, indices=[0], axis=pol_ax)
-            Bxy = take(input_table, indices=[1], axis=pol_ax)
-            Byx = take(input_table, indices=[2], axis=pol_ax)
-            Byy = take(input_table, indices=[3], axis=pol_ax)
+            # if sys.version_info.major > 2:
+            #     print(str(int((n+1)*100/len(tables)))+'%', end='...')
+
+            Bxx = reshape_dir(take(input_table, indices=[0], axis=pol_ax))
+            Bxy = reshape_dir(take(input_table, indices=[1], axis=pol_ax))
+            Byx = reshape_dir(take(input_table, indices=[2], axis=pol_ax))
+            Byy = reshape_dir(take(input_table, indices=[3], axis=pol_ax))
 
             # Necessary to make sure Axx, .. Ayy are not overwritten during calculations
             nAxx = Axx*Bxx + Axy*Byx
