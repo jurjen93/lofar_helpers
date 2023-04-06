@@ -78,10 +78,10 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--h5', type=str, nargs='+', help='selfcal scalarphasediff solutions', default=None)
+    parser.add_argument('--h5', nargs='+', help='selfcal scalarphasediff solutions', default=None)
     args = parser.parse_args()
 
-    h5s = args['h5']
+    h5s = args.h5
     if h5s is None:
         h5s = glob("P*_scalarphasediff/scalarphasediff0*.h5")
 

@@ -14,9 +14,9 @@ msin.datacolumn=DATA \
 msout=${MS}.out \
 msout.storagemanager=dysco \
 msout.writefullresflag=False \
-steps=[ps] \
+steps=[avg] \
 avg.type=averager \
-avg.freqresolution=390.56kHz
+avg.freqresolution=390.56kHz \
 avg.timeresolution=60
 
 

@@ -29,3 +29,5 @@ test.sh
 performance_test/testoutput.py
 performance_test/*
 h5_merger_old.py
+#singularities
+*.sif
