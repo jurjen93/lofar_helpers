@@ -22,7 +22,7 @@ from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
-    pi, array, all, exp, angle, sort, sum, finfo, take, diff
+    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal
 import os
 import re
 from scipy.interpolate import interp1d
@@ -33,6 +33,17 @@ import warnings
 warnings.filterwarnings('ignore')
 
 __all__ = ['merge_h5', 'output_check', 'move_source_in_sourcetable', 'h5_check']
+
+diagdiag_math = """
+Diagonal times Fulljones
+-------------------------------------------------
+
+ /Axx  0 \     /Bxx  0 \     /Axx*Bxx   0   \ 
+|         | X |         | = |                |
+ \ 0  Ayy/     \ 0  Byy/     \   0   Ayy*Byy/
+
+-------------------------------------------------
+ """
 
 diagfull_math = """
 Diagonal times Fulljones
@@ -213,7 +224,7 @@ class MergeH5:
     """Merge multiple h5 tables"""
 
     def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
-                 solset='sol000', filtered_dir=None, no_antenna_check=None):
+                 solset='sol000', filtered_dir=None, no_antenna_check=None, merge_diff_freq=None):
         """
         :param h5_out: name of merged output h5 table
         :param h5_tables: h5 tables to merge, can be both list and string
@@ -224,6 +235,7 @@ class MergeH5:
         :param solset: solset name
         :param filtered_dir: directions to filter (needs to be list with indices)
         :param no_antenna_check: do not check antennas
+        :param merge_diff_freq: merging tables with different frequencies
         """
 
         # output name
@@ -250,9 +262,30 @@ class MergeH5:
             self.h5_tables = glob('*.h5')
 
         # get time and freq axis
-        if type(h5_time_freq)==bool:
-            sys.exit("ERROR: --h5_time_freq cannot be a boolean, has to be the name of the h5 file")
-        if h5_time_freq:
+        if type(h5_time_freq)==bool and h5_time_freq==True:
+            if len(self.ms) > 0:
+                print('Ignore MS for time and freq axis, as --h5_time_freq is given.')
+            self.ax_time = array([])
+            self.ax_freq = array([])
+            for h5_name in self.h5_tables:
+                h5 = tables.open_file(h5_name)
+                for solset in h5.root._v_groups.keys():
+                    ss = h5.root._f_get_child(solset)
+                    for soltab in ss._v_groups.keys():
+                        st = ss._f_get_child(soltab)
+                        axes = make_utf8(st.val.attrs['AXES']).split(',')
+                        if 'time' in axes:
+                            time = st._f_get_child('time')[:]
+                            self.ax_time = sort(unique(append(self.ax_time, time)))
+                        else:
+                            print('No time axes in ' + h5 + '/' + solset + '/' + soltab)
+                        if 'freq' in axes:
+                            freq = st._f_get_child('freq')[:]
+                            self.ax_freq = sort(unique(append(self.ax_freq, freq)))
+                        else:
+                            print('No freq axes in ' + h5 + '/' + solset + '/' + soltab)
+                h5.close()
+        elif type(h5_time_freq)==str:
             if len(self.ms)>0:
                 print('Ignore MS for time and freq axis, as --h5_time_freq is given.')
             print('Take the time and freq from the following h5 solution file:\n'+h5_time_freq)
@@ -279,25 +312,28 @@ class MergeH5:
 
         # if no ms files, use the longest time and frequency resolution from h5 tables
         else:
-            print('No MS or h5 file given for time/freq axis.\nWill make a frequency and time axis by combining all input h5 tables.')
+            print('No MS or h5 file given for time/freq axis.\nUse frequency and time axis by combining all input h5 tables.')
             self.ax_time = array([])
             self.ax_freq = array([])
             for h5_name in self.h5_tables:
-                h5 = h5parm(h5_name)
-                ss = h5.getSolset(self.solset)
-                for soltab in ss.getSoltabNames():
-                    st = ss.getSoltab(soltab)
-                    try:
-                        if len(st.getAxisValues('time')) > len(self.ax_time):
-                            self.ax_time = st.getAxisValues('time')
-                    except:
-                        print('No time axis in {solset}/{soltab}'.format(solset=solset, soltab=soltab))
-                    try:
-                        if len(st.getAxisValues('freq')) > len(self.ax_freq):
-                            self.ax_freq = st.getAxisValues('freq')
-                    except:
-                        print('No freq axis in {solset}/{soltab}'.format(solset=solset, soltab=soltab))
+                h5 = tables.open_file(h5_name)
+                for solset in h5.root._v_groups.keys():
+                    ss = h5.root._f_get_child(solset)
+                    for soltab in ss._v_groups.keys():
+                        st = ss._f_get_child(soltab)
+                        axes = make_utf8(st.val.attrs['AXES']).split(',')
+                        if 'time' in axes:
+                            time = st._f_get_child('time')[:]
+                            self.ax_time = sort(unique(append(self.ax_time, time)))
+                        else:
+                            print('No time axes in '+h5+'/'+solset+'/'+soltab)
+                        if 'freq' in axes:
+                            freq = st._f_get_child('freq')[:]
+                            self.ax_freq = sort(unique(append(self.ax_freq, freq)))
+                        else:
+                            print('No freq axes in '+h5+'/'+solset+'/'+soltab)
                 h5.close()
+
 
         # get polarization output axis and check number of error and tec tables in merge list
         self.polarizations, polarizations = [], []
@@ -363,6 +399,7 @@ class MergeH5:
         if len(self.directions)>1 and self.doublefulljones:
             sys.exit("ERROR: Merging not compatitable with multiple directions and double fuljones merge") #TODO: update
 
+        self.merge_diff_freq = merge_diff_freq
         self.debug_message = 'Please contact jurjendejong@strw.leidenuniv.nl.'
 
     @property
@@ -563,11 +600,54 @@ class MergeH5:
         values = self._interp_along_axis(values, time_axes, self.ax_time,
                                           self.axes_current.index('time'))
 
-        if remove_numbers(st.getType()) != 'tec' and remove_numbers(st.getType()) != 'error':
+        # make sure that the interpolation is performed well when merging tables with different frequencies
+        #TODO: python h5_merger.py -in performance_test/different_freqs/*.h5 -out test.h5 -ms performance_test/different_freqs/L693725_SB303_uv_12D4EA9ADt_132MHz.msdpppconcat.avg --h5_time_freq=true --add_ms_stations --propagate_flags --merge_diff_freq
+        if self.merge_diff_freq:
+            ax = 'freq'
+            shape = list(values.shape)
+            shape[self.axes_current.index('freq')] = len(self.ax_freq)
+            values_tmp = zeros(shape)
+            if 'pol' in self.axes_current and 'amplitude' in st.getType():
+                if self.axes_current.index('pol') == 0:
+                    values_tmp[-1, ...] = 1
+                    values_tmp[0, ...] = 1
+                elif self.axes_current.index('pol') == 1:
+                    values_tmp[:, -1, ...] = 1
+                    values_tmp[:, 0, ...] = 1
+                elif self.axes_current.index('pol') == 2:
+                    values_tmp[:, :, -1, ...] = 1
+                    values_tmp[:, :, 0, ...] = 1
+                elif self.axes_current.index('pol') == 3:
+                    values_tmp[:, :, :, -1, ...] = 1
+                    values_tmp[:, :, :, 0, ...] = 1
+                elif self.axes_current.index('pol') == 4:
+                    values_tmp[:, :, :, :, -1, ...] = 1
+                    values_tmp[:, :, :, :, 0, ...] = 1
+            for idx_old, f_v in enumerate(freq_axes):
+                idx_new = list([round(i/1000000, 1) for i in self.ax_freq]).index(round(f_v/1000000, 1))
+
+                if self.axes_current.index(ax) == 0:
+                    values_tmp[idx_new, ...] = values[idx_old, ...]
+
+                elif self.axes_current.index(ax) == 1:
+                    values_tmp[:, idx_new, ...] = values[:, idx_old, ...]
+
+                elif self.axes_current.index(ax) == 2:
+                    values_tmp[:, :, idx_new, ...] = values[:, :, idx_old, ...]
+
+                elif self.axes_current.index(ax) == 3:
+                    values_tmp[:, :, :, idx_new, ...] = values[:, :, :, idx_old, ...]
+
+                elif self.axes_current.index(ax) == 4:
+                    values_tmp[:, :, :, :, idx_new, ...] = values[:, :, :, :, idx_old, ...]
+
+            values = values_tmp.copy()
+        elif remove_numbers(st.getType()) != 'tec' and remove_numbers(st.getType()) != 'error':
 
             # interpolate freq axis
             values = self._interp_along_axis(values, freq_axes, self.ax_freq,
                                               self.axes_current.index('freq'))
+
 
         return values
 
@@ -1029,9 +1109,6 @@ class MergeH5:
                     # add values
                     if self.fulljones and not self.doublefulljones:
 
-                        self.phases[0, idx, ...] += values[0, ...]  # Axx * Bxx
-                        self.phases[-1, idx, ...] += values[-1, ...]  # Ayy * Byy
-
                         if 'pol' in st.getAxesNames() and not fulljones_done:
                             if st.getAxisLen('pol') == 4:
                                 self.phases[1, idx, ...] = self.phases[0, idx, ...] + values[
@@ -1046,11 +1123,15 @@ class MergeH5:
                             self.phases[2, idx, ...] += values[0, ...]  # Ayx * Bxx
                             print(fulldiag_math)
 
+                        self.phases[0, idx, ...] += values[0, ...]  # Axx * Bxx
+                        self.phases[-1, idx, ...] += values[-1, ...]  # Ayy * Byy
+
                     elif not self.doublefulljones:
                         if 'pol' in self.axes_current:
                             self.phases[:, idx, ...] += values[:, ...]
                         else:
                             self.phases[idx, ...] += values[...]
+                        print(diagdiag_math)
 
                     elif self.doublefulljones: # save table for in later double fulljones merge
                         self.fulljones_phases.update({h5_name: values})
@@ -1086,11 +1167,9 @@ class MergeH5:
                     # add values
                     if self.fulljones and not self.doublefulljones:
 
-                        self.amplitudes[0, idx, ...] *= values[0, ...] # Axx * Bxx
-                        self.amplitudes[-1, idx, ...] *= values[-1, ...] # Ayy * Byy
-
                         if 'pol' in st.getAxesNames() and not fulljones_done:
                             if st.getAxisLen('pol')==4:
+                                print(self.amplitudes[:, 0, 0, 0, 0])
                                 self.amplitudes[1, idx, ...] = self.amplitudes[0, idx, ...] * values[1, ...] # Axx * Bxy
                                 self.amplitudes[2, idx, ...] = self.amplitudes[-1, idx, ...] * values[2, ...] # Ayy * Byx
                                 fulljones_done = True
@@ -1101,11 +1180,15 @@ class MergeH5:
                             self.amplitudes[2, idx, ...] *= values[0, ...] # Ayx * Bxx
                             print(fulldiag_math)
 
+                        self.amplitudes[0, idx, ...] *= values[0, ...] # Axx * Bxx
+                        self.amplitudes[-1, idx, ...] *= values[-1, ...] # Ayy * Byy
+
                     elif not self.doublefulljones:
                         if 'pol' in self.axes_current:
                             self.amplitudes[:, idx, ...] *= values[:, ...]
                         else:
                             self.amplitudes[idx, ...] *= values[...]
+                        print(diagdiag_math)
 
                     elif self.doublefulljones: # save table for doublefulljones merge
                         self.fulljones_amplitudes.update({h5_name: values})
@@ -1515,11 +1598,11 @@ class MergeH5:
 
         return self
 
-    def add_ms_antennas(self, keepLB=None):
+    def add_ms_antennas(self, keep_h5_interstations=None):
         """
         Add antennas from MS.
 
-        :param keepLB: keep long baseline stations from h5
+        :param keep_h5_interstations: keep h5 international stations
         """
 
         print('Add antenna table from '+self.ms[0])
@@ -1545,12 +1628,13 @@ class MergeH5:
             F.close()
 
             for soltab in ss._v_groups.keys():
+                print(soltab)
                 st = ss._f_get_child(soltab)
                 attrsaxes = st.val.attrs['AXES']
                 antenna_index = attrsaxes.decode('utf8').split(',').index('ant')
                 h5_antlist = [v.decode('utf8') for v in list(st.ant[:])]
 
-                if keepLB: # keep international stations if these are not in MS
+                if keep_h5_interstations: # keep international stations if these are not in MS
                     new_antlist = [station for station in ms_antlist if 'CS' in station] + \
                                   [station for station in h5_antlist if 'ST' not in station]
                     all_antennas = [a for a in unique(append(ms_antennas, h5_antennas), axis=0) if a[0] != 'ST001']
@@ -1565,8 +1649,10 @@ class MergeH5:
 
                 try:
                     superstation_index = h5_antlist.index('ST001')
+                    superstation = True
                 except ValueError:
-                    sys.exit('ERROR: No super station in antennas (denoted by ST001).')
+                    superstation=False
+                    print('No super station (ST001) in antennas.')
 
                 for axes in ['val', 'weight']:
                     assert axes in list(st._v_children.keys()), axes+' not in .root.'+solset+'.'+soltab+' (not in axes)'
@@ -1575,9 +1661,9 @@ class MergeH5:
                     shape[antenna_index] = len(new_antlist)
                     ms_values = zeros(shape)
 
-                    for idx, a in enumerate(new_antlist):
-                        if a in h5_antlist:
-                            idx_h5 = h5_antlist.index(a)
+                    for idx, antenna in enumerate(new_antlist):
+                        if antenna in h5_antlist:
+                            idx_h5 = h5_antlist.index(antenna)
                             if antenna_index == 0:
                                 ms_values[idx, ...] += h5_values[idx_h5, ...]
                             elif antenna_index == 1:
@@ -1588,7 +1674,7 @@ class MergeH5:
                                 ms_values[:, :, :, idx, ...] += h5_values[:, :, :, idx_h5, ...]
                             elif antenna_index == 4:
                                 ms_values[:, :, :, :, idx, ...] += h5_values[:, :, :, :, idx_h5, ...]
-                        elif 'CS' in a: # core stations
+                        elif 'CS' in antenna and superstation: # core stations
                             if antenna_index == 0:
                                 ms_values[idx, ...] += h5_values[superstation_index, ...]
                             elif antenna_index == 1:
@@ -1599,6 +1685,21 @@ class MergeH5:
                                 ms_values[:, :, :, idx, ...] += h5_values[:, :, :, superstation_index, ...]
                             elif antenna_index == 4:
                                 ms_values[:, :, :, :, idx, ...] += h5_values[:, :, :, :, superstation_index, ...]
+                        elif antenna not in h5_antlist and ('amplitude' in soltab or axes=='weight') \
+                                and 'RS' not in antenna and 'CS' not in antenna:
+                            if axes=='val':
+                                print('Add ' + antenna + ' to output H5 from MS')
+                            if antenna_index == 0:
+                                ms_values[idx, ...] = 1
+                            elif antenna_index == 1:
+                                ms_values[:, idx, ...] = 1
+                            elif antenna_index == 2:
+                                ms_values[:, :, idx, ...] = 1
+                            elif antenna_index == 3:
+                                ms_values[:, :, :, idx, ...] = 1
+                            elif antenna_index == 4:
+                                ms_values[:, :, :, :, idx, ...] = 1
+
 
                     valtype = str(st._f_get_child(axes).dtype)
                     if '16' in valtype:
@@ -1643,7 +1744,7 @@ class MergeH5:
 
     def flag_stations(self):
         """
-        Propagate weights input to output.
+        Propagate flagged station input to output.
         """
 
         H = tables.open_file(self.h5name_out, 'r+')
@@ -1686,8 +1787,6 @@ class MergeH5:
         """
         Upsample weights (propagate flags to weights)
 
-        This function is not tested on exotic cases, so when it breaks here, please contact
-        jurjendejong@strw.leidenuniv.nl
         """
 
         print("\nPropagating weights in:")
@@ -1765,6 +1864,8 @@ class MergeH5:
                 st.weight[:] = weight_out
 
         H.close()
+
+
         print('\n')
         return self
 
@@ -2327,15 +2428,15 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
-             filtered_dir=None, add_cs=None, use_ants_from_ms=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=True, propagate_flags=None, no_antenna_check=None, output_summary=None):
+             filtered_dir=None, add_cs=None, add_ms_stations=None, check_output=None, freq_av=None, time_av=None,
+             check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_check=None, output_summary=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
     :param h5_out (string): h5 table name out
     :param h5_tables (string or list): h5 tables to merge
     :param ms_files (string or list): ms files
-    :param h5_time_freq (str or list): h5 file to take freq and time axis from
+    :param h5_time_freq (str or boolean): h5 file to take freq and time axis from
     :param freq_av (int): averaging of frequency axis
     :param time_av (int): averaging of time axis
     :param convert_tec (boolean): convert TEC to phase or not
@@ -2348,7 +2449,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param use_solset: use specific solset number
     :param filtered_dir: filter a specific list of directions from h5 file. Only lists allowed.
     :param add_cs: use MS to replace super station with core station
-    :param use_ants_from_ms: return only stations from Measurement set
+    :param add_ms_stations: return only stations from Measurement set
     :param check_output: check if output has all correct output information
     :param check_flagged_station: check if input stations are flagged, if so flag same stations in output
     :param propagate_flags: interpolate weights and return in output file
@@ -2396,7 +2497,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     # Merge class setup
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
                     merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir,
-                    no_antenna_check=no_antenna_check)
+                    no_antenna_check=no_antenna_check, merge_diff_freq=merge_diff_freq)
 
     # Time averaging
     if time_av:
@@ -2431,25 +2532,26 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     # Make sure direction tables are in the same format
     merge.format_tables()
 
+
     # Propagate weight flags from input into output
     if propagate_flags:
         merge.upsample_weights()
+
+    # Add antennas
+    if (add_cs or add_ms_stations) and len(merge.ms)==0:
+        sys.exit('ERROR: --add_cs and --add_ms_stations need an MS, given with --ms.')
+    if add_cs:
+        merge.add_ms_antennas(keep_h5_interstations=True)
+    elif add_ms_stations:
+        merge.add_ms_antennas(keep_h5_interstations=False)
+    else:
+        merge.add_h5_antennas()
 
     # Close all remaining open h5 files (should be unnecessary)
     tables.file._open_files.close_all()
 
     # If amplitude000 or phase000 are missing --> add a template for these
     merge.add_template()
-
-    # Add antennas
-    if (add_cs or use_ants_from_ms) and len(merge.ms)==0:
-        sys.exit('ERROR: --add_cs and --use_ants_from_ms need an MS, given with --ms.')
-    if add_cs:
-        merge.add_ms_antennas(keepLB=True)
-    elif use_ants_from_ms:
-        merge.add_ms_antennas(keepLB=False)
-    else:
-        merge.add_h5_antennas()
 
     # Add mock direction
     if add_directions:
@@ -2548,12 +2650,14 @@ if __name__ == '__main__':
     parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input solution files (only necessary if not sol000 is used).')
     parser.add_argument('--filter_directions', type=str, default=None, help='Filter out a list of indexed directions from your output solution file. Only lists allowed (example: --filter_directions [2, 3]).')
     parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output from MS (needs --ms).')
-    parser.add_argument('--use_ants_from_ms', action='store_true', default=None, help='Use only antenna stations from measurement set (needs --ms). Note that this is different from --add_cs, as it does not keep the international stations if these are not in the MS.')
+    parser.add_argument('--add_ms_stations', action='store_true', default=None, help='Use only antenna stations from measurement set (needs --ms). Note that this is different from --add_cs, as it does not keep the international stations if these are not in the MS.')
     parser.add_argument('--not_flagstation', action='store_true', default=None, help='Do not flag any station if station is flagged in input solution file.')
     parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and return in output file.')
     parser.add_argument('--no_antenna_check', action='store_true', default=None, help='Do not compare antennas.')
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
+    parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables with different frequencies')
+
     # parser.add_argument('--keep_sourcenames', action='store_true', default=None, help='Keep the name of the input sources')
     args = parser.parse_args()
 
@@ -2599,10 +2703,20 @@ if __name__ == '__main__':
     else:
         add_direction = None
 
+    if args.h5_time_freq is not None:
+        if args.h5_time_freq.lower()=='true':
+            h5_time_freq = True
+        elif args.h5_time_freq.lower()=='false':
+            h5_time_freq = False
+        else:
+            h5_time_freq = args.h5_time_freq
+    else:
+        h5_time_freq = False
+
     merge_h5(h5_out=args.h5_out,
              h5_tables=h5tables,
              ms_files=args.ms,
-             h5_time_freq=args.h5_time_freq,
+             h5_time_freq=h5_time_freq,
              convert_tec=not args.keep_tec,
              merge_all_in_one=args.merge_all_in_one,
              lin2circ=args.lin2circ,
@@ -2613,11 +2727,12 @@ if __name__ == '__main__':
              use_solset=args.usesolset,
              filtered_dir=filtered_dir,
              add_cs=args.add_cs,
-             use_ants_from_ms=args.use_ants_from_ms,
+             add_ms_stations=args.add_ms_stations,
              check_output=args.check_output,
              time_av=args.time_av,
              freq_av=args.freq_av,
              check_flagged_station=not args.not_flagstation,
              propagate_flags=args.propagate_flags,
+             merge_diff_freq=args.merge_diff_freq,
              no_antenna_check=args.no_antenna_check,
              output_summary=args.output_summary)

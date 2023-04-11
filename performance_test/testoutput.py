@@ -14,6 +14,41 @@ tectest = glob('tectest/*.h5')
 
 directiontest = glob('merging_directions/*.h5')
 
+weighttest = ['weighttest/scalarphase3_skyselfcalcyle000_L816272_120_168MHz_averaged.ms.avg.h5',
+              'weighttest/scalarcomplexgain4_skyselfcalcyle000_L816272_120_168MHz_averaged.ms.avg.h5',
+              'weighttest/fulljones5_skyselfcalcyle000_L816272_120_168MHz_averaged.ms.avg.h5',
+              'weighttest/scalarcomplexgain6_skyselfcalcyle000_L816272_120_168MHz_averaged.ms.avg.h5']
+
+freqtimetest = glob('different_freqs/*.h5')
+
+#time/freq coverage
+merge_h5(h5_out='diff.h5', h5_tables=freqtimetest, ms_files='different_freqs/L693725_SB303_uv_12D4EA9ADt_132MHz.msdpppconcat.avg',
+         h5_time_freq=True, lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
+         filtered_dir=None, add_cs=None, check_output=True, freq_av=None, time_av=None,
+         check_flagged_station=True, propagate_flags=True, output_summary=True, add_ms_stations=True)
+
+H = tables.open_file('diff.h5')
+shape = H.root.sol000.phase000.weight.shape
+if shape[0]!=1618 and len(H.root.sol000.antenna[:])==75 and np.all(H.root.sol000.amplitude000.val[:, : , -1, :, :]==1):
+    sys.exit('Freq/Time propagation wrong')
+else:
+    print("CORRECT TEST")
+
+H.close()
+
+#weight merge
+merge_h5(h5_out='weight.h5', h5_tables=weighttest,
+             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
+             filtered_dir=None, add_cs=None, check_output=True, freq_av=None, time_av=None,
+             check_flagged_station=True, propagate_flags=True, output_summary=True)
+H = tables.open_file('weight.h5')
+weights = H.root.sol000.phase000.weight[-1, -1, -1, -1,:]
+if np.sum(weights)!=0:
+    sys.exit('Propagate weights incorrect')
+else:
+    print("CORRECT TEST")
+
+H.close()
 
 #direction merge
 merge_h5(h5_out='directions.h5', h5_tables=directiontest,
@@ -81,16 +116,16 @@ merge_h5(h5_out='testfulljones.h5', h5_tables=fulljones, ms_files=None,
              check_flagged_station=True, propagate_flags=True, output_summary=True)
 H = tables.open_file('testfulljones.h5')
 values = H.root.sol000.phase000.val[0,0,0,0,...]
-if np.all(np.array([ 0.0953, 0.5753, -2.9758, -0.0253]) == values.round(4)):
+if np.all(np.array([0.0953,  0.5581, -2.9505, -0.0253]) == values.round(4)):
     print('CORRECT TEST')
 else:
-    sys.exit('Values fulljones diff phase:\n'+str(values.round(4))+'\nVS\n'+str(np.array([0.0953, 0.5753, -2.9758, -0.0253])))
+    sys.exit('Values fulljones diff phase:\n'+str(values.round(4))+'\nVS\n'+str(np.array([0.0953,  0.5581, -2.9505, -0.0253])))
 
 values = H.root.sol000.amplitude000.val[0,0,0,0,...]
-if np.all(np.array([0.9597, 0.0415, 0.0121, 0.9722]) == values.round(4)):
+if np.all(np.array([0.9597, 0.0432, 0.0124, 0.9722]) == values.round(4)):
     print('CORRECT TEST')
 else:
-    sys.exit('Values fulljones diff amp:\n'+str(values.round(4))+'\nVS\n'+str(np.array([0.9597, 0.0415, 0.0121, 0.9722])))
+    sys.exit('Values fulljones diff amp:\n'+str(values.round(4))+'\nVS\n'+str(np.array([0.9597, 0.0432, 0.0124, 0.9722])))
 
 H.close()
 
@@ -101,16 +136,16 @@ merge_h5(h5_out='testfulljones.h5', h5_tables=fulljones, ms_files=None,
              check_flagged_station=True, propagate_flags=True, output_summary=True)
 H = tables.open_file('testfulljones.h5')
 values = H.root.sol000.phase000.val[0,0,0,0,...]
-if np.all(np.array([ 0.0447, -2.5354, -0.2116,  0.0242]) == values.round(4)):
+if np.all(np.array([ 0.0447, -2.5162, -0.2252,  0.0243]) == values.round(4)):
     print('CORRECT TEST')
 else:
-    sys.exit('Values scalartest diff circ2lin phase:\n'+str(values.round(4))+'\nVS\n'+str(np.array([ 0.0447, -2.5354, -0.2116,  0.0242])))
+    sys.exit('Values scalartest diff circ2lin phase:\n'+str(values.round(4))+'\nVS\n'+str(np.array([ 0.0447, -2.5162, -0.2252,  0.0243])))
 
 values = H.root.sol000.amplitude000.val[0,0,0,0,...]
-if np.all(np.array([0.976, 0.0556, 0.0719, 0.9525]) == values.round(4)):
+if np.all(np.array([0.9768, 0.0559, 0.0724, 0.9517]) == values.round(4)):
     print('CORRECT TEST')
 else:
-    sys.exit('Values scalartest diff circ2lin amp:\n'+str(values.round(4))+'\nVS\n'+str(np.array([0.976, 0.0556, 0.0719, 0.9525])))
+    sys.exit('Values scalartest diff circ2lin amp:\n'+str(values.round(4))+'\nVS\n'+str(np.array([0.9768, 0.0559, 0.0724, 0.9517])))
 
 H.close()
 
@@ -121,10 +156,10 @@ merge_h5(h5_out='testdoublefulljones.h5', h5_tables=fulljones, ms_files=None,
              check_flagged_station=True, propagate_flags=True, output_summary=True)
 H = tables.open_file('testdoublefulljones.h5')
 values = H.root.sol000.phase000.val[0,0,0,0,...]
-if np.all(np.array([0.0102, 1.8323, 1.5276, 0.0596]) == values.round(4)):
+if np.all(np.array([0.0091, 1.8292, 1.5274, 0.0607]) == values.round(4)):
     print('CORRECT TEST')
 else:
-    sys.exit('Values scalartest diff lin2circ phase:\n'+str(values.round(4))+'\nVS\n'+str(np.array([0.0102, 1.8323, 1.5276, 0.0596])))
+    sys.exit('Values scalartest diff lin2circ phase:\n'+str(values.round(4))+'\nVS\n'+str(np.array([0.0091, 1.8292, 1.5274, 0.0607])))
 H.close()
 
 #double fulljones
