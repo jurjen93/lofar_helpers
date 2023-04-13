@@ -31,3 +31,6 @@ performance_test/*
 h5_merger_old.py
 #singularities
 *.sif
+#other
+mergemerge.py
+*.log

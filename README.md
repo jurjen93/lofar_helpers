@@ -62,7 +62,8 @@ You can use these variables:
 * ```propagate_flags``` --> Interpolate weights and return in output file.
 * ```no_antenna_check``` --> Do not compare antennas.
 * ```check_output``` --> Check if the output has all the correct output information.
-* ```output_summary``` --> Give summary of solution file content
+* ```output_summary``` --> Give summary of solution file content.
+* ```merge_diff_freq``` --> Merging tables with different frequencies.
 
 You can also import the functionalities to perform the output check and to get the summary of the solution file separately:\
 ```from h5_merger import h5_check```\
@@ -97,6 +98,7 @@ Use the script with the command line with the following parameters with ```pytho
 * ```--no_antenna_check``` --> Do not compare antennas.
 * ```--output_summary``` --> Give output summary.
 * ```--check_output``` --> Check if the output has all the correct output information.
+* ```--merge_diff_freq``` --> Merging tables with different frequencies.
 
 Or use the help function to list all the funcationalities in your version of ```h5_merger.py``` with:\
 ```python h5_merger.py -h```

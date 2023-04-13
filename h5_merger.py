@@ -1,17 +1,8 @@
 """
 USE THIS SCRIPT PREFERABLY WITH PYTHON 3, AS ALL TESTS ARE DONE WITH PYTHON 3.
 
-Use this script to merge h5parm solution files.
-
-You can do this by importing the function merge_h5 from this script:
--------------------------
-EXAMPLE:
-
-from h5_merger import merge_h5
-merge_h5(h5_out='test.h5',
-        h5_tables='*.h5',
-        ms_files='*.ms',
-        convert_tec=True)
+For examples to run this script from the command line:
+https://github.com/jurjen93/lofar_helpers/blob/master/h5_merger_examples.md
 """
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
@@ -72,7 +63,7 @@ doublefulljones_math = """
 -------------------------------------------------
 
  /Axx Axy \     /Bxx  Bxy \     /Axx*Bxx + Axy*Byx  Axy*Byy + Axx*Bxy\ 
-|          | X |         | =   |                                      |
+|          | X |           | = |                                      |
  \Ayx  Ayy/     \ Byx  Byy/     \Ayx*Bxx + Ayy*Byx  Ayy*Byy + Ayx*Bxy/
 
 -------------------------------------------------
@@ -512,11 +503,13 @@ class MergeH5:
 
         # Do checks
         if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1]:
-            print("WARNING: Time axes of h5 and MS are not overlapping.")
+            sys.exit("ERROR: Time axes of h5 and MS are not overlapping.\n"
+                     "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
         if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1]:
-            print("WARNING: Frequency axes of h5 and MS are not overlapping.")
+            sys.exit("ERROR: Frequency axes of h5 and MS are not overlapping.\n"
+                     "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
         if float(soltab[-3:]) > 0:
-            print("WARNING: {soltab} does not end on 000".format(soltab=soltab))
+            sys.exit("ERROR: {soltab} does not end on 000".format(soltab=soltab))
         for av in self.axes_final:
             if av in st.getAxesNames() and st.getAxisLen(av) == 0:
                 print("No {av} in {solset}/{soltab}".format(av=av, solset=solset, soltab=soltab))
@@ -601,7 +594,6 @@ class MergeH5:
                                           self.axes_current.index('time'))
 
         # make sure that the interpolation is performed well when merging tables with different frequencies
-        #TODO: python h5_merger.py -in performance_test/different_freqs/*.h5 -out test.h5 -ms performance_test/different_freqs/L693725_SB303_uv_12D4EA9ADt_132MHz.msdpppconcat.avg --h5_time_freq=true --add_ms_stations --propagate_flags --merge_diff_freq
         if self.merge_diff_freq:
             ax = 'freq'
             shape = list(values.shape)
@@ -642,6 +634,7 @@ class MergeH5:
                     values_tmp[:, :, :, :, idx_new, ...] = values[:, :, :, :, idx_old, ...]
 
             values = values_tmp.copy()
+
         elif remove_numbers(st.getType()) != 'tec' and remove_numbers(st.getType()) != 'error':
 
             # interpolate freq axis
@@ -2636,7 +2629,8 @@ if __name__ == '__main__':
     parser.add_argument('-out', '--h5_out', type=str, help='Solution file output name. This name cannot be in the list of input solution files.')
     parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='Solution files to merge (can be both given as list with wildcard or string).', required=True)
     parser.add_argument('-ms', '--ms', type=str, help='Measurement Set input files (can be both given as list with wildcard or string).')
-    parser.add_argument('--h5_time_freq', type=str, help='Solution file to use time and frequency arrays from. This is useful if the input solution files do not have the preferred time/freq resolution.')
+    parser.add_argument('--h5_time_freq', type=str, help='Solution file to use time and frequency arrays from. This is useful if the input solution files do not have the preferred time/freq resolution. '
+                                                         'Input can be boolean (true/fals or 1/0) to use all h5 files or input can be 1 specific h5 file (<H5.h5>).')
     parser.add_argument('--time_av', type=int, help='Time averaging factor.')
     parser.add_argument('--freq_av', type=int, help='Frequency averaging factor.')
     parser.add_argument('--keep_tec', action='store_true', help='Do not convert TEC to phase.')
@@ -2704,9 +2698,9 @@ if __name__ == '__main__':
         add_direction = None
 
     if args.h5_time_freq is not None:
-        if args.h5_time_freq.lower()=='true':
+        if args.h5_time_freq.lower()=='true' or str(args.h5_time_freq)=='1':
             h5_time_freq = True
-        elif args.h5_time_freq.lower()=='false':
+        elif args.h5_time_freq.lower()=='false' or str(args.h5_time_freq)=='0':
             h5_time_freq = False
         else:
             h5_time_freq = args.h5_time_freq
