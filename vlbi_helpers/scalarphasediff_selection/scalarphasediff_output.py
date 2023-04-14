@@ -72,7 +72,7 @@ def get_scalarphasediff_score(h5):
         elif ax[0] == 'ant':  # take only international stations
             phasemod = phasemod.take(indices=distant_stations_idx, axis=ax[1])
 
-    return circstd(phasemod)
+    return circstd(phasemod, nan_policy='omit')
 
 def rad_to_degree(inp):
     """
