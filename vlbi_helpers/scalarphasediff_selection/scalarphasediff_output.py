@@ -81,11 +81,16 @@ def rad_to_degree(inp):
     :param inp: two coordinates (RA, DEC)
     :return: output in degrees
     """
-    if abs(inp[0])<np.pi and abs(inp[1])<np.pi:
-        return inp*360/2/np.pi % 360
-    else:
-        return inp
-
+    try:
+        if abs(inp[0])<np.pi and abs(inp[1])<np.pi:
+            return inp*360/2/np.pi % 360
+        else:
+            return inp
+    except ValueError:
+        if abs(inp[0][0])<np.pi and abs(inp[0][1])<np.pi:
+            return inp*360/2/np.pi % 360
+        else:
+            return inp
 
 if __name__ == '__main__':
     import argparse
