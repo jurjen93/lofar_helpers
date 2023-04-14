@@ -20,6 +20,19 @@ def gonio_score(phasemod):
     p += np.where((phasemod < 3 * np.pi / 2) & (phasemod > np.pi / 2), 1 + np.abs(np.cos(phasemod)), 0)
     return p
 
+def make_utf8(inp):
+    """
+    Convert input to utf8 instead of bytes
+
+    :param inp: string input
+    """
+
+    try:
+        inp = inp.decode('utf8')
+        return inp
+    except (UnicodeDecodeError, AttributeError):
+        return inp
+
 
 def get_scalarphasediff_score(h5):
     """
@@ -30,7 +43,7 @@ def get_scalarphasediff_score(h5):
     """
     H = tables.open_file(h5)
 
-    stations = list(H.root.sol000.antenna[:]['name'])
+    stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
     distant_stations_idx = [stations.index(station) for station in stations if
                             ('RS' not in station) &
                             ('ST' not in station) &

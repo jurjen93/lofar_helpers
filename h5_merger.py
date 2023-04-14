@@ -26,7 +26,7 @@ warnings.filterwarnings('ignore')
 __all__ = ['merge_h5', 'output_check', 'move_source_in_sourcetable', 'h5_check']
 
 diagdiag_math = """
-Diagonal times Fulljones
+Diagonal times Diagonal
 -------------------------------------------------
 
  /Axx  0 \     /Bxx  0 \     /Axx*Bxx   0   \ 

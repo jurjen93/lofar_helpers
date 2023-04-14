@@ -32,7 +32,7 @@ The script converts by default TEC input to phases (see Equation 1 in Sweijen et
 
 ```python h5_merger.py --propagate_flags -in *.h5 -out out.h5 --circ2lin```\
 or\
-```python h5_merger.py --propagate_flags -in *.h5 -out out.h5 --lin2circ```
+```python h5_merger.py --propagate_flags -in *.h5 -out out.h5 --lin2circ```\
 ```--circ2lin``` and ```-lin2circ``` can be added to any type of merge, as this conversion will be done at the end of the algorithm.
 
 #### 7) Merge h5 solutions with different freq and time axis:
