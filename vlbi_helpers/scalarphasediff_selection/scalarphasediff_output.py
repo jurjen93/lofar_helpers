@@ -88,9 +88,9 @@ def rad_to_degree(inp):
             return inp
     except ValueError:
         if abs(inp[0][0])<np.pi and abs(inp[0][1])<np.pi:
-            return inp*360/2/np.pi % 360
+            return inp[0]*360/2/np.pi % 360
         else:
-            return inp
+            return inp[0]
 
 if __name__ == '__main__':
     import argparse
@@ -112,6 +112,7 @@ if __name__ == '__main__':
         print(std)
         H = tables.open_file(h5)
         dir = rad_to_degree(H.root.sol000.source[:]['dir'])
+        H.close()
         writer.writerow([h5.split("_")[0], std, dir[0], dir[1]])
 
     f.close()
