@@ -113,7 +113,7 @@ if __name__ == '__main__':
         H = tables.open_file(h5)
         dir = rad_to_degree(H.root.sol000.source[:]['dir'])
         H.close()
-        writer.writerow([h5.split("_")[0], std, dir[0], dir[1]])
+        writer.writerow([h5, std, dir[0], dir[1]])
 
     f.close()
 
