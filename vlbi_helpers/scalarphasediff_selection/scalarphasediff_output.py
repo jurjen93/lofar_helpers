@@ -107,7 +107,7 @@ if __name__ == '__main__':
     writer = csv.writer(f)
     writer.writerow(["Source_id", "spd_score", 'RA', 'DEC'])
     for h5 in h5s:
-        print(h5.split("_")[0])
+        print(h5)
         std = get_scalarphasediff_score(h5)
         print(std)
         H = tables.open_file(h5)
