@@ -18,7 +18,7 @@ def parse_history(ms, hist_item):
     return None
 
 
-def get_time_avg_factor(ms):
+def get_time_preavg_factor(ms):
     """
     Get pre-time averaging factor (given by demixer.timestep)
 
