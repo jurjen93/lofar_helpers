@@ -12,7 +12,7 @@ def parse_history(ms, hist_item):
     """
     hist = os.popen(f'taql "SELECT * FROM {ms}::HISTORY" | grep {hist_item}').read().split(' ')
     for item in hist:
-        if hist_item in item and len(hist_item)<len(item):
+        if hist_item in item and len(hist_item)<=len(item):
             return item
     print('WARNING:' + hist_item + ' not found')
     return None
