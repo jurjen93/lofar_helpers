@@ -28,5 +28,9 @@ def get_time_preavg_factor(ms):
     """
     parse_str = "demixer.timestep="
     parsed_history = parse_history(ms, parse_str)
-    avg_num = re.findall(r'\d+', parsed_history.replace(parse_str, ''))
-    return int(float(avg_num[0]))
+    avg_num = re.findall(r'\d+', parsed_history.replace(parse_str, ''))[0]
+    if avg_num.isdigit():
+        return int(float(avg_num))
+    else:
+        print("WARNING: parsed factor is not a digit")
+        return None
