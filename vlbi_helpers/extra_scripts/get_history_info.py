@@ -30,7 +30,7 @@ def parse_history(ms, hist_item):
 
 def get_time_preavg_factor(ms):
     """
-    Get pre-time averaging factor (given by demixer.timestep)
+    Get time pre-averaging factor (given by demixer.timestep)
 
     :param ms: measurement set
 
@@ -40,10 +40,14 @@ def get_time_preavg_factor(ms):
     parsed_history = parse_history(ms, parse_str)
     avg_num = re.findall(r'\d+', parsed_history.replace(parse_str, ''))[0]
     if avg_num.isdigit():
-        return int(float(avg_num))
+        factor = int(float(avg_num))
+        if factor!=1:
+            print("WARNING: " + ms + " time has been pre-averaged with factor "+str(factor)+". This might cause time smearing effects.")
+        return factor
     elif isfloat(avg_num):
-        print("WARNING: parsed factor is not a digit but a float")
-        return float(avg_num)
+        factor = float(avg_num)
+        print("WARNING: parsed factor in " + ms + " is not a digit but a float")
+        return factor
     else:
-        print("WARNING: parsed factor is not a float or digit")
+        print("WARNING: parsed factor in " + ms + " is not a float or digit")
         return None
