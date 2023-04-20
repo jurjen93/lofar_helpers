@@ -1,6 +1,16 @@
 import os
 import re
 
+def isfloat(num):
+    """
+    Check if value is a float
+    """
+    try:
+        float(num)
+        return True
+    except ValueError:
+        return False
+
 def parse_history(ms, hist_item):
     """
     Grep specific history item from MS
@@ -31,6 +41,9 @@ def get_time_preavg_factor(ms):
     avg_num = re.findall(r'\d+', parsed_history.replace(parse_str, ''))[0]
     if avg_num.isdigit():
         return int(float(avg_num))
+    elif isfloat(avg_num):
+        print("WARNING: parsed factor is not a digit but a float")
+        return float(avg_num)
     else:
-        print("WARNING: parsed factor is not a digit")
+        print("WARNING: parsed factor is not a float or digit")
         return None
