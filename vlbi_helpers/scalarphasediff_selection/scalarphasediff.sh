@@ -12,6 +12,13 @@ re="P[0-9][0-9][0-9][0-9][0-9]"
 if [[ $MS =~ $re ]]; then DIR=${BASH_REMATCH}; fi
 
 mkdir -p h5output
+mkdir -p ${OBSERVATION}_${DIR}
+cd ${OBSERVATION}_${DIR}
+
+if [[ -f ${MS} ]]
+then
+    echo "${MS} needs to have an absolute path"
+fi
 
 #PRE-AVERAGE
 DP3 \
@@ -26,10 +33,6 @@ steps=[avg] \
 avg.type=averager \
 avg.freqresolution=390.56kHz \
 avg.timeresolution=60
-
-mkdir -p ${OBSERVATION}_${DIR}
-mv ${OBSERVATION}_${DIR}_spd.ms ${OBSERVATION}_${DIR}
-cd ${OBSERVATION}_${DIR}
 
 #GET SCALARPHASEDIFF SCORES
 python /home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py \
