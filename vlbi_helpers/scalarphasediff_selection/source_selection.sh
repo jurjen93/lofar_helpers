@@ -1,9 +1,11 @@
 #!/bin/bash
 #SBATCH -c 10 --constraint=amd
 
+#MSLIST WITH PATH TO MS
 MSLIST=$1
 
-export SIMG=/project/lofarvwf/Software/singularity/lofar_sksp_v4.0.2_znver2_znver2_noavx512_ddf_10_02_2023.sif
+#SINGULARITY
+SING=$2 #/project/lofarvwf/Software/singularity/lofar_sksp_v4.0.2_znver2_znver2_noavx512_ddf_10_02_2023.sif
 
 mkdir -p h5output
 
