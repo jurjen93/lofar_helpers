@@ -25,6 +25,7 @@ def make_utf8(inp):
     Convert input to utf8 instead of bytes
 
     :param inp: string input
+    :return: input in utf-8 format
     """
 
     try:
@@ -118,4 +119,4 @@ if __name__ == '__main__':
     f.close()
 
     # sort output
-    df = pd.read_csv('scalarphasediff_output.csv').sort_values(by='spd_score').to_csv('scalarphasediff_output.csv', index=False)
+    pd.read_csv('scalarphasediff_output.csv').sort_values(by='spd_score').to_csv('scalarphasediff_output.csv', index=False)

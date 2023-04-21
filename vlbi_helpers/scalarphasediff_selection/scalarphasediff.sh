@@ -1,8 +1,9 @@
 #!/bin/bash
 
-
 #input MS
 MS=$1
+
+CURDIR=$PWD
 
 re="L[0-9][0-9][0-9][0-9][0-9][0-9]"
 if [[ $MS =~ $re ]]; then OBSERVATION=${BASH_REMATCH}; fi
@@ -18,7 +19,7 @@ msin=${MS} \
 msin.orderms=False \
 msin.missingdata=True \
 msin.datacolumn=DATA \
-msout=${OBSERVATION}_${DIR}.out \
+msout=${OBSERVATION}_${DIR}_spd.ms  \
 msout.storagemanager=dysco \
 msout.writefullresflag=False \
 steps=[avg] \
@@ -26,6 +27,9 @@ avg.type=averager \
 avg.freqresolution=390.56kHz \
 avg.timeresolution=60
 
+mkdir -p ${OBSERVATION}_${DIR}
+mv ${OBSERVATION}_${DIR}_spd.ms ${OBSERVATION}_${DIR}
+cd ${OBSERVATION}_${DIR}
 
 #GET SCALARPHASEDIFF SCORES
 python /home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py \
@@ -48,11 +52,11 @@ python /home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py \
 --helperscriptspath=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal \
 --helperscriptspathh5merge=/home/lofarvwf-jdejong/scripts/lofar_helpers \
 --stopafterskysolve \
-${OBSERVATION}_${DIR}.out
+${OBSERVATION}_${DIR}_spd.ms
 
 
 #BIG CLEAN UP
-mv scalarphasediff*.h5 h5output
+mv scalarphasediff*.h5 ${CURDIR}/h5output
 rm -rf *.fits
 rm -rf *.p
 rm -rf tmpfile
