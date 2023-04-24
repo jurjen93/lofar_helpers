@@ -34,10 +34,10 @@ avg.type=averager \
 avg.freqresolution=390.56kHz \
 avg.timeresolution=60
 
-#GET SCALARPHASEDIFF SCORES
+#GET PHASEDIFF SCORES
 if [[ "$HOSTNAME" == *"surfsara.nl" ]]; then
     python /home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py \
-    -i scalarphasediff_${OBSERVATION}_${DIR} \
+    -i phasediff_${OBSERVATION}_${DIR} \
     --forwidefield \
     --phaseupstations='core' \
     --skipbackup \
@@ -57,7 +57,7 @@ if [[ "$HOSTNAME" == *"surfsara.nl" ]]; then
     ${OBSERVATION}_${DIR}_spd.ms
 elif [[ "$HOSTNAME" == *"leidenuniv.nl" ]]; then
     python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/facetselfcal.py \
-    -i scalarphasediff_${OBSERVATION}_${DIR} \
+    -i phasediff_${OBSERVATION}_${DIR} \
     --forwidefield \
     --phaseupstations='core' \
     --skipbackup \
@@ -81,7 +81,7 @@ fi
 
 
 #BIG CLEAN UP
-mv scalarphasediff*.h5 ${CURDIR}/h5output
+mv phasediff*.h5 ${CURDIR}/h5output
 rm -rf *.fits
 rm -rf *.p
 rm -rf tmpfile

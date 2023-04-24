@@ -35,9 +35,9 @@ def make_utf8(inp):
         return inp
 
 
-def get_scalarphasediff_score(h5):
+def get_phasediff_score(h5):
     """
-    Calculate score for calarphasediff
+    Calculate score for phasediff
 
     :param h5: input h5 file
     :return: circular standard deviation score
@@ -97,19 +97,19 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--h5', nargs='+', help='selfcal scalarphasediff solutions', default=None)
+    parser.add_argument('--h5', nargs='+', help='selfcal phasediff solutions', default=None)
     args = parser.parse_args()
 
     h5s = args.h5
     if h5s is None:
-        h5s = glob("P*_scalarphasediff/scalarphasediff0*.h5")
+        h5s = glob("P*_phasediff/phasediff0*.h5")
 
-    f = open('scalarphasediff_output.csv', 'w')
+    f = open('phasediff_output.csv', 'w')
     writer = csv.writer(f)
     writer.writerow(["source", "spd_score", 'RA', 'DEC'])
     for h5 in h5s:
         print(h5)
-        std = get_scalarphasediff_score(h5)
+        std = get_phasediff_score(h5)
         print(std)
         H = tables.open_file(h5)
         dir = rad_to_degree(H.root.sol000.source[:]['dir'])
@@ -119,4 +119,4 @@ if __name__ == '__main__':
     f.close()
 
     # sort output
-    pd.read_csv('scalarphasediff_output.csv').sort_values(by='spd_score').to_csv('scalarphasediff_output.csv', index=False)
+    pd.read_csv('phasediff_output.csv').sort_values(by='spd_score').to_csv('phasediff_output.csv', index=False)

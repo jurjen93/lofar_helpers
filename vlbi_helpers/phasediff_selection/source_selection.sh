@@ -19,7 +19,7 @@ fi
 mkdir -p h5output
 
 while read -r MS; do
-  singularity exec -B $BIND $SIMG ./scalarphasediff.sh ${MS}
+  singularity exec -B $BIND $SIMG ./phasediff.sh ${MS}
 done <$MSLIST
 
-singularity exec -B $BIND $SIMG python scalarphasediff_output.py --h5 h5output/*.h5
+singularity exec -B $BIND $SIMG python phasediff_output.py --h5 h5output/*.h5
