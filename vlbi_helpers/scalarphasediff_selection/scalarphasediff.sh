@@ -35,27 +35,49 @@ avg.freqresolution=390.56kHz \
 avg.timeresolution=60
 
 #GET SCALARPHASEDIFF SCORES
-python /home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py \
--i scalarphasediff_${OBSERVATION}_${DIR} \
---forwidefield \
---phaseupstations='core' \
---msinnchan=120 \
---avgfreqstep=2 \
---skipbackup \
---uvmin=20000 \
---soltype-list="['scalarphasediff']" \
---solint-list="['10min']" \
---nchan-list="[6]" \
---docircular \
---uvminscalarphasediff=0 \
---stop=1 \
---soltypecycles-list="[0]" \
---imsize=1600 \
---skymodelpointsource=1.0 \
---helperscriptspath=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal \
---helperscriptspathh5merge=/home/lofarvwf-jdejong/scripts/lofar_helpers \
---stopafterskysolve \
-${OBSERVATION}_${DIR}_spd.ms
+if [[ "$HOSTNAME" == *"surfsara.nl" ]]; then
+    python /home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py \
+    -i scalarphasediff_${OBSERVATION}_${DIR} \
+    --forwidefield \
+    --phaseupstations='core' \
+    --skipbackup \
+    --uvmin=20000 \
+    --soltype-list="['scalarphasediff']" \
+    --solint-list="['10min']" \
+    --nchan-list="[6]" \
+    --docircular \
+    --uvminscalarphasediff=0 \
+    --stop=1 \
+    --soltypecycles-list="[0]" \
+    --imsize=1600 \
+    --skymodelpointsource=1.0 \
+    --helperscriptspath=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal \
+    --helperscriptspathh5merge=/home/lofarvwf-jdejong/scripts/lofar_helpers \
+    --stopafterskysolve \
+    ${OBSERVATION}_${DIR}_spd.ms
+elif [[ "$HOSTNAME" == *"leidenuniv.nl" ]]; then
+    python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/facetselfcal.py \
+    -i scalarphasediff_${OBSERVATION}_${DIR} \
+    --forwidefield \
+    --phaseupstations='core' \
+    --skipbackup \
+    --uvmin=20000 \
+    --soltype-list="['scalarphasediff']" \
+    --solint-list="['10min']" \
+    --nchan-list="[6]" \
+    --docircular \
+    --uvminscalarphasediff=0 \
+    --stop=1 \
+    --soltypecycles-list="[0]" \
+    --imsize=1600 \
+    --skymodelpointsource=1.0 \
+    --stopafterskysolve \
+    ${OBSERVATION}_${DIR}_spd.ms
+else
+    echo "Host not recognized, please set paths"
+    exit 0
+fi
+
 
 
 #BIG CLEAN UP
