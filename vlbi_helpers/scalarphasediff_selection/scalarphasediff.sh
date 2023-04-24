@@ -70,6 +70,7 @@ rm -rf *.parset
 rm BLsmooth.py
 rm lin2circ.py
 rm lib_multiproc.py
+rm h5_merger.py
 rm polconv.py
 rm plot_tecandphase.py
 rm VLASS_dyn_summary.php
@@ -80,3 +81,5 @@ rm merged*.h5
 rm *.scbackup
 rm *templatejones.h5
 rm *.png
+
+cd ../
