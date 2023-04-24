@@ -7,7 +7,7 @@ MSLIST=$1
 #SINGULARITY
 if [[ "$HOSTNAME" == *"surfsara.nl" ]]; then
     BIND=$PWD,/home/lofarvwf-jdejong/scripts
-    SIMG=/net/achterrijn/data1/sweijen/software/containers/lofar_sksp_v4.0.2_x86-64_cascadelake_cascadelake_avx512_mkl_cuda_ddf.sif
+    SIMG=/project/lofarvwf/Software/singularity/lofar_sksp_v4.1.0_znver2_znver2_noavx512_aocl3_cuda_ddf.sif
 elif [[ "$HOSTNAME" == *"leidenuniv.nl" ]]; then
     BIND=$PWD,/net/rijn,/net/tussenrijn,/net/rijn1,/net/rijn2,/net/rijn3,/net/rijn4,/net/rijn5,/net/rijn6,/net/rijn7,/net/rijn8,/net/rijn9,/net/rijn10
     SIMG=/net/achterrijn/data1/sweijen/software/containers/lofar_sksp_v4.0.2_x86-64_cascadelake_cascadelake_avx512_mkl_cuda_ddf.sif
