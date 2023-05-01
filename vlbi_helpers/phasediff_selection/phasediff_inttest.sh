@@ -2,6 +2,7 @@
 
 #input MS
 MS=$1
+TIME=$2
 
 CURDIR=$PWD
 
@@ -12,8 +13,8 @@ re="P[0-9][0-9][0-9][0-9][0-9]"
 if [[ $MS =~ $re ]]; then DIR=${BASH_REMATCH}; fi
 
 mkdir -p h5output
-mkdir -p ${OBSERVATION}_${DIR}
-cd ${OBSERVATION}_${DIR}
+mkdir -p ${OBSERVATION}_${DIR}_${TIME}
+cd ${OBSERVATION}_${DIR}_${TIME}
 
 if [[ -f ${MS} ]]
 then
@@ -38,13 +39,13 @@ avg.timeresolution=60
 #GET PHASEDIFF SCORES
 if [[ "$HOSTNAME" == *"surfsara.nl" ]]; then
     python /home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py \
-    -i phasediff_${OBSERVATION}_${DIR} \
+    -i phasediff_${OBSERVATION}_${DIR}_${TIME} \
     --forwidefield \
     --phaseupstations='core' \
     --skipbackup \
     --uvmin=20000 \
     --soltype-list="['scalarphasediff']" \
-    --solint-list="['10min']" \
+    --solint-list="['${TIME}']" \
     --nchan-list="[6]" \
     --docircular \
     --uvminscalarphasediff=0 \
@@ -58,13 +59,13 @@ if [[ "$HOSTNAME" == *"surfsara.nl" ]]; then
     ${OBSERVATION}_${DIR}_spd.ms
 elif [[ "$HOSTNAME" == *"leidenuniv.nl" ]]; then
     python /net/rijn/data2/rvweeren/LoTSS_ClusterCAL/facetselfcal.py \
-    -i phasediff_${OBSERVATION}_${DIR} \
+    -i phasediff_${OBSERVATION}_${DIR}_${TIME} \
     --forwidefield \
     --phaseupstations='core' \
     --skipbackup \
     --uvmin=20000 \
     --soltype-list="['scalarphasediff']" \
-    --solint-list="['10min']" \
+    --solint-list="['${TIME}']" \
     --nchan-list="[6]" \
     --docircular \
     --uvminscalarphasediff=0 \

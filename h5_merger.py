@@ -2257,8 +2257,9 @@ class PolChange:
                 elif 'tec' in st:
                     self.add_tec(solutiontable)
                 else:
-                    print("Didn't include {st} in this version yet".format(st=st)+
-                          '\nLet me (Jurjen) know if you need to include this.')
+                    print("WARNING: didn't include {st} in this h5_merger.py version yet".format(st=st)+
+                          "\nPlease create a ticket on github if this needs to be changed")
+
                 if n == 0:
                     weights = ones(values.shape)
 

@@ -50,6 +50,20 @@ else:
 
 H.close()
 
+merge_h5(h5_out='weight.h5', h5_tables='circ2lin_weights/merged.h5',
+             lin2circ=False, circ2lin=True, add_directions=None, single_pol=None, no_pol=None,
+             filtered_dir=None, add_cs=None, check_output=None, freq_av=None, time_av=None,
+             check_flagged_station=True, propagate_flags=True, output_summary=True)
+H = tables.open_file('weight.h5')
+F = tables.open_file('circ2lin_weights/merged.h5')
+if not np.all(H.root.sol000.phase000.weight[:, 0, 0, 0, 0] == F.root.sol000.phase000.weight[:, 0, 0, 0, 0]):
+    sys.exit('Propagate weights incorrect')
+else:
+    print("CORRECT TEST")
+
+F.close()
+H.close()
+
 #direction merge
 merge_h5(h5_out='directions.h5', h5_tables=directiontest,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,

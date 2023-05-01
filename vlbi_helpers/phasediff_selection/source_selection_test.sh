@@ -19,7 +19,14 @@ fi
 mkdir -p h5output
 
 while read -r MS; do
-  singularity exec -B $BIND $SIMG ./phasediff.sh ${MS}
+  singularity exec -B $BIND $SIMG ./phasediff_inttest.sh ${MS} 1min &
+  singularity exec -B $BIND $SIMG ./phasediff_inttest.sh ${MS} 2min &
+  singularity exec -B $BIND $SIMG ./phasediff_inttest.sh ${MS} 4min
+  singularity exec -B $BIND $SIMG ./phasediff_inttest.sh ${MS} 8min &
+  singularity exec -B $BIND $SIMG ./phasediff_inttest.sh ${MS} 10min &
+  singularity exec -B $BIND $SIMG ./phasediff_inttest.sh ${MS} 12min
+  singularity exec -B $BIND $SIMG ./phasediff_inttest.sh ${MS} 15min &
+  singularity exec -B $BIND $SIMG ./phasediff_inttest.sh ${MS} 20min
 done <$MSLIST
 
 singularity exec -B $BIND $SIMG python phasediff_output.py --h5 h5output/*.h5

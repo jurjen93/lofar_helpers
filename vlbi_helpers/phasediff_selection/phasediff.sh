@@ -18,6 +18,7 @@ cd ${OBSERVATION}_${DIR}
 if [[ -f ${MS} ]]
 then
     echo "${MS} needs to have an absolute path"
+    exit 0
 fi
 
 #PRE-AVERAGE

@@ -2,7 +2,7 @@ import tables
 from glob import glob
 import numpy as np
 import csv
-from scipy.stats import circstd
+from scipy.stats import circstd, circmean
 import sys
 import pandas as pd
 
@@ -18,7 +18,7 @@ def gonio_score(phasemod):
     p += np.where((phasemod < np.pi / 2) | ((phasemod < 2 * np.pi) & (phasemod > 3 * np.pi / 2)),
                   np.abs(np.sin(phasemod)), 0)
     p += np.where((phasemod < 3 * np.pi / 2) & (phasemod > np.pi / 2), 1 + np.abs(np.cos(phasemod)), 0)
-    return p
+    return np.std(p)
 
 def make_utf8(inp):
     """
@@ -54,7 +54,7 @@ def get_phasediff_score(h5):
     axes = str(H.root.sol000.phase000.val.attrs["AXES"]).replace("b'", '').replace("'", '').split(',')
     axes_idx = sorted({ax: axes.index(ax) for ax in axes}.items(), key=lambda x: x[1], reverse=True)
 
-    phase = H.root.sol000.phase000.val[:]
+    phase = H.root.sol000.phase000.val[:]*H.root.sol000.phase000.weight[:]
     H.close()
 
     phasemod = phase % (2 * np.pi)
@@ -73,7 +73,13 @@ def get_phasediff_score(h5):
         elif ax[0] == 'ant':  # take only international stations
             phasemod = phasemod.take(indices=distant_stations_idx, axis=ax[1])
 
-    return circstd(phasemod, nan_policy='omit')
+    # meanscore = circmean(phasemod, nan_policy='omit')
+    # if meanscore-2*np.pi<0 and meanscore>6:
+    #     meanscore = abs(meanscore-2*np.pi)
+
+    phasemod[phasemod==0] = np.nan
+
+    return circstd(phasemod, nan_policy='omit') #gonio_score(phasemod)
 
 def rad_to_degree(inp):
     """
@@ -108,9 +114,7 @@ if __name__ == '__main__':
     writer = csv.writer(f)
     writer.writerow(["source", "spd_score", 'RA', 'DEC'])
     for h5 in h5s:
-        print(h5)
         std = get_phasediff_score(h5)
-        print(std)
         H = tables.open_file(h5)
         dir = rad_to_degree(H.root.sol000.source[:]['dir'])
         H.close()
