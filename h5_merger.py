@@ -2234,8 +2234,9 @@ class PolChange:
 
             self.solsetout = self.h5_out.makeSolset(ss)
 
-            for st in self.h5_in.getSolset(ss).getSoltabNames():
+            for n, st in enumerate(self.h5_in.getSolset(ss).getSoltabNames()):
                 solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
+
                 print('{ss}/{st} from {h5}'.format(ss=ss, st=st, h5=self.h5in_name))
                 if 'phase' in st:
                     if 'pol' in solutiontable.getAxesNames():
@@ -2258,6 +2259,10 @@ class PolChange:
                 else:
                     print("Didn't include {st} in this version yet".format(st=st)+
                           '\nLet me (Jurjen) know if you need to include this.')
+                if n == 0:
+                    weights = ones(values.shape)
+
+                weights *= solutiontable.getValues(weight=True, retAxesVals=False)
 
             if lin2circ:
                 print(lin2circ_math)
@@ -2274,10 +2279,10 @@ class PolChange:
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
 
-            self.solsetout.makeSoltab('phase', axesNames=self.axes_names, axesVals=self.axes_vals, vals=phase, weights=ones(phase.shape))
+            self.solsetout.makeSoltab('phase', axesNames=self.axes_names, axesVals=self.axes_vals, vals=phase, weights=weights)
             print('Created new phase solutions')
 
-            self.solsetout.makeSoltab('amplitude', axesNames=self.axes_names, axesVals=self.axes_vals, vals=amplitude, weights=ones(amplitude.shape))
+            self.solsetout.makeSoltab('amplitude', axesNames=self.axes_names, axesVals=self.axes_vals, vals=amplitude, weights=weights)
             print('Created new amplitude solutions')
 
         self.h5_in.close()
@@ -2458,10 +2463,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if h5_out is None:
         for h5check in h5_tables:
             h5_check(h5check)
-        print('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
-              '\n%%%%%%%%%%%  NO MERGE REQUESTED  %%%%%%%%%%%'
-              '\n% FOR MERGE ADD h5_out TO INPUT PARAMETERS %'
-              '\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
         return
 
     print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################'
