@@ -2262,8 +2262,12 @@ class PolChange:
 
                 if n == 0:
                     weights = ones(values.shape)
-
-                weights *= solutiontable.getValues(weight=True, retAxesVals=False)
+                weight = solutiontable.getValues(weight=True, retAxesVals=False)
+                if 'pol' in solutiontable.getAxesNames():
+                    weight = reorderAxes(weight, solutiontable.getAxesNames(), self.axes_names)
+                else:
+                    weight = reorderAxes(weight, solutiontable.getAxesNames(), self.axes_names[0:-1])
+                weights *= weight
 
             if lin2circ:
                 print(lin2circ_math)
@@ -2277,6 +2281,16 @@ class PolChange:
 
             phase = angle(G_new)
             amplitude = abs(G_new)
+
+            #upsample weights
+            if phase.shape!=weights.shape:
+                new_weights = ones(phase.shape)
+                for s in range(new_weights.shape[-1]):
+                    if len(weights.shape)==4:
+                        new_weights[..., s] *= weights[:]
+                    elif len(weights.shape)==5:
+                        new_weights[..., s] *= weights[..., 0]
+                weights = new_weights
 
             self.axes_vals = [v[1] for v in sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
 
