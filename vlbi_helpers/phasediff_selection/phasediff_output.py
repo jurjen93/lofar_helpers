@@ -35,7 +35,7 @@ def make_utf8(inp):
         return inp
 
 
-def get_phasediff_score(h5):
+def get_phasediff_score(h5, station=False):
     """
     Calculate score for phasediff
 
@@ -45,11 +45,15 @@ def get_phasediff_score(h5):
     H = tables.open_file(h5)
 
     stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
-    distant_stations_idx = [stations.index(station) for station in stations if
-                            ('RS' not in station) &
-                            ('ST' not in station) &
-                            ('CS' not in station) &
-                            ('DE' not in station)]
+
+    if not station:
+        stations_idx = [stations.index(stion) for stion in stations if
+                                ('RS' not in stion) &
+                                ('ST' not in stion) &
+                                ('CS' not in stion) &
+                                ('DE' not in stion)]
+    else:
+        stations_idx = [stations.index(station)]
 
     axes = str(H.root.sol000.phase000.val.attrs["AXES"]).replace("b'", '').replace("'", '').split(',')
     axes_idx = sorted({ax: axes.index(ax) for ax in axes}.items(), key=lambda x: x[1], reverse=True)
@@ -71,7 +75,7 @@ def get_phasediff_score(h5):
         elif ax[0] == 'freq':  # faraday corrected
             phasemod = np.diff(phasemod, axis=ax[1])
         elif ax[0] == 'ant':  # take only international stations
-            phasemod = phasemod.take(indices=distant_stations_idx, axis=ax[1])
+            phasemod = phasemod.take(indices=stations_idx, axis=ax[1])
 
     # meanscore = circmean(phasemod, nan_policy='omit')
     # if meanscore-2*np.pi<0 and meanscore>6:
@@ -79,7 +83,7 @@ def get_phasediff_score(h5):
 
     phasemod[phasemod==0] = np.nan
 
-    return circstd(phasemod, nan_policy='omit') #gonio_score(phasemod)
+    return circstd(phasemod, nan_policy='omit'), circmean(phasemod, nan_policy='omit') #gonio_score(phasemod)
 
 def rad_to_degree(inp):
     """
@@ -104,21 +108,37 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--h5', nargs='+', help='selfcal phasediff solutions', default=None)
+    parser.add_argument('--station', help='for specific station', default=None)
+    parser.add_argument('--all_stations', action='store_true', help='for all stations specifically')
     args = parser.parse_args()
 
     h5s = args.h5
     if h5s is None:
         h5s = glob("P*_phasediff/phasediff0*.h5")
 
+    if args.station is not None:
+        station = args.station
+    else:
+        station = ''
+
     f = open('phasediff_output.csv', 'w')
     writer = csv.writer(f)
-    writer.writerow(["source", "spd_score", 'RA', 'DEC'])
+    writer.writerow(["source", "spd_score", "mean_score", 'RA', 'DEC'])
     for h5 in h5s:
-        std = get_phasediff_score(h5)
-        H = tables.open_file(h5)
-        dir = rad_to_degree(H.root.sol000.source[:]['dir'])
-        H.close()
-        writer.writerow([h5, std, dir[0], dir[1]])
+        try:
+            H = tables.open_file(h5)
+            if args.all_stations:
+                stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
+            else:
+                stations = [station]
+            for station in stations:
+                std, mean = get_phasediff_score(h5, station=station)
+                dir = rad_to_degree(H.root.sol000.source[:]['dir'])
+                writer.writerow([h5 + station, std, mean, dir[0], dir[1]])
+            H.close()
+        except:
+            H.close()
+
 
     f.close()
 

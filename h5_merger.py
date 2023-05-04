@@ -950,10 +950,10 @@ class MergeH5:
                 if dim_pol==4:
                     values_new[1, ...] = 0
                     values_new[2, ...] = 0
-            elif type == 'phase':
+            elif type in ['phase', 'error', 'tec']:
                 values_new = zeros((dim_pol,) + values.shape)
             else:
-                sys.exit('ERROR: Only type in [amplitude, phase] allowed.')
+                sys.exit('ERROR: Only type in [amplitude, phase] allowed [%s requested].' % str(type))
             for i in range(dim_pol):
                 if dim_pol==4:
                     if i in [0, 3]:
@@ -967,10 +967,10 @@ class MergeH5:
                 if dim_pol==4:
                     values_new[1, ...] = 0
                     values_new[2, ...] = 0
-            elif type == 'phase':
+            elif type in ['phase', 'error', 'tec']:
                 values_new = zeros((dim_pol,) + values.shape[1:])
             else:
-                sys.exit('ERROR: Only type in [amplitude, phase] allowed.')
+                sys.exit('ERROR: Only type in [amplitude, phase] allowed [%s requested].' % str(type))
             values_new[0, ...] = values[0, ...]
             if values.shape[0] == 2:
                 values_new[-1, ...] = values[1, ...]
