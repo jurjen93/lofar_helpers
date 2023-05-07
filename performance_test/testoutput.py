@@ -312,6 +312,18 @@ else:
     sys.exit('Values tec diff:\n'+str(values.round(4))+'\nVS\n'+str(29.424))
 H.close()
 
+merge_h5(h5_out='tectest.h5', h5_tables=glob('tectest2/*.h5'), ms_files=None,
+             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
+             filtered_dir=None, add_cs=None, check_output=True, freq_av=8, time_av=None,
+             check_flagged_station=True, propagate_flags=True)
+H = tables.open_file('tectest.h5')
+values = H.root.sol000.phase000.val[0,-4,0,0,0]
+if np.all(0.3724 == values.round(4)):
+    print('CORRECT TEST')
+else:
+    sys.exit('Values tec diff:\n'+str(values.round(4))+'\nVS\n'+str(0.3724))
+H.close()
+
 #no convert
 merge_h5(h5_out='tecnoconverttest.h5', h5_tables=tectest[1], ms_files=None, convert_tec=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,

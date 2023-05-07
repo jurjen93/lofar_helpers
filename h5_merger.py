@@ -1136,9 +1136,8 @@ class MergeH5:
 
                     # add values
                     if len(self.polarizations)>0:
-                        for i in range(len(self.polarizations)):
-                            # average tec
-                            self.tec[i, idx, ...] += values[...]/self.tecnum
+                        # average tec
+                        self.tec[:, idx, ...] += values[:, ...]/self.tecnum
                     else:
                         # average tec
                         self.tec[idx, ...] += values[...]/self.tecnum
@@ -1147,9 +1146,8 @@ class MergeH5:
 
                     # add values
                     if len(self.polarizations)>0:
-                        for i in range(len(self.polarizations)):
-                            # average error
-                            self.error[i, idx, ...] += values[...]/self.errornum
+                        # average error
+                        self.error[:, idx, ...] += values[:, ...]/self.errornum
                     else:
                         # average error
                         self.error[idx, ...] += values[...]/self.errornum
