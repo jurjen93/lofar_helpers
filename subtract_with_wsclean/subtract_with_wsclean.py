@@ -25,24 +25,24 @@ class SubtractWSClean:
         self.region = pyregion.open(region)
 
         # wsclean model image
-        self.model_image = glob('*-model.fits')[0]
-        self.hdu = fits.open(self.model_image)
-        self.imshape = (self.hdu[0].header['NAXIS1'], self.hdu[0].header['NAXIS2'])
+        self.model_images = glob('*-model.fits')
+        hdu = fits.open(self.model_images[0])
+        self.imshape = (hdu[0].header['NAXIS1'], hdu[0].header['NAXIS2'])
 
-    @property
-    def flat_model_image(self):
+    @staticmethod
+    def flat_model_image(fitsfile):
         """
         Flatten a fits file so that it becomes a 2D image. Return new header and data
         (taken from sub-sources-outside-region.py)
         """
-
-        naxis = self.hdu[0].header['NAXIS']
+        hdu = fits.open(fitsfile)
+        naxis = hdu[0].header['NAXIS']
         if naxis < 2:
             raise sys.exit('Can\'t make map from this')
         if naxis == 2:
-            return fits.PrimaryHDU(header=self.hdu[0].header, data=self.hdu[0].data)
+            return fits.PrimaryHDU(header=hdu[0].header, data=hdu[0].data)
 
-        w = WCS(self.hdu[0].header)
+        w = WCS(hdu[0].header)
         wn = WCS(naxis=2)
 
         wn.wcs.crpix[0] = w.wcs.crpix[0]
@@ -56,7 +56,7 @@ class SubtractWSClean:
         header["NAXIS"] = 2
         copy = ('EQUINOX', 'EPOCH', 'BMAJ', 'BMIN', 'BPA', 'RESTFRQ', 'TELESCOP', 'OBSERVER')
         for k in copy:
-            r = self.hdu[0].header.get(k)
+            r = hdu[0].header.get(k)
             if r is not None:
                 header[k] = r
 
@@ -67,7 +67,7 @@ class SubtractWSClean:
             else:
                 slice.append(0)
 
-        hdu = fits.PrimaryHDU(header=header, data=self.hdu[0].data[tuple(slice)])
+        hdu = fits.PrimaryHDU(header=header, data=hdu[0].data[tuple(slice)])
         return hdu
 
     @staticmethod
@@ -85,30 +85,31 @@ class SubtractWSClean:
         :param mask_fits: name of fits file
         """
 
-        self.mask_fits = mask_fits
+        for fits_model in self.model_images:
 
-        if region_cube:
-            manualmask = self.region.get_mask(hdu=self.hdu[0], shape=self.imshape)
-            # rmsval = np.mean(hdu[0].data[0][0][np.where(manualmask == True)])
-            for i in range(self.hdu[0].header['NAXIS4']):
-                self.hdu[0].data[i][0] = self.invert_mask(manualmask)
-            self.hdu.writeto(self.mask_fits, overwrite=True)
+            hdu = fits.open(fits_model)
 
-        else:
-            hduflat = self.flat_model_image
-            manualmask = self.region.get_mask(hdu=hduflat)
-            self.hdu[0].data[0][0] = self.invert_mask(manualmask)
-            self.hdu.writeto(self.mask_fits, overwrite=True)
+            if region_cube:
+                manualmask = self.region.get_mask(hdu=hdu[0], shape=self.imshape)
+                for i in range(hdu[0].header['NAXIS4']):
+                    hdu[0].data[i][0][np.where(manualmask == True)] = 0.0
+                hdu.writeto(fits_model, overwrite=True)
+
+            else:
+                hduflat = self.flat_model_image(fits_model)
+                manualmask = self.region.get_mask(hdu=hduflat)
+                hdu[0].data[0][0][np.where(manualmask == True)] = 0.0
+                hdu.writeto(fits_model, overwrite=True)
 
         return self
 
-
     def subtract_col(self, out_column):
+
         """
         Subtract column in Measurement Set
-
         :param out_column: out column name
         """
+
         for ms in self.mslist:
             ts = pt.table(ms, readonly=False)
             colnames = ts.colnames()
@@ -149,8 +150,7 @@ class SubtractWSClean:
                    '-padding 1.2',
                    '-predict',
                    '-parallel-gridding 5',
-                    f'-name {self.model_image.split("-")[0]}',
-                    f'-fits-mask {self.mask_fits}']
+                    f'-name {self.model_images[0].split("-")[0]}']
 
         if h5parm is not None:
             command+=[f'-apply-facet-solutions {h5parm} amplitude000,phase000',
@@ -226,10 +226,10 @@ if __name__ == "__main__":
     parser.add_argument('--mask_fits', type=str, help='name for mask_fits', default='mask.fits')
     parser.add_argument('--h5parm', type=str, help='h5 solution file', default=None)
     parser.add_argument('--facet_region', type=str, help='facet region file', default=None)
-    parser.add_argument('--phaseshift', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
-    parser.add_argument('--freqavg', type=str, help='frequency averaging')
-    parser.add_argument('--timeavg', type=str, help='time averaging')
-    parser.add_argument('--concat', action='store_true', help='concat MS')
+    parser.add_argument('--phaseshift', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)', default=None)
+    parser.add_argument('--freqavg', type=str, help='frequency averaging', default=None)
+    parser.add_argument('--timeavg', type=str, help='time averaging', default=None)
+    parser.add_argument('--concat', action='store_true', help='concat MS', default=None)
     args = parser.parse_args()
 
     if len(glob('*-model.fits'))==0:
@@ -250,9 +250,9 @@ if __name__ == "__main__":
     object.subtract_col(out_column='SUBTRACT_DATA')
 
     # extra DP3 step
-    print('############## RUN DP3 ##############')
     if args.phaseshift is not None or \
         args.freqavg is not None or \
         args.timeavg is not None or \
         args.concat is not None:
+        print('############## RUN DP3 ##############')
         object.run_DP3(phaseshift = args.phaseshift, freqavg = args.freqavg, timeavg = args.timeavg, concat = args.concat)
