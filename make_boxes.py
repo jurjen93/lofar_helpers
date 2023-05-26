@@ -216,7 +216,7 @@ class SetBoxes(Imaging):
     @staticmethod
     def ed_array(pos=None, lst=None):
         """Euclidean distance between position and list"""
-
+        return np.sqrt(np.sum(np.square(pos - lst), axis=1))
 
     def angular_distance(self, p1, p2):
         """Angular distance between two points"""

@@ -9,7 +9,7 @@ from astropy.wcs import WCS
 from glob import glob
 
 class SubtractWSClean:
-    def __init__(self, mslist: list = None, region: str = None):
+    def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True):
         """
         Subtract image with WSClean
 
@@ -21,13 +21,46 @@ class SubtractWSClean:
         # list with MS
         self.mslist = mslist
 
-        # region file to mask
-        self.region = pyregion.open(region)
-
         # wsclean model image
         self.model_images = glob('*-model.fits')
         hdu = fits.open(self.model_images[0])
         self.imshape = (hdu[0].header['NAXIS1'], hdu[0].header['NAXIS2'])
+
+        # region file to mask
+        if localnorth:
+            self.region = self.box_to_localnorth(region)
+        else:
+            self.region = pyregion.open(region)
+
+    def box_to_localnorth(self, region):
+        """
+        Adjust box for local north
+        :param regionfile: region file
+        :param fitsfile: fits file
+        """
+        r = pyregion.open(region)
+
+        hduflat = self.flat_model_image(self.model_images[0])
+        CRVAL1 = hduflat.header['CRVAL1']  # RA
+
+        if len(r[:]) > 1:
+            print('Only one region can be specified, your file contains', len(r[:]))
+            sys.exit()
+
+        if r[0].name != 'box':
+            print('Only box region supported')
+            sys.exit()
+
+        ra = r[0].coord_list[0]
+
+        r[0].coord_list[4] = CRVAL1 - ra  # rotate box
+        print('Angle adjusted box', CRVAL1 - ra)
+
+        if os.path.isfile('adjustedbox.reg'):
+            os.system('rm -rf adjustedbox.reg')
+
+        r.write("adjustedbox.reg")
+        return pyregion.open("adjustedbox.reg")
 
     @staticmethod
     def flat_model_image(fitsfile):
@@ -79,10 +112,9 @@ class SubtractWSClean:
         """
         return np.invert(mask)
 
-    def mask_region(self, region_cube:bool = False, mask_fits:str = 'mask.fits'):
+    def mask_region(self, region_cube:bool = False):
         """
         :param region_cube: if region_cube make cube, otherwise 2D (flatten)
-        :param mask_fits: name of fits file
         """
 
         for fits_model in self.model_images:
@@ -222,9 +254,9 @@ if __name__ == "__main__":
     parser = ArgumentParser(description='Subtract region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
     parser.add_argument('--region', type=str, help='region file', required=True)
+    parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north', default=False)
     parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
-    parser.add_argument('--mask_fits', type=str, help='name for mask_fits', default='mask.fits')
-    parser.add_argument('--h5parm', type=str, help='h5 solution file', default=None)
+    parser.add_argument('--h5parm_predict', type=str, help='h5 solution file', default=None)
     parser.add_argument('--facet_region', type=str, help='facet region file', default=None)
     parser.add_argument('--phaseshift', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)', default=None)
     parser.add_argument('--freqavg', type=str, help='frequency averaging', default=None)
@@ -233,17 +265,21 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if len(glob('*-model.fits'))==0:
-        sys.exit('ERROR: missing *-model.fits images from WSClean.\nCopy these images to run folder.')
+        if len(glob('*-model-pb.fits'))!=0:
+            for f in glob('*-model-pb.fits'):
+                os.system('mv '+f+' '+f.replace('-pb',''))
+        else:
+            sys.exit('ERROR: missing *-model.fits images from WSClean.\nCopy these images to run folder.')
 
-    object = SubtractWSClean(mslist=args.mslist, region=args.region)
+    object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north)
 
     # mask
     print('############## MASK REGION ##############')
-    object.mask_region(region_cube=args.use_region_cube, mask_fits=args.mask_fits)
+    object.mask_region(region_cube=args.use_region_cube)
 
     # predict
     print('############## PREDICT ##############')
-    object.predict(h5parm=args.h5parm, facet_regions=args.facet_region)
+    object.predict(h5parm=args.h5parm_predict, facet_regions=args.facet_region)
 
     # subtract
     print('############## SUBTRACT ##############')
