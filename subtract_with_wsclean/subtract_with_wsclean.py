@@ -22,7 +22,7 @@ class SubtractWSClean:
         self.mslist = mslist
 
         # wsclean model image
-        self.model_images = glob('*-model.fits')
+        self.model_images = glob('*-model*.fits')
         hdu = fits.open(self.model_images[0])
         self.imshape = (hdu[0].header['NAXIS1'], hdu[0].header['NAXIS2'])
 
@@ -119,6 +119,8 @@ class SubtractWSClean:
 
         for fits_model in self.model_images:
 
+            print('Mask '+fits_model)
+
             hdu = fits.open(fits_model)
 
             if region_cube:
@@ -143,6 +145,7 @@ class SubtractWSClean:
         """
 
         for ms in self.mslist:
+            print('Subtract '+ms)
             ts = pt.table(ms, readonly=False)
             colnames = ts.colnames()
             if out_column not in colnames:
@@ -175,18 +178,26 @@ class SubtractWSClean:
         :param h5parm: h5 solutions (optional)
         :param facet_regions: facet regions (if h5 solutions given)
         """
-        command = ['wsclean',
-                   '-gridder wgridder',
-                   f'-size {self.imshape[0]} {self.imshape[1]}',
-                   '-channels-out 6',
-                   '-padding 1.2',
-                   '-predict',
-                   '-parallel-gridding 5',
-                    f'-name {self.model_images[0].split("-")[0]}']
+        f = fits.open(self.model_images[0])
+        comparse = str(f[0].header['HISTORY']).replace('\n', '').split()
+        command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}']
+
+        for n, argument in enumerate(comparse):
+            if argument in ['-channels-out', '-gridder',
+                            '-padding', '-parallel-gridding',
+                            '-idg-mode', '-beam-aterm-update', '-pol', '-minuv-l']:
+                command.append(' '.join(comparse[n:n+2]))
+            elif argument in ['-size']:
+                command.append(' '.join(comparse[n:n+3]))
+            elif argument in ['-use-differential-lofar-beam', '-grid-with-beam',
+                              '-use-idg', '-log-time', '-gap-channel-division',
+                              '-apply-primary-beam']:
+                command.append(argument)
 
         if h5parm is not None:
             command+=[f'-apply-facet-solutions {h5parm} amplitude000,phase000',
-                      f' -facet-regions {facet_regions}']
+                      f' -facet-regions {facet_regions}', '-apply-facet-beam',
+                      f'-facet-beam-update {comparse[comparse.index("-facet-beam-update")+1]}']
 
         command += [' '.join(self.mslist)]
 
@@ -264,12 +275,13 @@ if __name__ == "__main__":
     parser.add_argument('--concat', action='store_true', help='concat MS', default=None)
     args = parser.parse_args()
 
-    if len(glob('*-model.fits'))==0:
-        if len(glob('*-model-pb.fits'))!=0:
-            for f in glob('*-model-pb.fits'):
-                os.system('mv '+f+' '+f.replace('-pb',''))
-        else:
-            sys.exit('ERROR: missing *-model.fits images from WSClean.\nCopy these images to run folder.')
+    if len(glob('*-model*.fits'))==0:
+        sys.exit("ERROR: missing model images in folder.\nPlease copy model images to run folder.")
+    #     if len(glob('*-model-pb.fits'))!=0:
+    #         for f in glob('*-model-pb.fits'):
+    #             os.system('mv '+f+' '+f.replace('-pb',''))
+    #     else:
+    #         sys.exit('ERROR: missing *-model.fits images from WSClean.\nCopy these images to run folder.')
 
     object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north)
 
