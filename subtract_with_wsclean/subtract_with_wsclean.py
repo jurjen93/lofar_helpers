@@ -268,7 +268,7 @@ if __name__ == "__main__":
     parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north', default=False)
     parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
     parser.add_argument('--h5parm_predict', type=str, help='h5 solution file', default=None)
-    parser.add_argument('--facet_region', type=str, help='facet region file', default=None)
+    parser.add_argument('--facet_regions', type=str, help='facet region file with all facets to apply solutions', default=None)
     parser.add_argument('--phaseshift', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)', default=None)
     parser.add_argument('--freqavg', type=str, help='frequency averaging', default=None)
     parser.add_argument('--timeavg', type=str, help='time averaging', default=None)
@@ -291,7 +291,7 @@ if __name__ == "__main__":
 
     # predict
     print('############## PREDICT ##############')
-    object.predict(h5parm=args.h5parm_predict, facet_regions=args.facet_region)
+    object.predict(h5parm=args.h5parm_predict, facet_regions=args.facet_regions)
 
     # subtract
     print('############## SUBTRACT ##############')
