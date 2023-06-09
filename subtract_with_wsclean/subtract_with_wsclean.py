@@ -35,6 +35,7 @@ class SubtractWSClean:
 
         self.onlyprint = onlyprint
 
+
     def box_to_localnorth(self, region):
         """
         Adjust box for local north
@@ -65,6 +66,7 @@ class SubtractWSClean:
 
         r.write("adjustedbox.reg")
         return pyregion.open("adjustedbox.reg")
+
 
     @staticmethod
     def flat_model_image(fitsfile):
@@ -107,6 +109,7 @@ class SubtractWSClean:
         hdu = fits.PrimaryHDU(header=header, data=hdu[0].data[tuple(slice)])
         return hdu
 
+
     @staticmethod
     def invert_mask(mask):
         """
@@ -144,6 +147,7 @@ class SubtractWSClean:
                 hdu.close()
 
         return self
+
 
     def subtract_col(self, out_column):
 
@@ -185,6 +189,7 @@ class SubtractWSClean:
 
         return self
 
+
     def predict(self, h5parm: str = None, facet_regions: str = None):
         """
         Predict image
@@ -221,6 +226,7 @@ class SubtractWSClean:
             os.system(' '.join(command)+' > log_predict.txt')
 
         return self
+
 
     def run_DP3(self, phaseshift: str = None, freqavg: str = None,
                 timeavg: str = None, concat: bool = None,
@@ -301,6 +307,7 @@ class SubtractWSClean:
                     os.system(' '.join(command))
 
         return self
+
 
 if __name__ == "__main__":
 
