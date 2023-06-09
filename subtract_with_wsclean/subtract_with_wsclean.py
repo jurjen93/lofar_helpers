@@ -324,7 +324,7 @@ if __name__ == "__main__":
     parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
     parser.add_argument('--h5parm_predict', type=str, help='h5 solution file', default=None)
     parser.add_argument('--facets_predict', type=str, help='facet region file with all facets to apply solutions', default=None)
-    parser.add_argument('--phaseshift', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)', default=None)
+    parser.add_argument('--phasecenter', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)', default=None)
     parser.add_argument('--freqavg', type=str, help='frequency averaging', default=None)
     parser.add_argument('--timeavg', type=str, help='time averaging', default=None)
     parser.add_argument('--concat', action='store_true', help='concat MS')
@@ -332,6 +332,7 @@ if __name__ == "__main__":
     parser.add_argument('--applycal', action='store_true', help='applycal after subtraction and phaseshifting')
     parser.add_argument('--applycal_h5', type=str, help='applycal solution file', default=None)
     parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
+    parser.add_argument('--forwidefield', action='store_true', help='will search for the polygon_info.csv file')
     args = parser.parse_args()
 
     if args.model_image_folder is not None:
@@ -345,6 +346,25 @@ if __name__ == "__main__":
         oldname = model_images[0].split("-")[0]
         for model in model_images:
             os.system('mv '+model+' '+model.replace(oldname, args.output_name))
+
+    #--forwidefield --> will read averaging and phasecenter from polygon_info.csv
+    if args.forewidefield:
+        import pandas as pd
+        if os.path.isfile('polygon_info.csv'):
+            polygon_info = pd.read_csv('polygon_info.csv')
+        elif os.path.isfile('../polygon_info.csv'):
+            polygon_info = pd.read_csv('../polygon_info.csv')
+        else:
+            sys.exit('ERROR: using --forwidefield option needs polygon_info.csv file to read polygon information from')
+
+        polygon = polygon_info[polygon_info.polygon_file==args.region].reset_index().to_dict()['dir']
+        phasecenter = polygon['dir'][0]
+        freqavg = polygon['avg'][0]
+        timeavg = polygon['avg'][0]
+    else:
+        phasecenter = args.phasecenter
+        freqavg = args.freqavg
+        timeavg = args.timeavg
 
 
     object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north,
@@ -363,7 +383,7 @@ if __name__ == "__main__":
     object.subtract_col(out_column='SUBTRACT_DATA')
 
     # extra DP3 step
-    if args.phaseshift is not None or \
+    if args.phasecenter is not None or \
         args.freqavg is not None or \
         args.timeavg is not None or \
         args.concat is not None or \
@@ -377,5 +397,5 @@ if __name__ == "__main__":
         elif args.applycal and not args.applycal_h5:
             sys.exit("ERROR: need a solution file for applycal (give with --applycal_h5)")
 
-        object.run_DP3(phaseshift=args.phaseshift, freqavg=args.freqavg, timeavg=args.timeavg,
+        object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeavg=timeavg,
                        concat=args.concat, applybeam=args.apply_beam, applycal_h5=args.applycal_h5)
