@@ -9,13 +9,14 @@ from astropy.wcs import WCS
 from glob import glob
 
 class SubtractWSClean:
-    def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True):
+    def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, onlyprint: bool = False):
         """
         Subtract image with WSClean
 
         :param mslist: measurement set list
         :param region: region file
         :param model_image: model image
+        :param onlyprint: print only the commands (for testing purposes)
         """
 
         # list with MS
@@ -31,6 +32,8 @@ class SubtractWSClean:
             self.region = self.box_to_localnorth(region)
         else:
             self.region = pyregion.open(region)
+
+        self.onlyprint = onlyprint
 
     def box_to_localnorth(self, region):
         """
@@ -57,7 +60,8 @@ class SubtractWSClean:
         print('Angle adjusted box', CRVAL1 - ra)
 
         if os.path.isfile('adjustedbox.reg'):
-            os.system('rm -rf adjustedbox.reg')
+            if not self.onlyprint:
+                os.system('rm -rf adjustedbox.reg')
 
         r.write("adjustedbox.reg")
         return pyregion.open("adjustedbox.reg")
@@ -121,19 +125,23 @@ class SubtractWSClean:
 
             print('Mask '+fits_model)
 
-            hdu = fits.open(fits_model)
+            if not self.onlyprint:
 
-            if region_cube:
-                manualmask = self.region.get_mask(hdu=hdu[0], shape=self.imshape)
-                for i in range(hdu[0].header['NAXIS4']):
-                    hdu[0].data[i][0][np.where(manualmask == True)] = 0.0
-                hdu.writeto(fits_model, overwrite=True)
+                hdu = fits.open(fits_model)
 
-            else:
-                hduflat = self.flat_model_image(fits_model)
-                manualmask = self.region.get_mask(hdu=hduflat)
-                hdu[0].data[0][0][np.where(manualmask == True)] = 0.0
-                hdu.writeto(fits_model, overwrite=True)
+                if region_cube:
+                    manualmask = self.region.get_mask(hdu=hdu[0], shape=self.imshape)
+                    for i in range(hdu[0].header['NAXIS4']):
+                        hdu[0].data[i][0][np.where(manualmask == True)] = 0.0
+                    hdu.writeto(fits_model, overwrite=True)
+
+                else:
+                    hduflat = self.flat_model_image(fits_model)
+                    manualmask = self.region.get_mask(hdu=hduflat)
+                    hdu[0].data[0][0][np.where(manualmask == True)] = 0.0
+                    hdu.writeto(fits_model, overwrite=True)
+
+                hdu.close()
 
         return self
 
@@ -146,27 +154,33 @@ class SubtractWSClean:
 
         for ms in self.mslist:
             print('Subtract '+ms)
-            ts = pt.table(ms, readonly=False)
-            colnames = ts.colnames()
-            if out_column not in colnames:
-                desc = ts.getcoldesc('DATA')
-                desc['name'] = out_column
-                ts.addcols(desc)
-                ts.close()  # to write results
+            if not self.onlyprint:
+                ts = pt.table(ms, readonly=False)
+                colnames = ts.colnames()
+                if out_column not in colnames:
+                    desc = ts.getcoldesc('DATA')
+                    desc['name'] = out_column
+                    ts.addcols(desc)
+                    ts.close()  # to write results
 
-            else:
-                print(out_column, ' already exists')
-                ts.close()
+                else:
+                    print(out_column, ' already exists')
+                    ts.close()
 
         for ms in self.mslist:
             ts = pt.table(ms, readonly=False)
             colnames = ts.colnames()
             if 'CORRECTED_DATA' in colnames:
-                data = ts.getcol('CORRECTED_DATA')
+                print('SUBTRACT --> CORRECTED_DATA - MODEL_DATA')
+                if not self.onlyprint:
+                    data = ts.getcol('CORRECTED_DATA')
             else:
-                data = ts.getcol('DATA')
-            model = ts.getcol('MODEL_DATA')
-            ts.putcol(out_column, data - model)
+                print('SUBTRACT --> DATA - MODEL_DATA')
+                if not self.onlyprint:
+                    data = ts.getcol('DATA')
+            if not self.onlyprint:
+                model = ts.getcol('MODEL_DATA')
+                ts.putcol(out_column, data - model)
             ts.close()
 
         return self
@@ -203,11 +217,14 @@ class SubtractWSClean:
 
         #run
         print('\n'.join(command))
-        os.system(' '.join(command)+' > log_predict.txt')
+        if not self.onlyprint:
+            os.system(' '.join(command)+' > log_predict.txt')
 
         return self
 
-    def run_DP3(self, phaseshift: bool = False, freqavg: str = None, timeavg: str = None, concat: bool = False):
+    def run_DP3(self, phaseshift: str = None, freqavg: str = None,
+                timeavg: str = None, concat: bool = None,
+                applybeam: bool = None, applycal_h5: str = None):
         """
         Run DP3 command
 
@@ -215,6 +232,8 @@ class SubtractWSClean:
         :param freqavg: frequency averaging
         :param timeavg: time averaging
         :param concat: concat the measurement sets
+        :param applybeam: apply beam in phaseshifted phase center (or otherwise center of field)
+        :param applycal_h5: applycal solution file
         """
 
         steps=[]
@@ -226,10 +245,32 @@ class SubtractWSClean:
                    'msout.storagemanager=dysco',
                    'msout.writefullreslag=False']
 
+        #1) PHASESHIFT
         if phaseshift is not None:
+            phasecenter = phaseshift.replace('[','').replace(']','').split(',')
+            phasecenter = f'[{phasecenter[0]},{phasecenter[1]}]'
             steps.append('ps')
-            command += ['ps.type=phaseshifter', f'ps.phasecenter={phaseshift}']
+            command += ['ps.type=phaseshifter',
+                        'ps.phasecenter='+phasecenter]
 
+        #2) APPLY BEAM
+        if applybeam is not None:
+            steps.append('beam')
+            command += ['beam.type=applybeam',
+                        'beam.direction=[]',
+                        'beam.updateweights=True']
+
+
+        #3) APPLYCAL
+        if applycal_h5 is not None:
+            steps.append('ac')
+            command += ['ac.type=applycal',
+                        'ac.parmdb='+applycal_h5,
+                        'ac.correction=fulljones',
+                        'ac.soltab=[amplitude000,phase000]']
+
+
+        #4) AVERAGING
         if freqavg is not None or timeavg is not None:
             steps.append('avg')
             command += ['avg.type=averager']
@@ -246,16 +287,18 @@ class SubtractWSClean:
 
         command+=[f'steps={steps}']
 
-        if concat:
+        if concat is not None:
             command+=[f'msin={",".join(self.mslist)}',
                       'msout=subtract_concat.ms']
             print('\n'.join(command))
-            os.system(' '.join(command))
+            if not self.onlyprint:
+                os.system(' '.join(command))
         else:
             for ms in self.mslist:
                 command+=[f'msin={ms}', f'msout=sub_{ms}']
                 print('\n'.join(command))
-                os.system(' '.join(command))
+                if not self.onlyprint:
+                    os.system(' '.join(command))
 
         return self
 
@@ -265,25 +308,36 @@ if __name__ == "__main__":
     parser = ArgumentParser(description='Subtract region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
     parser.add_argument('--region', type=str, help='region file', required=True)
-    parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north', default=False)
+    parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)', default=None)
+    parser.add_argument('--model_image_folder', type=str, help='folder where model images are stored (if not given script takes model images from run folder)', default=None)
+    parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north')
     parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
     parser.add_argument('--h5parm_predict', type=str, help='h5 solution file', default=None)
     parser.add_argument('--facet_regions', type=str, help='facet region file with all facets to apply solutions', default=None)
     parser.add_argument('--phaseshift', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)', default=None)
     parser.add_argument('--freqavg', type=str, help='frequency averaging', default=None)
     parser.add_argument('--timeavg', type=str, help='time averaging', default=None)
-    parser.add_argument('--concat', action='store_true', help='concat MS', default=None)
+    parser.add_argument('--concat', action='store_true', help='concat MS')
+    parser.add_argument('--apply_beam', action='store_true', help='apply beam in phaseshift center or center of field')
+    parser.add_argument('--applycal_h5', type=str, help='applycal solution file', default=None)
+    parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
     args = parser.parse_args()
 
-    if len(glob('*-model*.fits'))==0:
-        sys.exit("ERROR: missing model images in folder.\nPlease copy model images to run folder.")
-    #     if len(glob('*-model-pb.fits'))!=0:
-    #         for f in glob('*-model-pb.fits'):
-    #             os.system('mv '+f+' '+f.replace('-pb',''))
-    #     else:
-    #         sys.exit('ERROR: missing *-model.fits images from WSClean.\nCopy these images to run folder.')
+    if args.model_image_folder is not None:
+        os.system('cp '+args.model_image_folder+'/*-model*.fits .')
 
-    object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north)
+    if len(glob('*-model*.fits'))==0:
+        sys.exit("ERROR: missing model images in folder.\nPlease copy model images to run folder or give --model_image_folder.")
+
+    if args.output_name is not None:
+        model_images = glob('*-model*.fits')
+        oldname = model_images[0].split("-")[0]
+        for model in model_images:
+            os.system('mv '+model+' '+model.replace(oldname, args.output_name))
+
+
+    object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north,
+                             onlyprint=args.print_only_commands)
 
     # mask
     print('############## MASK REGION ##############')
@@ -301,6 +355,9 @@ if __name__ == "__main__":
     if args.phaseshift is not None or \
         args.freqavg is not None or \
         args.timeavg is not None or \
-        args.concat is not None:
+        args.concat is not None or \
+        args.apply_beam is not None or \
+        args.applycal_h5 is not None:
         print('############## RUN DP3 ##############')
-        object.run_DP3(phaseshift = args.phaseshift, freqavg = args.freqavg, timeavg = args.timeavg, concat = args.concat)
+        object.run_DP3(phaseshift=args.phaseshift, freqavg=args.freqavg, timeavg=args.timeavg,
+                       concat=args.concat, applybeam=args.apply_beam, applycal_h5=args.applycal_h5)
