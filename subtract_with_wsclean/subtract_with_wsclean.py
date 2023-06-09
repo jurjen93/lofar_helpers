@@ -35,6 +35,7 @@ class SubtractWSClean:
 
         self.onlyprint = onlyprint
 
+        self.scale=''
 
     def box_to_localnorth(self, region):
         """
@@ -212,6 +213,8 @@ class SubtractWSClean:
                               '-use-idg', '-log-time', '-gap-channel-division',
                               '-apply-primary-beam']:
                 command.append(argument)
+            if argument=='-scale':
+                self.scale=comparse[n+1]
 
         if h5parm is not None:
             command+=[f'-apply-facet-solutions {h5parm} amplitude000,phase000',
@@ -266,7 +269,6 @@ class SubtractWSClean:
                         'beam.direction=[]',
                         'beam.updateweights=True']
 
-
         #3) APPLYCAL
         if applycal_h5 is not None:
             steps.append('ac')
@@ -274,7 +276,8 @@ class SubtractWSClean:
                         'ac.parmdb='+applycal_h5,
                         'ac.correction=fulljones',
                         'ac.soltab=[amplitude000,phase000]']
-
+            if phaseshift is not None:
+                command += ['ac.direction='+phasecenter]
 
         #4) AVERAGING
         if freqavg is not None or timeavg is not None:
@@ -301,7 +304,7 @@ class SubtractWSClean:
                 os.system(' '.join(command))
         else:
             for ms in self.mslist:
-                command+=[f'msin={ms}', f'msout=sub_{ms}']
+                command+=[f'msin={ms}', f'msout=sub{self.scale}_{ms}']
                 print('\n'.join(command))
                 if not self.onlyprint:
                     os.system(' '.join(command))
@@ -320,12 +323,13 @@ if __name__ == "__main__":
     parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north')
     parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
     parser.add_argument('--h5parm_predict', type=str, help='h5 solution file', default=None)
-    parser.add_argument('--facet_regions', type=str, help='facet region file with all facets to apply solutions', default=None)
+    parser.add_argument('--facets_predict', type=str, help='facet region file with all facets to apply solutions', default=None)
     parser.add_argument('--phaseshift', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)', default=None)
     parser.add_argument('--freqavg', type=str, help='frequency averaging', default=None)
     parser.add_argument('--timeavg', type=str, help='time averaging', default=None)
     parser.add_argument('--concat', action='store_true', help='concat MS')
     parser.add_argument('--apply_beam', action='store_true', help='apply beam in phaseshift center or center of field')
+    parser.add_argument('--applycal', action='store_true', help='applycal after subtraction and phaseshifting')
     parser.add_argument('--applycal_h5', type=str, help='applycal solution file', default=None)
     parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
     args = parser.parse_args()
@@ -352,7 +356,7 @@ if __name__ == "__main__":
 
     # predict
     print('############## PREDICT ##############')
-    object.predict(h5parm=args.h5parm_predict, facet_regions=args.facet_regions)
+    object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
 
     # subtract
     print('############## SUBTRACT ##############')
@@ -364,7 +368,14 @@ if __name__ == "__main__":
         args.timeavg is not None or \
         args.concat is not None or \
         args.apply_beam is not None or \
-        args.applycal_h5 is not None:
+        args.applycal is not None:
         print('############## RUN DP3 ##############')
+        if args.applycal_h5 is not None:
+            applycalh5 = args.applycal_h5
+        elif args.applycal and args.applycal_h5 is None and args.h5parm_predict is not None:
+            applycalh5 = args.h5parm_predict
+        elif args.applycal and not args.applycal_h5:
+            sys.exit("ERROR: need a solution file for applycal (give with --applycal_h5)")
+
         object.run_DP3(phaseshift=args.phaseshift, freqavg=args.freqavg, timeavg=args.timeavg,
                        concat=args.concat, applybeam=args.apply_beam, applycal_h5=args.applycal_h5)
