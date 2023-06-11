@@ -54,7 +54,7 @@ class SubtractWSClean:
 
         if r[0].name != 'box':
             print('Only box region supported')
-            sys.exit()
+            return pyregion.open(region)
 
         ra = r[0].coord_list[0]
 
@@ -62,8 +62,7 @@ class SubtractWSClean:
         print('Angle adjusted box', CRVAL1 - ra)
 
         if os.path.isfile('adjustedbox.reg'):
-            if not self.onlyprint:
-                os.system('rm -rf adjustedbox.reg')
+            os.system('rm -rf adjustedbox.reg')
 
         r.write("adjustedbox.reg")
         return pyregion.open("adjustedbox.reg")
