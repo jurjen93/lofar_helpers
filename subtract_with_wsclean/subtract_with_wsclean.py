@@ -303,10 +303,9 @@ class SubtractWSClean:
                 os.system(' '.join(command))
         else:
             for ms in self.mslist:
-                command+=[f'msin={ms}', f'msout=sub{self.scale}_{ms}']
-                print('\n'.join(command))
+                print('\n'.join(command+[f'msin={ms}', f'msout=sub{self.scale}_{ms}']))
                 if not self.onlyprint:
-                    os.system(' '.join(command))
+                    os.system(' '.join(command+[f'msin={ms}', f'msout=sub{self.scale}_{ms}']))
 
         return self
 
