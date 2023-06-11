@@ -348,7 +348,7 @@ if __name__ == "__main__":
             os.system('mv '+model+' '+model.replace(oldname, args.output_name))
 
     #--forwidefield --> will read averaging and phasecenter from polygon_info.csv
-    if args.forewidefield:
+    if args.forwidefield:
         import pandas as pd
         if os.path.isfile('polygon_info.csv'):
             polygon_info = pd.read_csv('polygon_info.csv')
