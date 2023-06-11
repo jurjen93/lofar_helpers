@@ -386,7 +386,7 @@ if __name__ == "__main__":
         args.freqavg is not None or \
         args.timeavg is not None or \
         args.concat is not None or \
-        args.apply_beam is not None or \
+        args.applybeam is not None or \
         args.applycal is not None:
         print('############## RUN DP3 ##############')
         if args.applycal_h5 is not None:
@@ -395,7 +395,9 @@ if __name__ == "__main__":
             applycalh5 = args.h5parm_predict
         elif args.applycal and not args.applycal_h5:
             sys.exit("ERROR: need a solution file for applycal (give with --applycal_h5)")
+        else:
+            applycalh5=None
 
         object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeavg=timeavg,
-                       concat=args.concat, applybeam=args.apply_beam, applycal_h5=applycalh5)
+                       concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5)
         
