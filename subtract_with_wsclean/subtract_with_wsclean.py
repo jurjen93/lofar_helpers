@@ -328,7 +328,7 @@ if __name__ == "__main__":
     parser.add_argument('--freqavg', type=str, help='frequency averaging')
     parser.add_argument('--timeavg', type=str, help='time averaging')
     parser.add_argument('--concat', action='store_true', help='concat MS')
-    parser.add_argument('--apply_beam', action='store_true', help='apply beam in phaseshift center or center of field')
+    parser.add_argument('--applybeam', action='store_true', help='apply beam in phaseshift center or center of field')
     parser.add_argument('--applycal', action='store_true', help='applycal after subtraction and phaseshifting')
     parser.add_argument('--applycal_h5', type=str, help='applycal solution file')
     parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
