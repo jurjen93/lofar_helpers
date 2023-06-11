@@ -263,7 +263,7 @@ class SubtractWSClean:
                         'ps.phasecenter='+phasecenter]
 
         #2) APPLY BEAM
-        if applybeam is not None:
+        if applybeam:
             steps.append('beam')
             command += ['beam.type=applybeam',
                         'beam.direction=[]',
@@ -296,7 +296,7 @@ class SubtractWSClean:
 
         command+=[f'steps={steps}']
 
-        if concat is not None:
+        if concat:
             command+=[f'msin={",".join(self.mslist)}',
                       'msout=subtract_concat.ms']
             print('\n'.join(command))
@@ -318,19 +318,19 @@ if __name__ == "__main__":
     parser = ArgumentParser(description='Subtract region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
     parser.add_argument('--region', type=str, help='region file', required=True)
-    parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)', default=None)
-    parser.add_argument('--model_image_folder', type=str, help='folder where model images are stored (if not given script takes model images from run folder)', default=None)
+    parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)')
+    parser.add_argument('--model_image_folder', type=str, help='folder where model images are stored (if not given script takes model images from run folder)')
     parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north')
     parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
-    parser.add_argument('--h5parm_predict', type=str, help='h5 solution file', default=None)
-    parser.add_argument('--facets_predict', type=str, help='facet region file with all facets to apply solutions', default=None)
-    parser.add_argument('--phasecenter', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)', default=None)
-    parser.add_argument('--freqavg', type=str, help='frequency averaging', default=None)
-    parser.add_argument('--timeavg', type=str, help='time averaging', default=None)
+    parser.add_argument('--h5parm_predict', type=str, help='h5 solution file')
+    parser.add_argument('--facets_predict', type=str, help='facet region file with all facets to apply solutions')
+    parser.add_argument('--phasecenter', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
+    parser.add_argument('--freqavg', type=str, help='frequency averaging')
+    parser.add_argument('--timeavg', type=str, help='time averaging')
     parser.add_argument('--concat', action='store_true', help='concat MS')
     parser.add_argument('--apply_beam', action='store_true', help='apply beam in phaseshift center or center of field')
     parser.add_argument('--applycal', action='store_true', help='applycal after subtraction and phaseshifting')
-    parser.add_argument('--applycal_h5', type=str, help='applycal solution file', default=None)
+    parser.add_argument('--applycal_h5', type=str, help='applycal solution file')
     parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
     parser.add_argument('--forwidefield', action='store_true', help='will search for the polygon_info.csv file')
     args = parser.parse_args()
@@ -398,4 +398,5 @@ if __name__ == "__main__":
             sys.exit("ERROR: need a solution file for applycal (give with --applycal_h5)")
 
         object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeavg=timeavg,
-                       concat=args.concat, applybeam=args.apply_beam, applycal_h5=args.applycal_h5)
+                       concat=args.concat, applybeam=args.apply_beam, applycal_h5=applycalh5)
+        
