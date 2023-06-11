@@ -212,7 +212,9 @@ class SubtractWSClean:
                               '-use-idg', '-log-time', '-gap-channel-division',
                               '-apply-primary-beam']:
                 command.append(argument)
-            if argument=='-scale':
+            if argument=='-taper-gaussian':
+                self.scale=comparse[n+1]
+            elif argument=='-scale' and '-taper-gaussian' not in comparse:
                 self.scale=comparse[n+1]
 
         if h5parm is not None:
