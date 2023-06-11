@@ -293,7 +293,7 @@ class SubtractWSClean:
                 else:
                     command+=[f'avg.timeresolution={timeavg}']
 
-        command+=[f'steps={steps}']
+        command+=[f'steps={str(steps).replace(" ","")}']
 
         if concat:
             command+=[f'msin={",".join(self.mslist)}',
