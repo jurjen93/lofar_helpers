@@ -1797,6 +1797,7 @@ class MergeH5:
                         continue
                     st2 = T.root._f_get_child(solset)._f_get_child(soltab)
                     axes = make_utf8(st2.val.attrs["AXES"]).split(',')
+                    print(axes)
                     weight = st2.weight[:]
                     weight = reorderAxes(weight, axes, [a for a in axes_new if a in axes])
 
