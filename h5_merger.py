@@ -1842,6 +1842,7 @@ class MergeH5:
                                          + self.debug_message)
                     elif set(axes) == set(axes_new) and 'pol' not in axes: # same axes but no pol
                         dirind = axes.index('dir')
+                        print(weight_out.shape[dirind], newvals.shape[dirind])
                         if weight_out.shape[dirind] != newvals.shape[dirind]:
                             sys.exit('ERROR: Upsampling of weights because same direction exists multiple times in input h5 (verify and/or remove --propagate_flags)')
                         else:
