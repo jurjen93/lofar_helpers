@@ -1797,7 +1797,6 @@ class MergeH5:
                         continue
                     st2 = T.root._f_get_child(solset)._f_get_child(soltab)
                     axes = make_utf8(st2.val.attrs["AXES"]).split(',')
-                    print(axes)
                     weight = st2.weight[:]
                     weight = reorderAxes(weight, axes, [a for a in axes_new if a in axes])
 
@@ -1842,9 +1841,7 @@ class MergeH5:
                                 sys.exit('ERROR: Upsampling of weights bug due to unexpected polarization mismatch.\n'
                                          + self.debug_message)
                     elif set(axes) == set(axes_new) and 'pol' not in axes: # same axes but no pol
-                        dirind = axes.index('dir')
-                        print(dirind, weight_out.shape)
-                        print(weight_out.shape[dirind], newvals.shape[dirind])
+                        dirind = axes_new.index('dir')
                         if weight_out.shape[dirind] != newvals.shape[dirind]:
                             sys.exit('ERROR: Upsampling of weights because same direction exists multiple times in input h5 (verify and/or remove --propagate_flags)')
                         else:
