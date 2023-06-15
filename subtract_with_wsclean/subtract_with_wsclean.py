@@ -234,7 +234,7 @@ class SubtractWSClean:
 
     def run_DP3(self, phaseshift: str = None, freqavg: str = None,
                 timeavg: str = None, concat: bool = None,
-                applybeam: bool = None, applycal_h5: str = None):
+                applybeam: bool = None, applycal_h5: str = None, dirname: str = None):
         """
         Run DP3 command
 
@@ -277,8 +277,8 @@ class SubtractWSClean:
                         'ac.parmdb='+applycal_h5,
                         'ac.correction=fulljones',
                         'ac.soltab=[amplitude000,phase000]']
-            if phaseshift is not None:
-                command += ['ac.direction='+phasecenter]
+            if phaseshift is not None and dirname is not None:
+                command += ['ac.direction='+dirname]
 
         #4) AVERAGING
         if freqavg is not None or timeavg is not None:
@@ -335,12 +335,15 @@ if __name__ == "__main__":
     parser.add_argument('--forwidefield', action='store_true', help='will search for the polygon_info.csv file')
     args = parser.parse_args()
 
+    # copy model images
     if args.model_image_folder is not None:
         os.system('cp '+args.model_image_folder+'/*-model*.fits .')
 
+    # verify there are model images
     if len(glob('*-model*.fits'))==0:
         sys.exit("ERROR: missing model images in folder.\nPlease copy model images to run folder or give --model_image_folder.")
 
+    # rename model images
     if args.output_name is not None:
         model_images = glob('*-model*.fits')
         oldname = model_images[0].split("-")[0]
@@ -361,10 +364,12 @@ if __name__ == "__main__":
         phasecenter = polygon['dir'][0]
         freqavg = polygon['avg'][0]
         timeavg = polygon['avg'][0]
+        dirname = polygon['dir_name'][0]
     else:
         phasecenter = args.phasecenter
         freqavg = args.freqavg
         timeavg = args.timeavg
+        dirname = None
 
 
     object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north,
@@ -400,5 +405,5 @@ if __name__ == "__main__":
             applycalh5=None
 
         object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeavg=timeavg,
-                       concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5)
+                       concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5, dirname=dirname)
         
