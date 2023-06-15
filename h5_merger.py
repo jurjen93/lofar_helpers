@@ -1841,7 +1841,11 @@ class MergeH5:
                                 sys.exit('ERROR: Upsampling of weights bug due to unexpected polarization mismatch.\n'
                                          + self.debug_message)
                     elif set(axes) == set(axes_new) and 'pol' not in axes: # same axes but no pol
-                        weight_out *= newvals
+                        dirind = axes.index('dir')
+                        if weight_out.shape[dirind]!=weight_out.shape[dirind]:
+                            sys.exit('ERROR: Upsampling of weights because same direction exists multiple times in input h5 (verify and/or remove --propagate_flags)')
+                        else:
+                            weight_out *= newvals
 
                     else:
                         sys.exit('ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from '
