@@ -13,7 +13,7 @@ from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
-    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal
+    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose
 import os
 import re
 from scipy.interpolate import interp1d
@@ -365,6 +365,7 @@ class MergeH5:
             self.fulljones = False
 
         print('Output polarization:\n'+str(self.polarizations))
+        self.poldim = len(self.polarizations)
 
         # validation checks
         if len(self.ax_freq) == 0:
@@ -392,6 +393,8 @@ class MergeH5:
 
         self.merge_diff_freq = merge_diff_freq
         self.debug_message = 'Please contact jurjendejong@strw.leidenuniv.nl.'
+
+
 
     @property
     def have_same_antennas(self):
@@ -1513,41 +1516,57 @@ class MergeH5:
 
         return self
 
-    def remove_pol(self, single=False):
+    def change_pol(self, single=False, nopol=False):
         """
-        Reduce table to one single polarization
+        Change polarization dimension
+        (Standard output is poldim=1)
 
         :param single: if True --> leave a single pole such that values have shape=(..., 1), if False --> remove pol-axis entirely
+        :param nopol: if True --> no polarization in output
         """
 
         T = tables.open_file(self.h5name_out, 'r+')
+
+        # DP3 axes order
+        if self.poldim==5 or single:
+            output_axes = ['time', 'freq', 'ant', 'dir', 'pol']
+        else:
+            output_axes = ['time', 'ant', 'dir', 'freq']
 
         for solset in T.root._v_groups.keys():
             ss = T.root._f_get_child(solset)
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
-                if 'pol' not in make_utf8(st.val.attrs["AXES"]).split(','):
-                    print('No polarization in '+solset+'/'+soltab)
-                    continue
 
-                st.pol._f_remove()
-                if single:
+                if self.poldim==0:
+                    print('No polarization in '+solset+'/'+soltab)
+                    if nopol:
+                        continue
+                    elif single:
+                        T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
+
+                elif self.poldim==1:
+                    st.pol._f_remove()
                     T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
+                elif self.poldim>1 and (single or nopol):
+                    for axes in ['val', 'weight']:
+                        if not all(st._f_get_child(axes)[..., 0] == \
+                                   st._f_get_child(axes)[..., -1]):
+                            sys.exit('WARNING: ' + '/'.join([soltab, axes]) +
+                                     ' does not have the same values for XX and YY polarization.'
+                                     '\nERROR: No polarization reduction will be done.'
+                                     '\nERROR: Do not use --no_pol or --single_pol.')
+
+
                 for axes in ['val', 'weight']:
-                    if not all(st._f_get_child(axes)[:,:,:,:,0] == \
-                            st._f_get_child(axes)[:,:,:,:,-1]):
-                        sys.exit('WARNING: ' + '/'.join([soltab, axes]) +
-                                 ' does not have the same values for XX and YY polarization.'
-                                 '\nERROR: No polarization reduction will be done.'
-                                 '\nERROR: Do not use --no_pol or --single_pol.')
-                    if single:
-                        print('/'.join([soltab, axes])+' has same values for XX and YY polarization.\nReducing into one Polarization I.')
-                    else:
-                        print('/'.join([soltab, axes])+' has same values for XX and YY polarization.\nRemoving Polarization.')
-                    if single:
+                    if self.poldim>0 and single:
                         newval = st._f_get_child(axes)[:, :, :, :, 0:1]
-                    else:
+                    elif nopol and self.poldim>0:
                         newval = st._f_get_child(axes)[:, :, :, :, 0]
+                    elif self.poldim==0 and single:
+                        newval = expand_dims(st._f_get_child(axes)[:], len(st._f_get_child(axes).shape))
+                    else:
+                        continue
 
                     valtype = str(st._f_get_child(axes).dtype)
                     if '16' in valtype:
@@ -1559,14 +1578,17 @@ class MergeH5:
                     else:
                         atomtype = tables.Float64Atom()
 
+                    old_axes = [ax for ax in st._f_get_child(axes).attrs['AXES'].decode('utf8').split(',') + ['pol']
+                               if ax in output_axes]
+                    idx = [old_axes.index(ax) for ax in output_axes]
+                    newval = transpose(newval, idx)
                     st._f_get_child(axes)._f_remove()
                     T.create_array(st, axes, newval.astype(valtype), atom=atomtype)
+                    st._f_get_child(axes).attrs['AXES'] = bytes(','.join(output_axes), 'utf-8')
 
-                    if single:
-                        st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir,pol'
-                    else:
-                        st._f_get_child(axes).attrs['AXES'] = b'time,freq,ant,dir'
-                    print('Value shape after --> '+str(st._f_get_child(axes)[:].shape))
+                print('Value shape after changing poldim--> ' + str(st._f_get_child('val')[:].shape))
+
+
         T.close()
 
         return self
@@ -1991,12 +2013,12 @@ def output_check(h5):
             assert st.val.shape == st.weight.shape, \
                 'weight '+str(st.weight.shape)+' and values '+str(st.val.shape)+' do not have same shape'
 
-            #check if pol and/or dir are not missing
+            #check if pol and/or dir are missing
             for pd in ['pol', 'dir']:
                 assert not (st.val.ndim == 5 and pd not in list(st._v_children.keys())), \
                     '/'.join([solset, soltab, pd])+' is missing'
 
-            #check if freq, time, and ant arrays are not missing
+            #check if freq, time, and ant arrays are missing
             for fta in ['freq', 'time', 'ant']:
                 assert fta in list(st._v_children.keys()), \
                     '/'.join([solset, soltab, fta])+' is missing'
@@ -2577,13 +2599,14 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     # Check table source size
     merge.reduce_memory_source()
 
-    # Remove polarization axis if double
-    if single_pol:
-        print('Make a single polarization')
-        merge.remove_pol(single=True)
-    elif no_pol:
+    # Change polarization axis if necessary
+    if no_pol:
         print('Remove polarization')
-        merge.remove_pol()
+        merge.change_pol(nopol=True)
+    elif single_pol or merge.poldim==0:
+        print('Make a single polarization')
+        merge.change_pol(single=True)
+
 
     #################################################
     ############ POLARIZATION CONVERSION ############
