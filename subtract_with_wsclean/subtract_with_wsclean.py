@@ -1,12 +1,12 @@
 import numpy as np
 import sys
-import pyrap.tables as pt
 import os
-import casacore.tables as pt
+import casacore.tables as ct
 import pyregion
 from astropy.io import fits
 from astropy.wcs import WCS
 from glob import glob
+import tables
 
 class SubtractWSClean:
     def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, onlyprint: bool = False):
@@ -36,6 +36,23 @@ class SubtractWSClean:
         self.onlyprint = onlyprint
 
         self.scale=''
+
+        # delete model images that do not match with MS
+        freqs = []
+        for ms in self.mslist:
+            t = ct.table(ms+"::SPECTRAL_WINDOW")
+            freqs += list(t.getcol("CHAN_FREQ")[0])
+        fmax_ms = max(freqs)
+        fmin_ms = min(freqs)
+        for modim in self.model_images:
+            fts = fits.open(modim)[0]
+            fdelt = fts.header['CDELT3']/2
+            fcent = fts.header['CRVAL3']
+            fmin = fcent-fdelt
+            fmax = fcent+fdelt
+            if fmin>fmax_ms or fmax<fmin_ms:
+                os.system('rm '+modim)
+
 
     def box_to_localnorth(self, region):
         """
@@ -159,7 +176,7 @@ class SubtractWSClean:
         for ms in self.mslist:
             print('Subtract '+ms)
             if not self.onlyprint:
-                ts = pt.table(ms, readonly=False)
+                ts = ct.table(ms, readonly=False)
                 colnames = ts.colnames()
                 if out_column not in colnames:
                     desc = ts.getcoldesc('DATA')
@@ -172,7 +189,7 @@ class SubtractWSClean:
                     ts.close()
 
         for ms in self.mslist:
-            ts = pt.table(ms, readonly=False)
+            ts = ct.table(ms, readonly=False)
             colnames = ts.colnames()
             if 'CORRECTED_DATA' in colnames:
                 print('SUBTRACT --> CORRECTED_DATA - MODEL_DATA')
@@ -202,9 +219,9 @@ class SubtractWSClean:
         command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}']
 
         for n, argument in enumerate(comparse):
-            if argument in ['-channels-out', '-gridder',
+            if argument in ['-gridder',
                             '-padding', '-parallel-gridding',
-                            '-idg-mode', '-beam-aterm-update', '-pol', '-minuv-l']:
+                            '-idg-mode', '-beam-aterm-update', '-pol']:
                 command.append(' '.join(comparse[n:n+2]))
             elif argument in ['-size']:
                 command.append(' '.join(comparse[n:n+3]))
@@ -217,10 +234,13 @@ class SubtractWSClean:
             elif argument=='-scale' and '-taper-gaussian' not in comparse:
                 self.scale=comparse[n+1]
 
+        command+=['-channels-out '+str(len(glob("*-????-model.fits")))]
+
         if h5parm is not None:
             command+=[f'-apply-facet-solutions {h5parm} amplitude000,phase000',
                       f' -facet-regions {facet_regions}', '-apply-facet-beam',
                       f'-facet-beam-update {comparse[comparse.index("-facet-beam-update")+1]}']
+
 
         command += [' '.join(self.mslist)]
 
@@ -231,6 +251,16 @@ class SubtractWSClean:
 
         return self
 
+    @staticmethod
+    def isfulljones(h5):
+        T = tables.open_file(h5)
+        soltab = list(T.root.sol000._v_groups.keys())[0]
+        if 'pol' in T.root.sol000._f_get_child(soltab).val.attrs["AXES"].decode('utf8'):
+            if T.root.sol000._f_get_child(soltab).pol[:].shape[0]==4:
+                T.close()
+                return True
+        T.close()
+        return False
 
     def run_DP3(self, phaseshift: str = None, freqavg: str = None,
                 timeavg: str = None, concat: bool = None,
@@ -252,8 +282,7 @@ class SubtractWSClean:
                    'msin.missingdata=True',
                    'msin.datacolumn=SUBTRACT_DATA',
                    'msin.orderms=False',
-                   'msout.storagemanager=dysco',
-                   'msout.writefullreslag=False']
+                   'msout.storagemanager=dysco']
 
         #1) PHASESHIFT
         if phaseshift is not None:
@@ -272,13 +301,26 @@ class SubtractWSClean:
 
         #3) APPLYCAL
         if applycal_h5 is not None:
-            steps.append('ac')
-            command += ['ac.type=applycal',
-                        'ac.parmdb='+applycal_h5,
-                        'ac.correction=fulljones',
-                        'ac.soltab=[amplitude000,phase000]']
-            if phaseshift is not None and dirname is not None:
-                command += ['ac.direction='+dirname]
+            # add fulljones solutions apply
+            if self.isfulljones(applycal_h5):
+                steps.append('ac')
+                command += ['ac.type=applycal',
+                            'ac.parmdb='+applycal_h5,
+                            'ac.correction=fulljones',
+                            'ac.soltab=[amplitude000,phase000]']
+                if phaseshift is not None and dirname is not None:
+                    command += ['ac.direction='+dirname]
+            # add non-fulljones solutions apply
+            else:
+                ac_count = 0
+                T = tables.open_file(applycal_h5)
+                for corr in T.root.sol000._v_groups.keys():
+                    command += [f'ac{ac_count}.type=applycal',
+                                f'ac{ac_count}.parmdb={applycal_h5}',
+                                f'ac{ac_count}.correction={corr}']
+                    if phaseshift is not None and dirname is not None:
+                        command += [f'ac{ac_count}.direction=' + dirname]
+                    ac_count += 1
 
         #4) AVERAGING
         if freqavg is not None or timeavg is not None:
