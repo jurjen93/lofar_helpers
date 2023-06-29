@@ -7,6 +7,21 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from glob import glob
 import tables
+from itertools import repeat
+import re
+
+
+def add_trailing_zeros(s, digitsize=4):
+    """
+     Repeat the zero character and add it to front
+
+     :param s: string
+     :param digitsize: number of digits (default 4)
+     :return: trailing zeros + number --> example: 0001, 0021, ...
+     """
+    padded_string = "".join(repeat("0", digitsize)) + s
+    return padded_string[-digitsize:]
+
 
 class SubtractWSClean:
     def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, onlyprint: bool = False):
@@ -23,8 +38,8 @@ class SubtractWSClean:
         self.mslist = mslist
 
         # wsclean model image
-        self.model_images = glob('*-model*.fits')
-        hdu = fits.open(self.model_images[0])
+        model_images = glob('*-model*.fits')
+        hdu = fits.open(model_images[0])
         self.imshape = (hdu[0].header['NAXIS1'], hdu[0].header['NAXIS2'])
 
         # region file to mask
@@ -35,24 +50,38 @@ class SubtractWSClean:
 
         self.onlyprint = onlyprint
 
-        self.scale=''
+        self.scale = ''
 
         # delete model images that do not match with MS
         freqs = []
         for ms in self.mslist:
-            t = ct.table(ms+"::SPECTRAL_WINDOW")
+            t = ct.table(ms + "::SPECTRAL_WINDOW")
             freqs += list(t.getcol("CHAN_FREQ")[0])
-        fmax_ms = max(freqs)
-        fmin_ms = min(freqs)
-        for modim in self.model_images:
+            t.close()
+        self.fmax_ms = max(freqs)
+        self.fmin_ms = min(freqs)
+        for modim in model_images:
             fts = fits.open(modim)[0]
-            fdelt = fts.header['CDELT3']/2
-            fcent = fts.header['CRVAL3']
-            fmin = fcent-fdelt
-            fmax = fcent+fdelt
-            if fmin>fmax_ms or fmax<fmin_ms:
-                os.system('rm '+modim)
+            fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
+            fmin, fmax = fcent - fdelt, fcent + fdelt
+            if fmin > self.fmax_ms or fmax < self.fmin_ms:
+                print(modim + ' does not overlap with MS bandwidth --> DELETE')
+                os.system('rm ' + modim)
+            fts.close()
 
+        # rename and resort model images --> remove trailing zeros when only 1 model image, otherwise renumber model images
+        if len(glob('*-model.fits')) > 1:
+            for n, modim in enumerate(sorted(glob('*-model.fits'))):
+                os.system('mv ' + modim + ' ' + re.sub(r'\d{4}', add_trailing_zeros(str(n), 4), modim))
+        elif len(glob('*-model.fits')) == 1:
+            os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-model.fits')[0]))
+        if len(glob('*-model-pb.fits')) > 1:
+            for n, modim in enumerate(sorted(glob('*-model-pb.fits'))):
+                os.system('mv ' + modim + ' ' + re.sub(r'\d{4}', add_trailing_zeros(str(n), 4), modim))
+        elif len(glob('*-model-pb.fits')) == 1:
+            os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-model-pb.fits')[0]))
+
+        self.model_images = glob('*-model*.fits')
 
     def box_to_localnorth(self, region):
         """
@@ -83,7 +112,6 @@ class SubtractWSClean:
 
         r.write("adjustedbox.reg")
         return pyregion.open("adjustedbox.reg")
-
 
     @staticmethod
     def flat_model_image(fitsfile):
@@ -126,7 +154,6 @@ class SubtractWSClean:
         hdu = fits.PrimaryHDU(header=header, data=hdu[0].data[tuple(slice)])
         return hdu
 
-
     @staticmethod
     def invert_mask(mask):
         """
@@ -136,14 +163,14 @@ class SubtractWSClean:
         """
         return np.invert(mask)
 
-    def mask_region(self, region_cube:bool = False):
+    def mask_region(self, region_cube: bool = False):
         """
         :param region_cube: if region_cube make cube, otherwise 2D (flatten)
         """
 
         for fits_model in self.model_images:
 
-            print('Mask '+fits_model)
+            print('Mask ' + fits_model)
 
             if not self.onlyprint:
 
@@ -165,7 +192,6 @@ class SubtractWSClean:
 
         return self
 
-
     def subtract_col(self, out_column):
 
         """
@@ -174,7 +200,7 @@ class SubtractWSClean:
         """
 
         for ms in self.mslist:
-            print('Subtract '+ms)
+            print('Subtract ' + ms)
             if not self.onlyprint:
                 ts = ct.table(ms, readonly=False)
                 colnames = ts.colnames()
@@ -206,7 +232,6 @@ class SubtractWSClean:
 
         return self
 
-
     def predict(self, h5parm: str = None, facet_regions: str = None):
         """
         Predict image
@@ -219,35 +244,56 @@ class SubtractWSClean:
         command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}']
 
         for n, argument in enumerate(comparse):
-            if argument in ['-gridder',
-                            '-padding', '-parallel-gridding',
+            if argument in ['-gridder', '-padding', '-parallel-gridding',
                             '-idg-mode', '-beam-aterm-update', '-pol']:
-                command.append(' '.join(comparse[n:n+2]))
+                command.append(' '.join(comparse[n:n + 2]))
             elif argument in ['-size']:
-                command.append(' '.join(comparse[n:n+3]))
+                command.append(' '.join(comparse[n:n + 3]))
             elif argument in ['-use-differential-lofar-beam', '-grid-with-beam',
                               '-use-idg', '-log-time', '-gap-channel-division',
                               '-apply-primary-beam']:
                 command.append(argument)
-            if argument=='-taper-gaussian':
-                self.scale=comparse[n+1]
-            elif argument=='-scale' and '-taper-gaussian' not in comparse:
-                self.scale=comparse[n+1]
+            if argument == '-taper-gaussian':
+                self.scale = comparse[n + 1]
+            elif argument == '-scale' and '-taper-gaussian' not in comparse:
+                self.scale = comparse[n + 1]
 
-        command+=['-channels-out '+str(len(glob("*-????-model.fits")))]
+        if len(glob("*-????-model-pb.fits")) > 0:
+            command += ['-channels-out ' + str(len(glob("*-????-model-pb.fits")))]
+
+            freqboundary = []
+            for modim in sorted(glob("*-????-model-pb.fits"))[:-1]:
+                fts = fits.open(modim)[0]
+                fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
+                freqboundary.append(str(fcent + fdelt))
+                fts.close()
+            command += ['-channel-division-frequencies ' + ' '.join(freqboundary)]
+
+        elif len(glob("*-????-model.fits")) > 0:
+            command += ['-channels-out ' + str(len(glob("*-????-model.fits")))]
+
+            freqboundary = []
+            for modim in sorted(glob("*-????-model.fits"))[:-1]:
+                fts = fits.open(modim)[0]
+                fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
+                freqboundary.append(str(fcent + fdelt))
+                fts.close()
+            command += ['-channel-division-frequencies ' + ' '.join(freqboundary)]
+
+        else:
+            sys.exit('ERROR: there are no model images (check for *-model-*.fits)')
 
         if h5parm is not None:
-            command+=[f'-apply-facet-solutions {h5parm} amplitude000,phase000',
-                      f' -facet-regions {facet_regions}', '-apply-facet-beam',
-                      f'-facet-beam-update {comparse[comparse.index("-facet-beam-update")+1]}']
-
+            command += [f'-apply-facet-solutions {h5parm} amplitude000,phase000',
+                        f' -facet-regions {facet_regions}', '-apply-facet-beam',
+                        f'-facet-beam-update {comparse[comparse.index("-facet-beam-update") + 1]}']
 
         command += [' '.join(self.mslist)]
 
-        #run
+        # run
         print('\n'.join(command))
         if not self.onlyprint:
-            os.system(' '.join(command)+' > log_predict.txt')
+            os.system(' '.join(command) + ' > log_predict.txt')
 
         return self
 
@@ -256,7 +302,7 @@ class SubtractWSClean:
         T = tables.open_file(h5)
         soltab = list(T.root.sol000._v_groups.keys())[0]
         if 'pol' in T.root.sol000._f_get_child(soltab).val.attrs["AXES"].decode('utf8'):
-            if T.root.sol000._f_get_child(soltab).pol[:].shape[0]==4:
+            if T.root.sol000._f_get_child(soltab).pol[:].shape[0] == 4:
                 T.close()
                 return True
         T.close()
@@ -276,7 +322,7 @@ class SubtractWSClean:
         :param applycal_h5: applycal solution file
         """
 
-        steps=[]
+        steps = []
 
         command = ['DP3',
                    'msin.missingdata=True',
@@ -284,32 +330,32 @@ class SubtractWSClean:
                    'msin.orderms=False',
                    'msout.storagemanager=dysco']
 
-        #1) PHASESHIFT
+        # 1) PHASESHIFT
         if phaseshift is not None:
-            phasecenter = phaseshift.replace('[','').replace(']','').split(',')
+            phasecenter = phaseshift.replace('[', '').replace(']', '').split(',')
             phasecenter = f'[{phasecenter[0]},{phasecenter[1]}]'
             steps.append('ps')
             command += ['ps.type=phaseshifter',
-                        'ps.phasecenter='+phasecenter]
+                        'ps.phasecenter=' + phasecenter]
 
-        #2) APPLY BEAM
+        # 2) APPLY BEAM
         if applybeam:
             steps.append('beam')
             command += ['beam.type=applybeam',
                         'beam.direction=[]',
                         'beam.updateweights=True']
 
-        #3) APPLYCAL
+        # 3) APPLYCAL
         if applycal_h5 is not None:
             # add fulljones solutions apply
             if self.isfulljones(applycal_h5):
                 steps.append('ac')
                 command += ['ac.type=applycal',
-                            'ac.parmdb='+applycal_h5,
+                            'ac.parmdb=' + applycal_h5,
                             'ac.correction=fulljones',
                             'ac.soltab=[amplitude000,phase000]']
                 if phaseshift is not None and dirname is not None:
-                    command += ['ac.direction='+dirname]
+                    command += ['ac.direction=' + dirname]
             # add non-fulljones solutions apply
             else:
                 ac_count = 0
@@ -322,34 +368,34 @@ class SubtractWSClean:
                         command += [f'ac{ac_count}.direction=' + dirname]
                     ac_count += 1
 
-        #4) AVERAGING
+        # 4) AVERAGING
         if freqavg is not None or timeavg is not None:
             steps.append('avg')
             command += ['avg.type=averager']
             if freqavg is not None:
                 if freqavg.isdigit():
-                    command+=[f'avg.freqstep={freqavg}']
+                    command += [f'avg.freqstep={freqavg}']
                 else:
                     command += [f'avg.freqresolution={freqavg}']
             if timeavg is not None:
                 if timeavg.isdigit():
-                    command+=[f'avg.timestep={timeavg}']
+                    command += [f'avg.timestep={timeavg}']
                 else:
-                    command+=[f'avg.timeresolution={timeavg}']
+                    command += [f'avg.timeresolution={timeavg}']
 
-        command+=['steps='+str(steps).replace(" ","").replace("\'","")]
+        command += ['steps=' + str(steps).replace(" ", "").replace("\'", "")]
 
         if concat:
-            command+=[f'msin={",".join(self.mslist)}',
-                      'msout=subtract_concat.ms']
+            command += [f'msin={",".join(self.mslist)}',
+                        'msout=subtract_concat.ms']
             print('\n'.join(command))
             if not self.onlyprint:
-                os.system(' '.join(command))
+                os.system(' '.join(command) + " > dp3.subtract.log")
         else:
-            for ms in self.mslist:
-                print('\n'.join(command+[f'msin={ms}', f'msout=sub{self.scale}_{ms}']))
+            for n, ms in self.mslist:
+                print('\n'.join(command + [f'msin={ms}', f'msout=sub{self.scale}_{ms}']))
                 if not self.onlyprint:
-                    os.system(' '.join(command+[f'msin={ms}', f'msout=sub{self.scale}_{ms}']))
+                    os.system(' '.join(command + [f'msin={ms}', f'msout=sub{self.scale}_{ms}']) + f" > dp3.sub{n}.log")
 
         return self
 
@@ -357,16 +403,19 @@ class SubtractWSClean:
 if __name__ == "__main__":
 
     from argparse import ArgumentParser
+
     parser = ArgumentParser(description='Subtract region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
     parser.add_argument('--region', type=str, help='region file', required=True)
     parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)')
-    parser.add_argument('--model_image_folder', type=str, help='folder where model images are stored (if not given script takes model images from run folder)')
+    parser.add_argument('--model_image_folder', type=str,
+                        help='folder where model images are stored (if not given script takes model images from run folder)')
     parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north')
     parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
     parser.add_argument('--h5parm_predict', type=str, help='h5 solution file')
     parser.add_argument('--facets_predict', type=str, help='facet region file with all facets to apply solutions')
-    parser.add_argument('--phasecenter', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
+    parser.add_argument('--phasecenter', type=str,
+                        help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
     parser.add_argument('--freqavg', type=str, help='frequency averaging')
     parser.add_argument('--timeavg', type=str, help='time averaging')
     parser.add_argument('--concat', action='store_true', help='concat MS')
@@ -374,35 +423,43 @@ if __name__ == "__main__":
     parser.add_argument('--applycal', action='store_true', help='applycal after subtraction and phaseshifting')
     parser.add_argument('--applycal_h5', type=str, help='applycal solution file')
     parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
-    parser.add_argument('--forwidefield', action='store_true', help='will search for the polygon_info.csv file')
+    parser.add_argument('--forwidefield', action='store_true',
+                        help='will search for the polygon_info.csv file to extract information from')
     args = parser.parse_args()
 
     # copy model images
     if args.model_image_folder is not None:
-        os.system('cp '+args.model_image_folder+'/*-model*.fits .')
+        os.system('cp ' + args.model_image_folder + '/*-model.fits .')
+        os.system('cp ' + args.model_image_folder + '/*-model-pb.fits .')
 
     # verify there are model images
-    if len(glob('*-model*.fits'))==0:
-        sys.exit("ERROR: missing model images in folder.\nPlease copy model images to run folder or give --model_image_folder.")
+    if len(glob('*-model*.fits')) == 0:
+        sys.exit(
+            "ERROR: missing model images in folder.\nPlease copy model images to run folder or give --model_image_folder.")
 
     # rename model images
     if args.output_name is not None:
         model_images = glob('*-model*.fits')
         oldname = model_images[0].split("-")[0]
         for model in model_images:
-            os.system('mv '+model+' '+model.replace(oldname, args.output_name))
+            os.system('mv ' + model + ' ' + model.replace(oldname, args.output_name))
 
-    #--forwidefield --> will read averaging and phasecenter from polygon_info.csv
+    # --forwidefield --> will read averaging and phasecenter from polygon_info.csv
     if args.forwidefield:
         import pandas as pd
+
         if os.path.isfile('polygon_info.csv'):
             polygon_info = pd.read_csv('polygon_info.csv')
         elif os.path.isfile('../polygon_info.csv'):
             polygon_info = pd.read_csv('../polygon_info.csv')
+        elif os.path.isfile('../polygon_info.csv'):
+            polygon_info = pd.read_csv('../../polygon_info.csv')
+        elif os.path.isfile('../polygon_info.csv'):
+            polygon_info = pd.read_csv('../../../polygon_info.csv')
         else:
             sys.exit('ERROR: using --forwidefield option needs polygon_info.csv file to read polygon information from')
 
-        polygon = polygon_info[polygon_info.polygon_file==args.region].reset_index().to_dict()['dir']
+        polygon = polygon_info[polygon_info.polygon_file == args.region].reset_index().to_dict()['dir']
         phasecenter = polygon['dir'][0]
         freqavg = polygon['avg'][0]
         timeavg = polygon['avg'][0]
@@ -412,7 +469,6 @@ if __name__ == "__main__":
         freqavg = args.freqavg
         timeavg = args.timeavg
         dirname = None
-
 
     object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north,
                              onlyprint=args.print_only_commands)
@@ -431,11 +487,11 @@ if __name__ == "__main__":
 
     # extra DP3 step
     if args.phasecenter is not None or \
-        args.freqavg is not None or \
-        args.timeavg is not None or \
-        args.concat is not None or \
-        args.applybeam is not None or \
-        args.applycal is not None:
+            args.freqavg is not None or \
+            args.timeavg is not None or \
+            args.concat is not None or \
+            args.applybeam is not None or \
+            args.applycal is not None:
         print('############## RUN DP3 ##############')
         if args.applycal_h5 is not None:
             applycalh5 = args.applycal_h5
@@ -444,8 +500,7 @@ if __name__ == "__main__":
         elif args.applycal and not args.applycal_h5:
             sys.exit("ERROR: need a solution file for applycal (give with --applycal_h5)")
         else:
-            applycalh5=None
+            applycalh5 = None
 
         object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeavg=timeavg,
                        concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5, dirname=dirname)
-        
