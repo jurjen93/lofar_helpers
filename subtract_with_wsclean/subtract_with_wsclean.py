@@ -265,7 +265,7 @@ class SubtractWSClean:
                 fts = fits.open(modim)[0]
                 fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
                 freqboundary.append(str(fcent + fdelt))
-                fts.close()
+                # fts.close()
             command += ['-channel-division-frequencies ' + ' '.join(freqboundary)]
 
         elif len(glob("*-????-model.fits")) > 0:
@@ -276,7 +276,7 @@ class SubtractWSClean:
                 fts = fits.open(modim)[0]
                 fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
                 freqboundary.append(str(fcent + fdelt))
-                fts.close()
+                # fts.close()
             command += ['-channel-division-frequencies ' + ' '.join(freqboundary)]
 
         else:
