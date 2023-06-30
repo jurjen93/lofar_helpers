@@ -42,12 +42,6 @@ class SubtractWSClean:
         hdu = fits.open(model_images[0])
         self.imshape = (hdu[0].header['NAXIS1'], hdu[0].header['NAXIS2'])
 
-        # region file to mask
-        if localnorth:
-            self.region = self.box_to_localnorth(region)
-        else:
-            self.region = pyregion.open(region)
-
         self.onlyprint = onlyprint
 
         self.scale = ''
@@ -82,6 +76,12 @@ class SubtractWSClean:
             os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-model-pb.fits')[0]))
 
         self.model_images = glob('*-model*.fits')
+
+        # region file to mask
+        if localnorth:
+            self.region = self.box_to_localnorth(region)
+        else:
+            self.region = pyregion.open(region)
 
     def box_to_localnorth(self, region):
         """
