@@ -187,7 +187,7 @@ class SubtractWSClean:
                     hdu[0].data[0][0][np.where(manualmask == True)] = 0.0
                     hdu.writeto(fits_model, overwrite=True)
 
-                hdu.close()
+                # hdu.close()
 
         return self
 
