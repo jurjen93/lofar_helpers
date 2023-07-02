@@ -266,7 +266,7 @@ class SubtractWSClean:
                 fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
                 freqboundary.append(str(fcent + fdelt))
                 # fts.close()
-            # command += ['-channel-division-frequencies ' + ' '.join(freqboundary)] #TODO: ADD
+            command += ['-channel-division-frequencies ' + ','.join(freqboundary)] #TODO: VERIFY
 
         elif len(glob("*-????-model.fits")) > 0:
             command += ['-channels-out ' + str(len(glob("*-????-model.fits")))]
@@ -277,7 +277,7 @@ class SubtractWSClean:
                 fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
                 freqboundary.append(str(fcent + fdelt))
                 # fts.close()
-            # command += ['-channel-division-frequencies ' + ' '.join(freqboundary)] #TODO: ADD
+            command += ['-channel-division-frequencies ' + ','.join(freqboundary)] #TODO: VERIFY
 
         else:
             sys.exit('ERROR: there are no model images (check for *-model-*.fits)')
