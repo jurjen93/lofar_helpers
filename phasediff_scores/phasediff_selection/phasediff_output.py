@@ -217,7 +217,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # set std score, for which you want to find the solint
-    optimal_score = 0.5
+    optimal_score = 1.5
 
     # reference solution interval
     ref_solint = 10

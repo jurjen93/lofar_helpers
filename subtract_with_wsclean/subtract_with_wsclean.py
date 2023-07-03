@@ -365,6 +365,7 @@ class SubtractWSClean:
                                 f'ac{ac_count}.correction={corr}']
                     if phaseshift is not None and dirname is not None:
                         command += [f'ac{ac_count}.direction=' + dirname]
+                    steps.append(f'ac{ac_count}')
                     ac_count += 1
 
         # 4) AVERAGING
