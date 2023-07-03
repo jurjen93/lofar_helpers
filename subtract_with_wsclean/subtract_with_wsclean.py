@@ -475,15 +475,15 @@ if __name__ == "__main__":
 
     # mask
     print('############## MASK REGION ##############')
-    # object.mask_region(region_cube=args.use_region_cube)
+    object.mask_region(region_cube=args.use_region_cube)
 
     # predict
     print('############## PREDICT ##############')
-    # object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
+    object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
 
     # subtract
     print('############## SUBTRACT ##############')
-    # object.subtract_col(out_column='SUBTRACT_DATA')
+    object.subtract_col(out_column='SUBTRACT_DATA')
 
     # extra DP3 step
     if args.phasecenter is not None or \
