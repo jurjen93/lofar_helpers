@@ -391,7 +391,7 @@ class SubtractWSClean:
             if not self.onlyprint:
                 os.system(' '.join(command) + " > dp3.subtract.log")
         else:
-            for n, ms in self.mslist:
+            for n, ms in enumerate(self.mslist):
                 print('\n'.join(command + [f'msin={ms}', f'msout=sub{self.scale}_{ms}']))
                 if not self.onlyprint:
                     os.system(' '.join(command + [f'msin={ms}', f'msout=sub{self.scale}_{ms}']) + f" > dp3.sub{n}.log")
@@ -474,15 +474,15 @@ if __name__ == "__main__":
 
     # mask
     print('############## MASK REGION ##############')
-    object.mask_region(region_cube=args.use_region_cube)
+    # object.mask_region(region_cube=args.use_region_cube)
 
     # predict
     print('############## PREDICT ##############')
-    object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
+    # object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
 
     # subtract
     print('############## SUBTRACT ##############')
-    object.subtract_col(out_column='SUBTRACT_DATA')
+    # object.subtract_col(out_column='SUBTRACT_DATA')
 
     # extra DP3 step
     if args.phasecenter is not None or \
