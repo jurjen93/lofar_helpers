@@ -15,7 +15,7 @@ SIMG=$( python3 $HOME/parse_settings.py --SIMG )
 mkdir -p phasediff_h5s
 
 IFS=$'\r\n' GLOBIGNORE='*' command eval  'MSS=($(cat ${MSLIST}))'
-MS=$MSS[${SLURM_ARRAY_TASK_ID}]
+MS=${MSS[${SLURM_ARRAY_TASK_ID}]}
 
 #RUN MS FROM MS LIST
 mkdir ${MS}_folder
