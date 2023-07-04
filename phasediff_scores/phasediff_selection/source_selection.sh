@@ -20,7 +20,8 @@ while read -r MS; do
   mkdir ${MS}_folder
   mv ${MS} ${MS}_folder
   cd ${MS}_folder
-  singularity exec -B $BIND $SIMG ${SCRIPT_DIR}/phasediff.sh ${MS}
+  chmod 755 ${SCRIPT_DIR}/*
+  singularity exec -B $BIND $SIMG source ${SCRIPT_DIR}/phasediff.sh ${MS}
   mv scalarphasediff0*phaseup.h5 ../phasediff_h5s
   mv ${MS} ../
   cd ../
