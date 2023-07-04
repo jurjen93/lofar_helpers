@@ -5,7 +5,8 @@
 MSLIST=$1
 
 #SCRIPT FOLDER
-SCRIPT_DIR=/home/lofarvwf-jdejong/scripts/lofar_helpers/phasediff_scores/phasediff_selection
+LOFAR_HELPERS=/home/lofarvwf-jdejong/scripts/lofar_helpers
+SCRIPT_DIR=${LOFAR_HELPERS}/phasediff_scores/phasediff_selection
 
 #SINGULARITY
 BIND=$( python3 $HOME/parse_settings.py --BIND ) # SEE --> https://github.com/jurjen93/lofar_vlbi_helpers/blob/main/parse_settings.py
