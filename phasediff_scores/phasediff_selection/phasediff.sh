@@ -4,67 +4,20 @@
 MS=$1
 
 #SCRIPT PATHS
-FACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py
-LOFARFACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal
-LOFARHELPERS=/home/lofarvwf-jdejong/scripts/lofar_helpers
+FACETSELFCAL=$( python3 $HOME/parse_settings.py --facet_selfcal )
+LOFARFACETSELFCAL=$( python3 $HOME/parse_settings.py --lofar_facet_selfcal )
+LOFAR_HELPERS=$( python3 $HOME/parse_settings.py --lofar_helpers )
 
 IFS='/' read -ra MSS <<< "$MS"
 MSOUT=spd_${MSS[-1]}
 
 CURDIR=$PWD
 
-#re="L[0-9][0-9][0-9][0-9][0-9][0-9]"
-#if [[ $MS =~ $re ]]; then OBSERVATION=${BASH_REMATCH}; fi
-#
-#re="P[0-9][0-9][0-9][0-9][0-9]"
-#if [[ $MS =~ $re ]]; then DIR=${BASH_REMATCH}; fi
-
-#mkdir -p h5output
-#mkdir -p ${OBSERVATION}_${DIR}
-#cd ${OBSERVATION}_${DIR}
-
-
 if [[ -f ${MS} ]]
 then
   echo "ERROR: ${MS} NEEDS TO HAVE ABSOLUTE PATHS"
   exit 0
 fi
-
-#if [[ "$HOSTNAME" == *"surfsara.nl" ]]; then
-#  FACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py
-#  LOFARFACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal
-#  LOFARHELPERS=/home/lofarvwf-jdejong/scripts/lofar_helpers
-#elif [[ "$HOSTNAME" == *"leidenuniv.nl" ]]; then
-#  FACETSELFCAL=/net/rijn/data2/rvweeren/LoTSS_ClusterCAL/facetselfcal.py
-#  LOFARFACETSELFCAL=/net/rijn/data2/rvweeren/LoTSS_ClusterCAL
-#  LOFARHELPERS=/net/rijn/data2/rvweeren/LoTSS_ClusterCAL
-#elif [ -f "facetselfcal.py" ]; then
-#  FACETSELFCAL=facetselfcal.py
-#  LOFARFACETSELFCAL=.
-#  LOFARHELPERS=.
-#elif : >/dev/tcp/8.8.8.8/53; then
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/facetselfcal.py
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/lib_multiproc.py
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/plot_tecandphase.py
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/lin2circ.py
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/BLsmooth.py
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/polconv.py
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/vlass_search.py
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/VLASS_dyn_summary.php
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/find_solint.py
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/ds9facetgenerator.py
-#  wget https://raw.githubusercontent.com/rvweeren/lofar_facet_selfcal/main/default_StokesV.lua
-#  wget https://raw.githubusercontent.com/jurjen93/lofar_helpers/master/h5_merger.py
-#  FACETSELFCAL=facetselfcal.py
-#  LOFARFACETSELFCAL=.
-#  LOFARHELPERS=.
-#else
-#  # FACETSELFCAL=<SET_PATH_TO_FACETSELFCAL>
-#  # LOFARFACETSELFCAL=<SET_PATH_TO_FACETSELFCAL_FOLDER>
-#  # LOFARHELPERS=<SET_PATH_TO_LOFAR_HELPERS_FOLDER>
-#  echo "ERROR: NO INTERNET CONNECTION AND NO SCRIPTS IN FOLDER"
-#  exit 0
-#fi
 
 #PRE-AVERAGE
 DP3 \
