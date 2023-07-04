@@ -25,7 +25,6 @@ then
   exit 0
 fi
 
-
 FACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py
 LOFARFACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal
 LOFARHELPERS=/home/lofarvwf-jdejong/scripts/lofar_helpers
