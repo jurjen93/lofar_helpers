@@ -82,7 +82,7 @@ avg.timeresolution=60
 
 #GET PHASEDIFF H5
 python $FACETSELFCAL \
--i phasediff_${OBSERVATION}_${DIR} \
+-i phasediff \
 --forwidefield \
 --phaseupstations='core' \
 --skipbackup \
