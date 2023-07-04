@@ -6,7 +6,7 @@ MS=$1
 #SCRIPT PATHS
 FACETSELFCAL=$( python3 $HOME/parse_settings.py --facet_selfcal )
 LOFARFACETSELFCAL=$( python3 $HOME/parse_settings.py --lofar_facet_selfcal )
-LOFAR_HELPERS=$( python3 $HOME/parse_settings.py --lofar_helpers )
+LOFARHELPERS=$( python3 $HOME/parse_settings.py --lofar_helpers )
 
 IFS='/' read -ra MSS <<< "$MS"
 MSOUT=spd_${MSS[-1]}
