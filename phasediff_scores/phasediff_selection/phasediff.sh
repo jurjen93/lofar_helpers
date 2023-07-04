@@ -3,6 +3,11 @@
 #input MS
 MS=$1
 
+#SCRIPT PATHS
+FACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py
+LOFARFACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal
+LOFARHELPERS=/home/lofarvwf-jdejong/scripts/lofar_helpers
+
 IFS='/' read -ra MSS <<< "$MS"
 MSOUT=spd_${MSS[-1]}
 
@@ -24,10 +29,6 @@ then
   echo "ERROR: ${MS} NEEDS TO HAVE ABSOLUTE PATHS"
   exit 0
 fi
-
-FACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py
-LOFARFACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal
-LOFARHELPERS=/home/lofarvwf-jdejong/scripts/lofar_helpers
 
 #if [[ "$HOSTNAME" == *"surfsara.nl" ]]; then
 #  FACETSELFCAL=/home/lofarvwf-jdejong/scripts/lofar_facet_selfcal/facetselfcal.py
