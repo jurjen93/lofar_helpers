@@ -56,26 +56,26 @@ ${MSOUT}
 
 #BIG CLEAN UP
 #mv *phasediff*.h5 ${CURDIR}/h5output
-rm -rf *.fits
-rm -rf *.p
-rm -rf tmpfile
-#rm *.h5
-rm -rf *.avg
-rm -rf *.phaseup
-rm -rf *.parset
-rm BLsmooth.py
-rm lin2circ.py
-rm lib_multiproc.py
-rm h5_merger.py
-rm polconv.py
-rm plot_tecandphase.py
-rm VLASS_dyn_summary.php
-rm vlass_search.py
-rm -rf __pycache__
-rm *.log
-rm merged*.h5
-rm *.scbackup
-rm *templatejones.h5
-rm *.png
+#rm -rf *.fits
+#rm -rf *.p
+#rm -rf tmpfile
+##rm *.h5
+#rm -rf *.avg
+#rm -rf *.phaseup
+#rm -rf *.parset
+#rm BLsmooth.py
+#rm lin2circ.py
+#rm lib_multiproc.py
+#rm h5_merger.py
+#rm polconv.py
+#rm plot_tecandphase.py
+#rm VLASS_dyn_summary.php
+#rm vlass_search.py
+#rm -rf __pycache__
+#rm *.log
+#rm merged*.h5
+#rm *.scbackup
+#rm *templatejones.h5
+#rm *.png
 
 cd ../
