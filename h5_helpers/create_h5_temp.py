@@ -65,6 +65,8 @@ class Template:
                     new_val = np.zeros(shape)
                 elif 'amplitude' in soltab:
                     new_val = np.ones(shape)
+                    new_val[..., 1] = 0
+                    new_val[..., 2] = 0
                 else:
                     continue
 
@@ -90,7 +92,6 @@ class Template:
                 if 'phase' in soltab:
                     phaseval = ss._f_get_child(soltab).val[:]
                     phaseval[..., 0] += rotation_angle
-                    phaseval[...,-1] += 1
                     self.update_array(ss._f_get_child(soltab), phaseval, 'val')
 
         return self
