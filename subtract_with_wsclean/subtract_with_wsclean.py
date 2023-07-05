@@ -67,12 +67,14 @@ class SubtractWSClean:
             for n, modim in enumerate(sorted(glob('*-model.fits'))):
                 os.system('mv ' + modim + ' ' + re.sub(r'\d{4}', add_trailing_zeros(str(n), 4), modim))
         elif len(glob('*-model.fits')) == 1:
-            os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-model.fits')[0]))
+            for n, modim in enumerate(sorted(glob('*-model.fits'))):
+                os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-model.fits')[0]))
         if len(glob('*-model-pb.fits')) > 1:
             for n, modim in enumerate(sorted(glob('*-model-pb.fits'))):
                 os.system('mv ' + modim + ' ' + re.sub(r'\d{4}', add_trailing_zeros(str(n), 4), modim))
         elif len(glob('*-model-pb.fits')) == 1:
-            os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-model-pb.fits')[0]))
+            for n, modim in enumerate(sorted(glob('*-model-pb.fits'))):
+                os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-model-pb.fits')[0]))
 
         self.model_images = glob('*-model*.fits')
 
@@ -264,7 +266,8 @@ class SubtractWSClean:
             for modim in sorted(glob("*-????-model-pb.fits"))[:-1]:
                 fts = fits.open(modim)[0]
                 fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
-                freqboundary.append(str(fcent + fdelt))
+
+                freqboundary.append(str(round((fcent + fdelt) / 1e6))+'e6')
                 # fts.close()
             command += ['-channel-division-frequencies ' + ','.join(freqboundary)] #TODO: VERIFY
 
