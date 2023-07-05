@@ -2497,7 +2497,7 @@ class Template:
 
         return self
 
-    def make_template(self, shape: tuple = None, polrot: bool = None, freqs = None):
+    def make_template(self, shape = None, polrot = None, freqs = None):
         """
         Make template h5
 
