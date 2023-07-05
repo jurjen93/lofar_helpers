@@ -19,7 +19,7 @@ MS=${MSS[${SLURM_ARRAY_TASK_ID}]}
 
 #RUN MS FROM MS LIST
 mkdir ${MS}_folder
-mv ${MS} ${MS}_folder
+cp -r ${MS} ${MS}_folder
 cd ${MS}_folder
 chmod 755 ${SCRIPT_DIR}/*
 singularity exec -B $BIND $SIMG ${SCRIPT_DIR}/phasediff.sh ${MS}

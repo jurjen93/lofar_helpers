@@ -18,7 +18,7 @@ mkdir -p phasediff_h5s
 #RUN MS FROM MS LIST
 while read -r MS; do
   mkdir ${MS}_folder
-  mv ${MS} ${MS}_folder
+  cp -r  ${MS} ${MS}_folder
   cd ${MS}_folder
   chmod 755 ${SCRIPT_DIR}/*
   singularity exec -B $BIND $SIMG ${SCRIPT_DIR}/phasediff.sh ${MS}
