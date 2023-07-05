@@ -13,7 +13,7 @@ class Template:
         self.h5 = tables.open_file(name_out, 'r+')
         self.axes = ['time', 'freq', 'ant', 'dir', 'pol']
 
-    def update_array(self, st, new_val, array):
+    def update_array(self, st, new_val, arrayname):
         """
         Update array
 
@@ -21,8 +21,8 @@ class Template:
         :param new_val: new values
         :param array: array name (val, weight, pol, dir, or freq)
         """
-        valtype = str(st._f_get_child(array).dtype)
-        st._f_get_child(array)._f_remove()
+        valtype = str(st._f_get_child(arrayname).dtype)
+        st._f_get_child(arrayname)._f_remove()
         if 'float' in str(valtype):
             if '16' in valtype:
                 atomtype = tables.Float16Atom()
@@ -32,21 +32,23 @@ class Template:
                 atomtype = tables.Float64Atom()
             else:
                 atomtype = tables.Float64Atom()
-            self.h5.create_array(st, array, new_val.astype(valtype), atom=atomtype)
+            self.h5.create_array(st, arrayname, new_val.astype(valtype), atom=atomtype)
         else:
-            self.h5.create_array(st, array, new_val.astype(valtype))
-        if array=='val' or array=='weight':
-            st._f_get_child(array).attrs['AXES'] = ','.join(self.axes)
+            self.h5.create_array(st, arrayname, new_val.astype(valtype))
+        if arrayname=='val' or arrayname=='weight':
+            st._f_get_child(arrayname).attrs['AXES'] = bytes(','.join(self.axes), 'utf-8')
 
         return self
 
-    def make_template(self, shape: tuple = None, polrot: bool = None):
+    def make_template(self, shape: tuple = None, polrot: bool = None, freqs = None):
         """
         Make template h5
 
         :param shape: shape of values and weights solution table
         :param polrot: make rotation matrix to align polarization
         """
+
+        print("Make Template h5parm")
 
         for solset in self.h5.root._v_groups.keys():
             ss = self.h5.root._f_get_child(solset)
@@ -59,6 +61,8 @@ class Template:
                     shape = list(st.val[:].shape)
                     shape[0]=1
                     shape[-1]=4
+                    if freqs is not None:
+                        shape[1] = len(freqs)
 
 
                 if 'phase' in soltab:
@@ -74,6 +78,8 @@ class Template:
                 self.update_array(st, np.ones(shape), 'weight')
                 self.update_array(st, np.array([st.time[:][0]]), 'time')
                 self.update_array(st, np.array(['XX', 'XY', 'YX', 'YY']), 'pol')
+                if freqs is not None:
+                    self.update_array(st, freqs, 'freq')
 
         return self
 
@@ -86,6 +92,8 @@ class Template:
 
         :param rotation_angle: rotation_angle in radian
         """
+
+        print('Rotate with rotation angle: '+str(rotation_angle) + ' radian')
         for solset in self.h5.root._v_groups.keys():
             ss = self.h5.root._f_get_child(solset)
             for soltab in ss._v_groups.keys():
@@ -105,11 +113,11 @@ if __name__ == '__main__':
     parser.add_argument('--pol_rotang', type=float, help='polarization rotation angle')
     args = parser.parse_args()
 
-    test = Template(args.h5_in, args.h5_out)
+    temp = Template(args.h5_in, args.h5_out)
     if args.pol_rotang is None:
-        test.make_template()
+        temp.make_template()
     else:
-        test.make_template(polrot=True)
-        test.rotate(rotation_angle=args.pol_rotang)
+        temp.make_template(polrot=True)
+        temp.rotate(rotation_angle=args.pol_rotang)
 
-    test.h5.close()
+    temp.h5.close()

@@ -2461,10 +2461,111 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 
     return
 
+class Template:
+    """
+    Make template based on given h5parm file
+    """
+    def __init__(self, name_in, name_out):
+        os.system(' '.join(['cp', name_in, name_out]))
+        self.h5 = tables.open_file(name_out, 'r+')
+        self.axes = ['time', 'freq', 'ant', 'dir', 'pol']
+
+    def update_array(self, st, new_val, arrayname):
+        """
+        Update array
+
+        :param st: soltab
+        :param new_val: new values
+        :param array: array name (val, weight, pol, dir, or freq)
+        """
+        valtype = str(st._f_get_child(arrayname).dtype)
+        st._f_get_child(arrayname)._f_remove()
+        if 'float' in str(valtype):
+            if '16' in valtype:
+                atomtype = tables.Float16Atom()
+            elif '32' in valtype:
+                atomtype = tables.Float32Atom()
+            elif '64' in valtype:
+                atomtype = tables.Float64Atom()
+            else:
+                atomtype = tables.Float64Atom()
+            self.h5.create_array(st, arrayname, new_val.astype(valtype), atom=atomtype)
+        else:
+            self.h5.create_array(st, arrayname, new_val.astype(valtype))
+        if arrayname=='val' or arrayname=='weight':
+            st._f_get_child(arrayname).attrs['AXES'] = bytes(','.join(self.axes), 'utf-8')
+
+        return self
+
+    def make_template(self, shape: tuple = None, polrot: bool = None, freqs = None):
+        """
+        Make template h5
+
+        :param shape: shape of values and weights solution table
+        :param polrot: make rotation matrix to align polarization
+        """
+
+        print("Make Template h5parm")
+
+        for solset in self.h5.root._v_groups.keys():
+            ss = self.h5.root._f_get_child(solset)
+            for soltab in ss._v_groups.keys():
+                st = ss._f_get_child(soltab)
+
+                if shape is None and polrot is None:
+                    shape = st.val[:].shape
+                if polrot is not None:
+                    shape = list(st.val[:].shape)
+                    shape[0]=1
+                    shape[-1]=4
+                    if freqs is not None:
+                        shape[1] = len(freqs)
+
+
+                if 'phase' in soltab:
+                    new_val = zeros(shape)
+                elif 'amplitude' in soltab:
+                    new_val = ones(shape)
+                    new_val[..., 1] = 0
+                    new_val[..., 2] = 0
+                else:
+                    continue
+
+                self.update_array(st, new_val, 'val')
+                self.update_array(st, ones(shape), 'weight')
+                self.update_array(st, array([st.time[:][0]]), 'time')
+                self.update_array(st, array(['XX', 'XY', 'YX', 'YY']), 'pol')
+                if freqs is not None:
+                    self.update_array(st, freqs, 'freq')
+
+        return self
+
+    def rotate(self, rotation_angle):
+        """
+        Rotate angle by the following matrix:
+         /e^(i*rho)  0 \
+        |              |
+         \ 0         1/
+
+        :param rotation_angle: rotation_angle in radian
+        """
+
+        print('Rotate with rotation angle: '+str(rotation_angle) + ' radian')
+        for solset in self.h5.root._v_groups.keys():
+            ss = self.h5.root._f_get_child(solset)
+            for soltab in ss._v_groups.keys():
+                if 'phase' in soltab:
+                    phaseval = ss._f_get_child(soltab).val[:]
+                    phaseval[..., 0] += rotation_angle
+                    self.update_array(ss._f_get_child(soltab), phaseval, 'val')
+
+        return self
+
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, add_ms_stations=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_check=None, output_summary=None):
+             check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_check=None, output_summary=None,
+             pol_rotang_circ=None, pol_rotang_lin=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -2490,6 +2591,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param propagate_flags: interpolate weights and return in output file
     :param no_antenna_check: do not compare antennas
     :param output_summary: print solution file output
+    :param pol_rotang_circ: polarization rotation angle to align polarization in circular base
+    :param pol_rotang_lin: polarization rotation angle to align polarization in linear base
     """
 
     tables.file._open_files.close_all()
@@ -2542,6 +2645,31 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     # Get all keynames
     merge.get_allkeys()
+
+    # Add polarization rotation angle
+    if pol_rotang_circ or pol_rotang_lin:
+        temp = Template(h5_tables[0], 'rotation.h5')
+        temp.make_template(polrot=True, freqs=merge.ax_freq)
+        if pol_rotang_circ:
+            temp.rotate(rotation_angle=pol_rotang_circ)
+        elif pol_rotang_lin:
+            temp.rotate(rotation_angle=pol_rotang_lin)
+        temp.h5.close()
+        merge.h5_tables += ['rotation.h5']
+
+        # Polarization conversion if rotation is in linear
+        if pol_rotang_lin:
+            Pol = PolChange(h5_in='rotation.h5', h5_out='rotation_lin.h5')
+
+            Pol.create_template('phase')
+            if Pol.G.ndim > 1:
+                Pol.create_template('amplitude')
+
+            Pol.create_new_gain_table(False, True)
+            Pol.add_antenna_source_tables()
+
+            os.system('mv rotation_lin.h5 rotation.h5')
+
 
     # Merging
     for st_group in merge.all_soltabs:
@@ -2690,6 +2818,8 @@ if __name__ == '__main__':
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables with different frequencies')
+    parser.add_argument('--pol_rotang_circ', type=float, default=None, help='Polarization rotation angle to align polarization in circular base')
+    parser.add_argument('--pol_rotang_lin', type=float, default=None, help='Polarization rotation angle to align polarization in linear base')
 
     # parser.add_argument('--keep_sourcenames', action='store_true', default=None, help='Keep the name of the input sources')
     args = parser.parse_args()
@@ -2768,4 +2898,6 @@ if __name__ == '__main__':
              propagate_flags=args.propagate_flags,
              merge_diff_freq=args.merge_diff_freq,
              no_antenna_check=args.no_antenna_check,
-             output_summary=args.output_summary)
+             output_summary=args.output_summary,
+             pol_rotang_circ=args.pol_rotang_circ,
+             pol_rotang_lin=args.pol_rotang_lin)
