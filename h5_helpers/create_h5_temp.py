@@ -48,12 +48,6 @@ class Template:
         :param polrot: make rotation matrix to align polarization
         """
 
-        freqs = self.h5.root.sol000.phase000.freq[:]
-        dirs = self.h5.root.sol000.phase000.dir[:]
-
-        if polrot:
-            shape = [1, len(freqs), 1, len(dirs), 4]
-
         for solset in self.h5.root._v_groups.keys():
             ss = self.h5.root._f_get_child(solset)
             for soltab in ss._v_groups.keys():
@@ -61,6 +55,11 @@ class Template:
 
                 if shape is None and polrot is None:
                     shape = st.val[:].shape
+                if polrot is not None:
+                    shape = list(st.val[:].shape)
+                    shape[0]=1
+                    shape[-1]=4
+
 
                 if 'phase' in soltab:
                     new_val = np.zeros(shape)
@@ -105,7 +104,7 @@ if __name__ == '__main__':
     parser.add_argument('--pol_rotang', type=float, help='polarization rotation angle')
     args = parser.parse_args()
 
-    test = Template(args.input, args.output)
+    test = Template(args.h5_in, args.h5_out)
     if args.pol_rotang is None:
         test.make_template()
     else:
