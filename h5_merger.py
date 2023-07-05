@@ -2655,9 +2655,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         elif pol_rotang_lin:
             temp.rotate(rotation_angle=pol_rotang_lin)
         temp.h5.close()
-        merge.h5_tables += ['rotation.h5']
 
-        # Polarization conversion if rotation is in linear
+        # Polarization conversion if rotation is in linear basis
         if pol_rotang_lin:
             Pol = PolChange(h5_in='rotation.h5', h5_out='rotation_lin.h5')
 
@@ -2669,6 +2668,10 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             Pol.add_antenna_source_tables()
 
             os.system('mv rotation_lin.h5 rotation.h5')
+
+        # Add new rotation table to end of list, such that angle rotation is done at the end
+        merge.h5_tables += ['rotation.h5']
+
 
 
     # Merging
