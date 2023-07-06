@@ -13,7 +13,7 @@ YY = RR - RL - LR + LL
 -----------------------------
 """
 
-class Template:
+class PhaseRotate:
     """
     Make template based on given h5parm file
     """
@@ -192,11 +192,11 @@ if __name__ == '__main__':
     parser.add_argument('--RM', type=float, help='rotation measure')
     args = parser.parse_args()
 
-    temp = Template(args.h5_in, args.h5_out)
+    phaserot = PhaseRotate(args.h5_in, args.h5_out)
     if args.intercept is None:
-        temp.make_template()
+        phaserot.make_template()
     else:
-        temp.make_template(polrot=True)
-        temp.rotate(intercept=args.intercept, rotation_measure=args.RM)
+        phaserot.make_template(polrot=True)
+        phaserot.rotate(intercept=args.intercept, rotation_measure=args.RM)
 
-    temp.h5.close()
+    phaserot.h5.close()
