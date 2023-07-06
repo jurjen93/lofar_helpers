@@ -2564,8 +2564,7 @@ class Template:
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, add_ms_stations=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_check=None, output_summary=None,
-             pol_rotang_circ=None, pol_rotang_lin=None):
+             check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_check=None, output_summary=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -2591,8 +2590,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param propagate_flags: interpolate weights and return in output file
     :param no_antenna_check: do not compare antennas
     :param output_summary: print solution file output
-    :param pol_rotang_circ: polarization rotation angle to align polarization in circular base
-    :param pol_rotang_lin: polarization rotation angle to align polarization in linear base
     """
 
     tables.file._open_files.close_all()
@@ -2645,34 +2642,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     # Get all keynames
     merge.get_allkeys()
-
-    # Add polarization rotation angle
-    if pol_rotang_circ or pol_rotang_lin:
-        temp = Template(h5_tables[0], 'rotation.h5')
-        temp.make_template(polrot=True, freqs=merge.ax_freq)
-        if pol_rotang_circ:
-            temp.rotate(rotation_angle=pol_rotang_circ)
-        elif pol_rotang_lin:
-            temp.rotate(rotation_angle=pol_rotang_lin)
-        temp.h5.close()
-
-        # Polarization conversion if rotation is in linear basis
-        if pol_rotang_lin:
-            Pol = PolChange(h5_in='rotation.h5', h5_out='rotation_lin.h5')
-
-            Pol.create_template('phase')
-            if Pol.G.ndim > 1:
-                Pol.create_template('amplitude')
-
-            Pol.create_new_gain_table(False, True)
-            Pol.add_antenna_source_tables()
-
-            os.system('mv rotation_lin.h5 rotation.h5')
-
-        # Add new rotation table to end of list, such that angle rotation is done at the end
-        merge.h5_tables += ['rotation.h5']
-
-
 
     # Merging
     for st_group in merge.all_soltabs:
@@ -2821,8 +2790,6 @@ if __name__ == '__main__':
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables with different frequencies')
-    parser.add_argument('--pol_rotang_circ', type=float, default=None, help='Polarization rotation angle to align polarization in circular base')
-    parser.add_argument('--pol_rotang_lin', type=float, default=None, help='Polarization rotation angle to align polarization in linear base')
 
     # parser.add_argument('--keep_sourcenames', action='store_true', default=None, help='Keep the name of the input sources')
     args = parser.parse_args()
@@ -2901,6 +2868,4 @@ if __name__ == '__main__':
              propagate_flags=args.propagate_flags,
              merge_diff_freq=args.merge_diff_freq,
              no_antenna_check=args.no_antenna_check,
-             output_summary=args.output_summary,
-             pol_rotang_circ=args.pol_rotang_circ,
-             pol_rotang_lin=args.pol_rotang_lin)
+             output_summary=args.output_summary)
