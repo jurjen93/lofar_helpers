@@ -26,6 +26,11 @@ class Template:
             self.freqs = freqs
         else:
             self.freqs = self.h5.root.sol000.phase000.freq[:]
+        self.ant = self.h5.root.sol000.phase000.ant[:]
+        if 'dir' in self.h5.root.sol000.phase000.val.attrs["AXES"].decode('utf8'):
+            self.dir = self.h5.root.sol000.phase000.dir[:]
+        else:
+            self.dir = np.array([b'Dir00'], dtype='|S5')
 
     def update_array(self, st, new_val, arrayname):
         """
@@ -72,11 +77,7 @@ class Template:
                 if shape is None and polrot is None:
                     shape = st.val[:].shape
                 if polrot is not None:
-                    shape = list(st.val[:].shape)
-                    shape[0]=1
-                    shape[-1]=4
-                    shape[1] = len(self.freqs)
-
+                    shape = (1, len(self.freqs), len(self.ant), len(self.dir), 4)
 
                 if 'phase' in soltab:
                     new_val = np.zeros(shape)
