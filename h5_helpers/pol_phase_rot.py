@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from scipy.constants import speed_of_light
 
 circ2lin_math = """
-Convert circular polarization to linear polarization
+3) Convert circular to linear polarization
 -----------------------------
 XX = RR + RL + LR + LL
 XY = iRR - iRL + iLR - iLL
@@ -142,7 +142,9 @@ class Template:
         :return: linear polarized solutions
         """
 
-        print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'+circ2lin_math+'%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+        print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
+              +circ2lin_math+
+              '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
         G = self.h5.root.sol000.amplitude000.val[:] * np.exp(self.h5.root.sol000.phase000.val[:] * 1j)
 
@@ -152,10 +154,10 @@ class Template:
         YX = 1j * (G[..., -1] - G[..., 0])
         YY = (G[..., 0] + G[..., -1])
 
-        # XX += (G[..., 2] + G[..., 1])
-        # XY += 1j * (G[..., 2] - G[..., 1])
-        # YX += 1j * (G[..., 2] - G[..., 1])
-        # YY -= (G[..., 1] + G[..., 2])
+        XX += (G[..., 2] + G[..., 1])
+        XY += 1j * (G[..., 2] - G[..., 1])
+        YX += 1j * (G[..., 2] - G[..., 1])
+        YY -= (G[..., 1] + G[..., 2])
 
         XX /= 2
         XY /= 2
