@@ -186,8 +186,8 @@ class Template:
 if __name__ == '__main__':
 
     parser = ArgumentParser()
-    parser.add_argument('--h5_in', type=str, help='input name', required=True)
-    parser.add_argument('--h5_out', type=str, help='output name', required=True)
+    parser.add_argument('--h5_in', type=str, help='input h5 (from which to extract the frequencies and antennas)', required=True)
+    parser.add_argument('--h5_out', type=str, help='output name (output solution file)', required=True)
     parser.add_argument('--intercept', type=float, help='intercept for rotation angle')
     parser.add_argument('--RM', type=float, help='rotation measure')
     args = parser.parse_args()
