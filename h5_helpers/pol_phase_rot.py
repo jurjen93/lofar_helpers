@@ -5,7 +5,6 @@ from argparse import ArgumentParser
 from scipy.constants import speed_of_light
 
 circ2lin_math = """
-3) Convert circular to linear polarization
 -----------------------------
 XX = RR + RL + LR + LL
 XY = iRR - iRL + iLR - iLL
@@ -106,7 +105,7 @@ class Template:
         :param intercept: intercept
         :param rotation_measure: rotation measure in rad/m^2
         """
-        print('2) ADD PHASE ROTATION')
+        print('\n2) ADD PHASE ROTATION')
 
         phaserot = intercept+rotation_measure*(speed_of_light/self.freqs)**2
 
@@ -143,7 +142,8 @@ class Template:
         :return: linear polarized solutions
         """
 
-        print('%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
+        print('\n3) CONVERTING CIRCULAR TO LINEAR POLARIZATION\n'
+              '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
               +circ2lin_math+
               '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
