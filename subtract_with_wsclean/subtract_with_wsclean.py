@@ -455,9 +455,9 @@ if __name__ == "__main__":
             polygon_info = pd.read_csv('polygon_info.csv')
         elif os.path.isfile('../polygon_info.csv'):
             polygon_info = pd.read_csv('../polygon_info.csv')
-        elif os.path.isfile('../polygon_info.csv'):
+        elif os.path.isfile('../../polygon_info.csv'):
             polygon_info = pd.read_csv('../../polygon_info.csv')
-        elif os.path.isfile('../polygon_info.csv'):
+        elif os.path.isfile('../../../polygon_info.csv'):
             polygon_info = pd.read_csv('../../../polygon_info.csv')
         else:
             sys.exit('ERROR: using --forwidefield option needs polygon_info.csv file to read polygon information from')
