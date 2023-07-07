@@ -40,7 +40,10 @@ class PhaseRotate:
         :param array: array name (val, weight, pol, dir, or freq)
         """
         valtype = str(st._f_get_child(arrayname).dtype)
-        st._f_get_child(arrayname)._f_remove()
+        try:
+            st._f_get_child(arrayname)._f_remove()
+        except:
+            pass
         if 'float' in str(valtype):
             if '16' in valtype:
                 atomtype = tables.Float16Atom()
