@@ -39,11 +39,12 @@ class PhaseRotate:
         :param new_val: new values
         :param array: array name (val, weight, pol, dir, or freq)
         """
-        valtype = str(st._f_get_child(arrayname).dtype)
         try:
+            valtype = str(st._f_get_child(arrayname).dtype)
             st._f_get_child(arrayname)._f_remove()
         except:
-            pass
+            if 'pol' in arrayname:
+                valtype = '|S2'
         if 'float' in str(valtype):
             if '16' in valtype:
                 atomtype = tables.Float16Atom()
@@ -70,7 +71,7 @@ class PhaseRotate:
         """
 
         print("1) MAKE TEMPLATE H5PARM")
-
+        amplitudedone=False
         for solset in self.h5.root._v_groups.keys():
             ss = self.h5.root._f_get_child(solset)
             for soltab in ss._v_groups.keys():
@@ -87,14 +88,19 @@ class PhaseRotate:
                     new_val = np.ones(shape)
                     new_val[..., 1] = 0
                     new_val[..., 2] = 0
+                    amplitudedone=True
                 else:
                     continue
-
+                self.time = np.array([st.time[:][0]])
                 self.update_array(st, new_val, 'val')
                 self.update_array(st, np.ones(shape), 'weight')
-                self.update_array(st, np.array([st.time[:][0]]), 'time')
+                self.update_array(st, self.time, 'time')
                 self.update_array(st, np.array(['XX', 'XY', 'YX', 'YY']), 'pol')
                 self.update_array(st, self.freqs, 'freq')
+
+            if not amplitudedone:
+                pass
+                #TODO: add
 
         return self
 
@@ -149,6 +155,7 @@ class PhaseRotate:
               '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
               +circ2lin_math+
               '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
+
 
         G = self.h5.root.sol000.amplitude000.val[:] * np.exp(self.h5.root.sol000.phase000.val[:] * 1j)
 
