@@ -246,7 +246,7 @@ class SubtractWSClean:
 
         for n, argument in enumerate(comparse):
             if argument in ['-gridder', '-padding', '-parallel-gridding',
-                            '-idg-mode', '-beam-aterm-update', '-pol']:
+                            '-idg-mode', '-beam-aterm-update', '-pol', '-scale']:
                 command.append(' '.join(comparse[n:n + 2]))
             elif argument in ['-size']:
                 command.append(' '.join(comparse[n:n + 3]))
