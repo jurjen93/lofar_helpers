@@ -463,7 +463,7 @@ if __name__ == "__main__":
             sys.exit('ERROR: using --forwidefield option needs polygon_info.csv file to read polygon information from')
 
         polygon = polygon_info.loc[polygon_info.polygon_file == args.region.split('/')[-1]]
-        print(polygon, polygon['dir'])
+        print(polygon)
         phasecenter = polygon['dir'].values[0]
         freqavg = polygon['avg'].values[0]
         timeavg = polygon['avg'].values[0]
