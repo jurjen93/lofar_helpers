@@ -425,6 +425,7 @@ if __name__ == "__main__":
     # copy model images
     if args.model_image_folder is not None:
         if len(glob(args.model_image_folder + '/*-????-model-pb.fits .'))>1:
+            print('\n'.join(glob(args.model_image_folder + '/*-????-model-pb.fits .')))
             os.system('cp ' + args.model_image_folder + '/*-????-model-pb.fits .')
         elif len(glob(args.model_image_folder + '/*-????-model.fits .'))>1:
             os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
