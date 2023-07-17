@@ -277,7 +277,6 @@ class SubtractWSClean:
         if len(freqboundary)>1:
             command += ['-channel-division-frequencies ' + ','.join(freqboundary)]
 
-
         if h5parm is not None:
             command += [f'-apply-facet-solutions {h5parm} amplitude000,phase000',
                         f' -facet-regions {facet_regions}', '-apply-facet-beam',
@@ -436,11 +435,10 @@ if __name__ == "__main__":
         else:
             sys.exit("ERROR: missing model images in folder.\nPlease copy model images to run folder or give --model_image_folder.")
 
-    # remove MFS images if by accident copied
-    if len(glob("*-????-model*.fits"))>1:
-        if len(glob("*MFS-model*.fits"))>1:
-            for mfs in glob("*MFS-model*.fits"):
-                os.system('rm '+mfs)
+    # remove MFS images if in folder
+    if len(glob("*-????-model*.fits"))>1 and len(glob("*MFS-model*.fits"))>1:
+        for mfs in glob("*MFS-model*.fits"):
+            os.system('rm '+mfs)
 
     # rename model images
     if args.output_name is not None:
