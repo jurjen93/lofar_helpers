@@ -63,20 +63,26 @@ class SubtractWSClean:
                 os.system('rm ' + modim)
 
         # rename and resort model images --> remove trailing zeros when only 1 model image, otherwise renumber model images
-        if len(glob('*-model.fits')) > 1:
-            for n, modim in enumerate(sorted(glob('*-model.fits'))):
+        if len(glob('*-????-model.fits')) > 1:
+            for n, modim in enumerate(sorted(glob('*-????-model.fits'))):
                 os.system('mv ' + modim + ' ' + re.sub(r'\d{4}', add_trailing_zeros(str(n), 4), modim))
-        elif len(glob('*-model.fits')) == 1:
-            for n, modim in enumerate(sorted(glob('*-model.fits'))):
-                os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-model.fits')[0]))
-        if len(glob('*-model-pb.fits')) > 1:
-            for n, modim in enumerate(sorted(glob('*-model-pb.fits'))):
+        elif len(glob('*-????-model.fits')) == 1:
+            for n, modim in enumerate(sorted(glob('*-????-model.fits'))):
+                os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-????-model.fits')[0]))
+        if len(glob('*-????-model-pb.fits')) > 1:
+            for n, modim in enumerate(sorted(glob('*-????-model-pb.fits'))):
                 os.system('mv ' + modim + ' ' + re.sub(r'\d{4}', add_trailing_zeros(str(n), 4), modim))
-        elif len(glob('*-model-pb.fits')) == 1:
-            for n, modim in enumerate(sorted(glob('*-model-pb.fits'))):
-                os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-model-pb.fits')[0]))
+        elif len(glob('*-????-model-pb.fits')) == 1:
+            for n, modim in enumerate(sorted(glob('*-????-model-pb.fits'))):
+                os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-????-model-pb.fits')[0]))
 
-        self.model_images = glob('*-model*.fits')
+        # select correct model images
+        if len(glob('*-????-model-pb.fits')) >=1:
+            self.model_images = glob('*-????-model-pb.fits')
+        elif len(glob('*-????-model.fits')) >=1:
+            self.model_images = glob('*-????-model.fits')
+        else:
+            self.model_images = glob('*-model-*.fits')
 
         # region file to mask
         if localnorth:
@@ -259,31 +265,18 @@ class SubtractWSClean:
             elif argument == '-scale' and '-taper-gaussian' not in comparse:
                 self.scale = comparse[n + 1]
 
-        if len(glob("*-????-model-pb.fits")) > 0:
-            command += ['-channels-out ' + str(len(glob("*-????-model-pb.fits")))]
+        command += ['-channels-out ' + str(len(self.model_images))]
 
-            freqboundary = []
-            for modim in sorted(glob("*-????-model-pb.fits"))[:-1]:
-                fts = fits.open(modim)[0]
-                fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
+        freqboundary = []
+        for modim in sorted(self.model_images)[:-1]:
+            fts = fits.open(modim)[0]
+            fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
 
-                freqboundary.append(str(round((fcent + fdelt) / 1e6))+'e6')
-                # fts.close()
-            command += ['-channel-division-frequencies ' + ','.join(freqboundary)] #TODO: VERIFY
+            freqboundary.append(str(fcent + fdelt))
+            # fts.close()
+        if len(freqboundary)>1:
+            command += ['-channel-division-frequencies ' + ','.join(freqboundary)]
 
-        elif len(glob("*-????-model.fits")) > 0:
-            command += ['-channels-out ' + str(len(glob("*-????-model.fits")))]
-
-            freqboundary = []
-            for modim in sorted(glob("*-????-model.fits"))[:-1]:
-                fts = fits.open(modim)[0]
-                fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
-                freqboundary.append(str(fcent + fdelt))
-                # fts.close()
-            command += ['-channel-division-frequencies ' + ','.join(freqboundary)] #TODO: VERIFY
-
-        else:
-            sys.exit('ERROR: there are no model images (check for *-model-*.fits)')
 
         if h5parm is not None:
             command += [f'-apply-facet-solutions {h5parm} amplitude000,phase000',
@@ -376,12 +369,12 @@ class SubtractWSClean:
             steps.append('avg')
             command += ['avg.type=averager']
             if freqavg is not None:
-                if freqavg.isdigit():
+                if str(freqavg).isdigit():
                     command += [f'avg.freqstep={freqavg}']
                 else:
                     command += [f'avg.freqresolution={freqavg}']
             if timeavg is not None:
-                if timeavg.isdigit():
+                if str(timeavg).isdigit():
                     command += [f'avg.timestep={timeavg}']
                 else:
                     command += [f'avg.timeresolution={timeavg}']
@@ -432,13 +425,22 @@ if __name__ == "__main__":
 
     # copy model images
     if args.model_image_folder is not None:
-        os.system('cp ' + args.model_image_folder + '/*-model.fits .')
-        os.system('cp ' + args.model_image_folder + '/*-model-pb.fits .')
+        if len(glob(args.model_image_folder + '/*-????-model-pb.fits .'))>1:
+            os.system('cp ' + args.model_image_folder + '/*-????-model-pb.fits .')
+        elif len(glob(args.model_image_folder + '/*-????-model.fits .'))>1:
+            os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
+        elif len(glob(args.model_image_folder + '/*-model-pb.fits .'))>1:
+            os.system('cp ' + args.model_image_folder + '/*-model-pb.fits .')
+        elif len(glob(args.model_image_folder + '/*-model.fits .'))>1:
+            os.system('cp ' + args.model_image_folder + '/*-model.fits .')
+        else:
+            sys.exit("ERROR: missing model images in folder.\nPlease copy model images to run folder or give --model_image_folder.")
 
-    # verify there are model images
-    if len(glob('*-model*.fits')) == 0:
-        sys.exit(
-            "ERROR: missing model images in folder.\nPlease copy model images to run folder or give --model_image_folder.")
+    # remove MFS images if by accident copied
+    if len(glob("*-????-model*.fits"))>1:
+        if len(glob("*MFS-model*.fits"))>1:
+            for mfs in glob("*MFS-model*.fits"):
+                os.system('rm '+mfs)
 
     # rename model images
     if args.output_name is not None:
