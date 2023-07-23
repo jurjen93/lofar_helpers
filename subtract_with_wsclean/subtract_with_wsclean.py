@@ -22,6 +22,19 @@ def add_trailing_zeros(s, digitsize=4):
     padded_string = "".join(repeat("0", digitsize)) + s
     return padded_string[-digitsize:]
 
+def get_largest_divider(inp, max=1000):
+    """
+    Get largest divider
+
+    :param inp: input number
+    :param max: max divider
+
+    :return: largest divider from inp bound by max
+    """
+    for r in range(max)[::-1]:
+        if inp % r == 0:
+            return r
+    sys.exit("ERROR: code should not arrive here.")
 
 class SubtractWSClean:
     def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, onlyprint: bool = False):
@@ -44,9 +57,27 @@ class SubtractWSClean:
 
         self.onlyprint = onlyprint
 
-        self.scale = ''
+        # region file to mask
+        if localnorth:
+            self.region = self.box_to_localnorth(region)
+        else:
+            self.region = pyregion.open(region)
 
-        # delete model images that do not match with MS
+        self.model_images = glob("*-model*.fits")
+        f = fits.open(self.model_images[0])
+        history = str(f[0].header['HISTORY']).replace('\n', '').split()
+        if '-taper-gaussian' in history:
+            self.scale = history[history.index('-taper-gaussian') + 1]
+        elif '-scale' in history:
+            self.scale = history[history.index('-scale') + 1]
+        else:
+            self.scale = ''
+
+    def clean_model_images(self):
+        """
+        Delete model images that do not match with MS
+        """
+
         freqs = []
         for ms in self.mslist:
             t = ct.table(ms + "::SPECTRAL_WINDOW")
@@ -84,11 +115,7 @@ class SubtractWSClean:
         else:
             self.model_images = glob('*-model-*.fits')
 
-        # region file to mask
-        if localnorth:
-            self.region = self.box_to_localnorth(region)
-        else:
-            self.region = pyregion.open(region)
+        return self
 
     def box_to_localnorth(self, region):
         """
@@ -199,6 +226,7 @@ class SubtractWSClean:
 
         return self
 
+
     def subtract_col(self, out_column):
 
         """
@@ -208,34 +236,37 @@ class SubtractWSClean:
 
         for ms in self.mslist:
             print('Subtract ' + ms)
+            ts = ct.table(ms, readonly=False)
+            colnames = ts.colnames()
             if not self.onlyprint:
-                ts = ct.table(ms, readonly=False)
-                colnames = ts.colnames()
                 if out_column not in colnames:
+                    # get column description from DATA
                     desc = ts.getcoldesc('DATA')
+                    # create output column
                     desc['name'] = out_column
+                    # create template for output column
                     ts.addcols(desc)
-                    ts.close()  # to write results
 
                 else:
                     print(out_column, ' already exists')
-                    ts.close()
 
-        for ms in self.mslist:
-            ts = ct.table(ms, readonly=False)
-            colnames = ts.colnames()
-            if 'CORRECTED_DATA' in colnames:
-                print('SUBTRACT --> CORRECTED_DATA - MODEL_DATA')
+            # get number of rows
+            nrows = ts.nrows()
+            # make sure every slice has the same size
+            best_slice = get_largest_divider(nrows, 1000)
+            for c in range(0, nrows, best_slice):
+                if 'CORRECTED_DATA' in colnames:
+                    print('SUBTRACT --> CORRECTED_DATA - MODEL_DATA')
+                    if not self.onlyprint:
+                        data = ts.getcol('CORRECTED_DATA', startrow=c, nrow=best_slice)
+                else:
+                    print('SUBTRACT --> DATA - MODEL_DATA')
+                    if not self.onlyprint:
+                        data = ts.getcol('DATA', startrow=c, nrow=best_slice)
                 if not self.onlyprint:
-                    data = ts.getcol('CORRECTED_DATA')
-            else:
-                print('SUBTRACT --> DATA - MODEL_DATA')
-                if not self.onlyprint:
-                    data = ts.getcol('DATA')
-            if not self.onlyprint:
-                model = ts.getcol('MODEL_DATA')
-                ts.putcol(out_column, data - model)
-            ts.close()
+                    model = ts.getcol('MODEL_DATA')
+                    ts.putcol(out_column, data - model, startrow=c, nrow=best_slice)
+                ts.close()
 
         return self
 
@@ -246,6 +277,7 @@ class SubtractWSClean:
         :param h5parm: h5 solutions (optional)
         :param facet_regions: facet regions (if h5 solutions given)
         """
+
         f = fits.open(self.model_images[0])
         comparse = str(f[0].header['HISTORY']).replace('\n', '').split()
         command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}']
@@ -420,6 +452,8 @@ if __name__ == "__main__":
     parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
     parser.add_argument('--forwidefield', action='store_true',
                         help='will search for the polygon_info.csv file to extract information from')
+    parser.add_argument('--skip_predict', action='store_true',
+                        help='skip predict and do only subtract')
     args = parser.parse_args()
 
     # copy model images
@@ -477,13 +511,17 @@ if __name__ == "__main__":
     object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north,
                              onlyprint=args.print_only_commands)
 
-    # mask
-    print('############## MASK REGION ##############')
-    object.mask_region(region_cube=args.use_region_cube)
+    if not args.skip_predict:
+        # clean model images
+        object.clean_model_images()
 
-    # predict
-    print('############## PREDICT ##############')
-    object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
+        # mask
+        print('############## MASK REGION ##############')
+        object.mask_region(region_cube=args.use_region_cube)
+
+        # predict
+        print('############## PREDICT ##############')
+        object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
 
     # subtract
     print('############## SUBTRACT ##############')
