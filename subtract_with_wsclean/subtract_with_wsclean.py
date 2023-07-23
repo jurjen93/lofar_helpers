@@ -254,7 +254,7 @@ class SubtractWSClean:
             # get number of rows
             nrows = ts.nrows()
             # make sure every slice has the same size
-            best_slice = get_largest_divider(nrows, 1000)
+            best_slice = get_largest_divider(nrows, 10)
             for c in range(0, nrows, best_slice):
                 if 'CORRECTED_DATA' in colnames:
                     print('SUBTRACT --> CORRECTED_DATA - MODEL_DATA')
