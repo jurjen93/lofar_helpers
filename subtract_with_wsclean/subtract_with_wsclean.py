@@ -58,12 +58,6 @@ class SubtractWSClean:
 
         self.onlyprint = onlyprint
 
-        # region file to mask
-        if localnorth:
-            self.region = self.box_to_localnorth(region)
-        else:
-            self.region = pyregion.open(region)
-
         self.model_images = glob("*-model*.fits")
         f = fits.open(self.model_images[0])
         history = str(f[0].header['HISTORY']).replace('\n', '').split()
@@ -73,6 +67,12 @@ class SubtractWSClean:
             self.scale = history[history.index('-scale') + 1]
         else:
             self.scale = ''
+
+        # region file to mask
+        if localnorth:
+            self.region = self.box_to_localnorth(region)
+        else:
+            self.region = pyregion.open(region)
 
     def clean_model_images(self):
         """
