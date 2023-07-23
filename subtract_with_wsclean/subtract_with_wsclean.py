@@ -9,6 +9,7 @@ from glob import glob
 import tables
 from itertools import repeat
 import re
+import pandas as pd
 
 
 def add_trailing_zeros(s, digitsize=4):
@@ -456,35 +457,35 @@ if __name__ == "__main__":
                         help='skip predict and do only subtract')
     args = parser.parse_args()
 
-    # copy model images
-    if args.model_image_folder is not None:
-        if len(glob(args.model_image_folder + '/*-????-model-pb.fits'))>1:
-            os.system('cp ' + args.model_image_folder + '/*-????-model-pb.fits .')
-        elif len(glob(args.model_image_folder + '/*-????-model.fits'))>1:
-            os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
-        elif len(glob(args.model_image_folder + '/*-model-pb.fits'))>1:
-            os.system('cp ' + args.model_image_folder + '/*-model-pb.fits .')
-        elif len(glob(args.model_image_folder + '/*-model.fits'))>1:
-            os.system('cp ' + args.model_image_folder + '/*-model.fits .')
-        else:
-            sys.exit("ERROR: missing model images in folder "+args.model_image_folder)
+    if not args.skip_predict:
 
-    # remove MFS images if in folder
-    if len(glob("*-????-model*.fits"))>1 and len(glob("*MFS-model*.fits"))>1:
-        for mfs in glob("*MFS-model*.fits"):
-            os.system('rm '+mfs)
+        # copy model images from model_image_folder
+        if args.model_image_folder is not None:
+            if len(glob(args.model_image_folder + '/*-????-model-pb.fits'))>1:
+                os.system('cp ' + args.model_image_folder + '/*-????-model-pb.fits .')
+            elif len(glob(args.model_image_folder + '/*-????-model.fits'))>1:
+                os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
+            elif len(glob(args.model_image_folder + '/*-model-pb.fits'))>1:
+                os.system('cp ' + args.model_image_folder + '/*-model-pb.fits .')
+            elif len(glob(args.model_image_folder + '/*-model.fits'))>1:
+                os.system('cp ' + args.model_image_folder + '/*-model.fits .')
+            else:
+                sys.exit("ERROR: missing model images in folder "+args.model_image_folder)
 
-    # rename model images
-    if args.output_name is not None:
-        model_images = glob('*-model*.fits')
-        oldname = model_images[0].split("-")[0]
-        for model in model_images:
-            os.system('mv ' + model + ' ' + model.replace(oldname, args.output_name))
+        # remove MFS images if in folder
+        if len(glob("*-????-model*.fits"))>1 and len(glob("*MFS-model*.fits"))>1:
+            for mfs in glob("*MFS-model*.fits"):
+                os.system('rm '+mfs)
+
+        # rename model images
+        if args.output_name is not None:
+            model_images = glob('*-model*.fits')
+            oldname = model_images[0].split("-")[0]
+            for model in model_images:
+                os.system('mv ' + model + ' ' + model.replace(oldname, args.output_name))
 
     # --forwidefield --> will read averaging and phasecenter from polygon_info.csv
     if args.forwidefield:
-        import pandas as pd
-
         if os.path.isfile('polygon_info.csv'):
             polygon_info = pd.read_csv('polygon_info.csv')
         elif os.path.isfile('../polygon_info.csv'):
@@ -512,6 +513,7 @@ if __name__ == "__main__":
                              onlyprint=args.print_only_commands)
 
     if not args.skip_predict:
+
         # clean model images
         object.clean_model_images()
 
