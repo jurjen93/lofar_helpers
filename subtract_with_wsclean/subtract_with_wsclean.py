@@ -258,17 +258,19 @@ class SubtractWSClean:
             for c in range(0, nrows, best_slice):
                 print(c, best_slice)
                 if 'CORRECTED_DATA' in colnames:
-                    print('SUBTRACT --> CORRECTED_DATA - MODEL_DATA')
+                    if c==0:
+                        print('SUBTRACT --> CORRECTED_DATA - MODEL_DATA')
                     if not self.onlyprint:
                         data = ts.getcol('CORRECTED_DATA', startrow=c, nrow=best_slice)
                 else:
-                    print('SUBTRACT --> DATA - MODEL_DATA')
+                    if c==0:
+                        print('SUBTRACT --> DATA - MODEL_DATA')
                     if not self.onlyprint:
                         data = ts.getcol('DATA', startrow=c, nrow=best_slice)
                 if not self.onlyprint:
                     model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
                     ts.putcol(out_column, data - model, startrow=c, nrow=best_slice)
-                ts.close()
+            ts.close()
 
         return self
 
