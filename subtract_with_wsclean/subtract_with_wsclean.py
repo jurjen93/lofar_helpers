@@ -86,6 +86,7 @@ class SubtractWSClean:
             t.close()
         self.fmax_ms = max(freqs)
         self.fmin_ms = min(freqs)
+        model_images = glob('*-model*.fits')
         for modim in model_images:
             fts = fits.open(modim)[0]
             fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
