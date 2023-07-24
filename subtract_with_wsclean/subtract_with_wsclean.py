@@ -352,7 +352,8 @@ class SubtractWSClean:
             elif argument == '-scale' and '-taper-gaussian' not in comparse:
                 self.scale = comparse[n + 1]
 
-        command += ['-channels-out ' + str(len(self.model_images))]
+        if len(self.model_images)>1:
+            command += ['-channels-out ' + str(len(self.model_images))]
 
         freqboundary = []
         for modim in sorted(self.model_images)[:-1]:
@@ -361,12 +362,13 @@ class SubtractWSClean:
 
             freqboundary.append(str(fcent + fdelt))
             # fts.close()
-        if len(freqboundary)>1:
+
+        if len(freqboundary)>0:
             command += ['-channel-division-frequencies ' + ','.join(freqboundary)]
 
         if h5parm is not None:
             command += [f'-apply-facet-solutions {h5parm} amplitude000,phase000',
-                        f' -facet-regions {facet_regions}', '-apply-facet-beam',
+                        f'-facet-regions {facet_regions}', '-apply-facet-beam',
                         f'-facet-beam-update {comparse[comparse.index("-facet-beam-update") + 1]}']
 
         command += [' '.join(self.mslist)]
@@ -560,6 +562,7 @@ if __name__ == "__main__":
         except:
             timeavg = polygon['avg'].values[0]
         dirname = polygon['dir_name'].values[0]
+
     else:
         phasecenter = args.phasecenter
         freqavg = args.freqavg
