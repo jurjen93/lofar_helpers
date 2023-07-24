@@ -555,7 +555,10 @@ if __name__ == "__main__":
         print(polygon)
         phasecenter = polygon['dir'].values[0]
         freqavg = polygon['avg'].values[0]
-        timeavg = polygon['avg'].values[0]/get_time_preavg_factor(args.mslist[0])
+        try:
+            timeavg = polygon['avg'].values[0]/get_time_preavg_factor(args.mslist[0])
+        except:
+            timeavg = polygon['avg'].values[0]
         dirname = polygon['dir_name'].values[0]
     else:
         phasecenter = args.phasecenter
