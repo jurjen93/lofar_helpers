@@ -375,6 +375,10 @@ class SubtractWSClean:
 
         # run
         print('\n'.join(command))
+        predict_cmd = open("predict.cmd", "w")
+        predict_cmd.write('\n'.join(command))
+        predict_cmd.close()
+
         if not self.onlyprint:
             os.system(' '.join(command) + ' > log_predict.txt')
 
@@ -472,12 +476,23 @@ class SubtractWSClean:
         if concat:
             command += [f'msin={",".join(self.mslist)}',
                         'msout=subtract_concat.ms']
+
             print('\n'.join(command))
+            dp3_cmd = open("dp3.cmd", "w")
+            dp3_cmd.write('\n'.join(command))
+            dp3_cmd.close()
+
             if not self.onlyprint:
                 os.system(' '.join(command) + " > dp3.subtract.log")
         else:
             for n, ms in enumerate(self.mslist):
-                print('\n'.join(command + [f'msin={ms}', f'msout=sub{self.scale}_{ms}']))
+                command+=[f'msin={ms}', f'msout=sub{self.scale}_{ms}']
+
+                print('\n'.join(command))
+                dp3_cmd = open("dp3.cmd", "w")
+                dp3_cmd.write('\n'.join(command))
+                dp3_cmd.close()
+
                 if not self.onlyprint:
                     os.system(' '.join(command + [f'msin={ms}', f'msout=sub{self.scale}_{ms}']) + f" > dp3.sub{n}.log")
 
