@@ -64,7 +64,7 @@ def parse_history(ms, hist_item):
     return None
 
 
-def get_time_preavg_factor(ms):
+def get_time_preavg_factor(ms: str = None):
     """
     Get time pre-averaging factor (given by demixer.timestep)
 
@@ -170,7 +170,7 @@ class SubtractWSClean:
 
         return self
 
-    def box_to_localnorth(self, region):
+    def box_to_localnorth(self, region: str = None):
         """
         Adjust box for local north
         :param regionfile: region file
@@ -201,7 +201,7 @@ class SubtractWSClean:
         return pyregion.open("adjustedbox.reg")
 
     @staticmethod
-    def flat_model_image(fitsfile):
+    def flat_model_image(fitsfile: str = None):
         """
         Flatten a fits file so that it becomes a 2D image. Return new header and data
         (taken from sub-sources-outside-region.py)
@@ -280,7 +280,7 @@ class SubtractWSClean:
         return self
 
 
-    def subtract_col(self, out_column):
+    def subtract_col(self, out_column: str = None):
 
         """
         Subtract column in Measurement Set
@@ -291,6 +291,10 @@ class SubtractWSClean:
             print('Subtract ' + ms)
             ts = ct.table(ms, readonly=False)
             colnames = ts.colnames()
+
+            if "MODEL_DATA" not in colnames:
+                sys.exit(f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
+
             if not self.onlyprint:
                 if out_column not in colnames:
                     # get column description from DATA
@@ -385,7 +389,12 @@ class SubtractWSClean:
         return self
 
     @staticmethod
-    def isfulljones(h5):
+    def isfulljones(h5: str = None):
+        """
+        Verify if file is fulljones
+
+        :param h5: h5 file
+        """
         T = tables.open_file(h5)
         soltab = list(T.root.sol000._v_groups.keys())[0]
         if 'pol' in T.root.sol000._f_get_child(soltab).val.attrs["AXES"].decode('utf8'):
