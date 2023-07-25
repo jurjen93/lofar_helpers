@@ -380,7 +380,7 @@ class SubtractWSClean:
         predict_cmd.close()
 
         if not self.onlyprint:
-            os.system(' '.join(command) + ' > log_predict.txt')
+            os.system(' '.join(command) + ' > log_predict.log')
 
         return self
 
