@@ -470,13 +470,13 @@ class SubtractWSClean:
             steps.append('avg')
             command += ['avg.type=averager']
             if freqavg is not None:
-                if str(freqavg).isdigit():
-                    command += [f'avg.freqstep={freqavg}']
+                if str(freqavg).isdigit() or not str(freqavg)[-1].isalpha():
+                    command += [f'avg.freqstep={int(freqavg)}']
                 else:
                     command += [f'avg.freqresolution={freqavg}']
             if timeavg is not None:
-                if str(timeavg).isdigit():
-                    command += [f'avg.timestep={timeavg}']
+                if str(timeavg).isdigit() or not str(timeavg)[-1].isalpha():
+                    command += [f'avg.timestep={int(timeavg)}']
                 else:
                     command += [f'avg.timeresolution={timeavg}']
 
@@ -580,11 +580,11 @@ if __name__ == "__main__":
         polygon = polygon_info.loc[polygon_info.polygon_file == args.region.split('/')[-1]]
         print(polygon)
         phasecenter = polygon['dir'].values[0]
-        freqavg = polygon['avg'].values[0]
+        freqavg = int(polygon['avg'].values[0])
         try:
-            timeavg = polygon['avg'].values[0]/get_time_preavg_factor(args.mslist[0])
+            timeavg = int(polygon['avg'].values[0]/get_time_preavg_factor(args.mslist[0]))
         except:
-            timeavg = polygon['avg'].values[0]
+            timeavg = int(polygon['avg'].values[0])
         dirname = polygon['dir_name'].values[0]
 
     else:
