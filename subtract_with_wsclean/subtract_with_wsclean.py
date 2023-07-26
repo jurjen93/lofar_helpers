@@ -582,7 +582,11 @@ if __name__ == "__main__":
         t.close()
 
         polygon = polygon_info.loc[polygon_info.polygon_file == args.region.split('/')[-1]]
-        phasecenter = polygon['dir'].values[0]
+        try:
+            phasecenter = polygon['poly_center'].values[0]
+        except AttributeError:
+            print('WARNING: no poly center in polygon_info.csv, use dir instead.')
+            phasecenter = polygon['dir'].values[0]
 
         # take only averaging factors that are channum%avg==0
         avg = get_largest_divider(channum, int(polygon['avg'].values[0]))
