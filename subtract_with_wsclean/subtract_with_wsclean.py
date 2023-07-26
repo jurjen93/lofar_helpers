@@ -364,7 +364,7 @@ class SubtractWSClean:
             fts = fits.open(modim)[0]
             fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
 
-            freqboundary.append(str(fcent + fdelt))
+            freqboundary.append(str(int(fcent + fdelt)))
             # fts.close()
 
         if len(freqboundary)>0:
