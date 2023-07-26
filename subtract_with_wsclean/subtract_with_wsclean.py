@@ -475,7 +475,7 @@ class SubtractWSClean:
                 else:
                     command += [f'avg.freqresolution={freqavg}']
             if timeavg is not None:
-                if str(timeavg).isdigit() or not str(timeavg)[-1].isalpha():
+                if str(timeavg).isdigit():
                     command += [f'avg.timestep={int(timeavg)}']
                 else:
                     command += [f'avg.timeresolution={timeavg}']
