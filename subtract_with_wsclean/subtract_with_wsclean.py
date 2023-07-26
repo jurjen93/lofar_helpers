@@ -577,14 +577,22 @@ if __name__ == "__main__":
         else:
             sys.exit('ERROR: using --forwidefield option needs polygon_info.csv file to read polygon information from')
 
+        t = ct.table(args.mslist[0] + "::SPECTRAL_WINDOW")
+        channum = len(t.getcol("CHAN_FREQ")[0])
+        t.close()
+
         polygon = polygon_info.loc[polygon_info.polygon_file == args.region.split('/')[-1]]
-        print(polygon)
         phasecenter = polygon['dir'].values[0]
-        freqavg = int(polygon['avg'].values[0])
+
+        # take only averaging factors that are channum%avg==0
+        avg = get_largest_divider(channum, int(polygon['avg'].values[0]))
+
+        freqavg = int(avg)
         try:
-            timeavg = int(polygon['avg'].values[0]/get_time_preavg_factor(args.mslist[0]))
+            # if there is pre averaging done on the ms, we need to take this into account
+            timeavg = int(freqavg/get_time_preavg_factor(args.mslist[0]))
         except:
-            timeavg = int(polygon['avg'].values[0])
+            timeavg = int(freqavg)
         dirname = polygon['dir_name'].values[0]
 
     else:
