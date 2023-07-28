@@ -1469,7 +1469,10 @@ class MergeH5:
             sources = list([source[1] for source in solset.obj.source[:]]) + add_directions
         else:
             sources = list([source[1] for source in solset.obj.source[:]]) + [add_directions]
-        sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), list(ns)) for n, ns in enumerate(sources)]
+        if sys.version_info.major > 2:
+            sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), list(ns)) for n, ns in enumerate(sources)]
+        else:
+            sources = [(bytes('Dir' + str(n).zfill(2)), list(ns)) for n, ns in enumerate(sources)]
         if len(sources) > 0:
             solsettemp.obj.source.append(sources)
 
@@ -1584,7 +1587,10 @@ class MergeH5:
                     newval = transpose(newval, idx)
                     st._f_get_child(axes)._f_remove()
                     T.create_array(st, axes, newval.astype(valtype), atom=atomtype)
-                    st._f_get_child(axes).attrs['AXES'] = bytes(','.join(output_axes), 'utf-8')
+                    if sys.version_info.major > 2:
+                        st._f_get_child(axes).attrs['AXES'] = bytes(','.join(output_axes), 'utf-8')
+                    else:
+                        st._f_get_child(axes).attrs['AXES'] = bytes(','.join(output_axes))
 
                 print('Value shape after changing poldim--> ' + str(st._f_get_child('val')[:].shape))
 
