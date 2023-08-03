@@ -439,7 +439,7 @@ class SubtractWSClean:
             steps.append('beam')
             command += ['beam.type=applybeam',
                         'beam.direction=[]',
-                        'beam.updateweights=True']
+                        'beam.updateweights=True'] #TODO: ??
 
         # 3) APPLYCAL
         if applycal_h5 is not None:
@@ -464,6 +464,7 @@ class SubtractWSClean:
                         command += [f'ac{ac_count}.direction=' + dirname]
                     steps.append(f'ac{ac_count}')
                     ac_count += 1
+                T.close()
 
         # 4) AVERAGING
         if freqavg is not None or timeavg is not None:
