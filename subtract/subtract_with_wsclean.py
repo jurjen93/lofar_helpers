@@ -94,7 +94,7 @@ class SubtractWSClean:
         Subtract image with WSClean
 
         :param mslist: measurement set list
-        :param region: region file
+        :param region: region file to mask
         :param model_image: model image
         :param onlyprint: print only the commands (for testing purposes)
         """
@@ -339,7 +339,7 @@ class SubtractWSClean:
 
         f = fits.open(self.model_images[0])
         comparse = str(f[0].header['HISTORY']).replace('\n', '').split()
-        command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}']
+        command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}', '-mem 50']
 
         for n, argument in enumerate(comparse):
             if argument in ['-gridder', '-padding', '-parallel-gridding',
