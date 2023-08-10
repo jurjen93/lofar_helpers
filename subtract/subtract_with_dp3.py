@@ -103,36 +103,112 @@ class SubtractDP3:
         T.close()
         return False
 
+    def make_template_modelcolumn(self):
+        """
+        Make template model column with 0 values
+        """
+
+        for ms in self.mslist:
+
+            ts = ct.table(ms, readonly=False)
+            colnames = ts.colnames()
+
+            if "MODEL_DATA" not in colnames:
+                # get column description from DATA
+                desc = ts.getcoldesc('DATA')
+                # create output column
+                desc['name'] = "MODEL_DATA"
+                # create template for output column
+                ts.addcols(desc)
+
+            else:
+                print("WARNING: MODEL_DATA already exists")
+                # get number of rows
+                nrows = ts.nrows()
+                # make sure every slice has the same size
+                best_slice = get_largest_divider(nrows, 1000)
+                for c in range(0, nrows, best_slice):
+                    model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
+                    ts.putcol('MODEL_DATA', model*0, startrow=c, nrow=best_slice)
+
     def predict(self,
-                sourcedb: str = None,
-                subtract: bool = None,
-                h5parm: str = None):
+                sourcedb: list = None,
+                h5parm: list = None):
         """
         Predict with DP3 (see https://dp3.readthedocs.io/en/latest/steps/Predict.html)
 
         :param sourcedb: sky model
-        :param subtract: subtract
         :param h5parm: h5 solutions
         """
 
-        self.steps.append('predict')
 
-        self.cmd+= ['predict.type = predict',
-                    f'predict.sourcedb = {sourcedb}',
-                    'predict.usebeammodel = True',
-                    'predict.usebeammodel = True',
-                    'predict.beammode = array_factor',
-                    'predict.applycal.steps = [amp, phase]',
-                    'predict.applycal.amp.correction = amplitude000',
-                    'predict.applycal.phase.correction = phase000',
-                    f'predict.applycal.parmdb = {h5parm}',
-                    'msout=.']
+        for n, source in enumerate(sourcedb):
 
-        if subtract:
-            self.cmd += ['predict.operation = subtract',
-                         'msout.datacolumn = SUBTRACT_DATA']
+            self.steps.append(f'beam{n}')
+            self.steps.append(f'predict{n}')
 
+            pnum = source.split("_")[0]
+            h5 = [h5 for h5 in h5parm if pnum in h5][0]
+
+            H = tables.open_file(h5)
+            direction = H.root.sol000.source[:]['dir'] % (2*np.pi)
+            direction *= 360/(2*np.pi)
+
+            self.cmd+= [f'predict{n}.type=predict',
+                        f'predict{n}.sourcedb={source}',
+                        f'predict{n}.applycal.steps=[amp, phase]',
+                        f'predict{n}.applycal.amp.correction=amplitude000',
+                        f'predict{n}.applycal.phase.correction=phase000',
+                        f'predict{n}.applycal.parmdb={h5}',
+                        f'predict{n}.operation=add',
+                        f'beam{n}.type=applybeam',
+                        f'beam{n}.directions=[{direction[0]}deg,{direction[1]}deg]'
+                        'msout.datacolumn=MODEL_DATA',
+                        'msin.datacolumn=MODEL_DATA',
+                        'msout=.']
+
+        self.cmd += ['steps=' + str(self.steps).replace(" ", "").replace("\'", "")]
         print('\n'.join(self.cmd))
+
+        return self
+
+    def subtract_col(self, out_column: str = None):
+
+        """
+        Subtract column in Measurement Set
+        :param out_column: out column name
+        """
+
+        for ms in self.mslist:
+            print('Subtract ' + ms)
+            ts = ct.table(ms, readonly=False)
+            colnames = ts.colnames()
+
+            if "MODEL_DATA" not in colnames:
+                sys.exit(f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
+
+            if out_column not in colnames:
+                # get column description from DATA
+                desc = ts.getcoldesc('DATA')
+                # create output column
+                desc['name'] = out_column
+                # create template for output column
+                ts.addcols(desc)
+
+            else:
+                print(out_column, ' already exists')
+
+            # get number of rows
+            nrows = ts.nrows()
+            # make sure every slice has the same size
+            best_slice = get_largest_divider(nrows, 1000)
+            for c in range(0, nrows, best_slice):
+                if c==0:
+                    print('SUBTRACT --> DATA - MODEL_DATA')
+                data = ts.getcol('DATA', startrow=c, nrow=best_slice)
+                model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
+                ts.putcol(out_column, data - model, startrow=c, nrow=best_slice)
+            ts.close()
 
         return self
 
@@ -250,11 +326,12 @@ if __name__ == "__main__":
 
     parser = ArgumentParser(description='Subtract region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
+    parser.add_argument('--sourcedb', nargs='+', help='source models', required=True)
     parser.add_argument('--region', type=str, help='region file', required=True)
     parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)')
     parser.add_argument('--skip_predict', action='store_true',
                         help='skip predict and do only subtract')
-    parser.add_argument('--h5parm_predict', type=str, help='h5 solution file')
+    parser.add_argument('--h5parm_predict', nargs='+', help='h5 solution files corresponding with sourcedb')
     parser.add_argument('--phasecenter', type=str,
                         help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
     parser.add_argument('--freqavg', type=str, help='frequency averaging')
@@ -269,12 +346,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     Subtract = SubtractDP3(args.mslist)
-
-    if not args.skip_predict:
-        print('############## PREDICT ##############')
-        Subtract.predict(sourcedb=args.sourcedb, subtract=True, h5parm=args.h5parm_predict)
-        if not args.print_only_commands:
-            Subtract.run(type='predict')
 
     # --forwidefield --> will read averaging and phasecenter from polygon_info.csv
     if args.forwidefield:
@@ -320,6 +391,14 @@ if __name__ == "__main__":
         timeavg = args.timeavg
         dirname = None
 
+    if not args.skip_predict:
+        print('############## PREDICT ##############')
+        Subtract.make_template_modelcolumn()
+        Subtract.predict(sourcedb=args.sourcedb, h5parm=args.h5parm_predict)
+        if not args.print_only_commands:
+            Subtract.run(type='predict')
+            Subtract.subtract_col('SUBTRACT_DATA')
+
     if args.phasecenter is not None or \
             args.freqavg is not None or \
             args.timeavg is not None or \
@@ -329,8 +408,6 @@ if __name__ == "__main__":
         print('############## RUN DP3 ##############')
         if args.applycal_h5 is not None:
             applycalh5 = args.applycal_h5
-        elif args.applycal and args.applycal_h5 is None and args.h5parm_predict is not None:
-            applycalh5 = args.h5parm_predict
         elif args.applycal and not args.applycal_h5:
             sys.exit("ERROR: need a solution file for applycal (give with --applycal_h5)")
         else:
