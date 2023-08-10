@@ -1817,7 +1817,7 @@ class MergeH5:
                 shape = st.val.shape
                 weight_out = ones(shape)
                 axes_new = make_utf8(st.val.attrs["AXES"]).split(',')
-                for input_h5 in self.h5_tables:
+                for m, input_h5 in enumerate(self.h5_tables):
                     print(input_h5)
                     T = tables.open_file(input_h5)
                     if soltab not in list(T.root._f_get_child(solset)._v_groups.keys()):
@@ -1870,10 +1870,11 @@ class MergeH5:
                                          + self.debug_message)
                     elif set(axes) == set(axes_new) and 'pol' not in axes: # same axes but no pol
                         dirind = axes_new.index('dir')
-                        print(weight_out.shape, newvals.shape, dirind)
-
-                        if weight_out.shape[dirind] != newvals.shape[dirind] and newvals.shape[dirind]==1:
-                            weight_out *= newvals
+                        if weight_out.shape[dirind] != newvals.shape[dirind] and newvals.shape[dirind] == 1:
+                            if len(weight_out.shape)==4:
+                                weight_out[:, :, m, :] *= newvals[:, :, 0, :]
+                            elif len(weight_out.shape)==5:
+                                weight_out[:, :, :, m, :] *= newvals[:, :, :, 0, :]
                         elif weight_out.shape[dirind] != newvals.shape[dirind]:
                             sys.exit('ERROR: Upsampling of weights because same direction exists multiple times in input h5 (verify and/or remove --propagate_flags)')
                         else:
