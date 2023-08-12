@@ -143,7 +143,6 @@ class SubtractDP3:
             self.steps.append(f'predict{n}')
 
             pnum = source.split('/')[-1].split("_")[0]
-            print(pnum, h5parm)
             h5 = [h5 for h5 in h5parm if pnum in h5][0]
 
             H = tables.open_file(h5)
@@ -158,7 +157,7 @@ class SubtractDP3:
                         f'predict{n}.applycal.parmdb={h5}',
                         f'predict{n}.operation=add',
                         f'beam{n}.type=applybeam',
-                        f'beam{n}.directions=[{direction[0]}deg,{direction[1]}deg]'
+                        f'beam{n}.directions=[{direction[0][0]}deg,{direction[0][1]}deg]'
                         'msout.datacolumn=MODEL_DATA',
                         'msin.datacolumn=MODEL_DATA',
                         'msout=.']
