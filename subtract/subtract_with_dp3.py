@@ -2,12 +2,7 @@ import numpy as np
 import sys
 import os
 import casacore.tables as ct
-import pyregion
-from astropy.io import fits
-from astropy.wcs import WCS
-from glob import glob
 import tables
-from itertools import repeat
 import re
 import pandas as pd
 from subprocess import check_output, STDOUT
