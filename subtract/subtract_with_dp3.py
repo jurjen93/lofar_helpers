@@ -142,7 +142,8 @@ class SubtractDP3:
             self.steps.append(f'beam{n}')
             self.steps.append(f'predict{n}')
 
-            pnum = source.split("_")[0]
+            pnum = source.split('/')[-1].split("_")[0]
+            print(pnum, h5parm)
             h5 = [h5 for h5 in h5parm if pnum in h5][0]
 
             H = tables.open_file(h5)
