@@ -151,7 +151,7 @@ class SubtractDP3:
 
             self.cmd+= [f'predict{n}.type=predict',
                         f'predict{n}.sourcedb={source}',
-                        f'predict{n}.applycal.steps=[amp, phase]',
+                        f'predict{n}.applycal.steps=[amp,phase]',
                         f'predict{n}.applycal.amp.correction=amplitude000',
                         f'predict{n}.applycal.phase.correction=phase000',
                         f'predict{n}.applycal.parmdb={h5}',
@@ -160,11 +160,12 @@ class SubtractDP3:
                         f'beam{n}.directions=[{direction[0][0]}deg,{direction[0][1]}deg]'
                         ]
 
-        self.cmd += ['msout.datacolumn=MODEL_DATA',
-                        'msin.datacolumn=MODEL_DATA',
-                        'msout=.']
+        self.cmd += ['steps=' + str(self.steps).replace(" ", "").replace("\'", ""),
+                     'msout.datacolumn=MODEL_DATA',
+                     'msin.datacolumn=MODEL_DATA'
+                     f'msin={",".join(self.mslist)}',
+                     'msout=.']
 
-        self.cmd += ['steps=' + str(self.steps).replace(" ", "").replace("\'", "")]
         print('\n'.join(self.cmd))
 
         return self
@@ -281,14 +282,9 @@ class SubtractDP3:
 
         self.cmd += ['steps=' + str(self.steps).replace(" ", "").replace("\'", "")]
 
-        if concat:
-            self.cmd += [f'msin={",".join(self.mslist)}',
-                        'msout=subtract_concat.ms']
+        self.cmd += [f'msin={",".join(self.mslist)}',
+                    f'msout=sub_{self.mslist[0]}']
 
-
-        else:
-            for n, ms in enumerate(self.mslist):
-                self.cmd+=[f'msin={ms}', f'msout=sub_{ms}']
 
         print('\n'.join(self.cmd))
 
@@ -302,7 +298,6 @@ class SubtractDP3:
         """
 
         for n, ms in enumerate(self.mslist):
-            self.cmd += [f'msin={ms}', f'msout=sub_{ms}']
             dp3_cmd = open(f"dp3{type}_{n}.cmd", "w")
             dp3_cmd.write('\n'.join(self.cmd))
             dp3_cmd.close()
