@@ -157,7 +157,7 @@ class SubtractDP3:
                         f'predict{n}.applycal.parmdb={h5}',
                         f'predict{n}.operation=add',
                         f'beam{n}.type=applybeam',
-                        f'beam{n}.directions=[{direction[0][0]}deg,{direction[0][1]}deg]'
+                        f'beam{n}.direction=[{round(direction[0][0],5)}deg,{round(direction[0][1],5)}deg]'
                         ]
 
         self.cmd += ['steps=' + str(self.steps).replace(" ", "").replace("\'", ""),
