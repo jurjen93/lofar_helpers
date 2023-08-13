@@ -158,7 +158,9 @@ class SubtractDP3:
                         f'predict{n}.operation=add',
                         f'beam{n}.type=applybeam',
                         f'beam{n}.directions=[{direction[0][0]}deg,{direction[0][1]}deg]'
-                        'msout.datacolumn=MODEL_DATA',
+                        ]
+
+        self.cmd += ['msout.datacolumn=MODEL_DATA',
                         'msin.datacolumn=MODEL_DATA',
                         'msout=.']
 
