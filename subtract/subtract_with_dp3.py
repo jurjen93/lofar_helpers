@@ -162,7 +162,7 @@ class SubtractDP3:
 
         self.cmd += ['steps=' + str(self.steps).replace(" ", "").replace("\'", ""),
                      'msout.datacolumn=MODEL_DATA',
-                     'msin.datacolumn=MODEL_DATA'
+                     'msin.datacolumn=MODEL_DATA',
                      f'msin={",".join(self.mslist)}',
                      'msout=.']
 
