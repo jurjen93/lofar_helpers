@@ -215,7 +215,8 @@ class SubtractDP3:
                 freqavg: str = None,
                 timeavg: str = None, concat: bool = None,
                 applybeam: bool = None,
-                applycal_h5: str = None):
+                applycal_h5: str = None,
+                dirname: str = None):
 
         """
         Run DP3 command
@@ -226,6 +227,7 @@ class SubtractDP3:
         :param concat: concat the measurement sets
         :param applybeam: apply beam in phaseshifted phase center (or otherwise center of field)
         :param applycal_h5: applycal solution file
+        :param dirname: direction name
         """
 
         self.cmd += ['msin.datacolumn=SUBTRACT_DATA']
@@ -254,6 +256,8 @@ class SubtractDP3:
                             'ac.parmdb=' + applycal_h5,
                             'ac.correction=fulljones',
                             'ac.soltab=[amplitude000,phase000]']
+                if phaseshift is not None and dirname is not None:
+                    self.cmd += ['ac.direction=' + dirname]
             # add non-fulljones solutions apply
             else:
                 ac_count = 0
@@ -262,8 +266,11 @@ class SubtractDP3:
                     self.cmd += [f'ac{ac_count}.type=applycal',
                                 f'ac{ac_count}.parmdb={applycal_h5}',
                                 f'ac{ac_count}.correction={corr}']
+                    if phaseshift is not None and dirname is not None:
+                        self.cmd += [f'ac{ac_count}.direction=' + dirname]
                     self.steps.append(f'ac{ac_count}')
                     ac_count += 1
+                T.close()
 
         # 4) AVERAGING
         if freqavg is not None or timeavg is not None:
@@ -307,6 +314,7 @@ class SubtractDP3:
                    'msin.missingdata=True',
                    'msin.orderms=False',
                    'msout.storagemanager=dysco']
+        self.steps = []
 
         return self
 
@@ -406,6 +414,6 @@ if __name__ == "__main__":
             applycalh5 = None
 
         Subtract.moreDP3(phaseshift=phasecenter, freqavg=freqavg, timeavg=timeavg,
-                       concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5)
+                       concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5, dirname=dirname)
         if not args.print_only_commands:
             Subtract.run(type='phaseshift')
