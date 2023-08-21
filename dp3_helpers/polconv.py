@@ -224,3 +224,87 @@ class PolConv(Step):
         elif self.lin2circ:
             print('Converted UV data from linear (XX,XY,YX,YY) to circular polarization (RR,RL,LR,LL)')
         pass
+
+class PhasePolDiff(Step):
+    """ Takes the phase difference of the XX and YY (or RR and LL) polarisations.
+    """
+
+    def __init__(self, parset, prefix):
+        """
+        Set up the step (constructor). Read the parset here.
+        Set fetch_weights to True if the weights need to be read.
+        Similarly for fetch_uvw.
+
+        Args:
+          parset: Parameter set for the entire pipeline
+          prefix: Prefix for this step."
+        """
+
+        super().__init__()
+        self.fetch_uvw = True
+
+    def get_required_fields(self):
+        if DP3_VERSION>5.3:
+            return (Fields.DATA | Fields.FLAGS | Fields.WEIGHTS | Fields.UVW)
+        else:
+            pass
+
+    def get_provided_fields(self):
+        if DP3_VERSION>5.3:
+            return Fields()
+        else:
+            pass
+
+    def update_info(self, dpinfo):
+        """
+        Process metadata. This will be called before any call to process.
+
+        Args:
+          dpinfo: DPInfo object with all metadata, see docs in pydp3.cc
+        """
+
+        super().update_info(dpinfo)
+
+        # Make sure data is read
+        self.info().set_need_vis_data()
+
+        # Make sure data will be written
+        self.info().set_write_data()
+
+    def show(self):
+        """Print a summary of the step and its settings"""
+
+        print("\nPolDiff")
+        print("\nCreating parallel hand phase difference.")
+
+
+    def process(self, dpbuffer):
+        """
+        Process one time slot of data. This function MUST call process_next_step.
+
+        Args:
+          dpbuffer: DPBuffer object which can contain data, flags and weights
+                    for one time slot.
+        """
+        data = np.array(dpbuffer.get_data(), copy=False, dtype=np.complex64)
+        # This cast to complex128 is necessary to reach the same result as the current Python operation does with python-casacore
+        # Probably related to floating point accuracy during the math of np.angle?
+        # DP3 won't write out changed visibilities however, when data is complex128 for some reason we still use complex64 there.
+        phasediff =  np.copy(np.angle(data[:, :, 0].astype(np.complex128)) - np.angle(data[:, :, 3].astype(np.complex128)))  #RR - LL
+        data[:, :, 0] = 0.5 * np.exp(1j * phasediff)  # because I = RR+LL/2 (this is tricky because we work with phase diff)
+        data[:, :, 3] = data[:, :, 0]
+
+        # Send processed data to the next step
+        if DP3_VERSION>5.3:
+            next_step = self.get_next_step()
+            if next_step is not None:
+                next_step.process(dpbuffer)
+        else:
+            self.process_next_step(dpbuffer)
+
+    def finish(self):
+        """
+        If there is any remaining data, process it. This can be useful if the
+        step accumulates multiple time slots.
+        """
+        print("\nCreated parallel hand phase difference.")
