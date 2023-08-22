@@ -7,16 +7,20 @@ Or you save this python file somewhere you like and run:
 export PYTHONPATH=/somewhere/you/like:$PYTHONPATH
 
 """
+
+try:
+    from dppp import DPStep as Step
+    DP3name = 'DPPP' # default
+except:
+    from dp3 import Step
+    DP3name = 'DP3'
+
 from subprocess import check_output
 import re
 import numpy as np
-import shutil
 import sys
 
 #hacky way to figure out the DPPP/DP3 version (important to run this script properly)
-DP3name = shutil.which('DP3')
-if not DP3name:
-    DP3name = shutil.which('DPPP')
 try:
     rgx = '[0-9]+(\.[0-9]+)+'
     grep_version_string = str(check_output(DP3name+' --version', shell=True), 'utf-8')
@@ -27,14 +31,6 @@ except AttributeError:
 
 if DP3_VERSION > 5.3:
     from dp3 import Fields
-
-try:
-    from dppp import DPStep as Step
-except:
-    if DP3_VERSION >= 6:
-        from dp3.pydp3 import Step
-    else:
-        from dp3 import Step
 
 class PolConv(Step):
     """
@@ -291,10 +287,7 @@ class PhasePolDiff(Step):
                     for one time slot.
         """
         data = np.array(dpbuffer.get_data(), copy=False, dtype=np.complex64)
-        # This cast to complex128 is necessary to reach the same result as the current Python operation does with python-casacore
-        # Probably related to floating point accuracy during the math of np.angle?
-        # DP3 won't write out changed visibilities however, when data is complex128 for some reason we still use complex64 there.
-        phasediff =  np.copy(np.angle(data[:, :, 0].astype(np.complex128)) - np.angle(data[:, :, 3].astype(np.complex128)))  #RR - LL
+        phasediff =  np.copy(np.angle(data[:, :, 0]) - np.angle(data[:, :, 3]))  #RR - LL
         data[:, :, 0] = 0.5 * np.exp(1j * phasediff)  # because I = RR+LL/2 (this is tricky because we work with phase diff)
         data[:, :, 3] = data[:, :, 0]
 
