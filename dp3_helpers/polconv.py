@@ -7,14 +7,6 @@ Or you save this python file somewhere you like and run:
 export PYTHONPATH=/somewhere/you/like:$PYTHONPATH
 
 """
-
-try:
-    from dppp import DPStep as Step
-    DP3name = 'DPPP' # default
-except:
-    from dp3 import Step
-    DP3name = 'DP3'
-
 from subprocess import check_output
 import re
 import numpy as np
@@ -31,6 +23,16 @@ except AttributeError:
 
 if DP3_VERSION > 5.3:
     from dp3 import Fields
+
+try:
+    from dppp import DPStep as Step
+    DP3name = 'DPPP' # default
+except:
+    if DP3_VERSION >= 6:
+        from dp3.pydp3 import Step
+    else:
+        from dp3 import Step
+    DP3name = 'DP3'
 
 class PolConv(Step):
     """
