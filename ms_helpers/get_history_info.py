@@ -1,3 +1,5 @@
+"""Functions to parse history from MS"""
+
 import os
 import re
 

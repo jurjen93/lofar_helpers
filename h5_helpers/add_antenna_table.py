@@ -4,7 +4,7 @@ from numpy import array
 
 def add_antenna_from_ms(ms, h5, solset=None):
     """
-    Add antenna table to h5 from corresponding MS
+    Insert antenna table from MS in given h5
     WARNING: this overwrites the antenna table from the h5
 
     :param ms: Measurement set

@@ -1,5 +1,5 @@
 """
-This script is meant to filter directions outside of a specific circle.
+This script is meant to filter directions outside of a given circle.
 This can be useful for excluding directions at the boundaries of a field because the solutions are less good there.
 """
 

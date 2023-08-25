@@ -15,7 +15,8 @@ YY = RR - RL - LR + LL
 
 class PhaseRotate:
     """
-    Make template based on given h5parm file
+    Make template h5 with default values (phase=0 and amplitude=1) and convert to phase rotate matrix for
+    polarization alignment between different observations.
     """
     def __init__(self, name_in, name_out, freqs = None):
         os.system(' '.join(['cp', name_in, name_out]))
@@ -104,40 +105,6 @@ class PhaseRotate:
 
         return self
 
-    def rotate(self, intercept, rotation_measure):
-        """
-        Rotate angle by the following matrix:
-         /e^(i*rho)  0 \
-        |              |
-         \ 0         1/
-
-        :param intercept: intercept
-        :param rotation_measure: rotation measure in rad/m^2
-        """
-        print('\n2) ADD PHASE ROTATION')
-
-        phaserot = intercept+rotation_measure*(speed_of_light/self.freqs)**2
-
-        mapping = list(zip(list(self.freqs), list(phaserot)))
-        print('########################\nFrequency to rotation in radian (circular base):\n------------------------')
-        for element in mapping:
-            print(str(int(element[0]))+'Hz --> '+str(round(element[1], 3))+'rad')
-
-        # print('Rotate with rotation angle: '+str(intercept) + ' radian')
-        for solset in self.h5.root._v_groups.keys():
-            ss = self.h5.root._f_get_child(solset)
-            for soltab in ss._v_groups.keys():
-                if 'phase' in soltab:
-                    phaseval = ss._f_get_child(soltab).val[:]
-                    # same phaserot for all antennas
-                    for ant_idx in range(phaseval.shape[2]):
-                        phaseval[0, :, ant_idx, 0, 0] += phaserot
-                    self.update_array(ss._f_get_child(soltab), phaseval, 'val')
-        print("########################")
-
-        self.circ2lin()
-
-        return self
 
     def circ2lin(self):
         """
@@ -192,6 +159,40 @@ class PhaseRotate:
 
         return G_new
 
+    def rotate(self, intercept, rotation_measure):
+        """
+        Rotate angle by the following matrix:
+         /e^(i*rho)  0 \
+        |              |
+         \ 0         1/
+
+        :param intercept: intercept
+        :param rotation_measure: rotation measure in rad/m^2
+        """
+        print('\n2) ADD PHASE ROTATION')
+
+        phaserot = intercept+rotation_measure*(speed_of_light/self.freqs)**2
+
+        mapping = list(zip(list(self.freqs), list(phaserot)))
+        print('########################\nFrequency to rotation in radian (circular base):\n------------------------')
+        for element in mapping:
+            print(str(int(element[0]))+'Hz --> '+str(round(element[1], 3))+'rad')
+
+        # print('Rotate with rotation angle: '+str(intercept) + ' radian')
+        for solset in self.h5.root._v_groups.keys():
+            ss = self.h5.root._f_get_child(solset)
+            for soltab in ss._v_groups.keys():
+                if 'phase' in soltab:
+                    phaseval = ss._f_get_child(soltab).val[:]
+                    # same phaserot for all antennas
+                    for ant_idx in range(phaseval.shape[2]):
+                        phaseval[0, :, ant_idx, 0, 0] += phaserot
+                    self.update_array(ss._f_get_child(soltab), phaseval, 'val')
+        print("########################")
+
+        self.circ2lin()
+
+        return self
 
 if __name__ == '__main__':
 

@@ -1,6 +1,5 @@
 """
 Script for smoothing bandpass with median filter.
-Useful for fitting on strange patterns in bandpass.
 
 Be careful with usage and always check the results in the plots given at the end.
 
