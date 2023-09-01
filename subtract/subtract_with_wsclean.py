@@ -291,22 +291,24 @@ class SubtractWSClean:
             print('Subtract ' + ms)
             ts = ct.table(ms, readonly=False)
             colnames = ts.colnames()
+            ts.close()
 
             if "MODEL_DATA" not in colnames:
                 sys.exit(f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
 
             if not self.onlyprint:
                 if out_column not in colnames:
-                    # get column description from DATA
-                    desc = ts.getcoldesc('DATA')
-                    # create output column
-                    desc['name'] = out_column
-                    # create template for output column
-                    ts.addcols(desc)
+                    cmd = 'DP3 msin=' + ms + ' msout=. steps=[] msout.datacolumn=' + out_column + ' '
+                    cmd += 'msin.datacolumn=DATA msout.storagemanager=dysco'
+                    print('Copying DATA column into ' + out_column + ': ' + cmd)
+                    os.system(cmd)
 
                 else:
                     print(out_column, ' already exists')
 
+            ts = ct.table(ms, readonly=False)
+            colnames = ts.colnames()            
+            
             # get number of rows
             nrows = ts.nrows()
             # make sure every slice has the same size
