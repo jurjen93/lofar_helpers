@@ -346,13 +346,18 @@ class SubtractWSClean:
         for n, argument in enumerate(comparse):
             if argument in ['-gridder', '-padding', '-parallel-gridding',
                             '-idg-mode', '-beam-aterm-update', '-pol', '-scale']:
-                command.append(' '.join(comparse[n:n + 2]))
+                if ' '.join(comparse[n:n + 2])=='-gridder wgridder-apply-primary-beam':
+                    command.append('-gridder wgridder')
+                    command.append('-apply-primary-beam')
+                else:
+                    command.append(' '.join(comparse[n:n + 2]))
             elif argument in ['-size']:
                 command.append(' '.join(comparse[n:n + 3]))
             elif argument in ['-use-differential-lofar-beam', '-grid-with-beam',
                               '-use-idg', '-log-time', '-gap-channel-division',
                               '-apply-primary-beam']:
-                command.append(argument)
+                if argument not in command:
+                    command.append(argument)
             if argument == '-taper-gaussian':
                 self.scale = comparse[n + 1]
             elif argument == '-scale' and '-taper-gaussian' not in comparse:
@@ -378,6 +383,7 @@ class SubtractWSClean:
                         f'-facet-beam-update {comparse[comparse.index("-facet-beam-update") + 1]}']
 
         command += [' '.join(self.mslist)]
+
 
         # run
         print('\n'.join(command))
