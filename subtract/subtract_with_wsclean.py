@@ -571,7 +571,7 @@ if __name__ == "__main__":
             model_images = glob('*-model*.fits')
             oldname = model_images[0].split("-")[0]
             for model in model_images:
-                os.system('mv ' + model + ' ' + model.replace(oldname, args.output_name))
+                os.system('mv ' + model + ' ' + model.replace(oldname, args.output_name.replace('-', '_')))
 
     # --forwidefield --> will read averaging and phasecenter from polygon_info.csv
     if args.forwidefield:
