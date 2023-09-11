@@ -161,12 +161,10 @@ class SubtractWSClean:
                 os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-????-model-pb.fits')[0]))
 
         # select correct model images
-        if len(glob('*-????-model-pb.fits')) >=1:
-            self.model_images = glob('*-????-model-pb.fits')
-        elif len(glob('*-????-model.fits')) >=1:
-            self.model_images = glob('*-????-model.fits')
+        if len(glob('*-????-model-pb.fits')+glob('*-????-model.fits')) >=1:
+            self.model_images = glob('*-????-model-pb.fits')+glob('*-????-model.fits')
         else:
-            self.model_images = glob('*-model-*.fits')
+            sys.exit("ERROR: No model images found.")
 
         return self
 
@@ -551,19 +549,16 @@ if __name__ == "__main__":
         if args.model_image_folder is not None:
             if len(glob(args.model_image_folder + '/*-????-model-pb.fits'))>1:
                 os.system('cp ' + args.model_image_folder + '/*-????-model-pb.fits .')
+                os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
             elif len(glob(args.model_image_folder + '/*-????-model.fits'))>1:
                 os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
             elif len(glob(args.model_image_folder + '/*-model-pb.fits'))>1:
                 os.system('cp ' + args.model_image_folder + '/*-model-pb.fits .')
+                os.system('cp ' + args.model_image_folder + '/*-model.fits .')
             elif len(glob(args.model_image_folder + '/*-model.fits'))>1:
                 os.system('cp ' + args.model_image_folder + '/*-model.fits .')
             else:
                 sys.exit("ERROR: missing model images in folder "+args.model_image_folder)
-
-        # remove MFS images if in folder
-        if len(glob("*-????-model*.fits"))>1 and len(glob("*MFS-model*.fits"))>1:
-            for mfs in glob("*MFS-model*.fits"):
-                os.system('rm '+mfs)
 
         # rename model images
         if args.output_name is not None:
