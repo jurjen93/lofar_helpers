@@ -529,6 +529,8 @@ if __name__ == "__main__":
     parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)')
     parser.add_argument('--model_image_folder', type=str,
                         help='folder where model images are stored (if not given script takes model images from run folder)')
+    parser.add_argument('--model_images', nargs='+',
+                        help='instead of --model_image_folder, you can also specify the model images to use')
     parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north')
     parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
     parser.add_argument('--h5parm_predict', type=str, help='h5 solution file')
@@ -544,8 +546,7 @@ if __name__ == "__main__":
     parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
     parser.add_argument('--forwidefield', action='store_true',
                         help='will search for the polygon_info.csv file to extract information from')
-    parser.add_argument('--skip_predict', action='store_true',
-                        help='skip predict and do only subtract')
+    parser.add_argument('--skip_predict', action='store_true', help='skip predict and do only subtract')
     args = parser.parse_args()
 
     if not args.skip_predict:
@@ -564,6 +565,9 @@ if __name__ == "__main__":
                 os.system('cp ' + args.model_image_folder + '/*-model.fits .')
             else:
                 sys.exit("ERROR: missing model images in folder "+args.model_image_folder)
+        elif args.model_images is not None:
+            for model in args.model_images:
+                os.system('cp '+model+' .')
 
         # rename model images
         if args.output_name is not None:
@@ -640,9 +644,9 @@ if __name__ == "__main__":
     if args.phasecenter is not None or \
             args.freqavg is not None or \
             args.timeavg is not None or \
-            args.concat is not None or \
-            args.applybeam is not None or \
-            args.applycal is not None:
+            args.concat or \
+            args.applybeam or \
+            args.applycal:
         print('############## RUN DP3 ##############')
         if args.applycal_h5 is not None:
             applycalh5 = args.applycal_h5
@@ -655,3 +659,7 @@ if __name__ == "__main__":
 
         object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeavg=timeavg,
                        concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5, dirname=dirname)
+
+        print(f"DONE: See output --> sub{object.scale}*.ms")
+    else:
+        print(f"DONE: Output is SUBTRACT_DATA column in input MS")
