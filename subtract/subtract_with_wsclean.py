@@ -502,6 +502,8 @@ class SubtractWSClean:
             dp3_cmd.write('\n'.join(command))
             dp3_cmd.close()
 
+            print(f"Make subtract_concat.ms")
+
             if not self.onlyprint:
                 os.system(' '.join(command) + " > dp3.subtract.log")
         else:
@@ -512,6 +514,8 @@ class SubtractWSClean:
                 dp3_cmd = open("dp3.cmd", "w")
                 dp3_cmd.write('\n'.join(command))
                 dp3_cmd.close()
+
+                print(f"Make sub{self.scale}_{ms}")
 
                 if not self.onlyprint:
                     os.system(' '.join(command + [f'msin={ms}', f'msout=sub{self.scale}_{ms}']) + f" > dp3.sub{n}.log")
