@@ -41,7 +41,7 @@ class GetSolint:
 
         :param h5: h5parm
         :param optimal_score: score to fit solution interval
-        :param ref_solint: reference solution interval
+        :param ref_solint: reference solution interval in minutes
         """
         self.h5 = h5
         self.optimal_score = optimal_score
@@ -190,7 +190,7 @@ if __name__ == "__main__":
     # set std score, for which you want to find the solint
     optimal_score = 2
 
-    # reference solution interval
+    # reference solution interval in minutes
     ref_solint = 10
 
     # solution file
