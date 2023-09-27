@@ -211,7 +211,6 @@ class GetSolint:
 
 if __name__ == '__main__':
     import argparse
-    # from ..find_solint import GetSolint
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--h5', nargs='+', help='selfcal phasediff solutions', default=None)
@@ -220,7 +219,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # set std score, for which you want to find the solint
-    optimal_score = 1.5
+    optimal_score = 2.3
 
     # reference solution interval
     ref_solint = 10
