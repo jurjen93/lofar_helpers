@@ -250,7 +250,7 @@ class MergeH5:
             self.h5_tables = glob(h5_tables)
         else:
             print('No h5 table given. Use all h5 tables in current folder.')
-            self.h5_tables = glob('*.h5')
+            self.h5_tables = tuple(glob('*.h5'))
 
         # get time and freq axis
         if type(h5_time_freq)==bool and h5_time_freq==True:
@@ -1800,7 +1800,7 @@ class MergeH5:
         H.close()
         return self
 
-    def upsample_weights(self):
+    def add_weights(self):
         """
         Upsample weights (propagate flags to weights)
 
@@ -1837,7 +1837,7 @@ class MergeH5:
                             if newvals.shape[-1] != weight_out.shape[-1]:
                                 temp = ones(shape)
                                 for n in range(temp.shape[-1]):
-                                    temp[..., n] *= newvals[..., 0]
+                                    temp[..., m, n] *= newvals[..., 0, 0]
                                 newvals = temp
                             weight_out *= newvals
                         else:
@@ -1849,22 +1849,22 @@ class MergeH5:
 
                         pol_index = axes_new.index('pol')
                         if weight_out.shape[pol_index] == newvals.shape[pol_index]: # same pol numbers
-                            weight_out *= newvals
+                            weight_out[:, :, :, m, ...] *= newvals[:, :, :, m, ...]
                         else: # not the same polarization axis
                             if newvals.shape[pol_index] != newvals.shape[-1]:
                                 sys.exit('ERROR: Upsampling of weights bug due to polarization axis mismatch.\n'
                                          + self.debug_message)
                             if newvals.shape[pol_index] == 1: # new values have only 1 pol axis
                                 for i in range(weight_out.shape[pol_index]):
-                                    weight_out[:, :, :, :, i] *= newvals[:, :, :, :, 0]
+                                    weight_out[:, :, :, m, i] *= newvals[:, :, :, m, 0]
                             elif newvals.shape[pol_index] == 2 and weight_out.shape[pol_index] == 1:
                                 for i in range(newvals.shape[pol_index]):
-                                    weight_out[:, :, :, :, 0] *= newvals[:, :, :, :, i]
+                                    weight_out[:, :, :, m, 0] *= newvals[:, :, :, m, i]
                             elif newvals.shape[pol_index] == 2 and weight_out.shape[pol_index] == 4:
-                                weight_out[:, :, :, :, 0] *= newvals[:, :, :, :, 0]
-                                weight_out[:, :, :, :, 1] *= newvals[:, :, :, :, 0] * newvals[:, :, :, :, -1]
-                                weight_out[:, :, :, :, 2] *= newvals[:, :, :, :, 0] * newvals[:, :, :, :, -1]
-                                weight_out[:, :, :, :, -1] *= newvals[:, :, :, :, -1]
+                                weight_out[:, :, :, m, 0] *= newvals[:, :, :, m, 0]
+                                weight_out[:, :, :, m, 1] *= newvals[:, :, :, m, 0] * newvals[:, :, :, m, -1]
+                                weight_out[:, :, :, m, 2] *= newvals[:, :, :, m, 0] * newvals[:, :, :, m, -1]
+                                weight_out[:, :, :, m, -1] *= newvals[:, :, :, m, -1]
                             else:
                                 sys.exit('ERROR: Upsampling of weights bug due to unexpected polarization mismatch.\n'
                                          + self.debug_message)
@@ -2578,7 +2578,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     # Propagate weight flags from input into output
     if propagate_flags:
-        merge.upsample_weights()
+        merge.add_weights()
 
     # Add antennas
     if (add_cs or add_ms_stations) and len(merge.ms)==0:
@@ -2605,7 +2605,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         merge.reorder_directions()
 
     # Check if station weights are fully flagged in input and flag in output as well
-    if check_flagged_station:
+    if check_flagged_station and not propagate_flags:
         merge.flag_stations()
 
     # Check table source size
@@ -2696,7 +2696,7 @@ if __name__ == '__main__':
     parser.add_argument('--filter_directions', type=str, default=None, help='Filter out a list of indexed directions from your output solution file. Only lists allowed (example: --filter_directions [2, 3]).')
     parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output from MS (needs --ms).')
     parser.add_argument('--add_ms_stations', action='store_true', default=None, help='Use only antenna stations from measurement set (needs --ms). Note that this is different from --add_cs, as it does not keep the international stations if these are not in the MS.')
-    parser.add_argument('--not_flagstation', action='store_true', default=None, help='Do not flag any station if station is flagged in input solution file.')
+    parser.add_argument('--no_station_check', action='store_true', default=None, help='Do not flag complete station (for all directions) if entire station is flagged somewhere in input solution file.')
     parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and return in output file.')
     parser.add_argument('--no_antenna_check', action='store_true', default=None, help='Do not compare antennas.')
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
@@ -2779,5 +2779,5 @@ if __name__ == '__main__':
              check_flagged_station=not args.not_flagstation,
              propagate_flags=args.propagate_flags,
              merge_diff_freq=args.merge_diff_freq,
-             no_antenna_check=args.no_antenna_check,
+             no_antenna_check=args.no_station_check,
              output_summary=args.output_summary)

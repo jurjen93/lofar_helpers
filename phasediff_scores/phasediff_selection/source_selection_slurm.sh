@@ -9,12 +9,12 @@ BIND=$( python3 $HOME/parse_settings.py --BIND ) # SEE --> https://github.com/ju
 SIMG=$( python3 $HOME/parse_settings.py --SIMG )
 #SCRIPT FOLDER
 LOFAR_HELPERS=$( python3 $HOME/parse_settings.py --lofar_helpers )
-SCRIPT_DIR=.
+SCRIPT_DIR=$PWD
 
 #phasediff output folder
 mkdir -p phasediff_h5s
 
-DIR=$( awk 'NR==${SLURM_ARRAY_TASK_ID}' $PLIST )
+DIR=$( awk NR==${SLURM_ARRAY_TASK_ID} $PLIST )
 
 echo "$DIR"
 mkdir $DIR
