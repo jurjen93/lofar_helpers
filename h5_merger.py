@@ -1849,22 +1849,22 @@ class MergeH5:
 
                         pol_index = axes_new.index('pol')
                         if weight_out.shape[pol_index] == newvals.shape[pol_index]: # same pol numbers
-                            weight_out[:, :, :, m, ...] *= newvals[:, :, :, m, ...]
+                            weight_out[:, :, :, m, ...] *= newvals[:, :, :, 0, ...]
                         else: # not the same polarization axis
                             if newvals.shape[pol_index] != newvals.shape[-1]:
                                 sys.exit('ERROR: Upsampling of weights bug due to polarization axis mismatch.\n'
                                          + self.debug_message)
                             if newvals.shape[pol_index] == 1: # new values have only 1 pol axis
                                 for i in range(weight_out.shape[pol_index]):
-                                    weight_out[:, :, :, m, i] *= newvals[:, :, :, m, 0]
+                                    weight_out[:, :, :, m, i] *= newvals[:, :, :, 0, 0]
                             elif newvals.shape[pol_index] == 2 and weight_out.shape[pol_index] == 1:
                                 for i in range(newvals.shape[pol_index]):
-                                    weight_out[:, :, :, m, 0] *= newvals[:, :, :, m, i]
+                                    weight_out[:, :, :, m, 0] *= newvals[:, :, :, 0, i]
                             elif newvals.shape[pol_index] == 2 and weight_out.shape[pol_index] == 4:
-                                weight_out[:, :, :, m, 0] *= newvals[:, :, :, m, 0]
-                                weight_out[:, :, :, m, 1] *= newvals[:, :, :, m, 0] * newvals[:, :, :, m, -1]
-                                weight_out[:, :, :, m, 2] *= newvals[:, :, :, m, 0] * newvals[:, :, :, m, -1]
-                                weight_out[:, :, :, m, -1] *= newvals[:, :, :, m, -1]
+                                weight_out[:, :, :, m, 0] *= newvals[:, :, :, 0, 0]
+                                weight_out[:, :, :, m, 1] *= newvals[:, :, :, 0, 0] * newvals[:, :, :, 0, -1]
+                                weight_out[:, :, :, m, 2] *= newvals[:, :, :, 0, 0] * newvals[:, :, :, 0, -1]
+                                weight_out[:, :, :, m, -1] *= newvals[:, :, :, 0, -1]
                             else:
                                 sys.exit('ERROR: Upsampling of weights bug due to unexpected polarization mismatch.\n'
                                          + self.debug_message)
