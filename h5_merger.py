@@ -215,7 +215,7 @@ class MergeH5:
     """Merge multiple h5 tables"""
 
     def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
-                 solset='sol000', filtered_dir=None, no_antenna_check=None, merge_diff_freq=None):
+                 solset='sol000', filtered_dir=None, no_antenna_crash=None, merge_diff_freq=None):
         """
         :param h5_out: name of merged output h5 table
         :param h5_tables: h5 tables to merge, can be both list and string
@@ -225,7 +225,7 @@ class MergeH5:
         :param merge_all_in_one: merge all in one direction
         :param solset: solset name
         :param filtered_dir: directions to filter (needs to be list with indices)
-        :param no_antenna_check: do not check antennas
+        :param no_antenna_crash: do not crash if antenna tables are not the same between h5s
         :param merge_diff_freq: merging tables with different frequencies
         """
 
@@ -372,7 +372,7 @@ class MergeH5:
             sys.exit('ERROR: Cannot read frequency axis from input MS set or input H5.')
         if len(self.ax_time) == 0:
             sys.exit('ERROR: Cannot read time axis from input MS or input H5.')
-        if not self.have_same_antennas and not no_antenna_check:
+        if not self.have_same_antennas and not no_antenna_crash:
             sys.exit('ERROR: Antenna tables are not the same')
 
         # convert tec to phase?
@@ -2476,7 +2476,7 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, add_ms_stations=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_check=None, output_summary=None):
+             check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_crash=None, output_summary=None):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -2498,9 +2498,9 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param add_cs: use MS to replace super station with core station
     :param add_ms_stations: return only stations from Measurement set
     :param check_output: check if output has all correct output information
-    :param check_flagged_station: check if input stations are flagged, if so flag same stations in output
+    :param check_flagged_station: check if complete input stations are flagged, if so flag same stations in output
     :param propagate_flags: interpolate weights and return in output file
-    :param no_antenna_check: do not compare antennas
+    :param no_antenna_crash: do not crash if antenna tables are not the same between h5s
     :param output_summary: print solution file output
     """
 
@@ -2540,7 +2540,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     # Merge class setup
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
                     merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir,
-                    no_antenna_check=no_antenna_check, merge_diff_freq=merge_diff_freq)
+                    no_antenna_crash=no_antenna_crash, merge_diff_freq=merge_diff_freq)
 
     # Time averaging
     if time_av:
@@ -2696,9 +2696,9 @@ if __name__ == '__main__':
     parser.add_argument('--filter_directions', type=str, default=None, help='Filter out a list of indexed directions from your output solution file. Only lists allowed (example: --filter_directions [2, 3]).')
     parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output from MS (needs --ms).')
     parser.add_argument('--add_ms_stations', action='store_true', default=None, help='Use only antenna stations from measurement set (needs --ms). Note that this is different from --add_cs, as it does not keep the international stations if these are not in the MS.')
-    parser.add_argument('--no_station_check', action='store_true', default=None, help='Do not flag complete station (for all directions) if entire station is flagged somewhere in input solution file.')
+    parser.add_argument('--no_stationflag_check', action='store_true', default=None, help='Do not flag complete station (for all directions) if entire station is flagged somewhere in input solution file.')
     parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and return in output file.')
-    parser.add_argument('--no_antenna_check', action='store_true', default=None, help='Do not compare antennas.')
+    parser.add_argument('--no_antenna_crash', action='store_true', default=None, help='Do not check if antennas are in h5.')
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables with different frequencies')
@@ -2776,8 +2776,8 @@ if __name__ == '__main__':
              check_output=args.check_output,
              time_av=args.time_av,
              freq_av=args.freq_av,
-             check_flagged_station=not args.not_flagstation,
+             check_flagged_station=not args.no_stationflag_check,
              propagate_flags=args.propagate_flags,
              merge_diff_freq=args.merge_diff_freq,
-             no_antenna_check=args.no_station_check,
+             no_antenna_crash=args.no_antenna_crash,
              output_summary=args.output_summary)
