@@ -150,6 +150,8 @@ class SubtractWSClean:
             if fmin > self.fmax_ms or fmax < self.fmin_ms:
                 print(modim + ' does not overlap with MS bandwidth --> DELETE')
                 os.system('rm ' + modim)
+            else:
+                print(modim + ' overlaps with MS bandwidth --> KEEP')
 
         # rename and resort model images --> remove trailing zeros when only 1 model image, otherwise renumber model images
         if len(glob('*-????-model.fits')) > 1:
