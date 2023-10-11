@@ -168,6 +168,10 @@ class SubtractWSClean:
             self.model_images = glob('*-????-model-pb.fits')
         elif len(glob('*-????-model.fits')) >=1:
             self.model_images = glob('*-????-model.fits')
+        elif len(glob('*-model-pb.fits')) >= 1:
+            self.model_images = glob('*-model-pb.fits')
+        elif len(glob('*-model.fits')) >= 1:
+            self.model_images = glob('*-model.fits')
         else:
             sys.exit("ERROR: No model images found.")
 
