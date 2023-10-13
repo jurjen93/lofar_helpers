@@ -1818,6 +1818,7 @@ class MergeH5:
                 weight_out = ones(shape)
                 axes_new = make_utf8(st.val.attrs["AXES"]).split(',')
                 for m, input_h5 in enumerate(self.h5_tables):
+
                     print(input_h5)
                     T = tables.open_file(input_h5)
                     if soltab not in list(T.root._f_get_child(solset)._v_groups.keys()):
@@ -1827,6 +1828,9 @@ class MergeH5:
                     axes = make_utf8(st2.val.attrs["AXES"]).split(',')
                     weight = st2.weight[:]
                     weight = reorderAxes(weight, axes, [a for a in axes_new if a in axes])
+
+                    # important to do the following in case the input tables are not all different directions
+                    m = min(weight_out.shape[axes.index('dir')]-1, m)
 
                     newvals = self._interp_along_axis(weight, st2.time[:], st.time[:], axes_new.index('time'))
                     newvals = self._interp_along_axis(newvals, st2.freq[:], st.freq[:], axes_new.index('freq'))
@@ -1849,6 +1853,7 @@ class MergeH5:
 
                         pol_index = axes_new.index('pol')
                         if weight_out.shape[pol_index] == newvals.shape[pol_index]: # same pol numbers
+                            print(weight_out.shape, m, axes, len(self.h5_tables))
                             weight_out[:, :, :, m, ...] *= newvals[:, :, :, 0, ...]
                         else: # not the same polarization axis
                             if newvals.shape[pol_index] != newvals.shape[-1]:
@@ -2332,6 +2337,24 @@ class PolChange:
 
             self.solsetout.makeSoltab('amplitude', axesNames=self.axes_names, axesVals=self.axes_vals, vals=amplitude, weights=weights)
             print('Created new amplitude solutions')
+
+            # convert the polarization names, such that it is clear if the h5 is in circular or linear polarization
+            for solset in self.h5_out.getSolsetNames():
+                ss = self.h5_out.getSolset(solset)
+                for soltab in ss.getSoltabNames():
+                    st = ss.getSoltab(soltab)
+                    if 'pol' in st.getAxesNames():
+                        pols = st.getAxisValues('pol')
+                        if len(pols)==2:
+                            if lin2circ:
+                                st.setAxisValues('pol', ['RR', 'LL'])
+                            elif circ2lin:
+                                st.setAxisValues('pol', ['XX', 'YY'])
+                        if len(pols)==4:
+                            if lin2circ:
+                                st.setAxisValues('pol', ['RR', 'RL', 'LR', 'LL'])
+                            elif circ2lin:
+                                st.setAxisValues('pol', ['XX', 'XY', 'YX', 'YY'])
 
         self.h5_in.close()
         self.h5_out.close()
