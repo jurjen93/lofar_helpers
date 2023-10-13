@@ -615,15 +615,16 @@ if __name__ == "__main__":
             print('WARNING: no poly center in polygon_info.csv, use dir instead.')
             phasecenter = polygon['dir'].values[0]
 
-        # take only averaging factors that are channum%avg==0
-        avg = get_largest_divider(channum, int(polygon['avg'].values[0]))
+        avg = int(polygon['avg'].values[0])
 
-        freqavg = int(avg)
+        # take only averaging factors that are channum%avg==0
+        freqavg = get_largest_divider(channum, avg)
+
         try:
             # if there is pre averaging done on the ms, we need to take this into account
-            timeavg = int(freqavg/get_time_preavg_factor(args.mslist[0]))
+            timeavg = int(avg/get_time_preavg_factor(args.mslist[0]))
         except:
-            timeavg = int(freqavg)
+            timeavg = int(avg)
         dirname = polygon['dir_name'].values[0]
 
     else:
