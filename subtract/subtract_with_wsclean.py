@@ -619,6 +619,8 @@ if __name__ == "__main__":
 
         # take only averaging factors that are channum%avg==0
         freqavg = get_largest_divider(channum, avg)
+        if freqavg==2 and avg==3: #TODO: hacky to speed up
+            freqavg=4
 
         try:
             # if there is pre averaging done on the ms, we need to take this into account
