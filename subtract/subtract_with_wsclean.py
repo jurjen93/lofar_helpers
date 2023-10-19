@@ -567,12 +567,14 @@ if __name__ == "__main__":
         if args.model_image_folder is not None:
             if len(glob(args.model_image_folder + '/*-????-model-pb.fits'))>1:
                 os.system('cp ' + args.model_image_folder + '/*-????-model-pb.fits .')
-                os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
+                if len(glob(args.model_image_folder + '/*-????-model.fits'))>1:
+                    os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
             elif len(glob(args.model_image_folder + '/*-????-model.fits'))>1:
                 os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
             elif len(glob(args.model_image_folder + '/*-model-pb.fits'))>1:
                 os.system('cp ' + args.model_image_folder + '/*-model-pb.fits .')
-                os.system('cp ' + args.model_image_folder + '/*-model.fits .')
+                if len(glob(args.model_image_folder + '/*-model.fits'))>1:
+                    os.system('cp ' + args.model_image_folder + '/*-model.fits .')
             elif len(glob(args.model_image_folder + '/*-model.fits'))>1:
                 os.system('cp ' + args.model_image_folder + '/*-model.fits .')
             else:
@@ -619,8 +621,6 @@ if __name__ == "__main__":
 
         # take only averaging factors that are channum%avg==0
         freqavg = get_largest_divider(channum, avg)
-        if freqavg==2 and avg==3: #TODO: hacky to speed up
-            freqavg=4
 
         try:
             # if there is pre averaging done on the ms, we need to take this into account
