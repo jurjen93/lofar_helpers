@@ -620,7 +620,7 @@ if __name__ == "__main__":
         avg = int(polygon['avg'].values[0])
 
         # take only averaging factors that are channum%avg==0
-        freqavg = get_largest_divider(channum, avg)
+        freqavg = get_largest_divider(channum, avg+1)
 
         try:
             # if there is pre averaging done on the ms, we need to take this into account
