@@ -25,16 +25,29 @@ freqtimetest = glob('different_freqs/*.h5')
 merge_h5(h5_out='diff.h5', h5_tables=freqtimetest, ms_files='different_freqs/L693725_SB303_uv_12D4EA9ADt_132MHz.msdpppconcat.avg',
          h5_time_freq=True, lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
          filtered_dir=None, add_cs=None, check_output=True, freq_av=None, time_av=None,
-         check_flagged_station=True, propagate_flags=True, output_summary=True, add_ms_stations=True)
+         check_flagged_station=True, propagate_flags=True, output_summary=True, add_ms_stations=True, merge_diff_freq=True)
 
 H = tables.open_file('diff.h5')
 shape = H.root.sol000.phase000.weight.shape
-if shape[0]!=1618 and len(H.root.sol000.antenna[:])==75 and np.all(H.root.sol000.amplitude000.val[:, : , -1, :, :]==1):
+if shape[0]!=1618 or len(H.root.sol000.antenna[:])!=75 or np.all(H.root.sol000.amplitude000.val[:, : , -1, :, :]!=1):
     sys.exit('Freq/Time propagation wrong')
 else:
     print("CORRECT TEST")
 
 H.close()
+
+#time/freq coverage
+merge_h5(h5_out='diff.h5', h5_tables=freqtimetest,
+         h5_time_freq=True, lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
+         filtered_dir=None, add_cs=None, check_output=True, freq_av=None, time_av=None,
+         check_flagged_station=True, propagate_flags=True, output_summary=True, merge_diff_freq=True)
+
+H = tables.open_file('diff.h5')
+shape = H.root.sol000.phase000.weight.shape
+if shape[0]!=1618 or len(H.root.sol000.antenna[:])!=61 or round(H.root.sol000.phase000.val[:][0,0,0,0,0],3)!=0.043:
+    sys.exit('Freq/Time propagation wrong')
+else:
+    print("CORRECT TEST")
 
 #weight merge
 merge_h5(h5_out='weight.h5', h5_tables=weighttest,
@@ -300,6 +313,7 @@ else:
     sys.exit('Values tec diff:\n'+str(values.round(4))+'\nVS\n'+str(8.6688))
 H.close()
 
+
 merge_h5(h5_out='tectest.h5', h5_tables=tectest[1], ms_files=None,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None,
              filtered_dir=None, add_cs=None, check_output=True, freq_av=8, time_av=None,
@@ -318,10 +332,10 @@ merge_h5(h5_out='tectest.h5', h5_tables=glob('tectest2/*.h5'), ms_files=None,
              check_flagged_station=True, propagate_flags=True)
 H = tables.open_file('tectest.h5')
 values = H.root.sol000.phase000.val[0,-4,0,0,0]
-if np.all(0.3724 == values.round(4)):
+if np.all(0.2857 == values.round(4)):
     print('CORRECT TEST')
 else:
-    sys.exit('Values tec diff:\n'+str(values.round(4))+'\nVS\n'+str(0.3724))
+    sys.exit('Values tec diff:\n'+str(values.round(4))+'\nVS\n'+str(0.2857))
 H.close()
 
 #no convert

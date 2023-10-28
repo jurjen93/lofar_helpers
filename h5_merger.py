@@ -13,7 +13,7 @@ from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
-    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose
+    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose, cumsum, insert
 import os
 import re
 from scipy.interpolate import interp1d
@@ -88,6 +88,8 @@ YX = -iRR - iRL + iLR + iLL
 YY = RR - RL - LR + LL
 -----------------------------
 """
+
+debug_message = 'Please contact jurjendejong@strw.leidenuniv.nl.'
 
 def remove_numbers(inp):
     """
@@ -210,6 +212,23 @@ def take_numpy_axis(numpy_array, axis, idx):
     else:
         sys.exit('ERROR: typical index number does not exceed 4, but you asked for '+str(axis)+
                  '\nOr this script is outdated or you made a mistake.')
+
+def has_integer(input):
+    """
+    Check if string has integer
+
+    :param input: input string
+
+    :return: return boolean (True/False) if integer in string
+    """
+
+    try:
+        for s in str(input):
+            if s.isdigit():
+                return True
+        return False
+    except: # dangerous but ok for now ;-)
+        return False
 
 class MergeH5:
     """Merge multiple h5 tables"""
@@ -392,8 +411,6 @@ class MergeH5:
             sys.exit("ERROR: Merging not compatitable with multiple directions and double fuljones merge") #TODO: update
 
         self.merge_diff_freq = merge_diff_freq
-        self.debug_message = 'Please contact jurjendejong@strw.leidenuniv.nl.'
-
 
 
     @property
@@ -404,27 +421,6 @@ class MergeH5:
 
         :return: boolean if antennas are the same (True/False).
         """
-
-        # for h5_name1 in self.h5_tables:
-        #     H_ref = tables.open_file(h5_name1, 'r+')
-        #     for solset1 in H_ref.root._v_groups.keys():
-        #         ss1 = H_ref.root._f_get_child(solset1)
-        #         if 'antenna' not in list(ss1._v_children.keys()):
-        #             H_ref.create_table(ss1, 'antenna',
-        #                                array([], dtype=[('name', 'S16'), ('position', '<f4', (3,))]),
-        #                                title='Antenna names and positions')
-        #         if len(ss1._f_get_child('antenna')[:]) == 0:
-        #             print('Antenna table ('+'/'.join([solset1, 'antenna'])+') in '+h5_name1+' is empty')
-        #             if len(self.ms)>0:
-        #                 print('WARNING: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
-        #                         '\nWARNING: Trying to fill antenna table with measurement set')
-        #                 H_ref.close()
-        #                 copy_antennas_from_MS_to_h5(self.ms[0], h5_name1, solset1)
-        #             else:
-        #                 H_ref.close()
-        #                 sys.exit('ERROR: '+'/'.join([solset1, 'antenna'])+' in '+h5_name1+' is empty.'
-        #                         '\nAdd --ms to add a measurement set to fill up the antenna table')
-        #     H_ref.close()
 
         for h5_name1 in self.h5_tables:
             H_ref = tables.open_file(h5_name1)
@@ -476,9 +472,9 @@ class MergeH5:
 
         return True
 
-    def _extract_h5(self, st, solset, soltab):
+    def _unpack_h5(self, st, solset, soltab):
         """
-        Extract, check, and reorder the values from the h5 table to merge.
+        Unpack, check, and reorder the values from the h5 table to merge.
 
         :param st: solution table
         :param solset: solset name
@@ -506,6 +502,8 @@ class MergeH5:
         if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1]:
             sys.exit("ERROR: Time axes of h5 and MS are not overlapping.\n"
                      "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
+        print(freq_axes)
+        print(self.ax_freq)
         if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1]:
             sys.exit("ERROR: Frequency axes of h5 and MS are not overlapping.\n"
                      "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
@@ -617,7 +615,7 @@ class MergeH5:
                     values_tmp[:, :, :, :, -1, ...] = 1
                     values_tmp[:, :, :, :, 0, ...] = 1
             for idx_old, f_v in enumerate(freq_axes):
-                idx_new = list([round(i/1000000, 1) for i in self.ax_freq]).index(round(f_v/1000000, 1))
+                idx_new = list([round(i/1_000_000, 1) for i in self.ax_freq]).index(round(f_v/1_000_000, 1))
 
                 if self.axes_current.index(ax) == 0:
                     values_tmp[idx_new, ...] = values[idx_old, ...]
@@ -681,24 +679,6 @@ class MergeH5:
                     sorted(tp_rotation, key=lambda x: float(x[-3:])),
                     sorted(tp_error, key=lambda x: float(x[-3:]))]
 
-    @staticmethod
-    def has_integer(input):
-        """
-        Check if string has integer
-
-        :param input: input string
-
-        :return: return boolean (True/False) if integer in string
-        """
-
-        try:
-            for s in str(input):
-                if s.isdigit():
-                    return True
-            return False
-        except: # dangerous but ok for now ;-)
-            return False
-
     def get_allkeys(self):
         """
         Get all solution sets, solutions tables, and ax names in lists.
@@ -731,7 +711,7 @@ class MergeH5:
         self.all_axes = set(self.all_axes)
         return self
 
-    def _get_template_values(self, soltab):
+    def _make_template_values(self, soltab):
         """
         Make template numpy array to fill up during merging.
 
@@ -838,14 +818,14 @@ class MergeH5:
                     st = ss.getSoltab(soltab)
 
                 if not self.convert_tec or (self.convert_tec and 'tec' not in soltab):
-                    self._get_template_values(soltab)
+                    self._make_template_values(soltab)
                     self.axes_final = [an for an in self.solaxnames if an in st.getAxesNames()]
                     if len(self.polarizations)>1 and 'pol' not in st.getAxesNames():
                         self.axes_final.insert(0, 'pol')
                 elif 'tec' in soltab and self.convert_tec:
                     for st_group in self.all_soltabs:
                         if soltab in st_group and ('phase000' not in st_group and 'phase{n}'.format(n=soltab[-3:])):
-                            self._get_template_values(soltab)
+                            self._make_template_values(soltab)
                             self.axes_final = [an for an in self.solaxnames if an in st.getAxesNames()]
                             if len(self.polarizations) > 1 and 'pol' not in st.getAxesNames():
                                 self.axes_final = ['pol'] + self.axes_final
@@ -893,7 +873,7 @@ class MergeH5:
     @staticmethod
     def remove_invalid_values(soltab, values, axlist):
         """
-        Correct invalid values.
+        Correct invalid values in tables (infinite, nan).
 
         Only finite values allowed.
 
@@ -1015,7 +995,7 @@ class MergeH5:
             print('This table has {dircount} direction(s)'.format(dircount=num_dirs))
 
             # get values from h5 file
-            table_values = self._extract_h5(st, solset, soltab)
+            table_values = self._unpack_h5(st, solset, soltab)
 
             for dir_idx in range(num_dirs): # loop over all directions in h5
 
@@ -1848,7 +1828,7 @@ class MergeH5:
                             sys.exit('ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from '
                                      + input_h5 + ': ' + str(axes) + '\n axes from '
                                      + self.h5name_out + ': ' + str(axes_new) + '.\n'
-                                     + self.debug_message)
+                                     + debug_message)
                     elif set(axes) == set(axes_new) and 'pol' in axes: # same axes
 
                         pol_index = axes_new.index('pol')
@@ -1858,7 +1838,7 @@ class MergeH5:
                         else: # not the same polarization axis
                             if newvals.shape[pol_index] != newvals.shape[-1]:
                                 sys.exit('ERROR: Upsampling of weights bug due to polarization axis mismatch.\n'
-                                         + self.debug_message)
+                                         + debug_message)
                             if newvals.shape[pol_index] == 1: # new values have only 1 pol axis
                                 for i in range(weight_out.shape[pol_index]):
                                     weight_out[:, :, :, m, i] *= newvals[:, :, :, 0, 0]
@@ -1872,7 +1852,7 @@ class MergeH5:
                                 weight_out[:, :, :, m, -1] *= newvals[:, :, :, 0, -1]
                             else:
                                 sys.exit('ERROR: Upsampling of weights bug due to unexpected polarization mismatch.\n'
-                                         + self.debug_message)
+                                         + debug_message)
                     elif set(axes) == set(axes_new) and 'pol' not in axes: # same axes but no pol
                         dirind = axes_new.index('dir')
                         if weight_out.shape[dirind] != newvals.shape[dirind] and newvals.shape[dirind] == 1:
@@ -1889,7 +1869,7 @@ class MergeH5:
                         sys.exit('ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from '
                                 + input_h5 +': '+str(axes) +'\n axes from '
                                 + self.h5name_out +': '+str(axes_new)+'.\n'
-                                + self.debug_message)
+                                + debug_message)
 
                     T.close()
                 st.weight[:] = weight_out
@@ -2495,6 +2475,55 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
 
     return
 
+def check_freq_overlap(h5_tables):
+    """
+    Verify if the frequency bands between the h5 tables overlap
+    :param h5_tables: h5parm input tables
+    """
+    for h51 in h5_tables:
+        H = tables.open_file(h51)
+        for h52 in h5_tables:
+            F = tables.open_file(h52)
+            try:
+                if h51!=h52 and F.root.sol000.phase000.freq[:].max() < H.root.sol000.phase000.freq[:].min():
+                        print(f"WARNING: frequency bands between {h51} and {h52} do not overlap, you might want to use "
+                         f"--merge_diff_freq to merge over different frequency bands")
+            except:
+                try:
+                    if h51 != h52 and F.root.sol000.amplitude000.freq[:].max() < H.root.sol000.amplitude000.freq[:].min():
+                        print(f"WARNING: frequency bands between {h51} and {h52} do not overlap, you might want to use "
+                              f"--merge_diff_freq to merge over different frequency bands")
+                except:
+                    pass
+
+def check_time_overlap(h5_tables):
+    """
+    Verify if the time slots between the h5 tables overlap
+    :param h5_tables: h5parm input tables
+    """
+    for h51 in h5_tables:
+        H = tables.open_file(h51)
+        for h52 in h5_tables:
+            F = tables.open_file(h52)
+            try:
+                if h51!=h52 and F.root.sol000.phase000.time[:].max() < H.root.sol000.phase000.time[:].min():
+                        print(f"WARNING: time slots between {h51} and {h52} do not overlap, might result in interpolation issues")
+            except:
+                try:
+                    if h51 != h52 and F.root.sol000.amplitude000.time[:].max() < H.root.sol000.amplitude000.time[:].min():
+                        print(
+                            f"WARNING: time slots between {h51} and {h52} do not overlap, might result in interpolation issues")
+                except:
+                    pass
+
+def running_mean(nparray, avgfactor):
+    """
+    Running mean over numpy axis
+    :param nparray: numpy array
+    :param avgfactor: averaging factor
+    """
+    cs = cumsum(insert(nparray, 0, 0))
+    return (cs[avgfactor:] - cs[:-avgfactor]) / float(avgfactor)
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
@@ -2507,8 +2536,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param h5_tables (string or list): h5 tables to merge
     :param ms_files (string or list): ms files
     :param h5_time_freq (str or boolean): h5 file to take freq and time axis from
-    :param freq_av (int): averaging of frequency axis
-    :param time_av (int): averaging of time axis
+    :param freq_av (int): averaging factor frequency axis
+    :param time_av (int): averaging factor time axis
     :param convert_tec (boolean): convert TEC to phase or not
     :param merge_all_in_one: merge all in one direction
     :param lin2circ: boolean for linear to circular conversion
@@ -2560,6 +2589,11 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     #################### MERGING ####################
     #################################################
 
+    # Check if frequencies from h5_tables overlap
+    if not merge_diff_freq:
+        check_freq_overlap(h5_tables)
+    check_time_overlap(h5_tables)
+
     # Merge class setup
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
                     merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir,
@@ -2568,12 +2602,18 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     # Time averaging
     if time_av:
         print("Time averaging with factor "+str(time_av))
-        merge.ax_time = merge.ax_time[::int(time_av)]
+        if len(merge.ax_time)>=time_av:
+            merge.ax_time = running_mean(merge.ax_time, time_av)[::int(time_av)]
+        else:
+            print("WARNING: Time averaging factor larger than time axis, no averaging applied")
 
     # Freq averaging
     if freq_av:
         print("Frequency averaging with factor "+str(freq_av))
-        merge.ax_freq = merge.ax_freq[::int(freq_av)]
+        if len(merge.ax_freq)>=freq_av:
+            merge.ax_freq = running_mean(merge.ax_freq, freq_av)[::int(freq_av)]
+        else:
+            print("WARNING: Frequency averaging factor larger than frequency axis, no averaging applied")
 
     # Get all keynames
     merge.get_allkeys()
@@ -2724,7 +2764,7 @@ if __name__ == '__main__':
     parser.add_argument('--no_antenna_crash', action='store_true', default=None, help='Do not check if antennas are in h5.')
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
-    parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables with different frequencies')
+    parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables over different frequency bands')
 
     # parser.add_argument('--keep_sourcenames', action='store_true', default=None, help='Keep the name of the input sources')
     args = parser.parse_args()
