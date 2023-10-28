@@ -423,14 +423,14 @@ class SubtractWSClean:
         return False
 
     def run_DP3(self, phaseshift: str = None, freqavg: str = None,
-                timeavg: str = None, concat: bool = None,
+                timeres: str = None, concat: bool = None,
                 applybeam: bool = None, applycal_h5: str = None, dirname: str = None):
         """
         Run DP3 command
 
         :param phaseshift: do phase shift to specific center
         :param freqavg: frequency averaging
-        :param timeavg: time averaging
+        :param timeres: time resolution in seconds
         :param concat: concat the measurement sets
         :param applybeam: apply beam in phaseshifted phase center (or otherwise center of field)
         :param applycal_h5: applycal solution file
@@ -485,7 +485,7 @@ class SubtractWSClean:
                 T.close()
 
         # 4) AVERAGING
-        if freqavg is not None or timeavg is not None:
+        if freqavg is not None or timeres is not None:
             steps.append('avg')
             command += ['avg.type=averager']
             if freqavg is not None:
@@ -493,11 +493,11 @@ class SubtractWSClean:
                     command += [f'avg.freqstep={int(freqavg)}']
                 else:
                     command += [f'avg.freqresolution={freqavg}']
-            if timeavg is not None:
-                if str(timeavg).isdigit():
-                    command += [f'avg.timestep={int(timeavg)}']
-                else:
-                    command += [f'avg.timeresolution={timeavg}']
+            if timeres is not None:
+                # if str(timeres).isdigit():
+                #     command += [f'avg.timestep={int(timeres)}']
+                # else:
+                    command += [f'avg.timeresolution={timeres}']
 
         command += ['steps=' + str(steps).replace(" ", "").replace("\'", "")]
 
@@ -550,7 +550,7 @@ if __name__ == "__main__":
     parser.add_argument('--phasecenter', type=str,
                         help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
     parser.add_argument('--freqavg', type=str, help='frequency averaging')
-    parser.add_argument('--timeavg', type=str, help='time averaging')
+    parser.add_argument('--timeres', type=str, help='time resolution averaging in secondsZ')
     parser.add_argument('--concat', action='store_true', help='concat MS')
     parser.add_argument('--applybeam', action='store_true', help='apply beam in phaseshift center or center of field')
     parser.add_argument('--applycal', action='store_true', help='applycal after subtraction and phaseshifting')
@@ -607,6 +607,11 @@ if __name__ == "__main__":
         channum = len(t.getcol("CHAN_FREQ")[0])
         t.close()
 
+        t = ct.table(args.mslist[0])
+        time = np.unique(t.getcol("TIME"))
+        dtime = abs(time[1]-time[0])
+        t.close()
+
         polygon = polygon_info.loc[polygon_info.polygon_file == args.region.split('/')[-1]]
         try:
             phasecenter = polygon['poly_center'].values[0]
@@ -624,15 +629,15 @@ if __name__ == "__main__":
 
         try:
             # if there is pre averaging done on the ms, we need to take this into account
-            timeavg = int(avg/get_time_preavg_factor(args.mslist[0]))
+            timeres = int(avg/get_time_preavg_factor(args.mslist[0])*dtime)
         except:
-            timeavg = int(avg)
+            timeres = int(avg*dtime)
         dirname = polygon['dir_name'].values[0]
 
     else:
         phasecenter = args.phasecenter
         freqavg = args.freqavg
-        timeavg = args.timeavg
+        timeres = args.timeres
         dirname = None
 
     object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north,
@@ -658,7 +663,7 @@ if __name__ == "__main__":
     # extra DP3 step
     if args.phasecenter is not None or \
             args.freqavg is not None or \
-            args.timeavg is not None or \
+            args.timeres is not None or \
             args.concat or \
             args.applybeam or \
             args.applycal:
@@ -672,7 +677,7 @@ if __name__ == "__main__":
         else:
             applycalh5 = None
 
-        object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeavg=timeavg,
+        object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeres=timeres,
                        concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5, dirname=dirname)
 
         print(f"DONE: See output --> sub{object.scale}*.ms")
