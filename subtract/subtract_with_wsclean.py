@@ -559,6 +559,7 @@ if __name__ == "__main__":
     parser.add_argument('--forwidefield', action='store_true',
                         help='will search for the polygon_info.csv file to extract information from')
     parser.add_argument('--skip_predict', action='store_true', help='skip predict and do only subtract')
+    parser.add_argument('--even_time_avg', action='store_true', help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
     args = parser.parse_args()
 
     if not args.skip_predict:
@@ -629,9 +630,16 @@ if __name__ == "__main__":
 
         try:
             # if there is pre averaging done on the ms, we need to take this into account
-            timeres = int(avg/get_time_preavg_factor(args.mslist[0])*dtime)
+            timeres = int(avg//get_time_preavg_factor(args.mslist[0])*dtime)
+
         except:
             timeres = int(avg*dtime)
+
+        # in case of widefield imaging and stacking multiple nights, you might want to have only even time resolutions
+        if args.even_time_avg and timeres % 2 != 0:
+            timeres -= 1
+            print(f"Time resolution from {timeres + 1} to {timeres}")
+
         dirname = polygon['dir_name'].values[0]
 
     else:
