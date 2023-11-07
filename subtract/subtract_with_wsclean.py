@@ -351,10 +351,10 @@ class SubtractWSClean:
 
         f = fits.open(self.model_images[0])
         comparse = str(f[0].header['HISTORY']).replace('\n', '').split()
-        command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}', '-mem 50']
+        command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}', '-mem 50', '-parallel-gridding 2']
 
         for n, argument in enumerate(comparse):
-            if argument in ['-gridder', '-padding', '-parallel-gridding',
+            if argument in ['-gridder', '-padding',
                             '-idg-mode', '-beam-aterm-update', '-pol', '-scale']:
                 if ' '.join(comparse[n:n + 2])=='-gridder wgridder-apply-primary-beam':
                     command.append('-gridder wgridder')
