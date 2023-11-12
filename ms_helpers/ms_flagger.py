@@ -1,13 +1,24 @@
 from argparse import ArgumentParser
 import os
 
-if __name__ == '__main__':
+def parse_args():
+    """
+    Command line argument parser
 
+    :return: parsed arguments
+    """
     parser = ArgumentParser()
     parser.add_argument('--ms', nargs='+', help='Input ms', required=True)
     parser.add_argument('--freqrange', help='Frequency range in MHz (example: 140-158)', required=True)
     parser.add_argument('--ant', help='Antenna (example: RS409HBA)', required=True)
-    args = parser.parse_args()
+    return parser.parse_args()
+
+def main():
+    """
+    Main function
+    """
+
+    args = parse_args()
 
     min_freq, max_freq = [float(f) for f in args.freqrange.split('-')]
 
@@ -23,3 +34,6 @@ if __name__ == '__main__':
 
         print(' '.join(command))
         os.system(' '.join(command))
+
+if __name__ == '__main__':
+    main()

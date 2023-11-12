@@ -13,12 +13,14 @@ YY = RR - RL - LR + LL
 -----------------------------
 """
 
+
 class PhaseRotate:
     """
     Make template h5 with default values (phase=0 and amplitude=1) and convert to phase rotate matrix for
     polarization alignment between different observations.
     """
-    def __init__(self, name_in, name_out, freqs = None):
+
+    def __init__(self, name_in, name_out, freqs=None):
         os.system(' '.join(['cp', name_in, name_out]))
         self.h5 = tables.open_file(name_out, 'r+')
         self.axes = ['time', 'freq', 'ant', 'dir', 'pol']
@@ -58,12 +60,12 @@ class PhaseRotate:
             self.h5.create_array(st, arrayname, new_val.astype(valtype), atom=atomtype)
         else:
             self.h5.create_array(st, arrayname, new_val.astype(valtype))
-        if arrayname=='val' or arrayname=='weight':
+        if arrayname == 'val' or arrayname == 'weight':
             st._f_get_child(arrayname).attrs['AXES'] = bytes(','.join(self.axes), 'utf-8')
 
         return self
 
-    def make_template(self, shape = None, polrot = None):
+    def make_template(self, shape=None, polrot=None):
         """
         Make template h5
 
@@ -72,7 +74,7 @@ class PhaseRotate:
         """
 
         print("1) MAKE TEMPLATE H5PARM")
-        amplitudedone=False
+        amplitudedone = False
         for solset in self.h5.root._v_groups.keys():
             ss = self.h5.root._f_get_child(solset)
             for soltab in ss._v_groups.keys():
@@ -89,7 +91,7 @@ class PhaseRotate:
                     new_val = np.ones(shape)
                     new_val[..., 1] = 0
                     new_val[..., 2] = 0
-                    amplitudedone=True
+                    amplitudedone = True
                 else:
                     continue
                 self.time = np.array([st.time[:][0]])
@@ -101,10 +103,9 @@ class PhaseRotate:
 
             if not amplitudedone:
                 pass
-                #TODO: add
+                # TODO: add
 
         return self
-
 
     def circ2lin(self):
         """
@@ -120,12 +121,10 @@ class PhaseRotate:
 
         print('\n3) CONVERTING CIRCULAR TO LINEAR POLARIZATION\n'
               '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%'
-              +circ2lin_math+
+              + circ2lin_math +
               '%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%')
 
-
         G = self.h5.root.sol000.amplitude000.val[:] * np.exp(self.h5.root.sol000.phase000.val[:] * 1j)
-
 
         XX = (G[..., 0] + G[..., -1])
         XY = 1j * (G[..., 0] - G[..., -1])
@@ -171,12 +170,12 @@ class PhaseRotate:
         """
         print('\n2) ADD PHASE ROTATION')
 
-        phaserot = intercept+rotation_measure*(speed_of_light/self.freqs)**2
+        phaserot = intercept + rotation_measure * (speed_of_light / self.freqs) ** 2
 
         mapping = list(zip(list(self.freqs), list(phaserot)))
         print('########################\nFrequency to rotation in radian (circular base):\n------------------------')
         for element in mapping:
-            print(str(int(element[0]))+'Hz --> '+str(round(element[1], 3))+'rad')
+            print(str(int(element[0])) + 'Hz --> ' + str(round(element[1], 3)) + 'rad')
 
         # print('Rotate with rotation angle: '+str(intercept) + ' radian')
         for solset in self.h5.root._v_groups.keys():
@@ -194,15 +193,24 @@ class PhaseRotate:
 
         return self
 
-if __name__ == '__main__':
 
+def parse_args():
+    """
+    Command line argument parser
+
+    :return: parsed arguments
+    """
     parser = ArgumentParser()
-    parser.add_argument('--h5_in', type=str, help='input h5 (from which to extract the frequencies and antennas)', required=True)
+    parser.add_argument('--h5_in', type=str, help='input h5 (from which to extract the frequencies and antennas)',
+                        required=True)
     parser.add_argument('--h5_out', type=str, help='output name (output solution file)', required=True)
     parser.add_argument('--intercept', type=float, help='intercept for rotation angle')
     parser.add_argument('--RM', type=float, help='rotation measure')
-    args = parser.parse_args()
+    return parser.parse_args()
 
+
+def main():
+    args = parse_args()
     phaserot = PhaseRotate(args.h5_in, args.h5_out)
     if args.intercept is None:
         phaserot.make_template()
@@ -211,3 +219,7 @@ if __name__ == '__main__':
         phaserot.rotate(intercept=args.intercept, rotation_measure=args.RM)
 
     phaserot.h5.close()
+
+
+if __name__ == '__main__':
+    main()

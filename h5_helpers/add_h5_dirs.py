@@ -3,17 +3,30 @@ from argparse import ArgumentParser
 import os
 import numpy as np
 
-if __name__ == '__main__':
+
+def parse_args():
+    """
+    Command line argument parser
+
+    :return: parsed arguments
+    """
 
     parser = ArgumentParser()
-    parser.add_argument('--h5_in', type=str, help='input h5 (from which to extract the frequencies and antennas)', required=True)
+    parser.add_argument('--h5_in', type=str, help='input h5 (from which to extract the frequencies and antennas)',
+                        required=True)
     parser.add_argument('--h5_dirs', type=str, help='h5 with directions to copy from', required=True)
     parser.add_argument('--h5_out', type=str, help='output h5')
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+    """Main function"""
+
+    args = parse_args()
 
     os.system(f'cp {args.h5_in} {args.h5_out}')
 
-    print("Make "+args.h5_out)
+    print("Make " + args.h5_out)
 
     H = tables.open_file(args.h5_out, "r+")
     T = tables.open_file(args.h5_dirs)
@@ -42,3 +55,7 @@ if __name__ == '__main__':
 
         H.root.sol000._f_get_child(table).dir._f_remove()
         H.create_array(H.root.sol000._f_get_child(table), 'dir', T.root.sol000._f_get_child(table).dir[:])
+
+
+if __name__ == '__main__':
+    main()

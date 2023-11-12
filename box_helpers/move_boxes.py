@@ -6,6 +6,8 @@ When closing, the new region files will be generated.
 
 from glob import glob
 import os
+from argparse import ArgumentParser
+
 
 def move_boxes(file, folder):
     try:
@@ -30,8 +32,9 @@ def move_boxes(file, folder):
         print("Failing to open ds9 to verify box selection, check if installed and try to run on the commandline"
               "\nds9 {FILE} -regions load all '{DATALOC}/boxes/*.reg'".format(FILE=file, DATALOC=folder))
 
-if __name__ == '__main__':
-    from argparse import ArgumentParser
+def parse_args():
+    """Command line parser"""
+
     parser = ArgumentParser()
     parser.add_argument('-l', '--location', type=str, help='data location folder name', default='.')
     parser.add_argument('-f', '--file', type=str, help='fitsfile name',
@@ -42,4 +45,14 @@ if __name__ == '__main__':
     if folder[-1] == '/':
         folder = folder[0:-1]
 
+    return args, folder
+
+def main():
+    """Main function"""
+
+    args, folder = parse_args()
+
     move_boxes(args.file, folder)
+
+if __name__ == '__main__':
+    main()

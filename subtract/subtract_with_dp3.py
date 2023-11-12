@@ -319,10 +319,7 @@ class SubtractDP3:
 
         return self
 
-
-
-if __name__ == "__main__":
-
+def main():
     from argparse import ArgumentParser
 
     parser = ArgumentParser(description='Subtract region with WSClean')
@@ -418,3 +415,6 @@ if __name__ == "__main__":
                        concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5, dirname=dirname)
         if not args.print_only_commands:
             Subtract.run(type='phaseshift')
+
+if __name__ == "__main__":
+    main()

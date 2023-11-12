@@ -8,6 +8,7 @@ from scipy.stats import circstd
 from glob import glob
 import csv
 import sys
+from argparse import ArgumentParser
 # sys.path.append("..")
 # from find_solint import GetSolint
 
@@ -209,14 +210,25 @@ class GetSolint:
             self.C = self._get_C
         return limit * np.sqrt(1 - np.exp(-(self.C / (2 * t))))
 
-if __name__ == '__main__':
-    import argparse
+def parse_args():
+    """
+    Command line argument parser
 
-    parser = argparse.ArgumentParser()
+    :return: parsed arguments
+    """
+    parser = ArgumentParser()
     parser.add_argument('--h5', nargs='+', help='selfcal phasediff solutions', default=None)
     parser.add_argument('--station', help='for specific station', default=None)
     parser.add_argument('--all_stations', action='store_true', help='for all stations specifically')
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+
+if __name__ == '__main__':
+
+    ###STILL AN EXPERIMENT!###
+
+    args = parse_args()
 
     # set std score, for which you want to find the solint
     optimal_score = 2.5

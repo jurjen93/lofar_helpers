@@ -10,6 +10,7 @@ import tables
 from itertools import repeat
 import re
 import pandas as pd
+from argparse import ArgumentParser
 
 
 def add_trailing_zeros(s, digitsize=4):
@@ -530,10 +531,12 @@ class SubtractWSClean:
 
         return self
 
+def main():
+    """
+    Main function
 
-if __name__ == "__main__":
-
-    from argparse import ArgumentParser
+    :param args: Arguments parsed by ArgumentParser
+    """
 
     parser = ArgumentParser(description='Subtract region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
@@ -560,6 +563,7 @@ if __name__ == "__main__":
                         help='will search for the polygon_info.csv file to extract information from')
     parser.add_argument('--skip_predict', action='store_true', help='skip predict and do only subtract')
     parser.add_argument('--even_time_avg', action='store_true', help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
+
     args = parser.parse_args()
 
     if not args.skip_predict:
@@ -691,3 +695,7 @@ if __name__ == "__main__":
         print(f"DONE: See output --> sub{object.scale}*.ms")
     else:
         print(f"DONE: Output is SUBTRACT_DATA column in input MS")
+
+
+if __name__ == "__main__":
+    main()

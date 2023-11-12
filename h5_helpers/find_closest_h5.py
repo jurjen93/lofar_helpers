@@ -5,10 +5,12 @@ import numpy as np
 import sys
 from argparse import ArgumentParser
 
+
 class FindClosestDir:
     """
     Make template h5
     """
+
     def __init__(self, h5_in, template_name):
         os.system(' '.join(['cp', h5_in, template_name]))
         print(f'Created {template_name}')
@@ -19,7 +21,6 @@ class FindClosestDir:
         # get input directions
         self.dirs = T.root.sol000.source[:]['dir']
         T.close()
-
 
     def make_template(self):
         """
@@ -32,7 +33,7 @@ class FindClosestDir:
         for solset in self.h5.root._v_groups.keys():
             ss = self.h5.root._f_get_child(solset)
             ss._f_get_child('source')._f_remove()
-            values = np.array([(b'Dir00', [0. ,  0. ])], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+            values = np.array([(b'Dir00', [0., 0.])], dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
             title = 'Source names and directions'
             self.h5.create_table(ss, 'source', values, title=title)
 
@@ -46,9 +47,9 @@ class FindClosestDir:
                     shape[dir_idx] = 1
 
                     # only phases are zeros, others are ones
-                    if 'phase' in soltab and axes!='weight':
+                    if 'phase' in soltab and axes != 'weight':
                         newvals = np.zeros(shape)
-                    elif 'amplitude' in soltab or axes=='weight':
+                    elif 'amplitude' in soltab or axes == 'weight':
                         newvals = np.ones(shape)
                     else:
                         newvals = np.zeros(shape)
@@ -87,11 +88,11 @@ class FindClosestDir:
             c1 = SkyCoord(dir[0], dir[1], unit='arcsecond', frame='icrs')  # your coords
             c2 = SkyCoord(coor[0], coor[1], unit='arcsecond', frame='icrs')
             sep = c1.separation(c2).value
-            if sep<min_sep:
+            if sep < min_sep:
                 min_sep_idx = n
 
         # Make sure this function selects a closest direction
-        assert min_sep_idx!=999, "ERROR: coordinate comparison went wrong?! (most likely a bug in h5 or code)"
+        assert min_sep_idx != 999, "ERROR: coordinate comparison went wrong?! (most likely a bug in h5 or code)"
         print(f"Closest direction for {coor} is {self.dirs[min_sep_idx]}")
 
         return min_sep_idx
@@ -128,7 +129,7 @@ class FindClosestDir:
                     # select values corresponding to closest direction index (idx variable)
                     allvals = self.h5_in.root._f_get_child(solset)._f_get_child(soltab)._f_get_child(axes)[:]
                     newvals = np.take(allvals, indices=[idx], axis=dir_idx)
-                    del allvals # save memory
+                    del allvals  # save memory
 
                     # get correct value type
                     valtype = str(st._f_get_child(axes).dtype)
@@ -149,22 +150,35 @@ class FindClosestDir:
         self.h5_out.close()
         return self
 
+
 def make_list(arglist):
     try:
-        return [[float(d) for d in dir.replace('[','').replace(']','').replace('(','').replace(')','').replace(' ','').split(',')] for dir in arglist]
+        return [[float(d) for d in
+                 dir.replace('[', '').replace(']', '').replace('(', '').replace(')', '').replace(' ', '').split(',')]
+                for dir in arglist]
     except ValueError:
         sys.exit("ERROR: --directions input invalid\nDo not use any spaces, example input: [0.1,0.2] [1.2,4.1]")
 
 
+def parse_args():
+    """
+    Command line argument parser
 
-
-if __name__ == '__main__':
+    :return: parsed arguments
+    """
 
     parser = ArgumentParser()
     parser.add_argument('--h5_in', help='Input h5parm', required=True)
-    parser.add_argument('--directions', nargs='+', help='directions to find the closest h5_in direction to (Example: (0.1, 0.2) (1.2, 3.1) (3.5, 1.2)', default=None)
-    args = parser.parse_args()
+    parser.add_argument('--directions', nargs='+',
+                        help='directions to find the closest h5_in direction to (Example: (0.1, 0.2) (1.2, 3.1) (3.5, 1.2)',
+                        default=None)
+    return parser.parse_args()
 
+
+def main():
+    """Main function"""
+
+    args = parse_args()
     inputh5 = args.h5_in
     dirs = make_list(args.directions)
 
@@ -179,3 +193,7 @@ if __name__ == '__main__':
     print('See output in --> output_h5s\n'
           'You can optionally use h5_merger.py to merge all the directions into 1 big h5 file\n'
           'Example command --> python h5_merger.py -in output_h5s/source_*.h5 -out merged.h5 --propagate_flags')
+
+
+if __name__ == '__main__':
+    main()

@@ -36,64 +36,7 @@ __all__ = ['']
 
 warnings.filterwarnings("ignore")
 
-parser = ArgumentParser()
-parser.add_argument('-f', '--file', type=str, help='fitsfile name')
-parser.add_argument('-l', '--location', type=str, help='data location folder name', default='.')
-parser.add_argument('--no_images', action='store_true', help='store images')
-parser.add_argument('--make_DL_food', action='store_true', help='store images for creating the DL model')
-parser.add_argument('--ds9', action='store_true', help='open ds9 to interactively check and change the box selection')
-parser.add_argument('-ac', '--angular_cutoff', type=float, default=None, help='angular distances higher than this value from the center will be excluded from the box selection')
-parser.add_argument('-mb', '--max_boxes', type=int, default=999, help='Set max number of boxes that can be made')
-args = parser.parse_args()
-print(args)
 
-if sys.version_info.major == 2:
-    print('ERROR: This code only works for Python 3. Please switch.\n.....ENDED.....')
-    sys.exit()
-
-folder = args.location
-if folder[-1] == '/':
-    folder = folder[0:-1]
-
-if args.make_DL_food:
-    os.system('mkdir -p {LOCATION}/DL_data/numpy'.format(LOCATION=folder))
-    os.system('mkdir -p {LOCATION}/DL_data/png'.format(LOCATION=folder))
-    if not os.path.isfile("{LOCATION}/DL_data/label_data.csv".format(LOCATION=folder)):
-        with open("{LOCATION}/DL_data/label_data.csv".format(LOCATION=folder), 'w') as file:
-            writer = csv.writer(file)
-            writer.writerow(["Name", "Recalibrate"])
-    # try: # Install tkinter/tk for using interactive window mode
-    #     import importlib
-    #     importlib_found = importlib.util.find_spec("tk") is not None
-    #     if not importlib_found:
-    #         os.system('pip install --user tk')
-    #     try:
-    #         import tk
-    #         use_tk = True
-    #     except ModuleNotFoundError:
-    #         use_tk = False
-    # except:
-    #     print('ERROR: tk cannot be installed')
-    #     use_tk = False
-
-
-#check if folder exists and create if not
-folders = folder.split('/')
-for i, f in enumerate(folders):
-    subpath = '/'.join(folder.split('/')[0:i+1])
-    if not os.path.isdir(subpath):
-        print(f'Create directory: {subpath}')
-        os.system(f'mkdir {subpath}')
-
-if not args.no_images:
-    try:
-        import matplotlib
-        matplotlib.use('Agg')
-        import matplotlib.pyplot as plt
-        from matplotlib.colors import SymLogNorm
-    except ImportError:
-        print('Failed to import matplotlib. Check your version.\nNo images will be made.')
-        args.no_images = True
 
 def resample_pixels(image_data, rows, cols):
     """Resample image by summing pixels together"""
@@ -495,8 +438,77 @@ class SetBoxes(Imaging):
             print(f'There are multiple sources in same box.\n Splitting possible.')
         return self
 
+def parse_args():
+    """Command line argument parser"""
 
-if __name__ == '__main__':
+    parser = ArgumentParser()
+    parser.add_argument('-f', '--file', type=str, help='fitsfile name')
+    parser.add_argument('-l', '--location', type=str, help='data location folder name', default='.')
+    parser.add_argument('--no_images', action='store_true', help='store images')
+    parser.add_argument('--make_DL_food', action='store_true', help='store images for creating the DL model')
+    parser.add_argument('--ds9', action='store_true',
+                        help='open ds9 to interactively check and change the box selection')
+    parser.add_argument('-ac', '--angular_cutoff', type=float, default=None,
+                        help='angular distances higher than this value from the center will be excluded from the box selection')
+    parser.add_argument('-mb', '--max_boxes', type=int, default=999, help='Set max number of boxes that can be made')
+    args = parser.parse_args()
+    print(args)
+
+    return args
+
+def main():
+    """Main function"""
+
+    args = parse_args()
+
+
+    if sys.version_info.major == 2:
+        print('ERROR: This code only works for Python 3. Please switch.\n.....ENDED.....')
+        sys.exit()
+
+    folder = args.location
+    if folder[-1] == '/':
+        folder = folder[0:-1]
+
+    if args.make_DL_food:
+        os.system('mkdir -p {LOCATION}/DL_data/numpy'.format(LOCATION=folder))
+        os.system('mkdir -p {LOCATION}/DL_data/png'.format(LOCATION=folder))
+        if not os.path.isfile("{LOCATION}/DL_data/label_data.csv".format(LOCATION=folder)):
+            with open("{LOCATION}/DL_data/label_data.csv".format(LOCATION=folder), 'w') as file:
+                writer = csv.writer(file)
+                writer.writerow(["Name", "Recalibrate"])
+        # try: # Install tkinter/tk for using interactive window mode
+        #     import importlib
+        #     importlib_found = importlib.util.find_spec("tk") is not None
+        #     if not importlib_found:
+        #         os.system('pip install --user tk')
+        #     try:
+        #         import tk
+        #         use_tk = True
+        #     except ModuleNotFoundError:
+        #         use_tk = False
+        # except:
+        #     print('ERROR: tk cannot be installed')
+        #     use_tk = False
+
+    # check if folder exists and create if not
+    folders = folder.split('/')
+    for i, f in enumerate(folders):
+        subpath = '/'.join(folder.split('/')[0:i + 1])
+        if not os.path.isdir(subpath):
+            print(f'Create directory: {subpath}')
+            os.system(f'mkdir {subpath}')
+
+    if not args.no_images:
+        try:
+            import matplotlib
+
+            matplotlib.use('Agg')
+            import matplotlib.pyplot as plt
+            from matplotlib.colors import SymLogNorm
+        except ImportError:
+            print('Failed to import matplotlib. Check your version.\nNo images will be made.')
+            args.no_images = True
 
     image = SetBoxes(fits_file=args.file)
 
@@ -620,3 +632,6 @@ if __name__ == '__main__':
     if args.ds9:
         from box_helpers.move_boxes import move_boxes
         move_boxes(args.file, folder)
+
+if __name__ == '__main__':
+    main()
