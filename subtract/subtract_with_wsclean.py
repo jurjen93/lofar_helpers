@@ -24,6 +24,7 @@ def add_trailing_zeros(s, digitsize=4):
     padded_string = "".join(repeat("0", digitsize)) + s
     return padded_string[-digitsize:]
 
+
 def get_largest_divider(inp, max=1000):
     """
     Get largest divider
@@ -38,6 +39,7 @@ def get_largest_divider(inp, max=1000):
             return r
     sys.exit("ERROR: code should not arrive here.")
 
+
 def isfloat(num):
     """
     Check if value is a float
@@ -48,6 +50,7 @@ def isfloat(num):
     except ValueError:
         return False
 
+
 def parse_history(ms, hist_item):
     """
     Grep specific history item from MS
@@ -57,9 +60,9 @@ def parse_history(ms, hist_item):
 
     :return: parsed string
     """
-    hist = os.popen('taql "SELECT * FROM '+ms+'::HISTORY" | grep '+hist_item).read().split(' ')
+    hist = os.popen('taql "SELECT * FROM ' + ms + '::HISTORY" | grep ' + hist_item).read().split(' ')
     for item in hist:
-        if hist_item in item and len(hist_item)<=len(item):
+        if hist_item in item and len(hist_item) <= len(item):
             return item
     print('WARNING:' + hist_item + ' not found')
     return None
@@ -78,8 +81,9 @@ def get_time_preavg_factor(ms: str = None):
     avg_num = re.findall(r'\d+', parsed_history.replace(parse_str, ''))[0]
     if avg_num.isdigit():
         factor = int(float(avg_num))
-        if factor!=1:
-            print("WARNING: " + ms + " time has been pre-averaged with factor "+str(factor)+". This might cause time smearing effects.")
+        if factor != 1:
+            print("WARNING: " + ms + " time has been pre-averaged with factor " + str(
+                factor) + ". This might cause time smearing effects.")
         return factor
     elif isfloat(avg_num):
         factor = float(avg_num)
@@ -88,6 +92,7 @@ def get_time_preavg_factor(ms: str = None):
     else:
         print("WARNING: parsed factor in " + ms + " is not a float or digit")
         return None
+
 
 class SubtractWSClean:
     def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, onlyprint: bool = False):
@@ -169,9 +174,9 @@ class SubtractWSClean:
                 os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-????-model-pb.fits')[0]))
 
         # select correct model images
-        if len(glob('*-????-model-pb.fits')) >=1:
+        if len(glob('*-????-model-pb.fits')) >= 1:
             self.model_images = glob('*-????-model-pb.fits')
-        elif len(glob('*-????-model.fits')) >=1:
+        elif len(glob('*-????-model.fits')) >= 1:
             self.model_images = glob('*-????-model.fits')
         elif len(glob('*-model-pb.fits')) >= 1:
             self.model_images = glob('*-model-pb.fits')
@@ -291,7 +296,6 @@ class SubtractWSClean:
 
         return self
 
-
     def subtract_col(self, out_column: str = None):
 
         """
@@ -305,7 +309,8 @@ class SubtractWSClean:
             colnames = ts.colnames()
 
             if "MODEL_DATA" not in colnames:
-                sys.exit(f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
+                sys.exit(
+                    f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
 
             if not self.onlyprint:
                 if out_column not in colnames:
@@ -326,12 +331,12 @@ class SubtractWSClean:
             best_slice = get_largest_divider(nrows, 1000)
             for c in range(0, nrows, best_slice):
                 if 'CORRECTED_DATA' in colnames:
-                    if c==0:
+                    if c == 0:
                         print('SUBTRACT --> CORRECTED_DATA - MODEL_DATA')
                     if not self.onlyprint:
                         data = ts.getcol('CORRECTED_DATA', startrow=c, nrow=best_slice)
                 else:
-                    if c==0:
+                    if c == 0:
                         print('SUBTRACT --> DATA - MODEL_DATA')
                     if not self.onlyprint:
                         data = ts.getcol('DATA', startrow=c, nrow=best_slice)
@@ -352,12 +357,13 @@ class SubtractWSClean:
 
         f = fits.open(self.model_images[0])
         comparse = str(f[0].header['HISTORY']).replace('\n', '').split()
-        command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}', '-mem 50', '-parallel-gridding 2']
+        command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}', '-mem 50',
+                   '-parallel-gridding 2']
 
         for n, argument in enumerate(comparse):
             if argument in ['-gridder', '-padding',
                             '-idg-mode', '-beam-aterm-update', '-pol', '-scale']:
-                if ' '.join(comparse[n:n + 2])=='-gridder wgridder-apply-primary-beam':
+                if ' '.join(comparse[n:n + 2]) == '-gridder wgridder-apply-primary-beam':
                     command.append('-gridder wgridder')
                     command.append('-apply-primary-beam')
                 else:
@@ -374,7 +380,7 @@ class SubtractWSClean:
             elif argument == '-scale' and '-taper-gaussian' not in comparse:
                 self.scale = comparse[n + 1]
 
-        if len(self.model_images)>1:
+        if len(self.model_images) > 1:
             command += ['-channels-out ' + str(len(self.model_images))]
 
         freqboundary = []
@@ -385,7 +391,7 @@ class SubtractWSClean:
             freqboundary.append(str(int(fcent + fdelt)))
             # fts.close()
 
-        if len(freqboundary)>0:
+        if len(freqboundary) > 0:
             command += ['-channel-division-frequencies ' + ','.join(freqboundary)]
 
         if h5parm is not None:
@@ -394,7 +400,6 @@ class SubtractWSClean:
                         f'-facet-beam-update {comparse[comparse.index("-facet-beam-update") + 1]}']
 
         command += [' '.join(self.mslist)]
-
 
         # run
         print('\n'.join(command))
@@ -458,7 +463,7 @@ class SubtractWSClean:
             steps.append('beam')
             command += ['beam.type=applybeam',
                         'beam.direction=[]',
-                        'beam.updateweights=True'] #TODO: ??
+                        'beam.updateweights=True']  # TODO: ??
 
         # 3) APPLYCAL
         if applycal_h5 is not None:
@@ -498,7 +503,7 @@ class SubtractWSClean:
                 # if str(timeres).isdigit():
                 #     command += [f'avg.timestep={int(timeres)}']
                 # else:
-                    command += [f'avg.timeresolution={timeres}']
+                command += [f'avg.timeresolution={timeres}']
 
         command += ['steps=' + str(steps).replace(" ", "").replace("\'", "")]
 
@@ -517,7 +522,7 @@ class SubtractWSClean:
                 os.system(' '.join(command) + " > dp3.subtract.log")
         else:
             for n, ms in enumerate(self.mslist):
-                command+=[f'msin={ms}', f'msout=sub{self.scale}_{ms}']
+                command += [f'msin={ms}', f'msout=sub{self.scale}_{ms}']
 
                 print('\n'.join(command))
                 dp3_cmd = open("dp3.cmd", "w")
@@ -530,6 +535,7 @@ class SubtractWSClean:
                     os.system(' '.join(command + [f'msin={ms}', f'msout=sub{self.scale}_{ms}']) + f" > dp3.sub{n}.log")
 
         return self
+
 
 def parse_args():
     """
@@ -559,9 +565,11 @@ def parse_args():
     parser.add_argument('--forwidefield', action='store_true',
                         help='will search for the polygon_info.csv file to extract information from')
     parser.add_argument('--skip_predict', action='store_true', help='skip predict and do only subtract')
-    parser.add_argument('--even_time_avg', action='store_true', help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
+    parser.add_argument('--even_time_avg', action='store_true',
+                        help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
 
     return parser.parse_args()
+
 
 def main():
     """
@@ -574,23 +582,23 @@ def main():
 
         # copy model images from model_image_folder
         if args.model_image_folder is not None:
-            if len(glob(args.model_image_folder + '/*-????-model-pb.fits'))>1:
+            if len(glob(args.model_image_folder + '/*-????-model-pb.fits')) > 1:
                 os.system('cp ' + args.model_image_folder + '/*-????-model-pb.fits .')
-                if len(glob(args.model_image_folder + '/*-????-model.fits'))>1:
+                if len(glob(args.model_image_folder + '/*-????-model.fits')) > 1:
                     os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
-            elif len(glob(args.model_image_folder + '/*-????-model.fits'))>1:
+            elif len(glob(args.model_image_folder + '/*-????-model.fits')) > 1:
                 os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
-            elif len(glob(args.model_image_folder + '/*-model-pb.fits'))>1:
+            elif len(glob(args.model_image_folder + '/*-model-pb.fits')) > 1:
                 os.system('cp ' + args.model_image_folder + '/*-model-pb.fits .')
-                if len(glob(args.model_image_folder + '/*-model.fits'))>1:
+                if len(glob(args.model_image_folder + '/*-model.fits')) > 1:
                     os.system('cp ' + args.model_image_folder + '/*-model.fits .')
-            elif len(glob(args.model_image_folder + '/*-model.fits'))>1:
+            elif len(glob(args.model_image_folder + '/*-model.fits')) > 1:
                 os.system('cp ' + args.model_image_folder + '/*-model.fits .')
             else:
-                sys.exit("ERROR: missing model images in folder "+args.model_image_folder)
+                sys.exit("ERROR: missing model images in folder " + args.model_image_folder)
         elif args.model_images is not None:
             for model in args.model_images:
-                os.system('cp '+model+' .')
+                os.system('cp ' + model + ' .')
 
         # rename model images
         if args.output_name is not None:
@@ -618,7 +626,7 @@ def main():
 
         t = ct.table(args.mslist[0])
         time = np.unique(t.getcol("TIME"))
-        dtime = abs(time[1]-time[0])
+        dtime = abs(time[1] - time[0])
         t.close()
 
         polygon = polygon_info.loc[polygon_info.polygon_file == args.region.split('/')[-1]]
@@ -634,14 +642,14 @@ def main():
         avg = int(polygon['avg'].values[0])
 
         # take only averaging factors that are channum%avg==0
-        freqavg = get_largest_divider(channum, avg+1)
+        freqavg = get_largest_divider(channum, avg + 1)
 
         try:
             # if there is pre averaging done on the ms, we need to take this into account
-            timeres = int(avg//get_time_preavg_factor(args.mslist[0])*dtime)
+            timeres = int(avg // get_time_preavg_factor(args.mslist[0]) * dtime)
 
         except:
-            timeres = int(avg*dtime)
+            timeres = int(avg * dtime)
 
         # in case of widefield imaging and stacking multiple nights, you might want to have only even time resolutions
         if args.even_time_avg and timeres % 2 != 0:
@@ -660,7 +668,6 @@ def main():
                              onlyprint=args.print_only_commands)
 
     if not args.skip_predict:
-
         # clean model images
         object.clean_model_images()
 

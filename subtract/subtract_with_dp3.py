@@ -23,6 +23,7 @@ def get_largest_divider(inp, max=1000):
             return r
     sys.exit("ERROR: code should not arrive here.")
 
+
 def isfloat(num):
     """
     Check if value is a float
@@ -33,6 +34,7 @@ def isfloat(num):
     except ValueError:
         return False
 
+
 def parse_history(ms, hist_item):
     """
     Grep specific history item from MS
@@ -42,9 +44,9 @@ def parse_history(ms, hist_item):
 
     :return: parsed string
     """
-    hist = os.popen('taql "SELECT * FROM '+ms+'::HISTORY" | grep '+hist_item).read().split(' ')
+    hist = os.popen('taql "SELECT * FROM ' + ms + '::HISTORY" | grep ' + hist_item).read().split(' ')
     for item in hist:
-        if hist_item in item and len(hist_item)<=len(item):
+        if hist_item in item and len(hist_item) <= len(item):
             return item
     print('WARNING:' + hist_item + ' not found')
     return None
@@ -63,8 +65,9 @@ def get_time_preavg_factor(ms: str = None):
     avg_num = re.findall(r'\d+', parsed_history.replace(parse_str, ''))[0]
     if avg_num.isdigit():
         factor = int(float(avg_num))
-        if factor!=1:
-            print("WARNING: " + ms + " time has been pre-averaged with factor "+str(factor)+". This might cause time smearing effects.")
+        if factor != 1:
+            print("WARNING: " + ms + " time has been pre-averaged with factor " + str(
+                factor) + ". This might cause time smearing effects.")
         return factor
     elif isfloat(avg_num):
         factor = float(avg_num)
@@ -74,14 +77,15 @@ def get_time_preavg_factor(ms: str = None):
         print("WARNING: parsed factor in " + ms + " is not a float or digit")
         return None
 
+
 class SubtractDP3:
 
     def __init__(self, mslist: list = None):
         self.mslist = mslist
         self.cmd = ['DP3',
-                   'msin.missingdata=True',
-                   'msin.orderms=False',
-                   'msout.storagemanager=dysco']
+                    'msin.missingdata=True',
+                    'msin.orderms=False',
+                    'msout.storagemanager=dysco']
         self.steps = []
 
     @staticmethod
@@ -126,7 +130,7 @@ class SubtractDP3:
                 best_slice = get_largest_divider(nrows, 1000)
                 for c in range(0, nrows, best_slice):
                     model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
-                    ts.putcol('MODEL_DATA', model*0, startrow=c, nrow=best_slice)
+                    ts.putcol('MODEL_DATA', model * 0, startrow=c, nrow=best_slice)
 
     def predict(self,
                 sourcedb: list = None,
@@ -138,9 +142,7 @@ class SubtractDP3:
         :param h5parm: h5 solutions
         """
 
-
         for n, source in enumerate(sourcedb):
-
             self.steps.append(f'beam{n}')
             self.steps.append(f'predict{n}')
 
@@ -149,19 +151,19 @@ class SubtractDP3:
             h5 = [h5 for h5 in h5parm if pnum in h5 and lnum in h5][0]
 
             H = tables.open_file(h5)
-            direction = H.root.sol000.source[:]['dir'] % (2*np.pi)
-            direction *= 360/(2*np.pi)
+            direction = H.root.sol000.source[:]['dir'] % (2 * np.pi)
+            direction *= 360 / (2 * np.pi)
 
-            self.cmd+= [f'predict{n}.type=predict',
-                        f'predict{n}.sourcedb={source}',
-                        f'predict{n}.applycal.steps=[amp,phase]',
-                        f'predict{n}.applycal.amp.correction=amplitude000',
-                        f'predict{n}.applycal.phase.correction=phase000',
-                        f'predict{n}.applycal.parmdb={h5}',
-                        f'predict{n}.operation=add',
-                        f'beam{n}.type=applybeam',
-                        f'beam{n}.direction=[{round(direction[0][0],5)}deg,{round(direction[0][1],5)}deg]'
-                        ]
+            self.cmd += [f'predict{n}.type=predict',
+                         f'predict{n}.sourcedb={source}',
+                         f'predict{n}.applycal.steps=[amp,phase]',
+                         f'predict{n}.applycal.amp.correction=amplitude000',
+                         f'predict{n}.applycal.phase.correction=phase000',
+                         f'predict{n}.applycal.parmdb={h5}',
+                         f'predict{n}.operation=add',
+                         f'beam{n}.type=applybeam',
+                         f'beam{n}.direction=[{round(direction[0][0], 5)}deg,{round(direction[0][1], 5)}deg]'
+                         ]
 
         self.cmd += ['steps=' + str(self.steps).replace(" ", "").replace("\'", ""),
                      'msout.datacolumn=MODEL_DATA',
@@ -186,7 +188,8 @@ class SubtractDP3:
             colnames = ts.colnames()
 
             if "MODEL_DATA" not in colnames:
-                sys.exit(f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
+                sys.exit(
+                    f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
 
             if out_column not in colnames:
                 # get column description from DATA
@@ -204,7 +207,7 @@ class SubtractDP3:
             # make sure every slice has the same size
             best_slice = get_largest_divider(nrows, 1000)
             for c in range(0, nrows, best_slice):
-                if c==0:
+                if c == 0:
                     print('SUBTRACT --> DATA - MODEL_DATA')
                 data = ts.getcol('DATA', startrow=c, nrow=best_slice)
                 model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
@@ -241,14 +244,14 @@ class SubtractDP3:
             phasecenter = f'[{phasecenter[0]},{phasecenter[1]}]'
             self.steps.append('ps')
             self.cmd += ['ps.type=phaseshifter',
-                        'ps.phasecenter=' + phasecenter]
+                         'ps.phasecenter=' + phasecenter]
 
         # 2) APPLY BEAM
         if applybeam:
             self.steps.append('beam')
             self.cmd += ['beam.type=applybeam',
-                        'beam.direction=[]',
-                        'beam.updateweights=True']
+                         'beam.direction=[]',
+                         'beam.updateweights=True']
 
         # 3) APPLYCAL
         if applycal_h5 is not None:
@@ -256,9 +259,9 @@ class SubtractDP3:
             if self.isfulljones(applycal_h5):
                 self.steps.append('ac')
                 self.cmd += ['ac.type=applycal',
-                            'ac.parmdb=' + applycal_h5,
-                            'ac.correction=fulljones',
-                            'ac.soltab=[amplitude000,phase000]']
+                             'ac.parmdb=' + applycal_h5,
+                             'ac.correction=fulljones',
+                             'ac.soltab=[amplitude000,phase000]']
                 if phaseshift is not None and dirname is not None:
                     self.cmd += ['ac.direction=' + dirname]
             # add non-fulljones solutions apply
@@ -267,8 +270,8 @@ class SubtractDP3:
                 T = tables.open_file(applycal_h5)
                 for corr in T.root.sol000._v_groups.keys():
                     self.cmd += [f'ac{ac_count}.type=applycal',
-                                f'ac{ac_count}.parmdb={applycal_h5}',
-                                f'ac{ac_count}.correction={corr}']
+                                 f'ac{ac_count}.parmdb={applycal_h5}',
+                                 f'ac{ac_count}.correction={corr}']
                     if phaseshift is not None and dirname is not None:
                         self.cmd += [f'ac{ac_count}.direction=' + dirname]
                     self.steps.append(f'ac{ac_count}')
@@ -293,8 +296,7 @@ class SubtractDP3:
         self.cmd += ['steps=' + str(self.steps).replace(" ", "").replace("\'", "")]
 
         self.cmd += [f'msin={",".join(self.mslist)}',
-                    f'msout=sub_{self.mslist[0]}']
-
+                     f'msout=sub_{self.mslist[0]}']
 
         print('\n'.join(self.cmd))
 
@@ -314,12 +316,13 @@ class SubtractDP3:
             check_output(' '.join(self.cmd), stderr=STDOUT, shell=True)
 
         self.cmd = ['DP3',
-                   'msin.missingdata=True',
-                   'msin.orderms=False',
-                   'msout.storagemanager=dysco']
+                    'msin.missingdata=True',
+                    'msin.orderms=False',
+                    'msout.storagemanager=dysco']
         self.steps = []
 
         return self
+
 
 def parse_args():
     """
@@ -348,7 +351,6 @@ def parse_args():
 
 
 def main():
-
     args = parse_args()
 
     Subtract = SubtractDP3(args.mslist)
@@ -386,7 +388,7 @@ def main():
         freqavg = int(avg)
         try:
             # if there is pre averaging done on the ms, we need to take this into account
-            timeavg = int(freqavg/get_time_preavg_factor(args.mslist[0]))
+            timeavg = int(freqavg / get_time_preavg_factor(args.mslist[0]))
         except:
             timeavg = int(freqavg)
         dirname = polygon['dir_name'].values[0]
@@ -420,9 +422,10 @@ def main():
             applycalh5 = None
 
         Subtract.moreDP3(phaseshift=phasecenter, freqavg=freqavg, timeavg=timeavg,
-                       concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5, dirname=dirname)
+                         concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5, dirname=dirname)
         if not args.print_only_commands:
             Subtract.run(type='phaseshift')
+
 
 if __name__ == "__main__":
     main()

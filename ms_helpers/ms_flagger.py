@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 import os
 
+
 def parse_args():
     """
     Command line argument parser

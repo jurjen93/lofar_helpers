@@ -3,6 +3,7 @@
 import os
 import re
 
+
 def isfloat(num):
     """
     Check if value is a float
@@ -12,6 +13,7 @@ def isfloat(num):
         return True
     except ValueError:
         return False
+
 
 def parse_history(ms, hist_item):
     """
