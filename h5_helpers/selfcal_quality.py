@@ -1,8 +1,11 @@
 """
 This script is a supporting script to quantify the quality of the self-calibration output from facetselfcal.py from
 https://github.com/rvweeren/lofar_facet_selfcal/blob/main/facetselfcal.py
+It will return a few plots and a csv with the quality improvements over self-calibration cycle. This might eventually
+be useful as a stopping criteria metric.
 
-It will return plots quantifying the change of solutions and images over self-calibration cycles.
+You only need to run this script in the folder with your facetselfcal output as
+python selfcal_quality.py
 """
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
