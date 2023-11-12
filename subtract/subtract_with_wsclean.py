@@ -531,13 +531,10 @@ class SubtractWSClean:
 
         return self
 
-def main():
+def parse_args():
     """
-    Main function
-
-    :param args: Arguments parsed by ArgumentParser
+    Command line argument parser
     """
-
     parser = ArgumentParser(description='Subtract region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
     parser.add_argument('--region', type=str, help='region file', required=True)
@@ -564,7 +561,14 @@ def main():
     parser.add_argument('--skip_predict', action='store_true', help='skip predict and do only subtract')
     parser.add_argument('--even_time_avg', action='store_true', help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
 
-    args = parser.parse_args()
+    return parser.parse_args()
+
+def main():
+    """
+    Main function
+    """
+
+    args = parse_args()
 
     if not args.skip_predict:
 

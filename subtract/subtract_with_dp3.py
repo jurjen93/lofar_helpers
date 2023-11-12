@@ -6,6 +6,8 @@ import tables
 import re
 import pandas as pd
 from subprocess import check_output, STDOUT
+from argparse import ArgumentParser
+
 
 def get_largest_divider(inp, max=1000):
     """
@@ -319,9 +321,10 @@ class SubtractDP3:
 
         return self
 
-def main():
-    from argparse import ArgumentParser
-
+def parse_args():
+    """
+    Command line argument parser
+    """
     parser = ArgumentParser(description='Subtract region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
     parser.add_argument('--sourcedb', nargs='+', help='source models', required=True)
@@ -341,7 +344,12 @@ def main():
     parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
     parser.add_argument('--forwidefield', action='store_true',
                         help='will search for the polygon_info.csv file to extract information from')
-    args = parser.parse_args()
+    return parser.parse_args()
+
+
+def main():
+
+    args = parse_args()
 
     Subtract = SubtractDP3(args.mslist)
 
