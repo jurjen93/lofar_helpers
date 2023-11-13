@@ -49,7 +49,7 @@ class SelfcalQuality:
         # select all sources
         regex = "merged_selfcalcyle\d{3}\_"
         self.sources = set([re.sub(regex, '', h.split('/')[-1]).replace('.ms.copy.phaseup.h5', '') for h in self.h5s])
-        self.sourcename = list(self.sources)[0].split('_')[-1]
+        # self.sourcename = list(self.sources)[0].split('_')[-1]
 
         # select all fits images
         fitsfiles = sorted(glob(self.folder + "/*MFS-I-image.fits"))
@@ -69,7 +69,7 @@ class SelfcalQuality:
         self.international_only = international_only
         self.dutch_only = dutch_only
 
-        self.textfile = open(f'selfcal_performance_{self.sourcename}.csv', 'w')
+        self.textfile = open(f'selfcal_performance.csv', 'w')
         self.writer = csv.writer(self.textfile)
         self.writer.writerow(['solutions', 'dirty'] + [str(i) for i in range(len(self.fitsfiles))])
 
@@ -319,13 +319,13 @@ class SelfcalQuality:
 
         # plot
         if self.dutch_only:
-            plotname = f'selfcal_stability_dutch_{self.sourcename}.png'
+            plotname = f'selfcal_stability_dutch.png'
         elif self.remote_only:
-            plotname = f'selfcal_stability_remote_{self.sourcename}.png'
+            plotname = f'selfcal_stability_remote.png'
         elif self.international_only:
-            plotname = f'selfcal_stability_international_{self.sourcename}.png'
+            plotname = f'selfcal_stability_international.png'
         else:
-            plotname = f'selfcal_stability_{self.sourcename}.png'
+            plotname = f'selfcal_stability.png'
         finalphase = np.mean(total_phase_scores, axis=0)
         finalamp = np.mean(total_amp_scores, axis=0)
 
@@ -407,9 +407,9 @@ class SelfcalQuality:
         entropy_images = [self.image_entropy(fts) for fts in self.fitsfiles]
         entropy_models = [self.image_entropy(fts) for fts in self.modelfiles]
 
-        self.make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'image_stability_{self.sourcename}.png')
+        self.make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'image_stability.png')
         self.make_figure(vals1=entropy_images, vals2=entropy_models, label1='Entropy image', label2='Entropy model',
-                         plotname=f'entropy_{self.sourcename}.png')
+                         plotname=f'entropy.png')
 
         self.writer.writerow(['min/max'] + minmaxs + [np.nan])
         self.writer.writerow(['rms'] + rmss + [np.nan])
@@ -476,9 +476,9 @@ def main():
     bestcycle_solutions, accept_solutions = sq.solution_stability()
     bestcycle_image, accept_image = sq.image_stability()
     sq.textfile.close()
-    df = pd.read_csv(f'selfcal_performance_{sq.sourcename}.csv').set_index('solutions').T
+    df = pd.read_csv(f'selfcal_performance.csv').set_index('solutions').T
     print(df)
-    df.to_csv(f'selfcal_performance_{sq.sourcename}.csv', index=False)
+    df.to_csv(f'selfcal_performance.csv', index=False)
 
     print(f"Best cycle according to solutions {bestcycle_solutions} (SCORES IN TESTING PHASE)")
     print(f"Accept according to solutions {accept_solutions} (SCORES IN TESTING PHASE)")
