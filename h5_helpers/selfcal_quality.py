@@ -22,10 +22,12 @@ import csv
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 import pandas as pd
+import sys
 
 
 class SelfcalQuality:
-    def __init__(self, folder: str = None, remote_only: bool = False, international_only: bool = False, dutch_only: bool = False):
+    def __init__(self, folder: str = None, remote_only: bool = False, international_only: bool = False,
+                 dutch_only: bool = False):
         """
         Determine quality of selfcal from facetselfcal.py
 
@@ -152,6 +154,9 @@ class SelfcalQuality:
 
         :return: image entropy value
         """
+        return 0
+
+        # TODO: NEED TO FIX
         file = fits.open(fitsfile)
         image = file[0].data
         file.close()
@@ -186,12 +191,13 @@ class SelfcalQuality:
         axes = self.make_utf8(H.root.sol000.phase000.val.attrs['AXES']).split(',')
         vals1 = H.root.sol000.phase000.val[:]
         weights1 = H.root.sol000.phase000.weight[:]
+        pols1 = H.root.sol000.phase000.pol[:]
 
         if h5_2 is not None:
             F = tables.open_file(h5_2)
             vals2 = F.root.sol000.phase000.val[:]
             weights2 = F.root.sol000.phase000.weight[:]
-
+            pols2 = F.root.sol000.phase000.pol[:]
 
         if self.dutch_only:
             stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
@@ -222,7 +228,20 @@ class SelfcalQuality:
 
         # take circular std from difference of previous and current selfcal cycle
         if h5_2 is not None:
-            prepphasescore = np.subtract(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2)
+            if len(pols1) != len(pols2):
+                if min(len(pols1), len(pols2)) == 1:
+                    prepphasescore = np.subtract(np.nan_to_num(vals1[..., 0]) * weights1[..., 0],
+                                                 np.nan_to_num(vals2[..., 0]) * weights2[..., 0])
+                elif min(len(pols1), len(pols2)) == 2:
+                    vals1 = np.take(vals1, [0, -1], axis=axes.index('pol'))
+                    vals2 = np.take(vals2, [0, -1], axis=axes.index('pol'))
+                    weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
+                    weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
+                    prepphasescore = np.subtract(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2)
+                else:
+                    sys.exit("ERROR: SHOULD NOT END UP HERE")
+            else:
+                prepphasescore = np.subtract(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2)
         else:
             prepphasescore = np.nan_to_num(vals1) * weights1
         phasescore = circstd(prepphasescore[prepphasescore != 0], nan_policy='omit')
@@ -239,8 +258,25 @@ class SelfcalQuality:
 
         # take std from ratio of previous and current selfcal cycle
         if h5_2 is not None:
-            prepampscore = np.nan_to_num(np.divide(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2),
-                                         posinf=0, neginf=0)
+
+            if len(pols1) != len(pols2):
+                if min(len(pols1), len(pols2)) == 1:
+                    prepampscore = np.divide(np.nan_to_num(vals1[..., 0]) * weights1[..., 0],
+                                             np.nan_to_num(vals2[..., 0]) * weights2[..., 0],
+                                             posinf=0, neginf=0)
+                elif min(len(pols1), len(pols2)) == 2:
+                    vals1 = np.take(vals1, [0, -1], axis=axes.index('pol'))
+                    vals2 = np.take(vals2, [0, -1], axis=axes.index('pol'))
+                    weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
+                    weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
+                    prepampscore = np.divide(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2,
+                                             posinf=0, neginf=0)
+                else:
+                    sys.exit("ERROR: SHOULD NOT END UP HERE")
+            else:
+                prepampscore = np.nan_to_num(
+                    np.divide(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2),
+                    posinf=0, neginf=0)
         else:
             prepampscore = np.nan_to_num(vals1) * weights1
         ampscore = np.std(prepampscore[prepampscore != 0])
