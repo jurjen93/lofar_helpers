@@ -230,18 +230,18 @@ class SelfcalQuality:
         if h5_2 is not None:
             if len(pols1) != len(pols2):
                 if min(len(pols1), len(pols2)) == 1:
-                    prepphasescore = np.subtract(np.nan_to_num(vals1[..., 0]) * weights1[..., 0],
-                                                 np.nan_to_num(vals2[..., 0]) * weights2[..., 0])
+                    vals1 = np.take(vals1, [0], axis=axes.index('pol'))
+                    vals2 = np.take(vals2, [0], axis=axes.index('pol'))
+                    weights1 = np.take(weights1, [0], axis=axes.index('pol'))
+                    weights2 = np.take(weights2, [0], axis=axes.index('pol'))
                 elif min(len(pols1), len(pols2)) == 2:
                     vals1 = np.take(vals1, [0, -1], axis=axes.index('pol'))
                     vals2 = np.take(vals2, [0, -1], axis=axes.index('pol'))
                     weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
                     weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
-                    prepphasescore = np.subtract(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2)
                 else:
                     sys.exit("ERROR: SHOULD NOT END UP HERE")
-            else:
-                prepphasescore = np.subtract(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2)
+            prepphasescore = np.subtract(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2)
         else:
             prepphasescore = np.nan_to_num(vals1) * weights1
         phasescore = circstd(prepphasescore[prepphasescore != 0], nan_policy='omit')
@@ -261,22 +261,21 @@ class SelfcalQuality:
 
             if len(pols1) != len(pols2):
                 if min(len(pols1), len(pols2)) == 1:
-                    prepampscore = np.divide(np.nan_to_num(vals1[..., 0]) * weights1[..., 0],
-                                             np.nan_to_num(vals2[..., 0]) * weights2[..., 0],
-                                             posinf=0, neginf=0)
+                    vals1 = np.take(vals1, [0], axis=axes.index('pol'))
+                    vals2 = np.take(vals2, [0], axis=axes.index('pol'))
+                    weights1 = np.take(weights1, [0], axis=axes.index('pol'))
+                    weights2 = np.take(weights2, [0], axis=axes.index('pol'))
+
                 elif min(len(pols1), len(pols2)) == 2:
                     vals1 = np.take(vals1, [0, -1], axis=axes.index('pol'))
                     vals2 = np.take(vals2, [0, -1], axis=axes.index('pol'))
                     weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
                     weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
-                    prepampscore = np.divide(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2,
-                                             posinf=0, neginf=0)
                 else:
                     sys.exit("ERROR: SHOULD NOT END UP HERE")
-            else:
-                prepampscore = np.nan_to_num(
-                    np.divide(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2),
-                    posinf=0, neginf=0)
+            prepampscore = np.nan_to_num(
+                np.divide(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2),
+                posinf=0, neginf=0)
         else:
             prepampscore = np.nan_to_num(vals1) * weights1
         ampscore = np.std(prepampscore[prepampscore != 0])
