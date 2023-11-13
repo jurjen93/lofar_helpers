@@ -13,7 +13,7 @@ __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 import re
 import tables
 from glob import glob
-from scipy.stats import circstd, linregress, circmean
+from scipy.stats import circstd, linregress
 import numpy as np
 import matplotlib.pyplot as plt
 from argparse import ArgumentParser
@@ -25,14 +25,16 @@ import pandas as pd
 
 
 class SelfcalQuality:
-    def __init__(self, folder: str = None, remote_only: bool = False, international_only: bool = False):
+    def __init__(self, folder: str = None, remote_only: bool = False, international_only: bool = False, dutch_only: bool = False):
         """
         Determine quality of selfcal from facetselfcal.py
 
         :param folder: path to where selfcal ran
+        :param dutch_only: consider dutch stations only for amp/phase stability
         :param remote_only: consider remote stations only for amp/phase stability
         :param international_only: consider international stations only for amp/phase stability
         """
+
         # selfcal folder
         self.folder = folder
         # merged selfcal h5parms
@@ -59,6 +61,7 @@ class SelfcalQuality:
         # for phase/amp evolution
         self.remote_only = remote_only
         self.international_only = international_only
+        self.dutch_only = dutch_only
 
         self.textfile = open('selfcal_performance.csv', 'w')
         self.writer = csv.writer(self.textfile)
@@ -189,7 +192,16 @@ class SelfcalQuality:
             vals2 = F.root.sol000.phase000.val[:]
             weights2 = F.root.sol000.phase000.weight[:]
 
-        if self.remote_only and not self.international_only:
+
+        if self.dutch_only:
+            stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
+                        ('CS' in self.make_utf8(station))]
+            vals1 = np.take(vals1, stations, axis=axes.index('ant'))
+            weights1 = np.take(weights1, stations, axis=axes.index('ant'))
+            if h5_2 is not None:
+                vals2 = np.take(vals2, stations, axis=axes.index('ant'))
+                weights2 = np.take(weights2, stations, axis=axes.index('ant'))
+        elif self.remote_only:
             stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
                         ('RS' in self.make_utf8(station))]
             vals1 = np.take(vals1, stations, axis=axes.index('ant'))
@@ -197,8 +209,7 @@ class SelfcalQuality:
             if h5_2 is not None:
                 vals2 = np.take(vals2, stations, axis=axes.index('ant'))
                 weights2 = np.take(weights2, stations, axis=axes.index('ant'))
-
-        elif self.international_only and not self.remote_only:
+        elif self.international_only:
             stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
                         not ('RS' in self.make_utf8(station)
                              or 'CS' in self.make_utf8(station)
@@ -221,12 +232,7 @@ class SelfcalQuality:
         if h5_2 is not None:
             vals2 = F.root.sol000.amplitude000.val[:]
 
-        if self.remote_only and not self.international_only:
-            vals1 = np.take(vals1, stations, axis=axes.index('ant'))
-            if h5_2 is not None:
-                vals2 = np.take(vals2, stations, axis=axes.index('ant'))
-
-        elif self.international_only and not self.remote_only:
+        if self.remote_only or self.dutch_only or self.international_only:
             vals1 = np.take(vals1, stations, axis=axes.index('ant'))
             if h5_2 is not None:
                 vals2 = np.take(vals2, stations, axis=axes.index('ant'))
@@ -276,7 +282,9 @@ class SelfcalQuality:
             total_amp_scores = np.append(total_amp_scores, [amp_scores], axis=0)
 
         # plot
-        if self.remote_only:
+        if self.dutch_only:
+            plotname = f'selfcal_stability_dutch_{self.sourcename}.png'
+        elif self.remote_only:
             plotname = f'selfcal_stability_remote_{self.sourcename}.png'
         elif self.international_only:
             plotname = f'selfcal_stability_international_{self.sourcename}.png'
@@ -415,6 +423,7 @@ def parse_args():
     """
     parser = ArgumentParser(description='Determine selfcal quality')
     parser.add_argument('--selfcal_folder', default='.')
+    parser.add_argument('--dutch_only', action='store_true', help='Only Dutch stations are considered', default=None)
     parser.add_argument('--remote_only', action='store_true', help='Only remote stations are considered', default=None)
     parser.add_argument('--international_only', action='store_true', help='Only international stations are considered',
                         default=None)
