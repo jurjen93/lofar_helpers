@@ -463,7 +463,7 @@ class SubtractWSClean:
             steps.append('beam')
             command += ['beam.type=applybeam',
                         'beam.direction=[]',
-                        'beam.updateweights=True']  # TODO: ??
+                        'beam.updateweights=True']
 
         # 3) APPLYCAL
         if applycal_h5 is not None:
