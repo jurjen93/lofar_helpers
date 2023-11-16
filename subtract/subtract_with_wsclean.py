@@ -67,6 +67,20 @@ def parse_history(ms, hist_item):
     print('WARNING:' + hist_item + ' not found')
     return None
 
+def make_utf8(inp):
+    """
+    Convert input to utf8 instead of bytes
+
+    :param inp: string input
+    :return: input in utf-8 format
+    """
+
+    try:
+        inp = inp.decode('utf8')
+        return inp
+    except (UnicodeDecodeError, AttributeError):
+        return inp
+
 
 def get_time_preavg_factor(ms: str = None):
     """
@@ -421,7 +435,7 @@ class SubtractWSClean:
         """
         T = tables.open_file(h5)
         soltab = list(T.root.sol000._v_groups.keys())[0]
-        if 'pol' in T.root.sol000._f_get_child(soltab).val.attrs["AXES"].decode('utf8'):
+        if 'pol' in make_utf8(T.root.sol000._f_get_child(soltab).val.attrs["AXES"]):
             if T.root.sol000._f_get_child(soltab).pol[:].shape[0] == 4:
                 T.close()
                 return True
@@ -460,10 +474,20 @@ class SubtractWSClean:
 
         # 2) APPLY BEAM
         if applybeam:
-            steps.append('beam')
-            command += ['beam.type=applybeam',
-                        'beam.direction=[]',
-                        'beam.updateweights=True']
+            steps.append('beam1')
+            command += ['beam1.type=applybeam',
+                        'beam1.updateweights=True']
+            if applycal_h5 is not None and phaseshift is not None and dirname is not None:
+                H = tables.open_file(applycal_h5)
+                sources = H.root.sol000.source[:]
+                H.close()
+                dirs = [make_utf8(dir) for dir in sources['name']]
+                dir_idx = dirs.index("Dir26")
+                ra, dec = sources['dir'][dir_idx]
+                dir = str(f"[{round(ra,5)},{round(dec,5)}]")
+                command += ['beam1.direction='+dir]
+            else:
+                command += ['beam1.direction=[]']
 
         # 3) APPLYCAL
         if applycal_h5 is not None:
@@ -490,7 +514,14 @@ class SubtractWSClean:
                     ac_count += 1
                 T.close()
 
-        # 4) AVERAGING
+        # 4) APPLY BEAM (OPTIONAL IF APPLY BEAM USED FOR APPLYCAL)
+        if applybeam and applycal_h5 is not None and phaseshift is not None and dirname is not None:
+            steps.append('beam2')
+            command += ['beam2.type=applybeam',
+                        'beam2.updateweights=True',
+                        'beam2.direction=[]']
+
+        # 5) AVERAGING
         if freqavg is not None or timeres is not None:
             steps.append('avg')
             command += ['avg.type=averager']
