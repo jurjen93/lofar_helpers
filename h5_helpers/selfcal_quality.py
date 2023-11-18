@@ -64,6 +64,13 @@ class SelfcalQuality:
             modelfiles = sorted(glob(self.folder + "/*MFS-model.fits"))
         self.modelfiles = [f for f in modelfiles if 'arcsectaper' not in f]
 
+        # select all fits residual images
+        modelfiles = sorted(glob(self.folder + "/*MFS-I-residual.fits"))
+        if len(modelfiles) == 0 or '000' not in modelfiles[0]:
+            modelfiles = sorted(glob(self.folder + "/*MFS-residual.fits"))
+        self.residualfiles = [f for f in modelfiles if 'arcsectaper' not in f]
+        self.maxp, self.minp = self.get_max_min_pix()
+
         # for phase/amp evolution
         self.remote_only = remote_only
         self.international_only = international_only
@@ -72,6 +79,22 @@ class SelfcalQuality:
         self.textfile = open(f'selfcal_performance.csv', 'w')
         self.writer = csv.writer(self.textfile)
         self.writer.writerow(['solutions', 'dirty'] + [str(i) for i in range(len(self.fitsfiles))])
+
+
+    def get_max_min_pix(self):
+        """
+        Get max/min pixels from model and images
+        """
+
+        maxp, minp = 0, 0
+        for f in self.modelfiles+self.residualfiles+self.fitsfiles:
+            fts = fits.open(f)
+            d = fts[0].data
+            if d.min()<minp:
+                minp = d.min()
+            if d.max()>maxp:
+                maxp = d.max()
+        return maxp, minp
 
     @staticmethod
     def get_cycle_num(fitsfile: str = None):
@@ -149,8 +172,7 @@ class SelfcalQuality:
         """
         return linregress(list(range(len(values))), values).slope
 
-    @staticmethod
-    def image_entropy(fitsfile: str = None):
+    def image_entropy(self, fitsfile: str = None):
         """
         Calculate entropy of image
 
@@ -158,16 +180,15 @@ class SelfcalQuality:
 
         :return: image entropy value
         """
-        return 0
-
-        # TODO: NEED TO FIX
         file = fits.open(fitsfile)
         image = file[0].data
         file.close()
         while image.ndim > 2:
             image = image[0]
-        val = entropy(image, disk(10)).sum() / image.max()
-        print(val)
+        image = np.sqrt((image - self.minp) / (self.maxp - self.minp)) * 255
+        image = image.astype(np.uint8)
+        val = entropy(image, disk(6)).sum()
+        print(f"Entropy: {val}")
         return val
 
     @staticmethod
@@ -406,6 +427,7 @@ class SelfcalQuality:
         minmaxs = [self.get_minmax(fts) for fts in self.fitsfiles]
         entropy_images = [self.image_entropy(fts) for fts in self.fitsfiles]
         entropy_models = [self.image_entropy(fts) for fts in self.modelfiles]
+        entropy_residuals = [self.image_entropy(fts) for fts in self.residualfiles]
 
         self.make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'image_stability.png')
         self.make_figure(vals1=entropy_images, vals2=entropy_models, label1='Entropy image', label2='Entropy model',
@@ -415,6 +437,7 @@ class SelfcalQuality:
         self.writer.writerow(['rms'] + rmss + [np.nan])
         self.writer.writerow(['entropy_image'] + entropy_images + [np.nan])
         self.writer.writerow(['entropy_model'] + entropy_models + [np.nan])
+        self.writer.writerow(['entropy_residual'] + entropy_residuals + [np.nan])
 
         # SCORING
         best_rms_cycle, best_minmax_cycle, best_entropy_cycle = (np.array(rmss[1:]).argmin() + 1,

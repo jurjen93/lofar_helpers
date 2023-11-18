@@ -237,8 +237,9 @@ def main():
         make_image(mask*imagedata, None, facet+'.png', 'CMRmap', header_new)
 
         fullmask |= ~np.isnan(imagedata)
-        coordinates = get_array_coordinates(imagedata, wcsheader)
-        facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask
+        # coordinates = get_array_coordinates(imagedata, wcsheader) #TODO: UNCOMMENT FOR BETTER WEIGHTS
+        # facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask #TODO: UNCOMMENT FOR BETTER WEIGHTS
+        facetweight = mask #TODO: COMMENT FOR BETTER WEIGHTS
         facetweight[~np.isfinite(facetweight)] = 0  # so we can add
         imagedata *= facetweight
         imagedata[~np.isfinite(imagedata)] = 0  # so we can add

@@ -28,9 +28,10 @@ from astropy.nddata import Cutout2D
 from astropy import units as u
 from argparse import ArgumentParser
 import warnings
-from pandas import DataFrame, concat, read_csv
+from pandas import DataFrame, concat
 import csv
 import sys
+import matplotlib.pyplot as plt
 
 __all__ = ['']
 
@@ -442,7 +443,7 @@ def parse_args():
     """Command line argument parser"""
 
     parser = ArgumentParser()
-    parser.add_argument('-f', '--file', type=str, help='fitsfile name')
+    parser.add_argument('-f', '--file', type=str, help='fits file name')
     parser.add_argument('-l', '--location', type=str, help='data location folder name', default='.')
     parser.add_argument('--no_images', action='store_true', help='store images')
     parser.add_argument('--make_DL_food', action='store_true', help='store images for creating the DL model')
@@ -630,8 +631,8 @@ def main():
 
 
     if args.ds9:
-        from box_helpers.move_boxes import move_boxes
-        move_boxes(args.file, folder)
+        from ds9_helpers.move_regions import move_regions
+        move_regions(args.file, folder)
 
 if __name__ == '__main__':
     main()
