@@ -15,7 +15,7 @@ def make_beam_images(cmd):
 
     for idx, element in enumerate(hist_split):
         if element=='-nmiter':
-            cmd = cmd.replace('-nmiter '+hist_split[idx+1], '-nmiter 0 -no-reorder -make-psf-only -no-dirty ')
+            cmd = cmd.replace('-nmiter '+hist_split[idx+1], '-nmiter 0 -no-reorder -no-dirty ')
         if element=='-niter':
             cmd = cmd.replace('-niter ' + hist_split[idx+1], '-niter 0')
         if element=='-name':
@@ -40,6 +40,7 @@ def get_history(fitsfile):
         history = history.replace('size'+str(i), 'size '+str(i))
     return history
 
+
 def main():
     """
     Main function
@@ -60,6 +61,7 @@ def main():
 
     hdu = fits.PrimaryHDU(header=f[0].header, data=np.divide(f[0].data, np.sqrt(np.multiply(b0, b15))))
     hdu.writeto(image_file.replace('-image.fits', '-image-pb.fits'), overwrite=True)
+
 
 if __name__ == '__main__':
     main()

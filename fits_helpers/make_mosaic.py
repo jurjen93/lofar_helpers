@@ -144,9 +144,9 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
     cmap -> choose your preferred cmap
     """
 
-    RMS = rms(image_data)
+    RMS = 1.76e-05 #TODO: TEMPORARY
     vmin = RMS
-    vmax = RMS*25
+    vmax = RMS*15
 
     if hdu is None:
         wcs = WCS(header, naxis=2)
@@ -160,10 +160,7 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
 
     im = plt.imshow(image_data, origin='lower', cmap=cmap)
 
-    if cmap=='Blues':
-        im.set_norm(SymLogNorm(linthresh = vmin * 2, vmin=vmin, vmax = vmin * 15))
-    else:
-        im.set_norm(PowerNorm(vmin=0, vmax=vmax, gamma=1 / 2))
+    im.set_norm(PowerNorm(vmin=0, vmax=vmax, gamma=1 / 2))
 
     plt.xlabel('Right Ascension (J2000)', size=14)
     plt.ylabel('Declination (J2000)', size=14)
@@ -208,7 +205,7 @@ def main():
     else:
         sys.exit('ERROR: only use resolution 0.3 or 1.2')
 
-    fullpixsize = int(2.5 * 3600 / pixelscale)
+    fullpixsize = int(2.5 * 3600 / pixelscale*1.15)
 
     header_new = make_header(facets[0], fullpixsize)
     print(header_new)
@@ -218,25 +215,27 @@ def main():
 
     isum = np.zeros([ysize, xsize], dtype="float32")
     weights = np.zeros_like(isum, dtype="float32")
-    fullmask = np.zeros_like(isum, dtype=bool)
+    # fullmask = np.zeros_like(isum, dtype=bool)
 
     for n, facet in enumerate(facets):
         print(facet)
 
         hdu = fits.open(facet)
         hduflatten = flatten(hdu)
-        wcsheader = WCS(hdu[0].header)
+        # wcsheader = WCS(hdu[0].header)
 
         imagedata, _ = reproject_interp_chunk_2d(hduflatten, header_new, hdu_in=0, parallel=False)
+        del hduflatten
 
         reg = regions[n]
-        polycenter = get_polygon_center(reg)
+        # polycenter = get_polygon_center(reg)
         r = pyregion.open(reg).as_imagecoord(header=header_new)
         mask = r.get_mask(hdu=hdu[0], shape=(header_new["NAXIS1"], header_new["NAXIS2"])).astype(int)
+        hdu.close()
 
         make_image(mask*imagedata, None, facet+'.png', 'CMRmap', header_new)
 
-        fullmask |= ~np.isnan(imagedata)
+        # fullmask |= ~np.isnan(imagedata)
         # coordinates = get_array_coordinates(imagedata, wcsheader) #TODO: UNCOMMENT FOR BETTER WEIGHTS
         # facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask #TODO: UNCOMMENT FOR BETTER WEIGHTS
         facetweight = mask #TODO: COMMENT FOR BETTER WEIGHTS
@@ -244,7 +243,9 @@ def main():
         imagedata *= facetweight
         imagedata[~np.isfinite(imagedata)] = 0  # so we can add
         isum += imagedata
+        del imagedata
         weights += facetweight
+        del facetweight
 
         make_image(isum, None, facet+'full.png', 'CMRmap', header_new)
 
@@ -252,7 +253,7 @@ def main():
 
     isum /= weights
     isum[isum == np.inf] = np.nan
-    isum[~fullmask] = np.nan
+    # isum[~fullmask] = np.nan
 
     make_image(isum, None, 'finalfaceted.png', 'CMRmap', header_new)
 
