@@ -152,9 +152,16 @@ def main():
     Main script
     """
     args = parse_args()
-    make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, args.freq_avg)
-    os.system('DP3 ' + args.parset_name)
-
+    try:
+        make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, args.freq_avg)
+        os.system('DP3 ' + args.parset_name)
+    except:
+        try:
+            make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, max(args.freq_avg-1, 1))
+            os.system('DP3 ' + args.parset_name)
+        except:
+            make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, max(args.freq_avg-2, 1))
+            os.system('DP3 ' + args.parset_name)
 
 if __name__ == '__main__':
     main()
