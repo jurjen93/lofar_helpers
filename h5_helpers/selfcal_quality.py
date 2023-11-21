@@ -44,7 +44,9 @@ class SelfcalQuality:
         self.h5s = [h5 for h5 in glob(f"{self.folder}/merged_selfcalcyle*.h5") if 'linearfulljones' not in h5]
         if len(self.h5s)==0:
             self.h5s = glob(f"{self.folder}/merged_selfcalcyle*.h5")
-        assert len(self.h5s) != 0, "No h5 files found"
+        if len(self.h5s) != 0:
+            print("WARNING: No h5 files found")
+        # assert len(self.h5s) != 0, "No h5 files found"
 
         # select all sources
         regex = "merged_selfcalcyle\d{3}\_"
@@ -436,14 +438,14 @@ class SelfcalQuality:
         self.writer.writerow(['min/max'] + minmaxs + [np.nan])
         self.writer.writerow(['rms'] + rmss + [np.nan])
         self.writer.writerow(['entropy_image'] + entropy_images + [np.nan])
-        self.writer.writerow(['entropy_model'] + entropy_models + [np.nan])
-        self.writer.writerow(['entropy_residual'] + entropy_residuals + [np.nan])
+        if len(entropy_models)>0:
+            self.writer.writerow(['entropy_model'] + entropy_models + [np.nan])
+        if len(entropy_residuals)>0:
+            self.writer.writerow(['entropy_residual'] + entropy_residuals + [np.nan])
 
         # SCORING
-        best_rms_cycle, best_minmax_cycle, best_entropy_cycle = (np.array(rmss[1:]).argmin() + 1,
-                                                                 np.array(minmaxs[1:]).argmin() + 1,
-                                                                 min(np.array(entropy_images).argmin(),
-                                                                     np.array(entropy_models).argmin()) + 1)
+        best_rms_cycle, best_minmax_cycle = (np.array(rmss[1:]).argmin() + 1,
+                                                                 np.array(minmaxs[1:]).argmin() + 1)
         # using maxmin instead of minmax due to easier slope value to work with
         rms_slope, maxmin_slope = linregress(list(range(len(rmss))), rmss).slope, linregress(list(range(len(rmss))),
                                                                                              1 / np.array(
@@ -469,7 +471,7 @@ class SelfcalQuality:
         elif minmaxs[best_rms_cycle] / minmaxs[0] <= 1:
             bestcycle = best_rms_cycle
         else:
-            bestcycle = int(round(np.mean([best_minmax_cycle, best_rms_cycle, best_entropy_cycle]), 0))
+            bestcycle = int(round(np.mean([best_minmax_cycle, best_rms_cycle]), 0))
 
         return bestcycle - 1, accept
 
@@ -496,8 +498,10 @@ def main():
     args = parse_args()
 
     sq = SelfcalQuality(args.selfcal_folder, args.remote_only, args.international_only)
-    bestcycle_solutions, accept_solutions = sq.solution_stability()
-    bestcycle_image, accept_image = sq.image_stability()
+    if len(sq.h5s)>0:
+        bestcycle_solutions, accept_solutions = sq.solution_stability()
+    if len(sq.fitsfiles)>0:
+        bestcycle_image, accept_image = sq.image_stability()
     sq.textfile.close()
     df = pd.read_csv(f'selfcal_performance.csv').set_index('solutions').T
     print(df)

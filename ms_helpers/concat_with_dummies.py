@@ -97,17 +97,22 @@ def parse_args():
     parser.add_argument('--concat_name', help='Concat name', type=str, default='concat.ms')
     parser.add_argument('--parset_name', help='Parset_name', type=str, default='concat.parset')
     parser.add_argument('--data_column', help='Data column', type=str, default='DATA')
+    parser.add_argument('--time_avg', help='Time averaging', type=int, default='DATA')
+    parser.add_argument('--freq_avg', help='Frequency averaging', type=int, default='DATA')
 
     return parser.parse_args()
 
 
-def make_parset(parset_name, ms, concat_name, data_column):
+def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg):
     """
     Make parset for DP3
 
     :param parset_name: Name of the parset
     :param ms: input measurement sets
     :param concat_name: name of concattenated measurement sets
+    :param data_column: data column
+    :param time_avg: time averaging
+    :param freq_avg: frequency averaging
 
     :return: parset
     """
@@ -126,8 +131,16 @@ def make_parset(parset_name, ms, concat_name, data_column):
               '\nmsin.missingdata=True' \
               '\nmsin.orderms=False' \
               '\nmsout.storagemanager=dysco' \
-              '\nmsout.writefullresflag=False' \
-              '\nsteps=[]'
+              '\nmsout.writefullresflag=False'
+    if time_avg is not None or freq_avg is not None:
+        parset += '\nsteps=[avg]' \
+                  '\navg.type=averager'
+        if time_avg is not None:
+            parset += f'\navg.timestep={time_avg}'
+        if freq_avg is not None:
+            parset += f'\navg.freqstep={freq_avg}'
+    else:
+        parset += '\nsteps=[]'
     with open(parset_name, 'w') as f:
         f.write(parset)
 
@@ -139,7 +152,7 @@ def main():
     Main script
     """
     args = parse_args()
-    make_parset(args.parset_name, args.ms, args.concat_name, args.data_column)
+    make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, args.freq_avg)
     os.system('DP3 ' + args.parset_name)
 
 
