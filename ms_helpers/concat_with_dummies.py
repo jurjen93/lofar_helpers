@@ -14,6 +14,19 @@ from glob import glob
 import argparse
 import os
 
+def get_largest_divider(inp, max=1000):
+    """
+    Get largest divider
+
+    :param inp: input number
+    :param max: max divider
+
+    :return: largest divider from inp bound by max
+    """
+    for r in range(max)[::-1]:
+        if inp % r == 0:
+            return r
+    sys.exit("ERROR: code should not arrive here.")
 
 def get_channels(input_ms):
     """
@@ -138,7 +151,13 @@ def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg):
         if time_avg is not None:
             parset += f'\navg.timestep={time_avg}'
         if freq_avg is not None:
-            parset += f'\navg.freqstep={freq_avg}'
+            t = ct.table(ms[0] + "::SPECTRAL_WINDOW")
+            channum = len(t.getcol("CHAN_FREQ")[0])
+            t.close()
+            freqavg = get_largest_divider(channum, freq_avg + 1)
+            if freqavg!=freq_avg:
+                print(f"WARNING: {channum} Channels can only be divded by {freqavg} and not by {freq_avg}")
+            parset += f'\navg.freqstep={freqavg}'
     else:
         parset += '\nsteps=[]'
     with open(parset_name, 'w') as f:
@@ -152,16 +171,8 @@ def main():
     Main script
     """
     args = parse_args()
-    try:
-        make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, args.freq_avg)
-        os.system('DP3 ' + args.parset_name)
-    except:
-        try:
-            make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, max(args.freq_avg-1, 1))
-            os.system('DP3 ' + args.parset_name)
-        except:
-            make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, max(args.freq_avg-2, 1))
-            os.system('DP3 ' + args.parset_name)
+    make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, args.freq_avg)
+    os.system('DP3 ' + args.parset_name)
 
 if __name__ == '__main__':
     main()
