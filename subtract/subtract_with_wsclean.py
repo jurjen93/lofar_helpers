@@ -482,7 +482,7 @@ class SubtractWSClean:
                 sources = H.root.sol000.source[:]
                 H.close()
                 dirs = [make_utf8(dir) for dir in sources['name']]
-                dir_idx = dirs.index("Dir26")
+                dir_idx = dirs.index(dirname)
                 ra, dec = sources['dir'][dir_idx]
                 dir = str(f"[{round(ra,5)},{round(dec,5)}]")
                 command += ['beam1.direction='+dir]

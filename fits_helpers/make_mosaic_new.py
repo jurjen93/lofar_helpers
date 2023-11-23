@@ -191,6 +191,30 @@ def parse_arg():
     return parser.parse_args()
 
 
+def reproject(fitsfile, header, region):
+    """
+    Reproject fits file with new header and region file
+    """
+
+    hdu = fits.open(fitsfile)
+    wcsheader = WCS(hdu[0].header)
+    hduflatten = flatten(hdu)
+    imagedata, _ = reproject_interp_chunk_2d(hduflatten, header, hdu_in=0, parallel=False)
+    del hduflatten
+    polycenter = get_polygon_center(region)
+    r = pyregion.open(region).as_imagecoord(header=header)
+    mask = r.get_mask(hdu=hdu[0], shape=(header["NAXIS1"], header["NAXIS2"])).astype(int)
+    hdu.close()
+    hdu = fits.PrimaryHDU(header=header, data=mask*imagedata)
+    hdu.writeto(fitsfile.replace('.fits', '.reproject.fits'), overwrite=True)
+
+    coordinates = get_array_coordinates(imagedata, wcsheader)
+    facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask
+    facetweight[~np.isfinite(facetweight)] = 0  # so we can add
+    make_image(imagedata, None, fitsfile + 'full.png', 'CMRmap', header)
+    hdu = fits.PrimaryHDU(header=header, data=facetweight)
+    hdu.writeto(fitsfile.replace('.fits', '.weights.fits'), overwrite=True)
+
 def main():
     """
     Main function
@@ -214,58 +238,11 @@ def main():
     fullpixsize = int(2.5 * 3600 / pixelscale*1.1)
 
     header_new = make_header(facets[0], fullpixsize)
-    print(header_new)
-
-    xsize = header_new['NAXIS1']
-    ysize = header_new['NAXIS2']
-
-    isum = np.zeros([ysize, xsize], dtype="float32")
-    weights = np.zeros_like(isum, dtype="float32")
-    # fullmask = np.zeros_like(isum, dtype=bool)
 
     for n, facet in enumerate(facets):
-        print(facet, regions[n])
+        print(facet)
+        reproject(facet,  header_new, regions[n])
 
-        hdu = fits.open(facet)
-        hduflatten = flatten(hdu)
-        wcsheader = WCS(hdu[0].header)
-
-        imagedata, _ = reproject_interp_chunk_2d(hduflatten, header_new, hdu_in=0, parallel=False)
-        del hduflatten
-
-        reg = regions[n]
-        polycenter = get_polygon_center(reg)
-        r = pyregion.open(reg).as_imagecoord(header=header_new)
-        mask = r.get_mask(hdu=hdu[0], shape=(header_new["NAXIS1"], header_new["NAXIS2"])).astype(int)
-        hdu.close()
-
-        # make_image(mask*imagedata, None, facet+'.png', 'CMRmap', header_new)
-
-        # fullmask |= ~np.isnan(imagedata)
-        coordinates = get_array_coordinates(imagedata, wcsheader) #TODO: UNCOMMENT FOR BETTER WEIGHTS
-        facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask #TODO: UNCOMMENT FOR BETTER WEIGHTS
-        # facetweight = mask #TODO: COMMENT FOR BETTER WEIGHTS
-        facetweight[~np.isfinite(facetweight)] = 0  # so we can add
-        imagedata *= facetweight
-        imagedata[~np.isfinite(imagedata)] = 0  # so we can add
-        isum += imagedata
-        del imagedata
-        weights += facetweight
-        del facetweight
-
-        make_image(isum, None, facet+'full.png', 'CMRmap', header_new)
-
-    print('FACET COMPLETED ... ADDING CORRECT WEIGHTS ...')
-
-    isum /= weights
-    isum[isum == np.inf] = np.nan
-    # isum[~fullmask] = np.nan
-
-    make_image(isum, None, 'finalfaceted.png', 'CMRmap', header_new)
-
-    hdu = fits.PrimaryHDU(header=header_new, data=isum)
-
-    hdu.writeto('full-mosaic.fits', overwrite=True)
 
 
 if __name__ == '__main__':

@@ -26,6 +26,8 @@ import sys
 import tables
 import warnings
 from argparse import ArgumentParser
+from astropy.coordinates import SkyCoord
+from astropy import units as u
 
 warnings.filterwarnings('ignore')
 
@@ -243,6 +245,20 @@ def has_integer(input):
     except:  # dangerous but ok for now ;-)
         return False
 
+def coordinate_distance(c1, c2):
+    """
+    Find distance between sources
+
+    :param c1: first coordinate
+    :param c2: second coordinate
+    """
+    if abs(c1[0])<2*pi and abs(c1[1])<pi/2 and abs(c2[0])<2*pi and abs(c2[1])<pi/2:
+        c1 = SkyCoord(c1[0], c1[1], unit='radian', frame='icrs')  # your coords
+        c2 = SkyCoord(c2[0], c2[1], unit='radian', frame='icrs')
+    else:
+        c1 = SkyCoord(c1[0], c1[1], unit='degree', frame='icrs')  # your coords
+        c2 = SkyCoord(c2[0], c2[1], unit='degree', frame='icrs')
+    return c1.separation(c2).to(u.degree).value
 
 class MergeH5:
     """Merge multiple h5 tables"""
@@ -517,8 +533,6 @@ class MergeH5:
         if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1]:
             sys.exit("ERROR: Time axes of h5 and MS are not overlapping.\n"
                      "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
-        print(freq_axes)
-        print(self.ax_freq)
         if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1]:
             sys.exit("ERROR: Frequency axes of h5 and MS are not overlapping.\n"
                      "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
@@ -980,7 +994,7 @@ class MergeH5:
 
         return values_new
 
-    def merge_tables(self, solset=None, soltab=None):
+    def merge_tables(self, solset=None, soltab=None, min_distance=0.):
         """
         Merge solution files
 
@@ -1051,6 +1065,17 @@ class MergeH5:
                     # Matching on 5 decimals rounding
                     idx = list([[round(l[0], 5), round(l[1], 5)] for l in self.directions.values()]). \
                         index([round(source_coords[0], 5), round(source_coords[1], 5)])
+                elif any([coordinate_distance(source_coords, list(sv))<=min_distance for sv in self.directions.values()]):
+                    # Direction closer than minimal allowed distance.
+                    md = 999
+                    for i, d in enumerate(self.directions.values()):
+                        if coordinate_distance(source_coords, list(d))<md:
+                            md = coordinate_distance(source_coords, list(d))
+                            idx = i
+                    print('Direction {:f},{:f}'.format(*source_coords)+' is closer than minimal distance of '
+                          +str(min_distance) +' to '+str(list(self.directions.values())[idx])
+                          .replace('[','').replace(']','').replace('  ',','))
+
                 else:  # new direction
                     if abs(source_coords[0]) > 0 and abs(source_coords[1]) > 0:
                         print('Adding new direction {:f},{:f}'.format(*source_coords))
@@ -2538,7 +2563,8 @@ def check_freq_overlap(h5_tables):
                               f"--merge_diff_freq to merge over different frequency bands")
                 except:
                     pass
-
+            F.close()
+        H.close()
     return
 
 
@@ -2564,7 +2590,8 @@ def check_time_overlap(h5_tables):
                             f"WARNING: time slots between {h51} and {h52} do not overlap, might result in interpolation issues")
                 except:
                     pass
-
+            F.close()
+        H.close()
     return
 
 
@@ -2586,7 +2613,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, add_ms_stations=None, check_output=None, freq_av=None, time_av=None,
              check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_crash=None,
-             output_summary=None):
+             output_summary=None, min_distance=0.):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -2612,6 +2639,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param propagate_flags: interpolate weights and return in output file
     :param no_antenna_crash: do not crash if antenna tables are not the same between h5s
     :param output_summary: print solution file output
+    :param min_distance: Minimal coordinate distance between sources for merging directions (in degrees). If smaller, directions will be merged together.
     """
 
     tables.file._open_files.close_all()
@@ -2681,7 +2709,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         if len(st_group) > 0:
             for st in st_group:
                 merge.get_model_h5('sol000', st)
-                merge.merge_tables('sol000', st)
+                merge.merge_tables('sol000', st, min_distance)
             if not merge.doublefulljones:
                 if merge.convert_tec and (('phase' in st_group[0]) or ('tec' in st_group[0])):
                     # make sure tec is merged in phase only (if convert_tec==True)
@@ -2824,6 +2852,7 @@ def parse_input():
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables over different frequency bands')
+    parser.add_argument('--min_distance', type=float, help='Minimal coordinate distance between sources for merging directions (in degrees). If smaller, directions will be merged together.', default=0.)
 
     args = parser.parse_args()
 
@@ -2909,7 +2938,8 @@ def main():
              propagate_flags=args.propagate_flags,
              merge_diff_freq=args.merge_diff_freq,
              no_antenna_crash=args.no_antenna_crash,
-             output_summary=args.output_summary)
+             output_summary=args.output_summary,
+             min_distance=args.min_distance)
 
 
 if __name__ == '__main__':
