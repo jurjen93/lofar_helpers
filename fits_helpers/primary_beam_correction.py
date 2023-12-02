@@ -21,7 +21,8 @@ def make_beam_images(cmd):
             cmd = cmd.replace('-niter ' + hist_split[idx + 1], '-niter 0')
         if element=='-name':
             cmd = cmd.replace('-name ' + hist_split[idx + 1], '-name beam')
-        cmd.replace('- ','')
+
+    cmd = cmd.replace('- ','')
 
     print(' '.join([c for c in cmd.split() if '.ms' not in c]) + " *.ms")
     os.system('mkdir -p beamrun && mv *.ms beamrun && cd beamrun && ' + cmd + ' > wsclean.txt && cd ../ && mv beamrun/*beam-*.fits .')
