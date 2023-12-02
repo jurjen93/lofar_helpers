@@ -4,6 +4,7 @@ import numpy as np
 import sys
 import os
 
+
 def make_beam_images(cmd):
     """
     Make beam images with wsclean, by running 1 major and minor cycle
@@ -15,15 +16,14 @@ def make_beam_images(cmd):
 
     for idx, element in enumerate(hist_split):
         if element=='-nmiter':
-            cmd = cmd.replace('-nmiter '+hist_split[idx+1], '-nmiter 0 -no-reorder -no-dirty ')
+            cmd = cmd.replace('-nmiter ' + hist_split[idx + 1], '-nmiter 0 -no-reorder -no-dirty')
         if element=='-niter':
-            cmd = cmd.replace('-niter ' + hist_split[idx+1], '-niter 0')
+            cmd = cmd.replace('-niter ' + hist_split[idx + 1], '-niter 0')
         if element=='-name':
             cmd = cmd.replace('-name ' + hist_split[idx + 1], '-name beam')
 
     print(' '.join([c for c in cmd.split() if '.ms' not in c]) + " *.ms")
     os.system('mkdir -p beamrun && mv *.ms beamrun && cd beamrun && ' + cmd + ' > wsclean.txt && cd ../ && mv beamrun/*beam-*.fits .')
-
 
 
 def get_history(fitsfile):

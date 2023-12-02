@@ -22,6 +22,7 @@ import matplotlib.patches as patches
 from matplotlib import ticker
 import os
 
+
 def get_rms(image_data):
     """
     from Cyril Tasse/kMS
@@ -44,6 +45,7 @@ def get_rms(image_data):
         rmsold = rms
     print(f'Noise : {str(round(rms * 1000, 4))} {u.mJy/u.beam}')
     return rms
+
 
 def make_cutout(fitsfile=None, pos: tuple = None, size: tuple = (1000, 1000), savefits=None):
     """
@@ -74,6 +76,7 @@ def make_cutout(fitsfile=None, pos: tuple = None, size: tuple = (1000, 1000), sa
         image_data = out.data
         image_data = np.expand_dims(np.expand_dims(image_data, axis=0), axis=0)
         fits.writeto(savefits, image_data, header, overwrite=True)
+
 
 def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
     """
@@ -210,7 +213,7 @@ def run_pybdsf(fitsfile):
     :return: source catalogue
     """
     prefix = fitsfile.replace('.fits', '')
-    img = bdsf.process_image(fitsfile, thresh_isl=3., thresh_pix=5.5)#, rms_map=True, rms_box = (160,40))
+    img = bdsf.process_image(fitsfile, thresh_isl=3., thresh_pix=5.5, atrous_do=True, flag_maxsize_bm=75)#, rms_map=True, rms_box = (160,40))
     img.write_catalog(clobber=True, outfile=prefix + '_source_catalog.fits', format='fits', catalog_type='srl')
     img.write_catalog(clobber=True, outfile=prefix + '_gaussian_catalog.fits', format='fits', catalog_type='gaul')
     img.export_image(clobber=True, img_type='island_mask', outfile=prefix + '_island_mask.fits')

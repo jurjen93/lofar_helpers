@@ -159,8 +159,8 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
     plt.subplot(projection=wcs)
     WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
 
-    image_data[image_data == np.inf] = np.nan
-    image_data[image_data == 0] = np.nan
+    # image_data[image_data == np.inf] = np.nan
+    # image_data[image_data == 0] = np.nan
 
     im = plt.imshow(image_data, origin='lower', cmap=cmap)
 
@@ -207,11 +207,13 @@ def reproject(fitsfile, header, region):
     hdu.close()
     hdu = fits.PrimaryHDU(header=header, data=mask*imagedata)
     hdu.writeto(fitsfile.replace('.fits', '.reproject.fits'), overwrite=True)
+    make_image(mask*imagedata, None, fitsfile.replace('.fits', 'full.png'), 'CMRmap', header)
+    del imagedata
 
-    coordinates = get_array_coordinates(imagedata, wcsheader)
-    facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask
+    # coordinates = get_array_coordinates(imagedata, wcsheader)
+    # facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask
+    facetweight = mask
     facetweight[~np.isfinite(facetweight)] = 0  # so we can add
-    make_image(imagedata, None, fitsfile + 'full.png', 'CMRmap', header)
     hdu = fits.PrimaryHDU(header=header, data=facetweight)
     hdu.writeto(fitsfile.replace('.fits', '.weights.fits'), overwrite=True)
 

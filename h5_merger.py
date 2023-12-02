@@ -1186,7 +1186,7 @@ class MergeH5:
 
                         if 'pol' in st.getAxesNames() and not fulljones_done:
                             if st.getAxisLen('pol') == 4:
-                                print(self.amplitudes[:, 0, 0, 0, 0])
+                                print(self.amplitudes.shape)
                                 self.amplitudes[1, idx, ...] = self.amplitudes[0, idx, ...] * values[
                                     1, ...]  # Axx * Bxy
                                 self.amplitudes[2, idx, ...] = self.amplitudes[-1, idx, ...] * values[

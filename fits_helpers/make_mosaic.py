@@ -159,8 +159,8 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
     plt.subplot(projection=wcs)
     WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
 
-    image_data[image_data == np.inf] = np.nan
-    image_data[image_data == 0] = np.nan
+    # image_data[image_data == np.inf] = np.nan
+    # image_data[image_data == 0] = np.nan
 
     im = plt.imshow(image_data, origin='lower', cmap=cmap)
 
@@ -230,7 +230,7 @@ def main():
         hduflatten = flatten(hdu)
         wcsheader = WCS(hdu[0].header)
 
-        imagedata, _ = reproject_interp_chunk_2d(hduflatten, header_new, hdu_in=0, parallel=False)
+        imagedata, _ = reproject_interp_chunk_2d(hduflatten, header_new, hdu_in=0, parallel=True)
         del hduflatten
 
         reg = regions[n]
@@ -239,12 +239,12 @@ def main():
         mask = r.get_mask(hdu=hdu[0], shape=(header_new["NAXIS1"], header_new["NAXIS2"])).astype(int)
         hdu.close()
 
-        # make_image(mask*imagedata, None, facet+'.png', 'CMRmap', header_new)
+        make_image(mask*imagedata, None, facet+'.png', 'CMRmap', header_new)
 
         # fullmask |= ~np.isnan(imagedata)
-        coordinates = get_array_coordinates(imagedata, wcsheader) #TODO: UNCOMMENT FOR BETTER WEIGHTS
-        facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask #TODO: UNCOMMENT FOR BETTER WEIGHTS
-        # facetweight = mask #TODO: COMMENT FOR BETTER WEIGHTS
+        # coordinates = get_array_coordinates(imagedata, wcsheader) #TODO: UNCOMMENT FOR BETTER WEIGHTS
+        # facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask #TODO: UNCOMMENT FOR BETTER WEIGHTS
+        facetweight = mask #TODO: COMMENT FOR BETTER WEIGHTS
         facetweight[~np.isfinite(facetweight)] = 0  # so we can add
         imagedata *= facetweight
         imagedata[~np.isfinite(imagedata)] = 0  # so we can add

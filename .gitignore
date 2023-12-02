@@ -34,3 +34,6 @@ h5_merger_old.py
 #other
 mergemerge.py
 *.log
+#videos
+*.mp4
+*.gif
