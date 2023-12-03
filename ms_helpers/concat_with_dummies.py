@@ -110,8 +110,8 @@ def parse_args():
     parser.add_argument('--concat_name', help='Concat name', type=str, default='concat.ms')
     parser.add_argument('--parset_name', help='Parset_name', type=str, default='concat.parset')
     parser.add_argument('--data_column', help='Data column', type=str, default='DATA')
-    parser.add_argument('--time_avg', help='Time averaging', type=int, default='DATA')
-    parser.add_argument('--freq_avg', help='Frequency averaging', type=int, default='DATA')
+    parser.add_argument('--time_avg', help='Time averaging', type=int)
+    parser.add_argument('--freq_avg', help='Frequency averaging', type=int)
 
     return parser.parse_args()
 
