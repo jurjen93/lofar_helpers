@@ -16,7 +16,7 @@ def make_beam_images(cmd):
 
     for idx, element in enumerate(hist_split):
         if element=='-nmiter':
-            cmd = cmd.replace('-nmiter ' + hist_split[idx + 1], '-nmiter 0 -no-reorder -no-dirty')
+            cmd = cmd.replace('-nmiter ' + hist_split[idx + 1], '-nmiter 0 -no-reorder')
         if element=='-niter':
             cmd = cmd.replace('-niter ' + hist_split[idx + 1], '-niter 0')
         if element=='-name':
