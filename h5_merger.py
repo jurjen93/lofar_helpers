@@ -252,6 +252,10 @@ def coordinate_distance(c1, c2):
     :param c1: first coordinate
     :param c2: second coordinate
     """
+    if sys.version_info.major == 2:
+        print("WARNING: --min_distance function does not work in Python 2")
+        return 9999
+
     if abs(c1[0])<2*pi and abs(c1[1])<pi/2 and abs(c2[0])<2*pi and abs(c2[1])<pi/2:
         c1 = SkyCoord(c1[0], c1[1], unit='radian', frame='icrs')  # your coords
         c2 = SkyCoord(c2[0], c2[1], unit='radian', frame='icrs')
@@ -646,7 +650,7 @@ class MergeH5:
                     values_tmp[:, :, :, :, -1, ...] = 1
                     values_tmp[:, :, :, :, 0, ...] = 1
             for idx_old, f_v in enumerate(freq_axes):
-                idx_new = list([round(i / 1_000_000, 1) for i in self.ax_freq]).index(round(f_v / 1_000_000, 1))
+                idx_new = list([round(i / 1000000, 1) for i in self.ax_freq]).index(round(f_v / 1000000, 1))
 
                 if self.axes_current.index(ax) == 0:
                     values_tmp[idx_new, ...] = values[idx_old, ...]
@@ -1590,10 +1594,21 @@ class MergeH5:
                 for axes in ['val', 'weight']:
                     if self.poldim > 0 and single:
                         newval = st._f_get_child(axes)[:, :, :, :, 0:1]
+                        st.pol._f_remove()
+                        T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
                     elif nopol and self.poldim > 0:
                         newval = st._f_get_child(axes)[:, :, :, :, 0]
+                        try:
+                            st.pol._f_remove()
+                        except:
+                            pass
                     elif self.poldim == 0 and single:
                         newval = expand_dims(st._f_get_child(axes)[:], len(st._f_get_child(axes).shape))
+                        try:
+                            st.pol._f_remove()
+                        except:
+                            pass
+                        T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
                     else:
                         continue
 
@@ -1618,7 +1633,8 @@ class MergeH5:
                     else:
                         st._f_get_child(axes).attrs['AXES'] = bytes(','.join(output_axes))
 
-                print('Value shape after changing poldim--> ' + str(st._f_get_child('val')[:].shape))
+                print('Value shape after changing poldim --> ' + str(st._f_get_child('val')[:].shape))
+                print('Polarization --> '+str(st.pol[:]))
 
         T.close()
 
@@ -1858,6 +1874,8 @@ class MergeH5:
 
                     # important to do the following in case the input tables are not all different directions
                     m = min(weight_out.shape[axes.index('dir')] - 1, m)
+                    if self.merge_all_in_one:
+                        m = 0
 
                     newvals = self._interp_along_axis(weight, st2.time[:], st.time[:], axes_new.index('time'))
                     newvals = self._interp_along_axis(newvals, st2.freq[:], st.freq[:], axes_new.index('freq'))
@@ -2553,14 +2571,14 @@ def check_freq_overlap(h5_tables):
             F = tables.open_file(h52)
             try:
                 if h51 != h52 and F.root.sol000.phase000.freq[:].max() < H.root.sol000.phase000.freq[:].min():
-                    print(f"WARNING: frequency bands between {h51} and {h52} do not overlap, you might want to use "
-                          f"--merge_diff_freq to merge over different frequency bands")
+                    print("WARNING: frequency bands between "+h51+" and "+h52+" do not overlap, you might want to use "
+                          "--merge_diff_freq to merge over different frequency bands")
             except:
                 try:
                     if h51 != h52 and F.root.sol000.amplitude000.freq[:].max() < H.root.sol000.amplitude000.freq[
                                                                                  :].min():
-                        print(f"WARNING: frequency bands between {h51} and {h52} do not overlap, you might want to use "
-                              f"--merge_diff_freq to merge over different frequency bands")
+                        print("WARNING: frequency bands between "+h51+" and "+h52+" do not overlap, you might want to use "
+                              "--merge_diff_freq to merge over different frequency bands")
                 except:
                     pass
             F.close()
@@ -2581,13 +2599,13 @@ def check_time_overlap(h5_tables):
             try:
                 if h51 != h52 and F.root.sol000.phase000.time[:].max() < H.root.sol000.phase000.time[:].min():
                     print(
-                        f"WARNING: time slots between {h51} and {h52} do not overlap, might result in interpolation issues")
+                        "WARNING: time slots between "+h51+" and "+h52+" do not overlap, might result in interpolation issues")
             except:
                 try:
                     if h51 != h52 and F.root.sol000.amplitude000.time[:].max() < H.root.sol000.amplitude000.time[
                                                                                  :].min():
                         print(
-                            f"WARNING: time slots between {h51} and {h52} do not overlap, might result in interpolation issues")
+                            "WARNING: time slots between "+h51+" and "+h52+" do not overlap, might result in interpolation issues")
                 except:
                     pass
             F.close()
@@ -2852,7 +2870,7 @@ def parse_input():
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
     parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables over different frequency bands')
-    parser.add_argument('--min_distance', type=float, help='Minimal coordinate distance between sources for merging directions (in degrees). If smaller, directions will be merged together.', default=0.)
+    parser.add_argument('--min_distance', type=float, help='(ONLY PYTHON 3) Minimal coordinate distance between sources for merging directions (in degrees). If smaller, directions will be merged together.', default=0.)
 
     args = parser.parse_args()
 

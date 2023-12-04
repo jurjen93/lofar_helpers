@@ -149,15 +149,15 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
     vmin = RMS
     vmax = RMS*15
 
-    if hdu is None:
-        wcs = WCS(header, naxis=2)
-    else:
-        wcs = WCS(hdu[0].header, naxis=2)
+    # if hdu is None:
+    #     wcs = WCS(header, naxis=2)
+    # else:
+    #     wcs = WCS(hdu[0].header, naxis=2)
 
 
-    fig = plt.figure(figsize=(7, 10), dpi=200)
-    plt.subplot(projection=wcs)
-    WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
+    plt.figure(figsize=(7, 10), dpi=200)
+    # plt.subplot(projection=wcs)
+    # WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
 
     # image_data[image_data == np.inf] = np.nan
     # image_data[image_data == 0] = np.nan
@@ -166,9 +166,11 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
 
     im.set_norm(PowerNorm(vmin=0, vmax=vmax, gamma=1 / 2))
 
-    plt.xlabel('Right Ascension (J2000)', size=14)
-    plt.ylabel('Declination (J2000)', size=14)
-    plt.tick_params(axis='both', which='major', labelsize=12)
+    # plt.xlabel('Right Ascension (J2000)', size=14)
+    # plt.ylabel('Declination (J2000)', size=14)
+    # plt.tick_params(axis='both', which='major', labelsize=12)
+    plt.xticks = []
+    plt.yticks = []
 
     plt.grid(False)
     plt.grid('off')
@@ -211,7 +213,7 @@ def main():
     else:
         sys.exit('ERROR: only use resolution 0.3 or 1.2')
 
-    fullpixsize = int(2.5 * 3600 / pixelscale*1.1)
+    fullpixsize = int(2.5 * 3600 / pixelscale)
 
     header_new = make_header(facets[0], fullpixsize)
     print(header_new)
@@ -245,7 +247,7 @@ def main():
         # coordinates = get_array_coordinates(imagedata, wcsheader) #TODO: UNCOMMENT FOR BETTER WEIGHTS
         # facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask #TODO: UNCOMMENT FOR BETTER WEIGHTS
         facetweight = mask #TODO: COMMENT FOR BETTER WEIGHTS
-        facetweight[~np.isfinite(facetweight)] = 0  # so we can add
+        facetweight[(~np.isfinite(imagedata)) | (~np.isfinite(facetweight)) | (imagedata == 0)] = 0  # so we can add
         imagedata *= facetweight
         imagedata[~np.isfinite(imagedata)] = 0  # so we can add
         isum += imagedata
