@@ -157,6 +157,7 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
 
     plt.figure(figsize=(7, 10), dpi=200)
     # plt.subplot(projection=wcs)
+    plt.subplot()
     # WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
 
     # image_data[image_data == np.inf] = np.nan
@@ -169,11 +170,13 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
     # plt.xlabel('Right Ascension (J2000)', size=14)
     # plt.ylabel('Declination (J2000)', size=14)
     # plt.tick_params(axis='both', which='major', labelsize=12)
-    plt.xticks = []
-    plt.yticks = []
+    plt.xticks([])
+    plt.yticks([])
 
     plt.grid(False)
     plt.grid('off')
+    plt.grid(None)
+    plt.tight_layout()
 
     if save is not None:
         plt.savefig(save, dpi=250, bbox_inches='tight')
@@ -236,7 +239,7 @@ def main():
         del hduflatten
 
         reg = regions[n]
-        polycenter = get_polygon_center(reg)
+        # polycenter = get_polygon_center(reg)
         r = pyregion.open(reg).as_imagecoord(header=header_new)
         mask = r.get_mask(hdu=hdu[0], shape=(header_new["NAXIS1"], header_new["NAXIS2"])).astype(int)
         hdu.close()

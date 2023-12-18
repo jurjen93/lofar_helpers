@@ -494,10 +494,10 @@ class MergeH5:
                                 or (not all(antennas_ref['name'] == antennas['name'])):
                             message = '\n'.join(
                                 ['\nMismatch between antenna tables from ' + h5_name1 + ' and ' + h5_name2,
-                                 'Antennas from ' + h5_name1 + ':',
-                                 antennas_ref['name'],
+                                 'Antennas from ' + h5_name1 + ' and ',
+                                 str(antennas_ref['name']),
                                  'Antennas from ' + h5_name2 + ':',
-                                 antennas['name']])
+                                 str(antennas['name'])])
                             print(message)
                             H.close()
                             H_ref.close()
@@ -1190,7 +1190,6 @@ class MergeH5:
 
                         if 'pol' in st.getAxesNames() and not fulljones_done:
                             if st.getAxisLen('pol') == 4:
-                                print(self.amplitudes.shape)
                                 self.amplitudes[1, idx, ...] = self.amplitudes[0, idx, ...] * values[
                                     1, ...]  # Axx * Bxy
                                 self.amplitudes[2, idx, ...] = self.amplitudes[-1, idx, ...] * values[
@@ -1898,7 +1897,6 @@ class MergeH5:
 
                         pol_index = axes_new.index('pol')
                         if weight_out.shape[pol_index] == newvals.shape[pol_index]:  # same pol numbers
-                            print(weight_out.shape, m, axes, len(self.h5_tables))
                             weight_out[:, :, :, m, ...] *= newvals[:, :, :, 0, ...]
                         else:  # not the same polarization axis
                             if newvals.shape[pol_index] != newvals.shape[-1]:

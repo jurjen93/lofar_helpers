@@ -40,7 +40,7 @@ def from_png(frames, output='movie.mp4'):
         if imghdr.what(frame)!='png' and imghdr.what(frame)!='jpg':
             sys.exit('ERROR: '+frame+' is not jpg or png file')
         os.system(f'cp {frame} framestmp/frame_{str(n).rjust(5, "0")}.png')
-    os.system(f'ffmpeg -y -f image2 -r 3/4 -lavfi "fps=10,scale=720:-1:flags=lanczos" -i framestmp/frame_%05d.png '
+    os.system(f'ffmpeg -y -f image2 -r 2 -lavfi "fps=10,scale=720:-1:flags=lanczos" -i framestmp/frame_%05d.png '
               f'{output} && rm -rf framestmp')
     return
 
