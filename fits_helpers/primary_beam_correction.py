@@ -25,8 +25,10 @@ def make_beam_images(cmd):
     cmd = cmd.replace('- ','')
 
     print(' '.join([c for c in cmd.split() if '.ms' not in c]) + " *.ms")
-    os.system('mkdir -p beamrun && mv *.ms beamrun && cd beamrun && ' + cmd + ' > wsclean.txt && cd ../ && mv beamrun/*beam-*.fits .')
-
+    if len(glob('apply*.ms'))>0:
+        os.system('mkdir -p beamrun && mv apply*.ms beamrun && cd beamrun && ' + cmd + ' > wsclean.txt && cd ../ && mv beamrun/*beam-*.fits .')
+    else:
+        os.system('mkdir -p beamrun && mv *.ms beamrun && cd beamrun && ' + cmd + ' > wsclean.txt && cd ../ && mv beamrun/*beam-*.fits .')
 
 def get_history(fitsfile):
     """

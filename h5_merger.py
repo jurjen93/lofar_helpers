@@ -466,7 +466,7 @@ class MergeH5:
                             (not all(antennas_ref['name'] == ss1._f_get_child(soltab1).ant[:])):
                         message = '\n'.join(['\nMismatch in antenna tables in ' + h5_name1,
                                              'Antennas from ' + '/'.join([solset1, 'antenna']),
-                                             antennas_ref['name'],
+                                             str(antennas_ref['name']),
                                              'Antennas from ' + '/'.join([solset1, soltab1, 'ant']),
                                              ss1._f_get_child(soltab1).ant[:]])
                         print(message)
