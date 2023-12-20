@@ -220,7 +220,7 @@ def run_pybdsf(fitsfile):
     return prefix + '_source_catalog.fits'
 
 
-def get_pix_coord_resolved(table):
+def get_pix_coord(table):
     """
     Get pixel coordiantes from table RA/DEC
     :param table: fits table
@@ -228,8 +228,8 @@ def get_pix_coord_resolved(table):
     """
     f = fits.open(table)
     t = f[1].data
-    res = t[t['S_Code'] != 'S']
-    pos = list(zip(res['RA'], res['DEC']))
+    # res = t[t['S_Code'] != 'S']
+    pos = list(zip(t['RA'], t['DEC']))
     pos = [SkyCoord(f'{c[0]}deg', f'{c[1]}deg', frame='icrs') for c in pos]
     fts = fits.open(table.replace("_source_catalog",""))
     w = WCS(fts[0].header, naxis=2)
@@ -249,6 +249,22 @@ def parse_args():
     return parser.parse_args()
 
 
+def make_point_file(t):
+    """
+    Make ds9 file with ID in it
+    """
+    header="""# Region file format: DS9 version 4.1
+global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
+fk5
+"""
+
+    file = open('components.reg', 'w')
+    file.write(header)
+    for n, c in enumerate(zip(t['RA'], t['DEC'])):
+        file.write(f'\n# text({c[0]},{c[1]}) text='+'{'+f'{t["Source_id"][n]}'+'}')
+    return
+
+
 def main():
     """
     Main function
@@ -257,8 +273,10 @@ def main():
     args = parse_args()
     for m, fts in enumerate(args.fitsf):
         tbl = run_pybdsf(fts)
+        # make ds9 region file with sources in it
+        make_point_file(tbl)
         # loop through resolved sources and make images
-        coord = get_pix_coord_resolved(tbl)
+        coord = get_pix_coord(tbl)
         for n, c in enumerate(coord):
             os.system('mkdir -p sources')
             make_cutout(fitsfile=fts, pos = c, size = (500, 500), savefits=f'sources/source_{(m+1)*(n+1)}.fits')
