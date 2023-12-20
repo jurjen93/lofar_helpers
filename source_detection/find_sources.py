@@ -21,7 +21,7 @@ import matplotlib.path as mpath
 import matplotlib.patches as patches
 from matplotlib import ticker
 import os
-
+from astropy.table import Table
 
 def get_rms(image_data):
     """
@@ -257,7 +257,7 @@ def make_point_file(t):
 global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
 fk5
 """
-
+    t = Table.read(t, format='fits')
     file = open('components.reg', 'w')
     file.write(header)
     for n, c in enumerate(zip(t['RA'], t['DEC'])):
