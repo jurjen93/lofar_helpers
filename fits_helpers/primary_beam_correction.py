@@ -21,6 +21,8 @@ def make_beam_images(cmd):
             cmd = cmd.replace('-niter ' + hist_split[idx + 1], '-niter 0')
         if element=='-name':
             cmd = cmd.replace('-name ' + hist_split[idx + 1], '-name beam')
+        if element=='-baseline-averaging':
+            cmd = cmd.replace('-baseline-averaging ' + hist_split[idx + 1], '')
 
     cmd = cmd.replace('- ','')
 
