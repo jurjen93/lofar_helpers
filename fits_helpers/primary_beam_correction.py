@@ -23,6 +23,8 @@ def make_beam_images(cmd):
             cmd = cmd.replace('-name ' + hist_split[idx + 1], '-name beam')
         if element=='-baseline-averaging':
             cmd = cmd.replace('-baseline-averaging ' + hist_split[idx + 1], '')
+        if '/imaging/' in element and 'split_facets2' in element:
+            cmd = cmd.replace(element, element.split('/imaging/')[-1])
 
     cmd = cmd.replace('- ','')
 
