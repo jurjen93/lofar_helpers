@@ -49,7 +49,7 @@ def make_beam_images(cmd):
             cmd = cmd.replace(element, element.split('/imaging/')[-1])
         if element=='-':
             cmd = cmd.replace(' - -', ' -')
-        if has_char(element) and has_num(element):
+        if has_char(element) and has_num(element) and '.ms' not in element and '-' in element:
             cmd = cmd.replace(element, split_num_char(element))
 
     cmd = cmd.replace('- ','')
