@@ -51,12 +51,15 @@ def make_beam_images(cmd):
             cmd = cmd.replace(element, element.split('/imaging/')[-1])
         if element=='-':
             cmd = cmd.replace(' - -', ' -')
-        if has_char(element) and has_num(element) and '.ms' not in element and '-' in element:
+        if has_char(element) and has_num(element) and '.ms' not in element and '-' in element \
+                and hist_split[idx-1]!='-taper-gaussian' and hist_split[idx-1]!='-scale':
             cmd = cmd.replace(element, split_num_char(element))
+        if element[-3:]=='.ms':
+            cmd = cmd.replace(element, '')
+    cmd = cmd.replace('- ', ' ').replace('  ', ' ').strip()
+    cmd += ' *.ms'
 
-    cmd = cmd.replace('- ','')
-
-    print(' '.join([c for c in cmd.split() if '.ms' not in c]) + " *.ms")
+    print(cmd)
     if len(glob('apply*.ms'))>0:
         os.system('mkdir -p beamrun && mv apply*.ms beamrun && cd beamrun && ' + cmd + ' > wsclean.txt && cd ../ && mv beamrun/*beam-*.fits .')
     else:
