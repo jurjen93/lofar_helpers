@@ -24,7 +24,9 @@ def split_num_char(string):
     """
     split characters and numbers from string
     """
-    return ' '.join(re.split('(\d+)', string)).strip().replace(' .','.').replace('. ','.')
+    return ((' '.join(re.split('(\d+)', string)).strip().
+            replace(' .','.').replace('. ','.')).
+            replace(' _','_').replace('_ ','_'))
 
 
 def make_beam_images(cmd):
