@@ -3,6 +3,28 @@ from glob import glob
 import numpy as np
 import sys
 import os
+import re
+
+
+def has_num(string):
+    """
+    Verify if string has number
+    """
+    return bool(re.search(r'\d', string))
+
+
+def has_char(string):
+    """
+    Verify if string has letter
+    """
+    return bool(re.search('[a-zA-Z]', string))
+
+
+def split_num_char(string):
+    """
+    split characters and numbers from string
+    """
+    return ' '.join(re.split('(\d+)', string)).strip().replace(' .','.').replace('. ','.')
 
 
 def make_beam_images(cmd):
@@ -25,6 +47,10 @@ def make_beam_images(cmd):
             cmd = cmd.replace('-baseline-averaging ' + hist_split[idx + 1], '')
         if '/imaging/' in element and 'split_facets2' in element:
             cmd = cmd.replace(element, element.split('/imaging/')[-1])
+        if element=='-':
+            cmd = cmd.replace(' - -', ' -')
+        if has_char(element) and has_num(element):
+            cmd = cmd.replace(element, split_num_char(element))
 
     cmd = cmd.replace('- ','')
 
