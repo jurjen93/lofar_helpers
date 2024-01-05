@@ -23,6 +23,7 @@ from skimage.filters.rank import entropy
 from skimage.morphology import disk
 import pandas as pd
 import sys
+from cv2 import bilateralFilter
 
 
 class SelfcalQuality:
@@ -42,16 +43,15 @@ class SelfcalQuality:
 
         # merged selfcal h5parms
         self.h5s = [h5 for h5 in glob(f"{self.folder}/merged_selfcalcyle*.h5") if 'linearfulljones' not in h5]
-        if len(self.h5s)==0:
+        if len(self.h5s) == 0:
             self.h5s = glob(f"{self.folder}/merged_selfcalcyle*.h5")
-        if len(self.h5s) != 0:
+        if len(self.h5s) == 0:
             print("WARNING: No h5 files found")
         # assert len(self.h5s) != 0, "No h5 files found"
 
         # select all sources
         regex = "merged_selfcalcyle\d{3}\_"
         self.sources = set([re.sub(regex, '', h.split('/')[-1]).replace('.ms.copy.phaseup.h5', '') for h in self.h5s])
-        # self.sourcename = list(self.sources)[0].split('_')[-1]
 
         # select all fits images
         fitsfiles = sorted(glob(self.folder + "/*MFS-I-image.fits"))
@@ -59,19 +59,6 @@ class SelfcalQuality:
             fitsfiles = sorted(glob(self.folder + "/*MFS-image.fits"))
         self.fitsfiles = [f for f in fitsfiles if 'arcsectaper' not in f]
         assert len(self.fitsfiles) != 0, "No fits files found"
-
-        # select all fits model images
-        modelfiles = sorted(glob(self.folder + "/*MFS-I-model.fits"))
-        if len(modelfiles) == 0 or '000' not in modelfiles[0]:
-            modelfiles = sorted(glob(self.folder + "/*MFS-model.fits"))
-        self.modelfiles = [f for f in modelfiles if 'arcsectaper' not in f]
-
-        # select all fits residual images
-        modelfiles = sorted(glob(self.folder + "/*MFS-I-residual.fits"))
-        if len(modelfiles) == 0 or '000' not in modelfiles[0]:
-            modelfiles = sorted(glob(self.folder + "/*MFS-residual.fits"))
-        self.residualfiles = [f for f in modelfiles if 'arcsectaper' not in f]
-        self.maxp, self.minp = self.get_max_min_pix()
 
         # for phase/amp evolution
         self.remote_only = remote_only
@@ -82,19 +69,18 @@ class SelfcalQuality:
         self.writer = csv.writer(self.textfile)
         self.writer.writerow(['solutions', 'dirty'] + [str(i) for i in range(len(self.fitsfiles))])
 
-
     def get_max_min_pix(self):
         """
-        Get max/min pixels from model and images
+        Get max/min pixels from images
         """
 
         maxp, minp = 0, 0
-        for f in self.modelfiles+self.residualfiles+self.fitsfiles:
+        for f in self.fitsfiles:
             fts = fits.open(f)
             d = fts[0].data
-            if d.min()<minp:
+            if d.min() < minp:
                 minp = d.min()
-            if d.max()>maxp:
+            if d.max() > maxp:
                 maxp = d.max()
         return maxp, minp
 
@@ -369,7 +355,7 @@ class SelfcalQuality:
                 accept = False
             return bestcycle, accept
         else:
-            return None, None
+            return None, False
 
     @staticmethod
     def get_rms(fitsfile: str = None, maskSup: float = 1e-7):
@@ -416,62 +402,99 @@ class SelfcalQuality:
 
         return minmax
 
-    def image_stability(self):
+    @staticmethod
+    def bilateral_filter(fitsfile=None, sigma_x=1, sigma_y=1, sigma_z=1, general_sigma=None):
+        """
+        Bilateral filter
+        See: https://www.projectpro.io/recipes/what-is-bilateral-filtering-opencv
+
+        :param image: image data
+        :param sigma: standard deviation that controls the influence of distant pixels
+
+        :return: Bilateral filter output
+        """
+
+        hdul = fits.open(fitsfile)
+        data = hdul[0].data
+        hdul.close()
+
+        if general_sigma is not None:
+            sigma_x = sigma_y = sigma_z = int(general_sigma)
+        return bilateralFilter(data, sigma_x, sigma_y, sigma_z)
+
+    @staticmethod
+    def select_cycle(cycles=None):
+        """
+        Select best cycle
+
+        :param cycles: rms or minmax cycles
+
+        :return: best cycle
+        """
+
+        b, best_cycle = 0, 0
+        for n, c in enumerate(cycles[1:]):
+            if c>cycles[n-1]:
+                b+=1
+            else:
+                b = 0
+                best_cycle = n+1
+            if b==2:
+                break
+        return best_cycle
+
+    def image_stability(self, bilateral_filter: bool = None):
         """
         Determine image stability
+
+        :param bilateral_filter: use bilateral_filter or not
 
         :return: bestcycle --> best solution cycle
                  accept    --> accept this selfcal
         """
 
-        # cycles = [self.get_cycle_num(fts) for fts in self.fitsfiles]
-        rmss = [self.get_rms(fts) * 1000 for fts in self.fitsfiles]
-        minmaxs = [self.get_minmax(fts) for fts in self.fitsfiles]
-        entropy_images = [self.image_entropy(fts) for fts in self.fitsfiles]
-        entropy_models = [self.image_entropy(fts) for fts in self.modelfiles]
-        entropy_residuals = [self.image_entropy(fts) for fts in self.residualfiles]
+        if bilateral_filter:
+            rmss = [self.get_rms(self.bilateral_filter(fts, general_sigma=40)) * 1000 for fts in self.fitsfiles]
+            minmaxs = [self.get_minmax(self.bilateral_filter(fts, general_sigma=40)) for fts in self.fitsfiles]
+        else:
+            rmss = [self.get_rms(fts) * 1000 for fts in self.fitsfiles]
+            minmaxs = [self.get_minmax(fts) for fts in self.fitsfiles]
 
         self.make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'image_stability.png')
-        self.make_figure(vals1=entropy_images, vals2=entropy_models, label1='Entropy image', label2='Entropy model',
-                         plotname=f'entropy.png')
 
         self.writer.writerow(['min/max'] + minmaxs + [np.nan])
         self.writer.writerow(['rms'] + rmss + [np.nan])
-        self.writer.writerow(['entropy_image'] + entropy_images + [np.nan])
-        if len(entropy_models)>0:
-            self.writer.writerow(['entropy_model'] + entropy_models + [np.nan])
-        if len(entropy_residuals)>0:
-            self.writer.writerow(['entropy_residual'] + entropy_residuals + [np.nan])
 
-        # SCORING
-        best_rms_cycle, best_minmax_cycle = (np.array(rmss[1:]).argmin() + 1,
-                                                                 np.array(minmaxs[1:]).argmin() + 1)
-        # using maxmin instead of minmax due to easier slope value to work with
-        rms_slope, maxmin_slope = linregress(list(range(len(rmss))), rmss).slope, linregress(list(range(len(rmss))),
-                                                                                             1 / np.array(
+        # scores
+        best_rms_cycle = self.select_cycle(rmss)
+        best_minmax_cycle = self.select_cycle(minmaxs)
+
+        # best cycle
+        bestcycle = (best_minmax_cycle + best_rms_cycle) // 2
+
+        # getting slopes
+        if len(rmss)>4:
+            rms_slope_start, minmax_slope_start = linregress(list(range(len(rmss[:4]))), rmss[:4]).slope, linregress(list(range(len(rmss[:4]))),
+                                                                                                 np.array(
+                                                                                                     minmaxs[:4])).slope
+        else:
+            rms_slope_start, minmax_slope_start = 1, 1
+
+        rms_slope, minmax_slope = linregress(list(range(len(rmss))), rmss).slope, linregress(list(range(len(rmss))),
+                                                                                             np.array(
                                                                                                  minmaxs)).slope
 
         # accept direction or not
-        if maxmin_slope > 10:
+        if minmax_slope > 0 and rms_slope > 0:
+            accept = False
+        elif minmax_slope_start > 0 or rms_slope_start > 0:
+            accept = False
+        elif len(self.fitsfiles) < 5:
+            accept = False
+        elif bestcycle+2 < len(rmss):
             accept = True
-        elif maxmin_slope < 0 and rms_slope > 0:
-            accept = False
-        elif maxmin_slope < 1.5:
-            accept = False
-        elif maxmin_slope < 2 and rms_slope >= 0:
-            accept = False
         else:
             accept = True
-
-        # choose best cycle
-        if best_rms_cycle == best_minmax_cycle:
-            bestcycle = best_rms_cycle
-        elif rmss[best_minmax_cycle] <= 1.1:
-            bestcycle = best_minmax_cycle
-        elif minmaxs[best_rms_cycle] / minmaxs[0] <= 1:
-            bestcycle = best_rms_cycle
-        else:
-            bestcycle = int(round(np.mean([best_minmax_cycle, best_rms_cycle]), 0))
 
         return bestcycle - 1, accept
 
@@ -482,8 +505,10 @@ def parse_args():
 
     :return: parsed arguments
     """
+
     parser = ArgumentParser(description='Determine selfcal quality')
     parser.add_argument('--selfcal_folder', default='.')
+    parser.add_argument('--bilateral_filter', action='store_true')
     parser.add_argument('--dutch_only', action='store_true', help='Only Dutch stations are considered', default=None)
     parser.add_argument('--remote_only', action='store_true', help='Only remote stations are considered', default=None)
     parser.add_argument('--international_only', action='store_true', help='Only international stations are considered',
@@ -498,19 +523,21 @@ def main():
     args = parse_args()
 
     sq = SelfcalQuality(args.selfcal_folder, args.remote_only, args.international_only)
-    if len(sq.h5s)>0:
+    if len(sq.h5s) > 1 and len(sq.fitsfiles) > 1:
         bestcycle_solutions, accept_solutions = sq.solution_stability()
-    if len(sq.fitsfiles)>0:
-        bestcycle_image, accept_image = sq.image_stability()
-    sq.textfile.close()
-    df = pd.read_csv(f'selfcal_performance.csv').set_index('solutions').T
-    print(df)
-    df.to_csv(f'selfcal_performance.csv', index=False)
+        bestcycle_image, accept_image = sq.image_stability(bilateral_filter=args.bilateral_filter)
+        sq.textfile.close()
+        df = pd.read_csv(f'selfcal_performance.csv').set_index('solutions').T
+        print(df)
+        df.to_csv(f'selfcal_performance.csv', index=False)
 
-    print(f"Best cycle according to solutions {bestcycle_solutions} (SCORES IN TESTING PHASE)")
-    print(f"Accept according to solutions {accept_solutions} (SCORES IN TESTING PHASE)")
-    print(f"Best cycle according to image {bestcycle_image} (SCORES IN TESTING PHASE)")
-    print(f"Accept according to image {accept_image} (SCORES IN TESTING PHASE)")
+        print(f"Best cycle according to solutions {bestcycle_solutions}")
+        print(f"Accept according to solutions {accept_solutions}")
+        print(f"Best cycle according to image {bestcycle_image}")
+        print(f"Accept according to image {accept_image}")
+    else:
+        sq.textfile.close()
+        print(f"Need more than 1 h5 or fits file")
 
 
 if __name__ == '__main__':
