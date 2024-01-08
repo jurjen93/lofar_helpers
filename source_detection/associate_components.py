@@ -1,4 +1,3 @@
-from astropy.io import fits
 from astropy.table import Table
 import numpy as np
 
@@ -34,17 +33,18 @@ def associate(associate_components, table):
     for p in associate_components:
         main_ID = list(p.keys())[0]
         to_not_delete.append(main_ID)
-        t[main_ID]['Total_flux'] = t[p[main_ID]]['Total_flux'].sum()
-        t[main_ID]['E_Total_flux'] = error_prop(t[p[main_ID]]['E_Total_flux'])
-        t[main_ID]['Peak_flux'] = t[p[main_ID]]['E_Peak_flux'].max()
+        ids = list(set(p[main_ID]))
+        t[main_ID]['Total_flux'] = t[ids]['Total_flux'].sum()
+        t[main_ID]['E_Total_flux'] = error_prop(t[ids]['E_Total_flux'])
+        t[main_ID]['Peak_flux'] = t[ids]['E_Peak_flux'].max()
         t[main_ID]['S_Code'] = 'M'
-        t[main_ID]['Isl_rms'] = t[p[main_ID]]['Isl_rms'].mean()
-        for i in p[main_ID]:
+        t[main_ID]['Isl_rms'] = t[ids]['Isl_rms'].mean()
+        for i in ids:
             to_delete.append(i)
 
     for i in sorted(to_delete)[::-1]:
         if i not in to_not_delete:
             del t[i]
 
-    t.write(table.replace('.fits', '_final.fits'), format='fits')
+    t.write(table.replace('.fits', '_final.fits'), format='fits', overwrite=True)
 
