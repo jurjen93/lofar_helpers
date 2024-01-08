@@ -66,11 +66,11 @@ def make_cutout(fitsfile=None, pos: tuple = None, size: tuple = (1000, 1000), sa
     )
 
     wcs = out.wcs
-    header = out.wcs.to_header()
+    header = wcs.to_header()
 
     image_data = out.data
-    rms = get_rms(image_data)
-    hdu = [fits.PrimaryHDU(image_data, header=header)]
+    # rms = get_rms(image_data)
+    # hdu = [fits.PrimaryHDU(image_data, header=header)]
 
     if savefits:
         image_data = out.data
@@ -229,11 +229,11 @@ def get_pix_coord(table):
     f = fits.open(table)
     t = f[1].data
     # res = t[t['S_Code'] != 'S']
-    pos = list(zip(t['RA'], t['DEC']))
-    pos = [SkyCoord(f'{c[0]}deg', f'{c[1]}deg', frame='icrs') for c in pos]
+    pos = list(zip(t['RA'], t['DEC'], t['Source_id']))
+    pos = [(SkyCoord(f'{c[0]}deg', f'{c[1]}deg', frame='icrs'), c[2]) for c in pos]
     fts = fits.open(table.replace("_source_catalog",""))
     w = WCS(fts[0].header, naxis=2)
-    pix_coord = [[int(c) for c in skycoord_to_pixel(sky, w, 0, 'all')] for sky in pos]
+    pix_coord = [([int(c) for c in skycoord_to_pixel([sky[0], sky[1]], w, 0, 'all')], sky[2]) for sky in pos]
     return pix_coord
 
 
@@ -277,10 +277,10 @@ def main():
         make_point_file(tbl)
         # loop through resolved sources and make images
         coord = get_pix_coord(tbl)
-        for n, c in enumerate(coord):
+        for c, n in coord:
             os.system('mkdir -p sources')
-            make_cutout(fitsfile=fts, pos = c, size = (500, 500), savefits=f'sources/source_{(m+1)*(n+1)}.fits')
-            make_image(f'sources/source_{(m+1)*(n+1)}.fits')
+            make_cutout(fitsfile=fts, pos=tuple(c), size=(400, 400), savefits=f'sources/source_{m}_{n}.fits')
+            make_image(f'sources/source_{m}_{n}.fits')
 
 
 if __name__ == '__main__':
