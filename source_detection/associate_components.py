@@ -5,8 +5,14 @@ import numpy as np
 ds9 <FITS_IMAGE> -asinh -region components.reg -scale limits -0.000001 0.001 -cmap ch05m151008
 """
 
+
 def error_prop(errors):
     return np.sqrt(np.sum(np.power(errors, 2)))
+
+
+def get_table_index(t, source_id):
+    return int(np.argwhere(t['Source_id'] == source_id).squeeze())
+
 
 def associate(associate_components, table):
     """
@@ -31,16 +37,19 @@ def associate(associate_components, table):
     to_not_delete = []
 
     for p in associate_components:
-        main_ID = list(p.keys())[0]
-        to_not_delete.append(main_ID)
-        ids = list(set(p[main_ID]))
-        t[main_ID]['Total_flux'] = t[ids]['Total_flux'].sum()
-        t[main_ID]['E_Total_flux'] = error_prop(t[ids]['E_Total_flux'])
-        t[main_ID]['Peak_flux'] = t[ids]['E_Peak_flux'].max()
-        t[main_ID]['S_Code'] = 'M'
-        t[main_ID]['Isl_rms'] = t[ids]['Isl_rms'].mean()
-        for i in ids:
-            to_delete.append(i)
+        if type(p) == dict:
+            main_ID = list(p.keys())[0]
+            to_not_delete.append(get_table_index(t, main_ID))
+            ids = list(set(p[main_ID]))
+            t[main_ID]['Total_flux'] = t[ids]['Total_flux'].sum()
+            t[main_ID]['E_Total_flux'] = error_prop(t[ids]['E_Total_flux'])
+            t[main_ID]['Peak_flux'] = t[ids]['E_Peak_flux'].max()
+            t[main_ID]['S_Code'] = 'M'
+            t[main_ID]['Isl_rms'] = t[ids]['Isl_rms'].mean()
+            for i in ids:
+                to_delete.append(get_table_index(t, i))
+        if type(p) == int:
+            to_delete.append(get_table_index(t, p))
 
     for i in sorted(to_delete)[::-1]:
         if i not in to_not_delete:
@@ -48,3 +57,4 @@ def associate(associate_components, table):
 
     t.write(table.replace('.fits', '_final.fits'), format='fits', overwrite=True)
 
+#TODO: int(np.argwhere(t['Source_id']==29).squeeze())

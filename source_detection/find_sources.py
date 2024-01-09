@@ -23,6 +23,7 @@ from matplotlib import ticker
 import os
 from astropy.table import Table
 
+
 def get_rms(image_data):
     """
     from Cyril Tasse/kMS
@@ -33,17 +34,17 @@ def get_rms(image_data):
     from past.utils import old_div
 
     maskSup = 1e-7
-    m = image_data[np.abs(image_data)>maskSup]
+    m = image_data[np.abs(image_data) > maskSup]
     rmsold = np.std(m)
     diff = 1e-1
     cut = 3.
     med = np.median(m)
     for _ in range(10):
-        ind = np.where(np.abs(m - med) < rmsold*cut)[0]
+        ind = np.where(np.abs(m - med) < rmsold * cut)[0]
         rms = np.std(m[ind])
-        if np.abs(old_div((rms-rmsold), rmsold)) < diff: break
+        if np.abs(old_div((rms - rmsold), rmsold)) < diff: break
         rmsold = rms
-    print(f'Noise : {str(round(rms * 1000, 4))} {u.mJy/u.beam}')
+    print(f'Noise : {str(round(rms * 1000, 4))} {u.mJy / u.beam}')
     return rms
 
 
@@ -87,13 +88,13 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
 
     hdu = fits.open(fitsfile)
     image_data = hdu[0].data
-    while image_data.ndim>2:
+    while image_data.ndim > 2:
         image_data = image_data[0]
     header = hdu[0].header
 
     rms = get_rms(image_data)
     vmin = rms
-    vmax = rms*30
+    vmax = rms * 30
 
     if hdu is None:
         wcs = WCS(header, naxis=2)
@@ -104,7 +105,7 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
     plt.subplot(projection=wcs)
     WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
     im = plt.imshow(image_data, origin='lower', cmap=cmap)
-    im.set_norm(PowerNorm(gamma=0.5, vmin=vmin, vmax = vmax))
+    im.set_norm(PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
     plt.xlabel('Right Ascension (J2000)', size=14)
     plt.ylabel('Declination (J2000)', size=14)
     plt.tick_params(axis='both', which='major', labelsize=12)
@@ -112,7 +113,7 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
     # p0 = axes[0].get_position().get_points().flatten()
     # p2 = axes[2].get_position().get_points().flatten()
 
-    orientation='horizontal'
+    orientation = 'horizontal'
     ax_cbar1 = fig.add_axes([0.22, 0.15, 0.73, 0.02])
     cb = plt.colorbar(im, cax=ax_cbar1, orientation=orientation)
     cb.set_label('Surface brightness [mJy/beam]', size=16)
@@ -196,7 +197,6 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
     cb.locator = tick_locator
     cb.update_ticks()
 
-
     fig.tight_layout(pad=1.0)
     plt.grid(False)
     plt.grid('off')
@@ -214,7 +214,9 @@ def run_pybdsf(fitsfile, rmsbox):
     :return: source catalogue
     """
     prefix = fitsfile.replace('.fits', '')
-    img = bdsf.process_image(fitsfile, thresh_isl=3., thresh_pix=5.5, atrous_do=True, rms_box=(int(rmsbox), rmsbox//4), adaptive_rms_box=True)#, rms_map=True, rms_box = (160,40))
+    img = bdsf.process_image(fitsfile, thresh_isl=3., thresh_pix=5.5, atrous_do=True,
+                             rms_box=(int(rmsbox), rmsbox // 4),
+                             adaptive_rms_box=True)  # , rms_map=True, rms_box = (160,40))
     img.write_catalog(clobber=True, outfile=prefix + '_source_catalog.fits', format='fits', catalog_type='srl')
     img.write_catalog(clobber=True, outfile=prefix + '_gaussian_catalog.fits', format='fits', catalog_type='gaul')
     img.export_image(clobber=True, img_type='island_mask', outfile=prefix + '_island_mask.fits')
@@ -231,10 +233,10 @@ def get_pix_coord(table):
     t = f[1].data
     # res = t[t['S_Code'] != 'S']
     pos = list(zip(t['RA'], t['DEC'], t['Source_id']))
-    pos = [(SkyCoord(f'{c[0]}deg', f'{c[1]}deg', frame='icrs'), c[2]) for c in pos]
-    fts = fits.open(table.replace("_source_catalog",""))
+    pos = [[SkyCoord(f'{c[0]}deg', f'{c[1]}deg', frame='icrs'), c[2]] for c in pos]
+    fts = fits.open(table.replace("_source_catalog", ""))
     w = WCS(fts[0].header, naxis=2)
-    pix_coord = [([int(c) for c in skycoord_to_pixel([sky[0], sky[1]], w, 0, 'all')], sky[2]) for sky in pos]
+    pix_coord = [([int(c) for c in skycoord_to_pixel(sky[0], w, 0, 'all')], sky[1]) for sky in pos]
     return pix_coord
 
 
@@ -243,9 +245,8 @@ def parse_args():
     Parse input arguments
     """
 
-    parser = argparse.ArgumentParser(
-        description='Source detection')
-    parser.add_argument('--rmsbox', type=float, help='rms box pybdsf', default=160)
+    parser = argparse.ArgumentParser(description='Source detection')
+    parser.add_argument('--rmsbox', type=int, help='rms box pybdsf', default=160)
     parser.add_argument('fitsf', nargs='+', help='fits files')
     # parser.add_argument('--ref_catalogue', help='fits table')
     return parser.parse_args()
@@ -255,7 +256,7 @@ def make_point_file(t):
     """
     Make ds9 file with ID in it
     """
-    header="""# Region file format: DS9 version 4.1
+    header = """# Region file format: DS9 version 4.1
 global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
 fk5
 """
@@ -263,7 +264,7 @@ fk5
     file = open('components.reg', 'w')
     file.write(header)
     for n, c in enumerate(zip(t['RA'], t['DEC'])):
-        file.write(f'\n# text({c[0]},{c[1]}) text='+'{'+f'{t["Source_id"][n]}'+'}')
+        file.write(f'\n# text({c[0]},{c[1]}) text=' + '{' + f'{t["Source_id"][n]}' + '}')
     return
 
 
