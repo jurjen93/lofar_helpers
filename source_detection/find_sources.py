@@ -204,16 +204,17 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
     plt.close()
 
 
-def run_pybdsf(fitsfile):
+def run_pybdsf(fitsfile, rmsbox):
     """
     Run pybdsf
 
     :param fitsfile: fits file
+    :param rmsbox: rms box first parameter
 
     :return: source catalogue
     """
     prefix = fitsfile.replace('.fits', '')
-    img = bdsf.process_image(fitsfile, thresh_isl=3., thresh_pix=5.5, atrous_do=True, rms_box=(160, 40))#, rms_map=True, rms_box = (160,40))
+    img = bdsf.process_image(fitsfile, thresh_isl=3., thresh_pix=5.5, atrous_do=True, rms_box=(int(rmsbox), rmsbox//4))#, rms_map=True, rms_box = (160,40))
     img.write_catalog(clobber=True, outfile=prefix + '_source_catalog.fits', format='fits', catalog_type='srl')
     img.write_catalog(clobber=True, outfile=prefix + '_gaussian_catalog.fits', format='fits', catalog_type='gaul')
     img.export_image(clobber=True, img_type='island_mask', outfile=prefix + '_island_mask.fits')
@@ -245,6 +246,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Source detection')
     parser.add_argument('fitsf', nargs='+', help='fits files')
+    parser.add_argument('rmsbox', type=float, help='rms box pybdsf')
     # parser.add_argument('--ref_catalogue', help='fits table')
     return parser.parse_args()
 
@@ -272,7 +274,7 @@ def main():
 
     args = parse_args()
     for m, fts in enumerate(args.fitsf):
-        tbl = run_pybdsf(fts)
+        tbl = run_pybdsf(fts, args.rmsbox)
         # make ds9 region file with sources in it
         make_point_file(tbl)
         # loop through resolved sources and make images
