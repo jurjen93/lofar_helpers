@@ -214,7 +214,7 @@ def run_pybdsf(fitsfile, rmsbox):
     :return: source catalogue
     """
     prefix = fitsfile.replace('.fits', '')
-    img = bdsf.process_image(fitsfile, thresh_isl=3., thresh_pix=5.5, atrous_do=True, rms_box=(int(rmsbox), rmsbox//4))#, rms_map=True, rms_box = (160,40))
+    img = bdsf.process_image(fitsfile, thresh_isl=3., thresh_pix=5.5, atrous_do=True, rms_box=(int(rmsbox), rmsbox//4), adaptive_rms_box=True)#, rms_map=True, rms_box = (160,40))
     img.write_catalog(clobber=True, outfile=prefix + '_source_catalog.fits', format='fits', catalog_type='srl')
     img.write_catalog(clobber=True, outfile=prefix + '_gaussian_catalog.fits', format='fits', catalog_type='gaul')
     img.export_image(clobber=True, img_type='island_mask', outfile=prefix + '_island_mask.fits')
