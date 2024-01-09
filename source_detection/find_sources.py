@@ -245,8 +245,8 @@ def parse_args():
 
     parser = argparse.ArgumentParser(
         description='Source detection')
+    parser.add_argument('--rmsbox', type=float, help='rms box pybdsf', default=160)
     parser.add_argument('fitsf', nargs='+', help='fits files')
-    parser.add_argument('rmsbox', type=float, help='rms box pybdsf')
     # parser.add_argument('--ref_catalogue', help='fits table')
     return parser.parse_args()
 
