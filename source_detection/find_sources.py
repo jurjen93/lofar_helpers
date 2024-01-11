@@ -258,7 +258,7 @@ def run_pybdsf(fitsfile, rmsbox):
 
     prefix = fitsfile.replace('.fits', '')
     img = bdsf.process_image(fitsfile,
-                             thresh_isl=3.,
+                             thresh_isl=3.5,
                              thresh_pix=5.5,
                              atrous_do=True,
                              rms_box=(int(rmsbox), int(rmsbox // 4)),
@@ -320,6 +320,7 @@ fk5
         file.write(f'\n# text({c[0]},{c[1]}) text=' + '{' + f'{t["Source_id"][n]}' + '}')
     return
 
+
 def get_table_index(t, source_id):
     return int(np.argwhere(t['Source_id'] == source_id).squeeze())
 
@@ -328,14 +329,14 @@ def get_clusters(t):
     """
     Get clusters of sources based on euclidean distance
     """
-    deg_dist = 0.02
+    deg_dist = 0.01
     ra_dec = np.stack((list(t['RA']),list(t['DEC'])),axis=1)
     Z = linkage(ra_dec, method='complete', metric='euclidean')
     return fcluster(Z, deg_dist, criterion='distance')
 
 
 def cluster_idx(clusters, idx):
-    return np.argwhere(clusters==clusters[idx]).squeeze()
+    return np.argwhere(clusters==clusters[idx]).squeeze(axis=1)
 
 
 def max_dist(coordinates):
@@ -393,9 +394,9 @@ def main():
                 to_delete.append(table_idx)
                 print("Delete Source_id: "+str(n))
 
-            elif len(cluster_indices)>0:
+            elif len(cluster_indices) > 1:
                 pix_coord = np.array([p[0] for p in coord])[cluster_indices]
-                imsize = int(max_dist(pix_coord)*1.15)
+                imsize = int(max_dist(pix_coord)*2*1.15)
                 idxs = '-'.join([str(p) for p in cluster_indices])
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(imsize, imsize), savefits=f'cluster_sources/source_{m}_{idxs}.fits')
                 make_image(f'cluster_sources/source_{m}_{idxs}.fits', 'RdBu_r', 'components.reg')
