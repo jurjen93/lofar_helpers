@@ -22,6 +22,9 @@ import matplotlib.patches as patches
 from matplotlib import ticker
 import os
 from astropy.table import Table
+import pyregion
+from scipy.cluster.hierarchy import linkage, fcluster
+from scipy.spatial import distance
 
 
 def get_rms(image_data):
@@ -46,6 +49,24 @@ def get_rms(image_data):
         rmsold = rms
     print(f'Noise : {str(round(rms * 1000, 4))} {u.mJy / u.beam}')
     return rms
+
+
+def get_beamarea(hdu):
+    """
+    Get beam area in pixels
+    """
+
+    bmaj = hdu[0].header['BMAJ']
+    bmin = hdu[0].header['BMIN']
+
+    beammaj = bmaj / (2.0 * (2 * np.log(2)) ** 0.5)  # Convert to sigma
+    beammin = bmin / (2.0 * (2 * np.log(2)) ** 0.5)  # Convert to sigma
+    pixarea = abs(hdu[0].header['CDELT1'] * hdu[0].header['CDELT2'])
+
+    beamarea = 2 * np.pi * 1.0 * beammaj * beammin  # Note that the volume of a two dimensional gaus$
+    beamarea_pix = beamarea / pixarea
+
+    return beamarea_pix
 
 
 def make_cutout(fitsfile=None, pos: tuple = None, size: tuple = (1000, 1000), savefits=None):
@@ -79,7 +100,7 @@ def make_cutout(fitsfile=None, pos: tuple = None, size: tuple = (1000, 1000), sa
         fits.writeto(savefits, image_data, header, overwrite=True)
 
 
-def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
+def make_image(fitsfile=None, cmap: str = 'RdBu_r', components: str = None):
     """
     Image your data with this method.
     fits file -> fits file
@@ -93,8 +114,8 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
     header = hdu[0].header
 
     rms = get_rms(image_data)
-    vmin = rms
-    vmax = rms * 30
+    vmin = rms/10
+    vmax = rms * 10
 
     if hdu is None:
         wcs = WCS(header, naxis=2)
@@ -109,6 +130,25 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
     plt.xlabel('Right Ascension (J2000)', size=14)
     plt.ylabel('Declination (J2000)', size=14)
     plt.tick_params(axis='both', which='major', labelsize=12)
+
+    def fixed_color(shape, saved_attrs):
+        from pyregion.mpl_helper import properties_func_default
+        attr_list, attr_dict = saved_attrs
+        attr_dict["color"] = 'darkgreen'
+        kwargs = properties_func_default(shape, (attr_list, attr_dict))
+
+        return kwargs
+
+    if components is not None:
+        r = pyregion.open(components).as_imagecoord(header=hdu[0].header)
+        patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
+
+        # fig.add_axes(ax)
+        for patch in patch_list:
+            plt.gcf().gca().add_patch(patch)
+        for artist in artist_list:
+            plt.gca().add_artist(artist)
+
 
     # p0 = axes[0].get_position().get_points().flatten()
     # p2 = axes[2].get_position().get_points().flatten()
@@ -203,6 +243,8 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r'):
     plt.savefig(fitsfile.replace('.fits', '.png'), dpi=250, bbox_inches='tight')
     plt.close()
 
+    hdu.close()
+
 
 def run_pybdsf(fitsfile, rmsbox):
     """
@@ -213,13 +255,21 @@ def run_pybdsf(fitsfile, rmsbox):
 
     :return: source catalogue
     """
+
     prefix = fitsfile.replace('.fits', '')
-    img = bdsf.process_image(fitsfile, thresh_isl=3., thresh_pix=5.5, atrous_do=True,
-                             rms_box=(int(rmsbox), rmsbox // 4),
-                             adaptive_rms_box=True)  # , rms_map=True, rms_box = (160,40))
+    img = bdsf.process_image(fitsfile,
+                             thresh_isl=3.,
+                             thresh_pix=5.5,
+                             atrous_do=True,
+                             rms_box=(int(rmsbox), int(rmsbox // 4)),
+                             rms_box_bright=(int(rmsbox//2), int(rmsbox//8)),
+                             adaptive_rms_box=True,
+                             group_tol=10.0)  # , rms_map=True, rms_box = (160,40))
+
     img.write_catalog(clobber=True, outfile=prefix + '_source_catalog.fits', format='fits', catalog_type='srl')
     img.write_catalog(clobber=True, outfile=prefix + '_gaussian_catalog.fits', format='fits', catalog_type='gaul')
-    img.export_image(clobber=True, img_type='island_mask', outfile=prefix + '_island_mask.fits')
+    for type in ['island_mask', 'gaus_model', 'gaus_resid', 'mean', 'rms']:
+        img.export_image(clobber=True, img_type=type, outfile=prefix + f'_{type}.fits')
     return prefix + '_source_catalog.fits'
 
 
@@ -229,6 +279,7 @@ def get_pix_coord(table):
     :param table: fits table
     :return: pixel coordinates
     """
+
     f = fits.open(table)
     t = f[1].data
     # res = t[t['S_Code'] != 'S']
@@ -247,6 +298,7 @@ def parse_args():
 
     parser = argparse.ArgumentParser(description='Source detection')
     parser.add_argument('--rmsbox', type=int, help='rms box pybdsf', default=160)
+    parser.add_argument('--no_pybdsf', action='store_true', help='Skip pybdsf')
     parser.add_argument('fitsf', nargs='+', help='fits files')
     # parser.add_argument('--ref_catalogue', help='fits table')
     return parser.parse_args()
@@ -256,6 +308,7 @@ def make_point_file(t):
     """
     Make ds9 file with ID in it
     """
+
     header = """# Region file format: DS9 version 4.1
 global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
 fk5
@@ -267,6 +320,33 @@ fk5
         file.write(f'\n# text({c[0]},{c[1]}) text=' + '{' + f'{t["Source_id"][n]}' + '}')
     return
 
+def get_table_index(t, source_id):
+    return int(np.argwhere(t['Source_id'] == source_id).squeeze())
+
+
+def get_clusters(t):
+    """
+    Get clusters of sources based on euclidean distance
+    """
+    deg_dist = 0.02
+    ra_dec = np.stack((list(t['RA']),list(t['DEC'])),axis=1)
+    Z = linkage(ra_dec, method='complete', metric='euclidean')
+    return fcluster(Z, deg_dist, criterion='distance')
+
+
+def cluster_idx(clusters, idx):
+    return np.argwhere(clusters==clusters[idx]).squeeze()
+
+
+def max_dist(coordinates):
+    """
+    Get the longest distance between coordinates
+
+    :param coordinates: indices from table
+    """
+    return np.max(distance.cdist(coordinates, coordinates, 'euclidean'))
+
+
 
 def main():
     """
@@ -275,16 +355,65 @@ def main():
 
     args = parse_args()
     for m, fts in enumerate(args.fitsf):
-        tbl = run_pybdsf(fts, args.rmsbox)
+        if not args.no_pybdsf:
+            tbl = run_pybdsf(fts, args.rmsbox)
+        else:
+            tbl = fts.replace('.fits', '') + '_source_catalog_final.fits'
         # make ds9 region file with sources in it
         make_point_file(tbl)
         # loop through resolved sources and make images
         coord = get_pix_coord(tbl)
-        for c, n in coord:
-            os.system('mkdir -p sources')
-            make_cutout(fitsfile=fts, pos=tuple(c), size=(400, 400), savefits=f'sources/source_{m}_{n}.fits')
-            make_image(f'sources/source_{m}_{n}.fits')
 
+        T = Table.read(tbl, format='fits')
+        T['Peak_flux_min'] = T['Peak_flux'] - T['E_Peak_flux']
+        T['Total_flux_min'] = T['Total_flux'] - T['E_Total_flux']
+
+        clusters = get_clusters(T)
+
+        f = fits.open(fts)
+        beamarea = get_beamarea(f)
+        imdat = f[0].data
+        rms = get_rms(imdat)
+        f.close()
+
+        os.system('mkdir -p bright_sources')
+        os.system('mkdir -p weak_sources')
+        os.system('mkdir -p cluster_sources')
+
+        to_delete = []
+        to_ignore = []
+
+        for c, n in coord:
+            table_idx = get_table_index(T, n)
+            if table_idx in to_ignore:
+                continue
+
+            cluster_indices = cluster_idx(clusters, table_idx)
+            if T[T['Source_id'] == n]['Peak_flux'][0] < rms/3:
+                to_delete.append(table_idx)
+                print("Delete Source_id: "+str(n))
+
+            elif len(cluster_indices)>0:
+                pix_coord = np.array([p[0] for p in coord])[cluster_indices]
+                imsize = int(max_dist(pix_coord)*1.15)
+                idxs = '-'.join([str(p) for p in cluster_indices])
+                make_cutout(fitsfile=fts, pos=tuple(c), size=(imsize, imsize), savefits=f'cluster_sources/source_{m}_{idxs}.fits')
+                make_image(f'cluster_sources/source_{m}_{idxs}.fits', 'RdBu_r', 'components.reg')
+                for i in cluster_indices:
+                    to_ignore.append(i)
+
+            elif (T[T['Source_id'] == n]['Peak_flux_min'][0] < rms or
+                  T[T['Source_id'] == n]['Peak_flux'][0] < 2*rms or
+                  T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < 2*rms):
+                make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'weak_sources/source_{m}_{n}.fits')
+                make_image(f'weak_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
+
+            else:
+                make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'bright_sources/source_{m}_{n}.fits')
+                make_image(f'bright_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
+
+        for i in sorted(to_delete)[::-1]:
+            del T[i]
 
 if __name__ == '__main__':
     main()

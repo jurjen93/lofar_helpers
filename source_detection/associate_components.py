@@ -39,22 +39,23 @@ def associate(associate_components, table):
     for p in associate_components:
         if type(p) == dict:
             main_ID = list(p.keys())[0]
-            to_not_delete.append(get_table_index(t, main_ID))
-            ids = list(set(p[main_ID]))
+            main_ID = get_table_index(t, main_ID)
+            to_not_delete.append(main_ID)
+            ids = [get_table_index(t, x) for x in list(set(p[main_ID]))]
             t[main_ID]['Total_flux'] = t[ids]['Total_flux'].sum()
             t[main_ID]['E_Total_flux'] = error_prop(t[ids]['E_Total_flux'])
             t[main_ID]['Peak_flux'] = t[ids]['E_Peak_flux'].max()
             t[main_ID]['S_Code'] = 'M'
             t[main_ID]['Isl_rms'] = t[ids]['Isl_rms'].mean()
             for i in ids:
-                to_delete.append(get_table_index(t, i))
+                to_delete.append(i)
         if type(p) == int:
             to_delete.append(get_table_index(t, p))
 
+    to_delete = list(set(to_delete))
+    to_not_delete = list(set(to_not_delete))
     for i in sorted(to_delete)[::-1]:
         if i not in to_not_delete:
             del t[i]
 
     t.write(table.replace('.fits', '_final.fits'), format='fits', overwrite=True)
-
-#TODO: int(np.argwhere(t['Source_id']==29).squeeze())
