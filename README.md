@@ -20,7 +20,7 @@ These can be independently used from the merging functionality. You can find all
 
 ```h5_merger.py``` is compatible with both Python 2 and Python 3 but is likely most reliable with Python 3.
 
-### Special requirements
+### Requirements
 
 ```h5_mergers.py``` uses the following libraries:
 * ```losoto``` (install with ```pip install lososto```)
