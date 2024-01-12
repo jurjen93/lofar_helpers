@@ -291,19 +291,6 @@ def get_pix_coord(table):
     return pix_coord
 
 
-def parse_args():
-    """
-    Parse input arguments
-    """
-
-    parser = argparse.ArgumentParser(description='Source detection')
-    parser.add_argument('--rmsbox', type=int, help='rms box pybdsf', default=160)
-    parser.add_argument('--no_pybdsf', action='store_true', help='Skip pybdsf')
-    parser.add_argument('fitsf', nargs='+', help='fits files')
-    # parser.add_argument('--ref_catalogue', help='fits table')
-    return parser.parse_args()
-
-
 def make_point_file(t):
     """
     Make ds9 file with ID in it
@@ -347,6 +334,18 @@ def max_dist(coordinates):
     """
     return np.max(distance.cdist(coordinates, coordinates, 'euclidean'))
 
+
+def parse_args():
+    """
+    Parse input arguments
+    """
+
+    parser = argparse.ArgumentParser(description='Source detection')
+    parser.add_argument('--rmsbox', type=int, help='rms box pybdsf', default=120)
+    parser.add_argument('--no_pybdsf', action='store_true', help='Skip pybdsf')
+    parser.add_argument('fitsf', nargs='+', help='fits files')
+    # parser.add_argument('--ref_catalogue', help='fits table')
+    return parser.parse_args()
 
 
 def main():
