@@ -405,7 +405,7 @@ def main():
 
             elif (T[T['Source_id'] == n]['Peak_flux_min'][0] < rms or
                   T[T['Source_id'] == n]['Peak_flux'][0] < 2*rms or
-                  T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < 2*rms):
+                  T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < rms/10):
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'weak_sources/source_{m}_{n}.fits')
                 make_image(f'weak_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
 
