@@ -1,16 +1,16 @@
 ## LOFAR helper scripts
 
 These scripts are helper script for LOFAR data reduction.\
-Scripts were originally used for imaging and recalibrating A399-401 (see paper https://arxiv.org/abs/2209.13930) but can be used for other purposes for reducing LOFAR data as well.
+Scripts were originally used for imaging and recalibrating A399-401 (see paper https://arxiv.org/abs/2209.13930) but can also be used for other purposes for reducing LOFAR data as well.
 
 Clone repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git``` \
 If you are only interested in ```h5_merger.py```, use:\
 ```wget "https://raw.githubusercontent.com/jurjen93/lofar_helpers/master/h5_merger.py"```
 
-Two standalone scripts are briefly discussed below:
+The main scripts are described below:
 
 -------------------------------
-## 1. Merge solutions
+## 1. Merge solutions with ```h5_merger.py```
 
 With ```h5_merger.py``` it is possible to merge H5parm solution files (often ending on .h5), which are used in LOFAR (self-)calibration.
 These files contain 'sol000' or 'sol001' or other solution set names. Within these solution sets there has to be a source and antenna table. 
@@ -109,38 +109,6 @@ https://github.com/lmorabit/lofar-vlbi
 
 -------------------------------
 
-## 2. Make boxes for LOFAR self-calibration
-
-With ```make_boxes.py``` it is possible to make boxes around sources that can be extracted and self-calibrated.\
-Note that this script only works with Python 3.
-
-#### Usage
-
-Use ```make_boxes.py``` as a standalone script with Python 3, by running on the command line:\
-```python make_boxes.py <FLAGS>``` \
-You can use the following flags:
-* ```--file``` --> followed by the fits file name (and path)
-* ```--location``` --> followed by the location (path) to store the data
-* ```--no_images``` --> don't save the images locally
-* ```--ds9``` --> interactive mode to validate the box selection in ds9
-* ```--max_boxes``` --> max number of boxes
-
-The script returns the following:
-* directory with .reg region boxes.
-* directory with box images, to check the quality of the boxes.
-
-#### Details
-The following steps are taken in the algorithm:
-* Determine (surface brightness) pixels that go over the threshold >0.07.
-* Loop through all peak fluxes (sources) and check if these are already included in other images. If so, we stop here.
-* Check if the source is 'interesting' by comparing the outlier fluxes in the images with the outliers in a gaussian filtered version. If not, we stop here.
-* Reposition the image by taking into account the borders where we don't want to have high flux peaks or other sources. This is done by moving the center of the image and resizing.
-* We also look for islands of flux, which we find by binning 100x100 pixels and summing over these pixels. When the flux exceeds 30, we extract a box from this position.
-* If there are multiple peak fluxes (sources) we flag these as done from our list.
-* Now we save the image of the box and the .reg.
-
--------------------------------
-
 #### Contact
-Let me know if you are using this script and have any issues or suggestions for improvements.
+Let me know if you are using this script or other scripts and have any issues or suggestions for improvements.
 You can contact me on: jurjendejong(AT)strw.leidenuniv.nl
