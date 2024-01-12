@@ -134,7 +134,7 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r', components: str = None):
     def fixed_color(shape, saved_attrs):
         from pyregion.mpl_helper import properties_func_default
         attr_list, attr_dict = saved_attrs
-        attr_dict["color"] = 'darkgreen'
+        attr_dict["color"] = 'pink'
         kwargs = properties_func_default(shape, (attr_list, attr_dict))
 
         return kwargs
