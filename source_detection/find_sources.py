@@ -262,7 +262,7 @@ def run_pybdsf(fitsfile, rmsbox):
                              thresh_pix=5,
                              atrous_do=True,
                              rms_box=(int(rmsbox), int(rmsbox // 8)),
-                             rms_box_bright=(int(rmsbox//2), int(rmsbox//16)),
+                             rms_box_bright=(int(rmsbox//3), int(rmsbox//12)),
                              adaptive_rms_box=True,
                              group_tol=10.0)  # , rms_map=True, rms_box = (160,40))
 
