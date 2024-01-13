@@ -261,8 +261,8 @@ def run_pybdsf(fitsfile, rmsbox):
                              thresh_isl=3,
                              thresh_pix=5,
                              atrous_do=True,
-                             rms_box=(int(rmsbox), int(rmsbox // 4)),
-                             rms_box_bright=(int(rmsbox//2), int(rmsbox//8)),
+                             rms_box=(int(rmsbox), int(rmsbox // 8)),
+                             rms_box_bright=(int(rmsbox//2), int(rmsbox//16)),
                              adaptive_rms_box=True,
                              group_tol=10.0)  # , rms_map=True, rms_box = (160,40))
 
@@ -390,14 +390,8 @@ def main():
 
             rms = T[T['Source_id'] == n]['Isl_rms'][0]
             cluster_indices = cluster_idx(clusters, table_idx)
-            if (T[T['Source_id'] == n]['Peak_flux'][0] < rms or
-                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms/2 or
-                T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < 2*rms or
-                T[T['Source_id'] == n]['Total_flux'][0]/beamarea < 3 * rms):
-                to_delete.append(table_idx)
-                print("Delete Source_id: "+str(n))
 
-            elif len(cluster_indices) > 1:
+            if len(cluster_indices) > 1:
                 pix_coord = np.array([p[0] for p in coord])[cluster_indices]
                 imsize = max(int(max_dist(pix_coord)*2*1.3), 150)
                 idxs = '-'.join([str(p) for p in cluster_indices])
@@ -406,9 +400,14 @@ def main():
                 for i in cluster_indices:
                     to_ignore.append(i)
 
+            elif (T[T['Source_id'] == n]['Peak_flux'][0] < 1.5*rms or
+                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms/2):
+                to_delete.append(table_idx)
+                print("Delete Source_id: "+str(n))
+
             elif (T[T['Source_id'] == n]['Peak_flux_min'][0] < 3*rms or
                   T[T['Source_id'] == n]['Peak_flux'][0] < 5.5*rms or
-                    T[T['Source_id'] == n]['Total_flux'][0]/beamarea < 7*rms):
+                    T[T['Source_id'] == n]['Total_flux'][0] < 7*rms):
 
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'weak_sources/source_{m}_{n}.fits')
                 make_image(f'weak_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
