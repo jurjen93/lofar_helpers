@@ -372,8 +372,8 @@ def main():
 
         f = fits.open(fts)
         beamarea = get_beamarea(f)
-        imdat = f[0].data
-        rms = get_rms(imdat)
+        # imdat = f[0].data
+        # im_rms = get_rms(imdat)
         f.close()
 
         os.system('mkdir -p bright_sources')
@@ -388,10 +388,11 @@ def main():
             if table_idx in to_ignore:
                 continue
 
+            rms = T[T['Source_id'] == n]['Isl_rms'][0]
             cluster_indices = cluster_idx(clusters, table_idx)
             if (T[T['Source_id'] == n]['Peak_flux'][0] < rms or
                 T[T['Source_id'] == n]['Peak_flux_min'][0] < rms/3 or
-                T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < rms):
+                T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < 2*rms):
                 to_delete.append(table_idx)
                 print("Delete Source_id: "+str(n))
 
@@ -404,8 +405,9 @@ def main():
                 for i in cluster_indices:
                     to_ignore.append(i)
 
-            elif (T[T['Source_id'] == n]['Peak_flux_min'][0] < rms or
-                  T[T['Source_id'] == n]['Peak_flux'][0] < 3*rms):
+            elif (T[T['Source_id'] == n]['Peak_flux_min'][0] < 3*rms or
+                  T[T['Source_id'] == n]['Peak_flux'][0] < 5.5*rms or
+                    T[T['Source_id'] == n]['Total_flux'][0]/beamarea < 7*rms):
 
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'weak_sources/source_{m}_{n}.fits')
                 make_image(f'weak_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
