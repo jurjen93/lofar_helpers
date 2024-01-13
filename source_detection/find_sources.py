@@ -115,7 +115,7 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r', components: str = None):
 
     rms = get_rms(image_data)
     vmin = rms/10
-    vmax = rms * 10
+    vmax = rms * 6
 
     if hdu is None:
         wcs = WCS(header, naxis=2)
@@ -134,7 +134,7 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r', components: str = None):
     def fixed_color(shape, saved_attrs):
         from pyregion.mpl_helper import properties_func_default
         attr_list, attr_dict = saved_attrs
-        attr_dict["color"] = 'pink'
+        attr_dict["color"] = 'green'
         kwargs = properties_func_default(shape, (attr_list, attr_dict))
 
         return kwargs
@@ -316,7 +316,7 @@ def get_clusters(t):
     """
     Get clusters of sources based on euclidean distance
     """
-    deg_dist = 0.01
+    deg_dist = 0.008
     ra_dec = np.stack((list(t['RA']),list(t['DEC'])),axis=1)
     Z = linkage(ra_dec, method='complete', metric='euclidean')
     return fcluster(Z, deg_dist, criterion='distance')
@@ -389,13 +389,15 @@ def main():
                 continue
 
             cluster_indices = cluster_idx(clusters, table_idx)
-            if T[T['Source_id'] == n]['Peak_flux'][0] < rms/3:
+            if (T[T['Source_id'] == n]['Peak_flux'][0] < rms or
+                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms/3 or
+                T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < rms):
                 to_delete.append(table_idx)
                 print("Delete Source_id: "+str(n))
 
             elif len(cluster_indices) > 1:
                 pix_coord = np.array([p[0] for p in coord])[cluster_indices]
-                imsize = int(max_dist(pix_coord)*2*1.15)
+                imsize = max(int(max_dist(pix_coord)*2*1.3), 150)
                 idxs = '-'.join([str(p) for p in cluster_indices])
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(imsize, imsize), savefits=f'cluster_sources/source_{m}_{idxs}.fits')
                 make_image(f'cluster_sources/source_{m}_{idxs}.fits', 'RdBu_r', 'components.reg')
@@ -403,8 +405,8 @@ def main():
                     to_ignore.append(i)
 
             elif (T[T['Source_id'] == n]['Peak_flux_min'][0] < rms or
-                  T[T['Source_id'] == n]['Peak_flux'][0] < 2*rms or
-                  T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < rms/10):
+                  T[T['Source_id'] == n]['Peak_flux'][0] < 3*rms):
+
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'weak_sources/source_{m}_{n}.fits')
                 make_image(f'weak_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
 
