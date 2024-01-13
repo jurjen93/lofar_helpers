@@ -391,8 +391,9 @@ def main():
             rms = T[T['Source_id'] == n]['Isl_rms'][0]
             cluster_indices = cluster_idx(clusters, table_idx)
             if (T[T['Source_id'] == n]['Peak_flux'][0] < rms or
-                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms/3 or
-                T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < 2*rms):
+                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms/2 or
+                T[T['Source_id'] == n]['Total_flux_min'][0]/beamarea < 2*rms or
+                T[T['Source_id'] == n]['Total_flux'][0]/beamarea < 3 * rms):
                 to_delete.append(table_idx)
                 print("Delete Source_id: "+str(n))
 
