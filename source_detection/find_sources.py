@@ -312,14 +312,21 @@ def get_table_index(t, source_id):
     return int(np.argwhere(t['Source_id'] == source_id).squeeze())
 
 
-def get_clusters(t):
+def get_clusters_ra_dec(t, deg_dist=0.003):
     """
     Get clusters of sources based on euclidean distance
     """
-    deg_dist = 0.008
     ra_dec = np.stack((list(t['RA']),list(t['DEC'])),axis=1)
     Z = linkage(ra_dec, method='complete', metric='euclidean')
     return fcluster(Z, deg_dist, criterion='distance')
+
+def get_clusters_pix(pixcoor, pix_dist=100):
+    """
+    Get clusters of sources based on euclidean distance
+    """
+    pixpos = np.stack((pixcoor[:,0],pixcoor[:,1]),axis=1)
+    Z = linkage(pixpos, method='complete', metric='euclidean')
+    return fcluster(Z, pix_dist, criterion='distance')
 
 
 def cluster_idx(clusters, idx):
@@ -368,17 +375,20 @@ def main():
         T['Peak_flux_min'] = T['Peak_flux'] - T['E_Peak_flux']
         T['Total_flux_min'] = T['Total_flux'] - T['E_Total_flux']
 
-        clusters = get_clusters(T)
-
         f = fits.open(fts)
-        beamarea = get_beamarea(f)
+        pixscale = np.sqrt(abs(f[0].header['CDELT2']*f[0].header['CDELT1']))
+        # beamarea = get_beamarea(f)
         # imdat = f[0].data
         # im_rms = get_rms(imdat)
         f.close()
 
+        clusters_small = get_clusters_ra_dec(T, pixscale*100)
+        clusters_large = get_clusters_ra_dec(T, max(0.01, pixscale*100))
+
         os.system('mkdir -p bright_sources')
         os.system('mkdir -p weak_sources')
         os.system('mkdir -p cluster_sources')
+        os.system('mkdir -p deleted_sources')
 
         to_delete = []
         to_ignore = []
@@ -389,19 +399,27 @@ def main():
                 continue
 
             rms = T[T['Source_id'] == n]['Isl_rms'][0]
-            cluster_indices = cluster_idx(clusters, table_idx)
+            cluster_indices_large = cluster_idx(clusters_large, table_idx)
+            clusters_indices_small = cluster_idx(clusters_small, table_idx)
+
+            if len(cluster_indices_large) > 3:
+                cluster_indices = cluster_indices_large
+            else:
+                cluster_indices = clusters_indices_small
 
             if len(cluster_indices) > 1:
                 pix_coord = np.array([p[0] for p in coord])[cluster_indices]
-                imsize = max(int(max_dist(pix_coord)*2*1.3), 150)
+                imsize = max(int(max_dist(pix_coord)*3), 150)
                 idxs = '-'.join([str(p) for p in cluster_indices])
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(imsize, imsize), savefits=f'cluster_sources/source_{m}_{idxs}.fits')
                 make_image(f'cluster_sources/source_{m}_{idxs}.fits', 'RdBu_r', 'components.reg')
                 for i in cluster_indices:
                     to_ignore.append(i)
 
-            elif (T[T['Source_id'] == n]['Peak_flux'][0] < 1.5*rms or
-                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms/2):
+            elif (T[T['Source_id'] == n]['Peak_flux'][0] < rms * 2 or
+                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms * (3/4)):
+                make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'deleted_sources/source_{m}_{n}.fits')
+                make_image(f'deleted_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
                 to_delete.append(table_idx)
                 print("Delete Source_id: "+str(n))
 
