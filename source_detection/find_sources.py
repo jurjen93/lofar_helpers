@@ -25,6 +25,7 @@ from astropy.table import Table
 import pyregion
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial import distance
+from glob import glob
 
 
 def get_rms(image_data):
@@ -114,7 +115,7 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r', components: str = None):
     header = hdu[0].header
 
     rms = get_rms(image_data)
-    vmin = rms/10
+    vmin = rms
     vmax = rms * 6
 
     if hdu is None:
@@ -365,7 +366,11 @@ def main():
         if not args.no_pybdsf:
             tbl = run_pybdsf(fts, args.rmsbox)
         else:
-            tbl = fts.replace('.fits', '') + '_source_catalog_final.fits'
+            if len(glob(fts.replace('.fits', '') + '_source_catalog_final.fits'))>0:
+                tbl = fts.replace('.fits', '') + '_source_catalog_final.fits'
+            else:
+                tbl = fts.replace('.fits', '') + '_source_catalog.fits'
+
         # make ds9 region file with sources in it
         make_point_file(tbl)
         # loop through resolved sources and make images
@@ -374,6 +379,7 @@ def main():
         T = Table.read(tbl, format='fits')
         T['Peak_flux_min'] = T['Peak_flux'] - T['E_Peak_flux']
         T['Total_flux_min'] = T['Total_flux'] - T['E_Total_flux']
+        T['Total_flux_over_peak_flux'] = T['Total_flux'] / T['Peak_flux']
 
         f = fits.open(fts)
         pixscale = np.sqrt(abs(f[0].header['CDELT2']*f[0].header['CDELT1']))
@@ -393,7 +399,7 @@ def main():
         to_delete = []
         to_ignore = []
 
-        for c, n in coord:
+        for c, n in coord[::-1]:
             table_idx = get_table_index(T, n)
             if table_idx in to_ignore:
                 continue
@@ -406,8 +412,16 @@ def main():
                 cluster_indices = cluster_indices_large
             else:
                 cluster_indices = clusters_indices_small
+            cluster_indices = [idx for idx in cluster_indices if idx not in to_delete and idx not in to_ignore]
 
-            if len(cluster_indices) > 1:
+            if (T[T['Source_id'] == n]['Peak_flux'][0] < rms * 2 or
+                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms):
+                make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'deleted_sources/source_{m}_{n}.fits')
+                make_image(f'deleted_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
+                to_delete.append(table_idx)
+                print("Delete Source_id: "+str(n))
+
+            elif len(cluster_indices) > 1:
                 pix_coord = np.array([p[0] for p in coord])[cluster_indices]
                 imsize = max(int(max_dist(pix_coord)*3), 150)
                 idxs = '-'.join([str(p) for p in cluster_indices])
@@ -416,16 +430,16 @@ def main():
                 for i in cluster_indices:
                     to_ignore.append(i)
 
-            elif (T[T['Source_id'] == n]['Peak_flux'][0] < rms * 2.5 or
-                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms ):
-                make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'deleted_sources/source_{m}_{n}.fits')
-                make_image(f'deleted_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
-                to_delete.append(table_idx)
-                print("Delete Source_id: "+str(n))
+            elif (T[T['Source_id'] == n]['Peak_flux_min'][0] < 2.5*rms or
+                  T[T['Source_id'] == n]['Peak_flux'][0] < 5*rms):
 
-            elif (T[T['Source_id'] == n]['Peak_flux_min'][0] < 3*rms or
-                  T[T['Source_id'] == n]['Peak_flux'][0] < 5.5*rms or
-                    T[T['Source_id'] == n]['Total_flux'][0] < 7*rms):
+                if (T[T['Source_id'] == n]['Total_flux_over_peak_flux'][0] < 7
+                        and T[T['Source_id'] == n]['Peak_flux'][0] < 3*rms):
+                    make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300),
+                                savefits=f'deleted_sources/source_{m}_{n}.fits')
+                    make_image(f'deleted_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
+                    to_delete.append(table_idx)
+                    print("Delete Source_id: " + str(n))
 
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'weak_sources/source_{m}_{n}.fits')
                 make_image(f'weak_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
