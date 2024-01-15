@@ -1,8 +1,7 @@
 """
-This script is a supporting script to quantify the quality of the self-calibration output from facetselfcal.py from
+This script can be used to select the best self-calibration cycle from facetselfcal.py see:
 https://github.com/rvweeren/lofar_facet_selfcal/blob/main/facetselfcal.py
-It will return a few plots and a csv with the quality improvements over self-calibration cycle. This might eventually
-be useful as a stopping criteria metric.
+It will return a few plots and a csv with the statistics for each self-calibration cycle.
 
 You only need to run this script in the folder with your facetselfcal output as
 python selfcal_quality.py
@@ -27,12 +26,14 @@ from cv2 import bilateralFilter
 
 
 class SelfcalQuality:
-    def __init__(self, folder: str = None, remote_only: bool = False, international_only: bool = False,
+    def __init__(self, folder: str = None,
+                 remote_only: bool = False,
+                 international_only: bool = False,
                  dutch_only: bool = False):
         """
         Determine quality of selfcal from facetselfcal.py
 
-        :param folder: path to where selfcal ran
+        :param folder: path to directory where selfcal ran
         :param dutch_only: consider dutch stations only for amp/phase stability
         :param remote_only: consider remote stations only for amp/phase stability
         :param international_only: consider international stations only for amp/phase stability
@@ -51,7 +52,8 @@ class SelfcalQuality:
 
         # select all sources
         regex = "merged_selfcalcyle\d{3}\_"
-        self.sources = set([re.sub(regex, '', h.split('/')[-1]).replace('.ms.copy.phaseup.h5', '') for h in self.h5s])
+        self.sources = set([re.sub(regex, '', h.split('/')[-1]).replace('.ms.copy.phaseup.h5', '')
+                            for h in self.h5s])
 
         # select all fits images
         fitsfiles = sorted(glob(self.folder + "/*MFS-I-image.fits"))
@@ -65,13 +67,14 @@ class SelfcalQuality:
         self.international_only = international_only
         self.dutch_only = dutch_only
 
+        # output csv
         self.textfile = open(f'selfcal_performance.csv', 'w')
         self.writer = csv.writer(self.textfile)
         self.writer.writerow(['solutions', 'dirty'] + [str(i) for i in range(len(self.fitsfiles))])
 
     def get_max_min_pix(self):
         """
-        Get max/min pixels from images
+        Get max/min pixels from images (measure of dynamic range)
         """
 
         maxp, minp = 0, 0
@@ -100,6 +103,7 @@ class SelfcalQuality:
 
         :param inp: string input
         """
+
         try:
             inp = inp.decode('utf8')
             return inp
@@ -111,11 +115,13 @@ class SelfcalQuality:
         """
         Make figure (with optionally two axis)
 
-        :param phase_scores:
-        :param amp_scores:
-        :param plotname:
-        :return:
+        :param vals1: values 1
+        :param vals2: values 2
+        :param label1: label corresponding to values 1
+        :param label2: label corresponding to values 2
+        :param plotname: plot name
         """
+
         fig, ax1 = plt.subplots()
 
         color = 'tab:red'
@@ -158,6 +164,7 @@ class SelfcalQuality:
 
         :return: linear regression slope
         """
+
         return linregress(list(range(len(values))), values).slope
 
     def image_entropy(self, fitsfile: str = None):
@@ -168,6 +175,7 @@ class SelfcalQuality:
 
         :return: image entropy value
         """
+
         file = fits.open(fitsfile)
         image = file[0].data
         file.close()
@@ -186,6 +194,7 @@ class SelfcalQuality:
 
         :return: euclidean distance
         """
+
         return np.sqrt(np.sum(np.power(np.subtract(l1, l2), 2)))
 
     def get_solution_scores(self, h5_1: str = None, h5_2: str = None):
@@ -299,6 +308,8 @@ class SelfcalQuality:
 
     def solution_stability(self):
         """
+        #TODO: Under development
+
         Get solution stability scores and make figure
 
         :return:    bestcycle --> best cycle according to solutions
@@ -358,17 +369,21 @@ class SelfcalQuality:
             return None, False
 
     @staticmethod
-    def get_rms(fitsfile: str = None, maskSup: float = 1e-7):
+    def get_rms(inp=None, maskSup: float = 1e-7):
         """
         find the rms of an array, from Cycil Tasse/kMS
 
-        :param fitsfile: fits file name
+        :param inp: fits file name or numpy array
         :param maskSup: mask threshold
 
         :return: rms --> rms of image
         """
-        hdul = fits.open(fitsfile)
-        mIn = np.ndarray.flatten(hdul[0].data)
+
+        if type(inp)==str:
+            hdul = fits.open(inp)
+            mIn = np.ndarray.flatten(hdul[0].data)
+        else:
+            mIn = np.ndarray.flatten(inp)
         m = mIn[np.abs(mIn) > maskSup]
         rmsold = np.std(m)
         diff = 1e-1
@@ -379,25 +394,32 @@ class SelfcalQuality:
             rms = np.std(m[ind])
             if np.abs((rms - rmsold) / rmsold) < diff: break
             rmsold = rms
-        hdul.close()
+        if type(inp)==str:
+            hdul.close()
 
         print(f'rms: {rms}')
 
         return rms  # jy/beam
 
     @staticmethod
-    def get_minmax(fitsfile: str = None):
+    def get_minmax(inp=None):
         """
         Get min/max value
 
-        :param fitsfile: fits file name
+        :param inp: fits file name or numpy array
 
         :return: minmax --> pixel min/max value
         """
-        hdul = fits.open(fitsfile)
-        data = hdul[0].data
+
+        if type(inp)==str:
+            hdul = fits.open(inp)
+            data = hdul[0].data
+        else:
+            data = inp
         minmax = np.abs(data.min() / data.max())
-        hdul.close()
+        if type(inp)==str:
+            hdul.close()
+
         print(f"min/max: {minmax}")
 
         return minmax
@@ -472,7 +494,7 @@ class SelfcalQuality:
         # best cycle
         bestcycle = (best_minmax_cycle + best_rms_cycle) // 2
 
-        # getting slopes
+        # getting slopes for selection
         if len(rmss)>4:
             rms_slope_start, minmax_slope_start = linregress(list(range(len(rmss[:4]))), rmss[:4]).slope, linregress(list(range(len(rmss[:4]))),
                                                                                                  np.array(
@@ -484,7 +506,7 @@ class SelfcalQuality:
                                                                                              np.array(
                                                                                                  minmaxs)).slope
 
-        # accept direction or not
+        # acceptance criteria
         if minmax_slope > 0 and rms_slope > 0:
             accept = False
         elif minmax_slope_start > 0 or rms_slope_start > 0:
@@ -523,18 +545,24 @@ def main():
     args = parse_args()
 
     sq = SelfcalQuality(args.selfcal_folder, args.remote_only, args.international_only)
-    if len(sq.h5s) > 1 and len(sq.fitsfiles) > 1:
-        bestcycle_solutions, accept_solutions = sq.solution_stability()
-        bestcycle_image, accept_image = sq.image_stability(bilateral_filter=args.bilateral_filter)
+    if len(sq.h5s) > 0 or len(sq.fitsfiles) > 0:
+        if len(sq.h5s)>0:
+            bestcycle_solutions, accept_solutions = sq.solution_stability()
+
+            print(f"Best cycle according to solutions {bestcycle_solutions}")
+            print(f"Accept according to solutions {accept_solutions}")
+
+        if len(sq.fitsfiles) > 0:
+            bestcycle_image, accept_image = sq.image_stability(bilateral_filter=args.bilateral_filter)
+
+            print(f"Best cycle according to image {bestcycle_image}")
+            print(f"Accept according to image {accept_image}")
+
         sq.textfile.close()
         df = pd.read_csv(f'selfcal_performance.csv').set_index('solutions').T
-        print(df)
+        # print(df)
         df.to_csv(f'selfcal_performance.csv', index=False)
 
-        print(f"Best cycle according to solutions {bestcycle_solutions}")
-        print(f"Accept according to solutions {accept_solutions}")
-        print(f"Best cycle according to image {bestcycle_image}")
-        print(f"Accept according to image {accept_image}")
     else:
         sq.textfile.close()
         print(f"Need more than 1 h5 or fits file")
