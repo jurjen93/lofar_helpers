@@ -416,8 +416,8 @@ def main():
                 for i in cluster_indices:
                     to_ignore.append(i)
 
-            elif (T[T['Source_id'] == n]['Peak_flux'][0] < rms * 2 or
-                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms * (3/4)):
+            elif (T[T['Source_id'] == n]['Peak_flux'][0] < rms * 2.5 or
+                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms ):
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'deleted_sources/source_{m}_{n}.fits')
                 make_image(f'deleted_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
                 to_delete.append(table_idx)
