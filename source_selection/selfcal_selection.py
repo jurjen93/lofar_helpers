@@ -232,11 +232,6 @@ class SelfcalQuality:
         antenna_selection = partial(filter_params, filter_stations(station_names1), axes1.index('ant'))
         phase_vals1, phase_weights1, phase_pols1, amps1 = antenna_selection(*params1)
 
-        prep_phase_score, prep_amp_score = (
-            np.nan_to_num(value) * phase_weights1
-            for value in (phase_vals1, amps1)
-        )
-
         if h5_2 is not None:
             _, _, *params2 = extract_data(h5_2)
             phase_vals2, phase_weights2, phase_pols2, amps2 = antenna_selection(*params2)
@@ -246,16 +241,18 @@ class SelfcalQuality:
 
             indices = [0] if min_length == 1 else [0, -1]
 
-            phase_vals1, phase_weights1, amps1, phase_vals2, phase_weights2, amps2 = (
-                np.take(elem, indices, axis=axes1.index('pol'))
-                for elem in (phase_vals1, phase_weights1, amps1, phase_vals2, phase_weights2, amps2)
+            phase_vals1, phase_weights1, amps1, phase_vals2, phase_weights2, amps2 = filter_params(
+                indices, axes1.index('pol'), phase_vals1, phase_weights1, amps1, phase_vals2, phase_weights2, amps2
             )
 
-            prep_phase_score = np.subtract(prep_phase_score, np.nan_to_num(phase_vals2) * phase_weights2)
+            prep_phase_score = np.subtract(np.nan_to_num(phase_vals1) * phase_weights1, np.nan_to_num(phase_vals2) * phase_weights2)
             prep_amp_score = np.nan_to_num(
-                np.divide(prep_amp_score, np.nan_to_num(amps2) * phase_weights2),
+                np.divide(np.nan_to_num(phase_amps1) * phase_weights1, np.nan_to_num(amps2) * phase_weights2),
                 posinf=0, neginf=0
             )
+        else:
+            prep_phase_score = np.nan_to_num(phase_vals1) * phase_weights1
+            prep_amp_score = np.nan_to_num(amps1) * phase_weights1
 
         phase_score = circstd(prep_phase_score[prep_phase_score != 0], nan_policy='omit')
         amp_score = np.std(prep_amp_score[prep_mp_score != 0])
