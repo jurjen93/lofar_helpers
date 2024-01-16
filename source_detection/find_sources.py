@@ -447,7 +447,7 @@ def main():
         for i in sorted(to_delete)[::-1]:
             del T[i]
 
-        T.write(tbl, format='fits', overwrite=True)
+        T.write(tbl.replace('.fits', '_clean.fits'), format='fits', overwrite=True)
 
 if __name__ == '__main__':
     main()
