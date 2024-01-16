@@ -26,10 +26,7 @@ from cv2 import bilateralFilter
 
 
 class SelfcalQuality:
-    def __init__(self, folder: str = None,
-                 remote_only: bool = False,
-                 international_only: bool = False,
-                 dutch_only: bool = False):
+    def __init__(self, folder: str, station: str):
         """
         Determine quality of selfcal from facetselfcal.py
 
@@ -47,13 +44,14 @@ class SelfcalQuality:
         if len(self.h5s) == 0:
             self.h5s = glob(f"{self.folder}/merged_selfcalcyle*.h5")
         if len(self.h5s) == 0:
-            print("WARNING: No h5 files found")
+            raise FileNotFoundError("WARNING: No h5 files found")
         # assert len(self.h5s) != 0, "No h5 files found"
 
         # select all sources
         regex = "merged_selfcalcyle\d{3}\_"
         self.sources = set([re.sub(regex, '', h.split('/')[-1]).replace('.ms.copy.phaseup.h5', '')
                             for h in self.h5s])
+        assert len(self.sources) > 0, "No sources found"
 
         # select all fits images
         fitsfiles = sorted(glob(self.folder + "/*MFS-I-image.fits"))
@@ -63,9 +61,7 @@ class SelfcalQuality:
         assert len(self.fitsfiles) != 0, "No fits files found"
 
         # for phase/amp evolution
-        self.remote_only = remote_only
-        self.international_only = international_only
-        self.dutch_only = dutch_only
+        self.station = station
 
         # output csv
         self.textfile = open(f'selfcal_performance.csv', 'w')
@@ -79,8 +75,8 @@ class SelfcalQuality:
 
         maxp, minp = 0, 0
         for f in self.fitsfiles:
-            fts = fits.open(f)
-            d = fts[0].data
+            with fits.open(f) as fts:
+                d = fts[0].data
             if d.min() < minp:
                 minp = d.min()
             if d.max() > maxp:
@@ -88,7 +84,7 @@ class SelfcalQuality:
         return maxp, minp
 
     @staticmethod
-    def get_cycle_num(fitsfile: str = None):
+    def get_cycle_num(fitsfile: str = None) -> int:
         """
         Parse cycle number
 
@@ -197,114 +193,176 @@ class SelfcalQuality:
 
         return np.sqrt(np.sum(np.power(np.subtract(l1, l2), 2)))
 
-    def get_solution_scores(self, h5_1: str = None, h5_2: str = None):
+    def get_solution_scores(self, h5_1: str, h5_2: str = None):
         """
         Get solution scores
 
         :param h5_1: solution file 1
         :param h5_2: solution file 2
 
-        :return: phasescore --> circular std phase difference score
-                 ampscore --> std amp difference score
+        :return: phase_score --> circular std phase difference score
+                 amp_score --> std amp difference score
         """
 
-        # PHASE VALUES
-        H = tables.open_file(h5_1)
-        axes = self.make_utf8(H.root.sol000.phase000.val.attrs['AXES']).split(',')
-        vals1 = H.root.sol000.phase000.val[:]
-        weights1 = H.root.sol000.phase000.weight[:]
-        pols1 = H.root.sol000.phase000.pol[:]
+        def extract_data(tables_path):
+            with tables.open_file(tables_path) as f:
+                return (
+                    [self.make_utf8(station) for station in f.root.sol000.phase000[:]['name']],
+                    self.make_utf8(f.root.sol000.phase000.val.attrs['AXES']).split(','),
+                    f.root.sol000.phase000.val[:],
+                    f.root.sol000.phase000.weight[:],
+                    f.root.sol000.phase000.pol[:],
+                    f.root.sol000.amplitude000.val[:],
+                )
+
+        def filter_stations(station_names):
+            """Filters parameters based on stations
+            axis should be 'ant' or 'pol'"""
+            if self.station == 'debug':
+                return list(range(len(station_names)))
+
+            station_codes = (
+                ('CS',) if self.station == 'dutch' else
+                ('RS',) if self.station == 'remote' else
+                ('RS', 'CS', 'ST')  # i.e.: if self.station == 'international'
+            )
+            return [i for i, station_name in enumerate(station_names) if station_code in station_name]
+
+        def filter_params(station_indices, axes, *parameters):
+            return tuple(
+                np.take(param, station_indices, axes)
+                for param in parameters
+            )
+
+        axes1, station_names1, *params1 = extract_data(h5_1)
+
+        antenna_selection = partial(filter_params, filter_stations(station_names1), axes1.index('ant'))
+        phase_vals1, phase_weights1, phase_pols1, amps1 = antenna_selection(*params1)
+
+        prep_phase_score, prep_amp_score = (
+            np.nan_to_num(value) * phase_weights1
+            for value in (phase_vals1, amps1)
+        )
 
         if h5_2 is not None:
-            F = tables.open_file(h5_2)
-            vals2 = F.root.sol000.phase000.val[:]
-            weights2 = F.root.sol000.phase000.weight[:]
-            pols2 = F.root.sol000.phase000.pol[:]
+            _, _, *params2 = extract_data(h5_2)
+            phase_vals2, phase_weights2, phase_pols2, amps2 = antenna_selection(*params2)
 
-        if self.dutch_only:
-            stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
-                        ('CS' in self.make_utf8(station))]
-            vals1 = np.take(vals1, stations, axis=axes.index('ant'))
-            weights1 = np.take(weights1, stations, axis=axes.index('ant'))
-            if h5_2 is not None:
-                vals2 = np.take(vals2, stations, axis=axes.index('ant'))
-                weights2 = np.take(weights2, stations, axis=axes.index('ant'))
-        elif self.remote_only:
-            stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
-                        ('RS' in self.make_utf8(station))]
-            vals1 = np.take(vals1, stations, axis=axes.index('ant'))
-            weights1 = np.take(weights1, stations, axis=axes.index('ant'))
-            if h5_2 is not None:
-                vals2 = np.take(vals2, stations, axis=axes.index('ant'))
-                weights2 = np.take(weights2, stations, axis=axes.index('ant'))
-        elif self.international_only:
-            stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
-                        not ('RS' in self.make_utf8(station)
-                             or 'CS' in self.make_utf8(station)
-                             or 'ST' in self.make_utf8(station))]
-            vals1 = np.take(vals1, stations, axis=axes.index('ant'))
-            weights1 = np.take(weights1, stations, axis=axes.index('ant'))
-            if h5_2 is not None:
-                vals2 = np.take(vals2, stations, axis=axes.index('ant'))
-                weights2 = np.take(weights2, stations, axis=axes.index('ant'))
+            min_length = min(len(phase_pols1), len(phase_pols2))
+            assert 0 < min_length < 2
 
-        # take circular std from difference of previous and current selfcal cycle
-        if h5_2 is not None:
-            if len(pols1) != len(pols2):
-                if min(len(pols1), len(pols2)) == 1:
-                    vals1 = np.take(vals1, [0], axis=axes.index('pol'))
-                    vals2 = np.take(vals2, [0], axis=axes.index('pol'))
-                    weights1 = np.take(weights1, [0], axis=axes.index('pol'))
-                    weights2 = np.take(weights2, [0], axis=axes.index('pol'))
-                elif min(len(pols1), len(pols2)) == 2:
-                    vals1 = np.take(vals1, [0, -1], axis=axes.index('pol'))
-                    vals2 = np.take(vals2, [0, -1], axis=axes.index('pol'))
-                    weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
-                    weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
-                else:
-                    sys.exit("ERROR: SHOULD NOT END UP HERE")
-            prepphasescore = np.subtract(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2)
-        else:
-            prepphasescore = np.nan_to_num(vals1) * weights1
-        phasescore = circstd(prepphasescore[prepphasescore != 0], nan_policy='omit')
+            indices = [0] if min_length == 1 else [0, -1]
 
-        # AMP VALUES
-        vals1 = H.root.sol000.amplitude000.val[:]
-        if h5_2 is not None:
-            vals2 = F.root.sol000.amplitude000.val[:]
+            phase_vals1, phase_weights1, amps1, phase_vals2, phase_weights2, amps2 = (
+                np.take(elem, indices, axis=axes1.index('pol'))
+                for elem in (phase_vals1, phase_weights1, amps1, phase_vals2, phase_weights2, amps2)
+            )
 
-        if self.remote_only or self.dutch_only or self.international_only:
-            vals1 = np.take(vals1, stations, axis=axes.index('ant'))
-            if h5_2 is not None:
-                vals2 = np.take(vals2, stations, axis=axes.index('ant'))
+            prep_phase_score = np.subtract(prep_phase_score, np.nan_to_num(phase_vals2) * phase_weights2)
+            prep_amp_score = np.nan_to_num(
+                np.divide(prep_amp_score, np.nan_to_num(amps2) * phase_weights2),
+                posinf=0, neginf=0
+            )
 
-        # take std from ratio of previous and current selfcal cycle
-        if h5_2 is not None:
-            if len(pols1) != len(pols2):
-                if min(len(pols1), len(pols2)) == 1:
-                    vals1 = np.take(vals1, [0], axis=axes.index('pol'))
-                    vals2 = np.take(vals2, [0], axis=axes.index('pol'))
-                    weights1 = np.take(weights1, [0], axis=axes.index('pol'))
-                    weights2 = np.take(weights2, [0], axis=axes.index('pol'))
-                elif min(len(pols1), len(pols2)) == 2:
-                    vals1 = np.take(vals1, [0, -1], axis=axes.index('pol'))
-                    vals2 = np.take(vals2, [0, -1], axis=axes.index('pol'))
-                    weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
-                    weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
-                else:
-                    sys.exit("ERROR: SHOULD NOT END UP HERE")
-            prepampscore = np.nan_to_num(
-                np.divide(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2),
-                posinf=0, neginf=0)
-        else:
-            prepampscore = np.nan_to_num(vals1) * weights1
-        ampscore = np.std(prepampscore[prepampscore != 0])
+        phase_score = circstd(prep_phase_score[prep_phase_score != 0], nan_policy='omit')
+        amp_score = np.std(prep_amp_score[prep_mp_score != 0])
 
-        H.close()
-        if h5_2 is not None:
-            F.close()
 
-        return phasescore, ampscore
+        # if h5_2 is not None:
+        #     _, vals2, weights2, pols2, _ = extract_data(h5_2)
+        #
+        # if h5_2 is not None:
+        #     F = tables.open_file(h5_2)
+        #     vals2 = F.root.sol000.phase000.val[:]
+        #     weights2 = F.root.sol000.phase000.weight[:]
+        #     pols2 = F.root.sol000.phase000.pol[:]
+        #
+        #
+        # if self.station == 'dutch':
+        #     stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
+        #                 ('CS' in self.make_utf8(station))]
+        #     vals1 = np.take(vals1, stations, axis=axes.index('ant'))
+        #     weights1 = np.take(weights1, stations, axis=axes.index('ant'))
+        #     if h5_2 is not None:
+        #         vals2 = np.take(vals2, stations, axis=axes.index('ant'))
+        #         weights2 = np.take(weights2, stations, axis=axes.index('ant'))
+        # elif self.station == 'remote':
+        #     stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
+        #                 ('RS' in self.make_utf8(station))]
+        #     vals1 = np.take(vals1, stations, axis=axes.index('ant'))
+        #     weights1 = np.take(weights1, stations, axis=axes.index('ant'))
+        #     if h5_2 is not None:
+        #         vals2 = np.take(vals2, stations, axis=axes.index('ant'))
+        #         weights2 = np.take(weights2, stations, axis=axes.index('ant'))
+        # elif self.station == 'international':
+        #     stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
+        #                 not ('RS' in self.make_utf8(station)
+        #                      or 'CS' in self.make_utf8(station)
+        #                      or 'ST' in self.make_utf8(station))]
+        #     vals1 = np.take(vals1, stations, axis=axes.index('ant'))
+        #     weights1 = np.take(weights1, stations, axis=axes.index('ant'))
+        #     if h5_2 is not None:
+        #         vals2 = np.take(vals2, stations, axis=axes.index('ant'))
+        #         weights2 = np.take(weights2, stations, axis=axes.index('ant'))
+        #
+        # # take circular std from difference of previous and current selfcal cycle
+        # if h5_2 is not None:
+        #     if len(pols1) != len(pols2):
+        #         if min(len(pols1), len(pols2)) == 1:
+        #             vals1 = np.take(vals1, [0], axis=axes.index('pol'))
+        #             vals2 = np.take(vals2, [0], axis=axes.index('pol'))
+        #             weights1 = np.take(weights1, [0], axis=axes.index('pol'))
+        #             weights2 = np.take(weights2, [0], axis=axes.index('pol'))
+        #         elif min(len(pols1), len(pols2)) == 2:
+        #             vals1 = np.take(vals1, [0, -1], axis=axes.index('pol'))
+        #             vals2 = np.take(vals2, [0, -1], axis=axes.index('pol'))
+        #             weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
+        #             weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
+        #         else:
+        #             sys.exit("ERROR: SHOULD NOT END UP HERE")
+        #     prepphasescore = np.subtract(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2)
+        # else:
+        #     prepphasescore = np.nan_to_num(vals1) * weights1
+        # phasescore = circstd(prepphasescore[prepphasescore != 0], nan_policy='omit')
+        #
+        # # AMP VALUES
+        # amps1 = H.root.sol000.amplitude000.val[:]
+        # if h5_2 is not None:
+        #     amps2 = F.root.sol000.amplitude000.val[:]
+        #
+        # if self.station in ('dutch', 'remote', 'international'):
+        #     amps1 = np.take(vals1, stations, axis=axes.index('ant'))
+        #     if h5_2 is not None:
+        #         amps2 = np.take(amps2, stations, axis=axes.index('ant'))
+        #
+        # # take std from ratio of previous and current selfcal cycle
+        # if h5_2 is not None:
+        #     if len(pols1) != len(pols2):
+        #         if min(len(pols1), len(pols2)) == 1:
+        #             amps1 = np.take(amps1, [0], axis=axes.index('pol'))
+        #             amps2 = np.take(amps2, [0], axis=axes.index('pol'))
+        #             weights1 = np.take(weights1, [0], axis=axes.index('pol'))
+        #             weights2 = np.take(weights2, [0], axis=axes.index('pol'))
+        #         elif min(len(pols1), len(pols2)) == 2:
+        #             amps1 = np.take(amps1, [0, -1], axis=axes.index('pol'))
+        #             amps2 = np.take(amps2, [0, -1], axis=axes.index('pol'))
+        #             weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
+        #             weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
+        #         else:
+        #             sys.exit("ERROR: SHOULD NOT END UP HERE")
+        #     prepampscore = np.nan_to_num(
+        #         np.divide(np.nan_to_num(amps1) * weights1, np.nan_to_num(amps2) * weights2),
+        #         posinf=0, neginf=0
+        #     )
+        # else:
+        #     prepampscore = np.nan_to_num(amps1) * weights1
+        # ampscore = np.std(prepampscore[prepampscore != 0])
+        #
+        # H.close()
+        # if h5_2 is not None:
+        #     F.close()
+
+        return phase_score, amp_score
 
     def solution_stability(self):
         """
@@ -328,6 +386,8 @@ class SelfcalQuality:
                     phasescore, ampscore = self.get_solution_scores(sub_h5, sub_h5s[m - 1])
                 elif number == 0:
                     phasescore, ampscore = self.get_solution_scores(sub_h5, None)
+                else:
+                    raise ValueError("No solution found")
                 phase_scores.append(phasescore)
                 amp_scores.append(ampscore)
             if k == 0:
@@ -338,16 +398,9 @@ class SelfcalQuality:
             total_amp_scores = np.append(total_amp_scores, [amp_scores], axis=0)
 
         # plot
-        if self.dutch_only:
-            plotname = f'selfcal_stability_dutch.png'
-        elif self.remote_only:
-            plotname = f'selfcal_stability_remote.png'
-        elif self.international_only:
-            plotname = f'selfcal_stability_international.png'
-        else:
-            plotname = f'selfcal_stability.png'
-        finalphase = np.mean(total_phase_scores, axis=0)
-        finalamp = np.mean(total_amp_scores, axis=0)
+        plotname = f'selfcal_stability{self.station}.png'
+
+        finalphase, finalamp = (np.mean(score, axis=0), for score in (total_phase_scores, total_amp_scores))
 
         self.make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', plotname)
 
@@ -531,10 +584,7 @@ def parse_args():
     parser = ArgumentParser(description='Determine selfcal quality')
     parser.add_argument('--selfcal_folder', default='.')
     parser.add_argument('--bilateral_filter', action='store_true')
-    parser.add_argument('--dutch_only', action='store_true', help='Only Dutch stations are considered', default=None)
-    parser.add_argument('--remote_only', action='store_true', help='Only remote stations are considered', default=None)
-    parser.add_argument('--international_only', action='store_true', help='Only international stations are considered',
-                        default=None)
+    parser.add_argument('--station', type=str, default='dutch', choices=['dutch', 'remote', 'international', 'debug'])
     return parser.parse_args()
 
 
