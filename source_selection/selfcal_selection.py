@@ -206,8 +206,7 @@ class SelfcalQuality:
                 )
 
         def filter_stations(station_names):
-            """Filters parameters based on stations
-            axis should be 'ant' or 'pol'"""
+            """Generate indices of filtered stations"""
             if self.station == 'debug':
                 return list(range(len(station_names)))
 
