@@ -116,7 +116,7 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r', components: str = None):
 
     rms = get_rms(image_data)
     vmin = rms
-    vmax = rms * 6
+    vmax = rms * 10
 
     if hdu is None:
         wcs = WCS(header, naxis=2)
@@ -259,8 +259,8 @@ def run_pybdsf(fitsfile, rmsbox):
 
     prefix = fitsfile.replace('.fits', '')
     img = bdsf.process_image(fitsfile,
-                             thresh_isl=3,
-                             thresh_pix=5,
+                             thresh_isl=3.5,
+                             thresh_pix=5.5,
                              atrous_do=True,
                              rms_box=(int(rmsbox), int(rmsbox // 8)),
                              rms_box_bright=(int(rmsbox//3), int(rmsbox//12)),
@@ -383,7 +383,7 @@ def main():
 
         f = fits.open(fts)
         pixscale = np.sqrt(abs(f[0].header['CDELT2']*f[0].header['CDELT1']))
-        # beamarea = get_beamarea(f)
+        beamarea = get_beamarea(f)
         # imdat = f[0].data
         # im_rms = get_rms(imdat)
         f.close()
@@ -414,8 +414,10 @@ def main():
                 cluster_indices = clusters_indices_small
             cluster_indices = [idx for idx in cluster_indices if idx not in to_delete and idx not in to_ignore]
 
-            if (T[T['Source_id'] == n]['Peak_flux'][0] < rms * 2 or
-                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms * (3/4)):
+            if ((T[T['Source_id'] == n]['Peak_flux'][0] < rms * 2 or
+                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms * (3/4)) and T['Total_flux_over_peak_flux'] < 2.5*beamarea)\
+                    or (T[T['Source_id'] == n]['Total_flux_over_peak_flux'][0] < beamarea/2
+                        and T[T['Source_id'] == n]['Peak_flux'][0] < 2.5*rms):
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'deleted_sources/source_{m}_{n}.fits')
                 make_image(f'deleted_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
                 to_delete.append(table_idx)
@@ -430,16 +432,9 @@ def main():
                 for i in cluster_indices:
                     to_ignore.append(i)
 
-            elif (T[T['Source_id'] == n]['Peak_flux_min'][0] < 2.5*rms or
-                  T[T['Source_id'] == n]['Peak_flux'][0] < 5*rms):
-
-                if (T[T['Source_id'] == n]['Total_flux_over_peak_flux'][0] < 4
-                        and T[T['Source_id'] == n]['Peak_flux'][0] < 2.5*rms):
-                    make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300),
-                                savefits=f'deleted_sources/source_{m}_{n}.fits')
-                    make_image(f'deleted_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
-                    to_delete.append(table_idx)
-                    print("Delete Source_id: " + str(n))
+            elif ((T[T['Source_id'] == n]['Peak_flux_min'][0] < 1.5*rms or
+                  T[T['Source_id'] == n]['Peak_flux'][0] < 3*rms)
+                  and T['Total_flux_over_peak_flux'] < 2*beamarea):
 
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'weak_sources/source_{m}_{n}.fits')
                 make_image(f'weak_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
