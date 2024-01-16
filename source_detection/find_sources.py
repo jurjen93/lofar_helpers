@@ -116,7 +116,7 @@ def make_image(fitsfile=None, cmap: str = 'RdBu_r', components: str = None):
 
     rms = get_rms(image_data)
     vmin = rms
-    vmax = rms * 10
+    vmax = rms * 8
 
     if hdu is None:
         wcs = WCS(header, naxis=2)
@@ -446,6 +446,8 @@ def main():
 
         for i in sorted(to_delete)[::-1]:
             del T[i]
+
+        T.write(tbl, format='fits', overwrite=True)
 
 if __name__ == '__main__':
     main()
