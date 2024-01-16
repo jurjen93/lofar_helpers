@@ -90,7 +90,7 @@ class SelfcalQuality:
 
         :param fitsfile: fits file name
         """
-        return int(float(re.findall("\d{3}", fitsfile.split('/')[-1])[0]))
+        return int(float(re.findall(r"\d{3}", fitsfile.split('/')[-1])[0]))
 
     @staticmethod
     def make_utf8(inp=None):
@@ -172,9 +172,9 @@ class SelfcalQuality:
         :return: image entropy value
         """
 
-        file = fits.open(fitsfile)
-        image = file[0].data
-        file.close()
+        with fits.open(fitsfile) as f:
+            image = f[0].data
+
         while image.ndim > 2:
             image = image[0]
         image = np.sqrt((image - self.minp) / (self.maxp - self.minp)) * 255
@@ -182,16 +182,6 @@ class SelfcalQuality:
         val = entropy(image, disk(6)).sum()
         print(f"Entropy: {val}")
         return val
-
-    @staticmethod
-    def euclidean_distance(l1=None, l2=None):
-        """
-        Take euclidean distance
-
-        :return: euclidean distance
-        """
-
-        return np.sqrt(np.sum(np.power(np.subtract(l1, l2), 2)))
 
     def get_solution_scores(self, h5_1: str, h5_2: str = None):
         """
@@ -226,7 +216,10 @@ class SelfcalQuality:
                 ('RS',) if self.station == 'remote' else
                 ('RS', 'CS', 'ST')  # i.e.: if self.station == 'international'
             )
-            return [i for i, station_name in enumerate(station_names) if station_code in station_name]
+            return [
+                i for i, station_name in enumerate(station_names)
+                if any(station_code in station_name for station_code in station_codes)
+            ]
 
         def filter_params(station_indices, axes, *parameters):
             return tuple(
@@ -266,101 +259,6 @@ class SelfcalQuality:
 
         phase_score = circstd(prep_phase_score[prep_phase_score != 0], nan_policy='omit')
         amp_score = np.std(prep_amp_score[prep_mp_score != 0])
-
-
-        # if h5_2 is not None:
-        #     _, vals2, weights2, pols2, _ = extract_data(h5_2)
-        #
-        # if h5_2 is not None:
-        #     F = tables.open_file(h5_2)
-        #     vals2 = F.root.sol000.phase000.val[:]
-        #     weights2 = F.root.sol000.phase000.weight[:]
-        #     pols2 = F.root.sol000.phase000.pol[:]
-        #
-        #
-        # if self.station == 'dutch':
-        #     stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
-        #                 ('CS' in self.make_utf8(station))]
-        #     vals1 = np.take(vals1, stations, axis=axes.index('ant'))
-        #     weights1 = np.take(weights1, stations, axis=axes.index('ant'))
-        #     if h5_2 is not None:
-        #         vals2 = np.take(vals2, stations, axis=axes.index('ant'))
-        #         weights2 = np.take(weights2, stations, axis=axes.index('ant'))
-        # elif self.station == 'remote':
-        #     stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
-        #                 ('RS' in self.make_utf8(station))]
-        #     vals1 = np.take(vals1, stations, axis=axes.index('ant'))
-        #     weights1 = np.take(weights1, stations, axis=axes.index('ant'))
-        #     if h5_2 is not None:
-        #         vals2 = np.take(vals2, stations, axis=axes.index('ant'))
-        #         weights2 = np.take(weights2, stations, axis=axes.index('ant'))
-        # elif self.station == 'international':
-        #     stations = [i for i, station in enumerate(H.root.sol000.antenna[:]['name']) if
-        #                 not ('RS' in self.make_utf8(station)
-        #                      or 'CS' in self.make_utf8(station)
-        #                      or 'ST' in self.make_utf8(station))]
-        #     vals1 = np.take(vals1, stations, axis=axes.index('ant'))
-        #     weights1 = np.take(weights1, stations, axis=axes.index('ant'))
-        #     if h5_2 is not None:
-        #         vals2 = np.take(vals2, stations, axis=axes.index('ant'))
-        #         weights2 = np.take(weights2, stations, axis=axes.index('ant'))
-        #
-        # # take circular std from difference of previous and current selfcal cycle
-        # if h5_2 is not None:
-        #     if len(pols1) != len(pols2):
-        #         if min(len(pols1), len(pols2)) == 1:
-        #             vals1 = np.take(vals1, [0], axis=axes.index('pol'))
-        #             vals2 = np.take(vals2, [0], axis=axes.index('pol'))
-        #             weights1 = np.take(weights1, [0], axis=axes.index('pol'))
-        #             weights2 = np.take(weights2, [0], axis=axes.index('pol'))
-        #         elif min(len(pols1), len(pols2)) == 2:
-        #             vals1 = np.take(vals1, [0, -1], axis=axes.index('pol'))
-        #             vals2 = np.take(vals2, [0, -1], axis=axes.index('pol'))
-        #             weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
-        #             weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
-        #         else:
-        #             sys.exit("ERROR: SHOULD NOT END UP HERE")
-        #     prepphasescore = np.subtract(np.nan_to_num(vals1) * weights1, np.nan_to_num(vals2) * weights2)
-        # else:
-        #     prepphasescore = np.nan_to_num(vals1) * weights1
-        # phasescore = circstd(prepphasescore[prepphasescore != 0], nan_policy='omit')
-        #
-        # # AMP VALUES
-        # amps1 = H.root.sol000.amplitude000.val[:]
-        # if h5_2 is not None:
-        #     amps2 = F.root.sol000.amplitude000.val[:]
-        #
-        # if self.station in ('dutch', 'remote', 'international'):
-        #     amps1 = np.take(vals1, stations, axis=axes.index('ant'))
-        #     if h5_2 is not None:
-        #         amps2 = np.take(amps2, stations, axis=axes.index('ant'))
-        #
-        # # take std from ratio of previous and current selfcal cycle
-        # if h5_2 is not None:
-        #     if len(pols1) != len(pols2):
-        #         if min(len(pols1), len(pols2)) == 1:
-        #             amps1 = np.take(amps1, [0], axis=axes.index('pol'))
-        #             amps2 = np.take(amps2, [0], axis=axes.index('pol'))
-        #             weights1 = np.take(weights1, [0], axis=axes.index('pol'))
-        #             weights2 = np.take(weights2, [0], axis=axes.index('pol'))
-        #         elif min(len(pols1), len(pols2)) == 2:
-        #             amps1 = np.take(amps1, [0, -1], axis=axes.index('pol'))
-        #             amps2 = np.take(amps2, [0, -1], axis=axes.index('pol'))
-        #             weights1 = np.take(weights1, [0, -1], axis=axes.index('pol'))
-        #             weights2 = np.take(weights2, [0, -1], axis=axes.index('pol'))
-        #         else:
-        #             sys.exit("ERROR: SHOULD NOT END UP HERE")
-        #     prepampscore = np.nan_to_num(
-        #         np.divide(np.nan_to_num(amps1) * weights1, np.nan_to_num(amps2) * weights2),
-        #         posinf=0, neginf=0
-        #     )
-        # else:
-        #     prepampscore = np.nan_to_num(amps1) * weights1
-        # ampscore = np.std(prepampscore[prepampscore != 0])
-        #
-        # H.close()
-        # if h5_2 is not None:
-        #     F.close()
 
         return phase_score, amp_score
 
@@ -422,7 +320,7 @@ class SelfcalQuality:
             return None, False
 
     @staticmethod
-    def get_rms(inp=None, maskSup: float = 1e-7):
+    def get_rms(inp: Union[str, np.ndarray], maskSup: float = 1e-7):
         """
         find the rms of an array, from Cycil Tasse/kMS
 
@@ -432,11 +330,13 @@ class SelfcalQuality:
         :return: rms --> rms of image
         """
 
-        if type(inp)==str:
-            hdul = fits.open(inp)
-            mIn = np.ndarray.flatten(hdul[0].data)
+        if isinstance(inp, str):
+            with fits.open(inp) as hdul:
+                data = hdul[0].data
         else:
-            mIn = np.ndarray.flatten(inp)
+            data = inp
+
+        mIn = np.ndarray.flatten(data)
         m = mIn[np.abs(mIn) > maskSup]
         rmsold = np.std(m)
         diff = 1e-1
@@ -445,17 +345,17 @@ class SelfcalQuality:
         for i in range(10):
             ind = np.where(np.abs(m - med) < rmsold * cut)[0]
             rms = np.std(m[ind])
-            if np.abs((rms - rmsold) / rmsold) < diff: break
+            if np.abs((rms - rmsold) / rmsold) < diff:
+                break
             rmsold = rms
-        if type(inp)==str:
-            hdul.close()
+
 
         print(f'rms: {rms}')
 
         return rms  # jy/beam
 
     @staticmethod
-    def get_minmax(inp=None):
+    def get_minmax(inp: Union[str, np.ndarray]):
         """
         Get min/max value
 
@@ -463,18 +363,15 @@ class SelfcalQuality:
 
         :return: minmax --> pixel min/max value
         """
-
-        if type(inp)==str:
-            hdul = fits.open(inp)
-            data = hdul[0].data
+        if isinstance(inp, str):
+            with fits.open(inp) as hdul:
+                data = hdul[0].data
         else:
             data = inp
+
         minmax = np.abs(data.min() / data.max())
-        if type(inp)==str:
-            hdul.close()
 
         print(f"min/max: {minmax}")
-
         return minmax
 
     @staticmethod
@@ -489,9 +386,8 @@ class SelfcalQuality:
         :return: Bilateral filter output
         """
 
-        hdul = fits.open(fitsfile)
-        data = hdul[0].data
-        hdul.close()
+        with fits.open(fitsfile) as hdul:
+            data = hdul[0].data
 
         if general_sigma is not None:
             sigma_x = sigma_y = sigma_z = int(general_sigma)
@@ -509,12 +405,12 @@ class SelfcalQuality:
 
         b, best_cycle = 0, 0
         for n, c in enumerate(cycles[1:]):
-            if c>cycles[n-1]:
-                b+=1
+            if c > cycles[n - 1]:
+                b += 1
             else:
                 b = 0
-                best_cycle = n+1
-            if b==2:
+                best_cycle = n + 1
+            if b == 2:
                 break
         return best_cycle
 
@@ -548,10 +444,11 @@ class SelfcalQuality:
         bestcycle = (best_minmax_cycle + best_rms_cycle) // 2
 
         # getting slopes for selection
-        if len(rmss)>4:
-            rms_slope_start, minmax_slope_start = linregress(list(range(len(rmss[:4]))), rmss[:4]).slope, linregress(list(range(len(rmss[:4]))),
-                                                                                                 np.array(
-                                                                                                     minmaxs[:4])).slope
+        if len(rmss) > 4:
+            rms_slope_start, minmax_slope_start = linregress(list(range(len(rmss[:4]))), rmss[:4]).slope, linregress(
+                list(range(len(rmss[:4]))),
+                np.array(
+                    minmaxs[:4])).slope
         else:
             rms_slope_start, minmax_slope_start = 1, 1
 
@@ -566,7 +463,7 @@ class SelfcalQuality:
             accept = False
         elif len(self.fitsfiles) < 5:
             accept = False
-        elif bestcycle+2 < len(rmss):
+        elif bestcycle + 2 < len(rmss):
             accept = True
         else:
             accept = True
@@ -596,7 +493,7 @@ def main():
 
     sq = SelfcalQuality(args.selfcal_folder, args.remote_only, args.international_only)
     if len(sq.h5s) > 0 or len(sq.fitsfiles) > 0:
-        if len(sq.h5s)>0:
+        if len(sq.h5s) > 0:
             bestcycle_solutions, accept_solutions = sq.solution_stability()
 
             print(f"Best cycle according to solutions {bestcycle_solutions}")
