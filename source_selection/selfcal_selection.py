@@ -24,6 +24,7 @@ import pandas as pd
 import sys
 from cv2 import bilateralFilter
 
+from typing import Union
 
 class SelfcalQuality:
     def __init__(self, folder: str, station: str):
@@ -226,10 +227,16 @@ class SelfcalQuality:
                 for param in parameters
             )
 
+        def weighted_vals(vals, weights):
+            return np.nan_to_num(vals) * weights
+
         axes1, station_names1, *params1 = extract_data(h5_1)
 
         antenna_selection = partial(filter_params, filter_stations(station_names1), axes1.index('ant'))
         phase_vals1, phase_weights1, phase_pols1, amps1 = antenna_selection(*params1)
+
+        prep_phase_score = weighted_vals(phase_vals1, phase_weights1)
+        prep_amp_score = weighted_vals(amps1, phase_weights1)
 
         if h5_2 is not None:
             _, _, *params2 = extract_data(h5_2)
@@ -240,21 +247,18 @@ class SelfcalQuality:
 
             indices = [0] if min_length == 1 else [0, -1]
 
-            phase_vals1, phase_weights1, amps1, phase_vals2, phase_weights2, amps2 = filter_params(
-                indices, axes1.index('pol'), phase_vals1, phase_weights1, amps1, phase_vals2, phase_weights2, amps2
+            prep_phase_score, prep_amp_score, phase_vals2, phase_weights2, amps2 = filter_params(
+                indices, axes1.index('pol'), prep_phase_score, prep_amp_score, phase_vals2, phase_weights2, amps2
             )
 
-            prep_phase_score = np.subtract(np.nan_to_num(phase_vals1) * phase_weights1, np.nan_to_num(phase_vals2) * phase_weights2)
+            prep_phase_score = np.subtract(prep_phase_score, weighted_vals(phase_vals2, phase_weights2))
             prep_amp_score = np.nan_to_num(
-                np.divide(np.nan_to_num(phase_amps1) * phase_weights1, np.nan_to_num(amps2) * phase_weights2),
+                np.divide(prep_amp_score, weighted_vals(amps2, phase_weights2)),
                 posinf=0, neginf=0
             )
-        else:
-            prep_phase_score = np.nan_to_num(phase_vals1) * phase_weights1
-            prep_amp_score = np.nan_to_num(amps1) * phase_weights1
 
         phase_score = circstd(prep_phase_score[prep_phase_score != 0], nan_policy='omit')
-        amp_score = np.std(prep_amp_score[prep_mp_score != 0])
+        amp_score = np.std(prep_amp_score[prep_amp_score != 0])
 
         return phase_score, amp_score
 
@@ -269,6 +273,7 @@ class SelfcalQuality:
         """
 
         # loop over sources to get scores
+        assert len(self.sources) > 0
         for k, source in enumerate(self.sources):
             sub_h5s = sorted([h5 for h5 in self.h5s if source in h5])
             phase_scores = []
@@ -294,7 +299,7 @@ class SelfcalQuality:
         # plot
         plotname = f'selfcal_stability{self.station}.png'
 
-        finalphase, finalamp = (np.mean(score, axis=0), for score in (total_phase_scores, total_amp_scores))
+        finalphase, finalamp = (np.mean(score, axis=0) for score in (total_phase_scores, total_amp_scores))
 
         self.make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', plotname)
 
@@ -307,10 +312,8 @@ class SelfcalQuality:
             phase_decrease, phase_quality, amp_quality = self.linreg_slope(finalphase[:4]), self.linreg_slope(
                 finalphase[-3:]), self.linreg_slope(finalamp[-3:])
             print(phase_decrease, phase_quality, amp_quality)
-            if phase_decrease < 0 and abs(phase_quality) < 0.05 and abs(amp_quality) < 0.05:
-                accept = True
-            else:
-                accept = False
+            accept = phase_decrease < 0 and abs(phase_quality) < 0.05 and abs(amp_quality) < 0.05
+
             return bestcycle, accept
         else:
             return None, False
@@ -487,7 +490,7 @@ def main():
     """
     args = parse_args()
 
-    sq = SelfcalQuality(args.selfcal_folder, args.remote_only, args.international_only)
+    sq = SelfcalQuality(args.selfcal_folder, args.station)
     if len(sq.h5s) > 0 or len(sq.fitsfiles) > 0:
         if len(sq.h5s) > 0:
             bestcycle_solutions, accept_solutions = sq.solution_stability()
