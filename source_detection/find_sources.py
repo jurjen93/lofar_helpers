@@ -260,7 +260,7 @@ def run_pybdsf(fitsfile, rmsbox):
     prefix = fitsfile.replace('.fits', '')
     img = bdsf.process_image(fitsfile,
                              thresh_isl=3,
-                             thresh_pix=5.5,
+                             thresh_pix=5,
                              atrous_do=True,
                              rms_box=(int(rmsbox), int(rmsbox // 8)),
                              rms_box_bright=(int(rmsbox//3), int(rmsbox//12)),
