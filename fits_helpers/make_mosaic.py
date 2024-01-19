@@ -81,6 +81,7 @@ def get_polygon_center(regionfile):
     :param regionfile: region file
     :return: polygon center
     """
+    regname = regionfile
     regionfile = open(regionfile, 'r')
     lines = regionfile.readlines()
     regionfile.close()
@@ -88,6 +89,7 @@ def get_polygon_center(regionfile):
         polygon = lines[4]
     except IndexError:
         polygon = lines[3]
+    polygon = polygon.replace(' # text={'+regname.replace('.reg','')+'}\n','')
     polyp = [float(p) for p in polygon.replace('polygon(', '').replace(')', '').replace('\n', '').split(',')]
     poly_geo = geometry.Polygon(tuple(zip(polyp[0::2], polyp[1::2])))
     return SkyCoord(f'{poly_geo.centroid.x}deg', f'{poly_geo.centroid.y}deg', frame='icrs')
@@ -101,19 +103,26 @@ def get_array_coordinates(pix_array, wcsheader):
     :param wcsheader: wcs header
     :return: array with coordinates from pixel array
     """
-    pixarray = np.argwhere(pix_array)
-    return wcsheader.pixel_to_world(pixarray[:, 0], pixarray[:, 1], 0, 0)[0]
+    return np.array([[wcsheader.pixel_to_world(j,i,0,0)[0]
+                      for j in range(pix_array.shape[0])]
+                     for i in range(pix_array.shape[1])])
+    # pixarray = np.argwhere(pix_array)
+    # return wcsheader.pixel_to_world(pixarray[:, 0], pixarray[:, 1], 0, 0)[0]
 
 
-def get_distance_weights(center, coord_array):
+def get_distance_weights(center, arr, wcsheader):
     """
     Get weights based on center polygon to coordinates in array
 
     :param center: center polygon
-    :param coord_array: coordinates field
+    :param arr: numpy array (for shape)
+    :param wcsheader: header
     :return: weights from center polygon
     """
-    return 1 / center.separation(coord_array).value
+    return np.array([[1/center.separation(wcsheader.pixel_to_world(j, i, 0, 0)[0]).value.astype(np.float32)
+                      for j in range(arr.shape[0])]
+                     for i in range(arr.shape[1])]).astype(np.float32)
+    # return 1 / center.separation(coord_array).value
 
 def rms(image_data):
     """
@@ -226,7 +235,7 @@ def main():
 
     isum = np.zeros([ysize, xsize], dtype="float32")
     weights = np.zeros_like(isum, dtype="float32")
-    # fullmask = np.zeros_like(isum, dtype=bool)
+    fullmask = np.zeros_like(isum, dtype=bool)
 
     for n, facet in enumerate(facets):
         print(facet, regions[n])
@@ -236,20 +245,20 @@ def main():
         wcsheader = WCS(hdu[0].header)
 
         imagedata, _ = reproject_interp_chunk_2d(hduflatten, header_new, hdu_in=0, parallel=True)
+        imagedata = imagedata.astype(np.float32)
         del hduflatten
 
         reg = regions[n]
-        # polycenter = get_polygon_center(reg)
+        polycenter = get_polygon_center(reg)
         r = pyregion.open(reg).as_imagecoord(header=header_new)
-        mask = r.get_mask(hdu=hdu[0], shape=(header_new["NAXIS1"], header_new["NAXIS2"])).astype(int)
+        mask = r.get_mask(hdu=hdu[0], shape=(header_new["NAXIS1"], header_new["NAXIS2"])).astype(np.int16)
         hdu.close()
 
         make_image(mask*imagedata, None, facet+'.png', 'CMRmap', header_new)
 
-        # fullmask |= ~np.isnan(imagedata)
-        # coordinates = get_array_coordinates(imagedata, wcsheader) #TODO: UNCOMMENT FOR BETTER WEIGHTS
-        # facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask #TODO: UNCOMMENT FOR BETTER WEIGHTS
-        facetweight = mask #TODO: COMMENT FOR BETTER WEIGHTS
+        fullmask |= ~np.isnan(imagedata)
+        facetweight = get_distance_weights(polycenter, mask, wcsheader) * mask
+        # facetweight = mask
         facetweight[(~np.isfinite(imagedata)) | (~np.isfinite(facetweight)) | (imagedata == 0)] = 0  # so we can add
         imagedata *= facetweight
         imagedata[~np.isfinite(imagedata)] = 0  # so we can add
@@ -264,7 +273,7 @@ def main():
 
     isum /= weights
     isum[isum == np.inf] = np.nan
-    # isum[~fullmask] = np.nan
+    isum[~fullmask] = np.nan
 
     make_image(isum, None, 'finalfaceted.png', 'CMRmap', header_new)
 

@@ -81,6 +81,7 @@ def get_polygon_center(regionfile):
     :param regionfile: region file
     :return: polygon center
     """
+    regname = regionfile
     regionfile = open(regionfile, 'r')
     lines = regionfile.readlines()
     regionfile.close()
@@ -88,10 +89,10 @@ def get_polygon_center(regionfile):
         polygon = lines[4]
     except IndexError:
         polygon = lines[3]
+    polygon = polygon.replace(' # text={'+regname.replace('.reg','')+'}\n','')
     polyp = [float(p) for p in polygon.replace('polygon(', '').replace(')', '').replace('\n', '').split(',')]
     poly_geo = geometry.Polygon(tuple(zip(polyp[0::2], polyp[1::2])))
     return SkyCoord(f'{poly_geo.centroid.x}deg', f'{poly_geo.centroid.y}deg', frame='icrs')
-
 
 def get_array_coordinates(pix_array, wcsheader):
     """
@@ -105,15 +106,28 @@ def get_array_coordinates(pix_array, wcsheader):
     return wcsheader.pixel_to_world(pixarray[:, 0], pixarray[:, 1], 0, 0)[0]
 
 
-def get_distance_weights(center, coord_array):
+# def get_distance_weights(center, coord_array):
+#     """
+#     Get weights based on center polygon to coordinates in array
+#
+#     :param center: center polygon
+#     :param coord_array: coordinates field
+#     :return: weights from center polygon
+#     """
+#     return 1 / center.separation(coord_array).value
+
+def get_distance_weights(center, arr, wcsheader):
     """
     Get weights based on center polygon to coordinates in array
 
     :param center: center polygon
-    :param coord_array: coordinates field
+    :param arr: numpy array (for shape)
+    :param wcsheader: header
     :return: weights from center polygon
     """
-    return 1 / center.separation(coord_array).value
+    return np.array([[1/center.separation(wcsheader.pixel_to_world(j, i, 0, 0)[0]).value.astype(np.float32)
+                      for j in range(arr.shape[0])]
+                     for i in range(arr.shape[1])]).astype(np.float32)
 
 def rms(image_data):
     """
@@ -200,10 +214,11 @@ def reproject(fitsfile, header, region):
     wcsheader = WCS(hdu[0].header)
     hduflatten = flatten(hdu)
     imagedata, _ = reproject_interp_chunk_2d(hduflatten, header, hdu_in=0, parallel=False)
+    imagedata = imagedata.astype(np.float32)
     del hduflatten
     polycenter = get_polygon_center(region)
     r = pyregion.open(region).as_imagecoord(header=header)
-    mask = r.get_mask(hdu=hdu[0], shape=(header["NAXIS1"], header["NAXIS2"])).astype(int)
+    mask = r.get_mask(hdu=hdu[0], shape=(header["NAXIS1"], header["NAXIS2"])).astype(np.int16)
     hdu.close()
     hdu = fits.PrimaryHDU(header=header, data=mask*imagedata)
     hdu.writeto(fitsfile.replace('.fits', '.reproject.fits'), overwrite=True)
@@ -212,7 +227,10 @@ def reproject(fitsfile, header, region):
 
     # coordinates = get_array_coordinates(imagedata, wcsheader)
     # facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask
-    facetweight = mask
+    # coordinates = get_array_coordinates(np.ones(mask.shape), wcsheader)
+    facetweight = get_distance_weights(polycenter, mask, wcsheader) * mask
+    del mask
+    # facetweight = mask
     facetweight[~np.isfinite(facetweight)] = 0  # so we can add
     hdu = fits.PrimaryHDU(header=header, data=facetweight)
     hdu.writeto(fitsfile.replace('.fits', '.weights.fits'), overwrite=True)

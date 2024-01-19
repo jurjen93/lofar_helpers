@@ -23,15 +23,15 @@ def associate(associate_components, table):
     """
 
     t = Table.read(table, format='fits')
-    columns = ['Source_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
-               'S_Code', 'Isl_rms']
+    # columns = ['Source_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
+    #            'S_Code', 'Isl_rms']
     # Take Source_id, RA, E_RA, DEC, E_DEC main component
     # Total_flux sum of all components
     # E_Total_flux uncertainty all components
     # Peak flux max of all components
     # S_Code = 'M'
 
-    t = t[columns]
+    # t = t[columns]
 
     to_delete = []
     to_not_delete = []
@@ -44,9 +44,9 @@ def associate(associate_components, table):
             ids = [get_table_index(t, x) for x in list(set(p[main_ID]))]
             t[main_ID]['Total_flux'] = t[ids]['Total_flux'].sum()
             t[main_ID]['E_Total_flux'] = error_prop(t[ids]['E_Total_flux'])
-            t[main_ID]['Peak_flux'] = t[ids]['E_Peak_flux'].max()
+            t[main_ID]['Peak_flux'] = t[ids]['Peak_flux'].max()
+            t[main_ID]['E_Peak_flux'] = error_prop(t[ids]['E_Peak_flux'])
             t[main_ID]['S_Code'] = 'M'
-            t[main_ID]['Isl_rms'] = t[ids]['Isl_rms'].mean()
             for i in ids:
                 to_delete.append(i)
         if type(p) == int:
