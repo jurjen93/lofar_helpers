@@ -11,7 +11,7 @@ def parse_args():
     Command line argument parser
     :return: parsed arguments
     """
-    parser = ArgumentParser(description='Cut fits file based with region file')
+    parser = ArgumentParser(description='Cut fits file with region file')
     parser.add_argument('--fits_input', help='fits input file', required=True, type=str)
     parser.add_argument('--fits_output', help='fits output file', required=True, type=str)
     parser.add_argument('--region', help='region file', required=True, type=str)

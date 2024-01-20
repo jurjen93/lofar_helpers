@@ -312,12 +312,16 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             vmax = rms * 9
 
 
-            ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
+            im = ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             ax.set_xlabel('Right Ascension (J2000)', size=14)
             ax.set_ylabel('Declination (J2000)', size=14)
             # axs[m, n % 2].set_tick_params(axis='both', which='major', labelsize=12)
             if n!=0:
                 ax.set_title(fitsfile.split('/')[-2].replace('_', ' '))
+
+            cb = ax.colorbar(im, orientation='horizontal')
+            cb.set_label('Surface brightness [mJy/beam]', size=16)
+            cb.ax.tick_params(labelsize=16)
 
         fig.tight_layout(pad=1.0)
         plt.grid(False)
