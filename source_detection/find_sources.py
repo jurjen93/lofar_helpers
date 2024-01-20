@@ -80,6 +80,9 @@ def make_cutout(fitsfile=None, pos: tuple = None, size: tuple = (1000, 1000), sa
     image_data = fts[0].data
     wcs = WCS(fts[0].header, naxis=2)
 
+    while image_data.ndim>2:
+        image_data = image_data[0]
+
     out = Cutout2D(
         data=image_data,
         position=pos,
@@ -262,13 +265,18 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                                         figsize=(10, 8),
                                         subplot_kw={'projection': WCS(header, naxis=2)})
                 imdat = hdu[0].data * 1000
-                or_header = header
+                while imdat.ndim > 2:
+                    imdat = imdat[0]
                 or_shape = imdat.shape
+                w = WCS(header, naxis=2)
+                skycenter = w.pixel_to_world(header['NAXIS1']//2, header['NAXIS2']//2)
 
-            if n>0:
+
+            elif n>0:
                 pixfact = cdelt/abs(header['CDELT2'])
                 shape = np.array(or_shape) * pixfact
-                center_sky = SkyCoord(f'{or_header["CRVAL1"]}deg', f'{or_header["CRVAL2"]}deg', frame='icrs')
+                center_sky = SkyCoord(f'{skycenter.ra.value}deg', f'{skycenter.dec.value}deg', frame='icrs')
+
                 w = WCS(header, naxis=2)
                 pix_coord = skycoord_to_pixel(center_sky, w, 0, 'all')
                 imdat = make_cutout(fitsfile=fitsfile,
@@ -291,7 +299,8 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             axs[m, n % 2].set_xlabel('Right Ascension (J2000)', size=14)
             axs[m, n % 2].set_ylabel('Declination (J2000)', size=14)
             # axs[m, n % 2].set_tick_params(axis='both', which='major', labelsize=12)
-            axs[m, n % 2].set_title(fitsfile)
+            if n!=0:
+                axs[m, n % 2].set_title(fitsfile.split('/')[-2].replace('_', ' '))
 
         fig.tight_layout(pad=1.0)
         plt.grid(False)
