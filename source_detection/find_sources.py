@@ -113,6 +113,13 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
     cmap -> choose your preferred cmap
     """
 
+    def fixed_color(shape, saved_attrs):
+        from pyregion.mpl_helper import properties_func_default
+        attr_list, attr_dict = saved_attrs
+        attr_dict["color"] = 'green'
+        kwargs = properties_func_default(shape, (attr_list, attr_dict))
+        return kwargs
+
     if len(fitsfiles)==1:
         fitsfile = fitsfiles[0]
 
@@ -137,13 +144,6 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
         plt.ylabel('Declination (J2000)', size=14)
         plt.tick_params(axis='both', which='major', labelsize=12)
 
-        def fixed_color(shape, saved_attrs):
-            from pyregion.mpl_helper import properties_func_default
-            attr_list, attr_dict = saved_attrs
-            attr_dict["color"] = 'green'
-            kwargs = properties_func_default(shape, (attr_list, attr_dict))
-
-            return kwargs
 
         if components is not None:
             r = pyregion.open(components).as_imagecoord(header=hdu[0].header)
@@ -294,6 +294,16 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 m = 0
             else:
                 m = 1
+
+            if components is not None:
+                r = pyregion.open(components).as_imagecoord(header=hdu[0].header)
+                patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
+
+                # fig.add_axes(ax)
+            for patch in patch_list:
+                axs[m, n %2].add_patch(patch)
+            for artist in artist_list:
+                axs[m, n %2].add_artist(artist)
 
             axs[m, n % 2].imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             axs[m, n % 2].set_xlabel('Right Ascension (J2000)', size=14)
