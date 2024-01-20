@@ -103,7 +103,7 @@ def make_cutout(fitsfile=None, pos: tuple = None, size: tuple = (1000, 1000), sa
         image_data = np.expand_dims(np.expand_dims(image_data, axis=0), axis=0)
         fits.writeto(savefits, image_data, header, overwrite=True)
 
-    return image_data
+    return image_data, header
 
 
 def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
@@ -298,15 +298,22 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
                 w = WCS(header, naxis=2)
                 pix_coord = skycoord_to_pixel(center_sky, w, 0, 'all')
-                imdat = make_cutout(fitsfile=fitsfile,
+                imdat, h = make_cutout(fitsfile=fitsfile,
                                     pos=tuple([int(p) for p in pix_coord]),
                                     size=tuple([int(p) for p in shape]))*1000
+                w = WCS(h, naxis=2)
 
             while imdat.ndim > 2:
                 imdat = imdat[0]
 
+            if m==0 and n==1:
+                plt.subplot(121, projection=w)
+            if m==1 and n==0:
+                plt.subplot(211, projection=w)
+
             if m==1 and n==1:
-                plt.subplot(11, projection=w)
+                plt.subplot(221, projection=w)
+
             axs[m, n % 2].imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             axs[m, n % 2].set_xlabel('Right Ascension (J2000)', size=14)
             axs[m, n % 2].set_ylabel('Declination (J2000)', size=14)
