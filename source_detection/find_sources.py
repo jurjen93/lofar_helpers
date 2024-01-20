@@ -264,12 +264,16 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 fig, axs = plt.subplots(2, 2,
                                         figsize=(10, 8),
                                         subplot_kw={'projection': WCS(header, naxis=2)})
+
                 imdat = hdu[0].data * 1000
                 while imdat.ndim > 2:
                     imdat = imdat[0]
                 or_shape = imdat.shape
                 w = WCS(header, naxis=2)
                 skycenter = w.pixel_to_world(header['NAXIS1']//2, header['NAXIS2']//2)
+                rms = get_rms(imdat)
+                vmin = rms
+                vmax = rms * 9
 
 
             elif n>0:
@@ -286,10 +290,6 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             while imdat.ndim > 2:
                 imdat = imdat[0]
 
-            rms = get_rms(imdat)
-            vmin = rms
-            vmax = rms * 9
-
             if n == 0 or n == 1:
                 m = 0
             else:
@@ -301,11 +301,12 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
                 # fig.add_axes(ax)
                 for patch in patch_list:
-                    axs[m, n %2].add_patch(patch)
+                    axs[m, n % 2].add_patch(patch)
                 for artist in artist_list:
-                    axs[m, n %2].add_artist(artist)
+                    axs[m, n % 2].add_artist(artist)
 
             axs[m, n % 2].imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
+            axs[m, n % 2].set_wcs(w)
             axs[m, n % 2].set_xlabel('Right Ascension (J2000)', size=14)
             axs[m, n % 2].set_ylabel('Declination (J2000)', size=14)
             # axs[m, n % 2].set_tick_params(axis='both', which='major', labelsize=12)
