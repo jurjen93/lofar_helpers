@@ -422,10 +422,10 @@ def main():
         if not args.no_pybdsf:
             tbl = run_pybdsf(fts, args.rmsbox)
         else:
-            if len(glob(fts.replace('.fits', '') + '_source_catalog_final.fits'))>0:
-                tbl = fts.replace('.fits', '') + '_source_catalog_final.fits'
-            else:
-                tbl = fts.replace('.fits', '') + '_source_catalog.fits'
+            # if len(glob(fts.replace('.fits', '') + '_source_catalog_final.fits'))>0:
+            #     tbl = fts.replace('.fits', '') + '_source_catalog_final.fits'
+            # else:
+            tbl = fts.replace('.fits', '') + '_source_catalog.fits'
 
         # make ds9 region file with sources in it
         make_point_file(tbl)
