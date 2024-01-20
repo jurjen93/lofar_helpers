@@ -100,151 +100,206 @@ def make_cutout(fitsfile=None, pos: tuple = None, size: tuple = (1000, 1000), sa
         image_data = np.expand_dims(np.expand_dims(image_data, axis=0), axis=0)
         fits.writeto(savefits, image_data, header, overwrite=True)
 
+    return image_data
 
-def make_image(fitsfile=None, cmap: str = 'RdBu_r', components: str = None):
+
+def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
     """
     Image your data with this method.
-    fits file -> fits file
+    fitsfiles -> list with fits file
     cmap -> choose your preferred cmap
     """
 
-    hdu = fits.open(fitsfile)
-    image_data = hdu[0].data * 1000
-    while image_data.ndim > 2:
-        image_data = image_data[0]
-    header = hdu[0].header
+    if len(fitsfiles)==1:
+        fitsfile = fitsfiles[0]
 
-    rms = get_rms(image_data)
-    vmin = rms
-    vmax = rms * 9
+        hdu = fits.open(fitsfile)
+        image_data = hdu[0].data * 1000
+        while image_data.ndim > 2:
+            image_data = image_data[0]
+        header = hdu[0].header
 
-    if hdu is None:
+        rms = get_rms(image_data)
+        vmin = rms
+        vmax = rms * 9
+
         wcs = WCS(header, naxis=2)
+
+        fig = plt.figure(figsize=(7, 10), dpi=200)
+        plt.subplot(projection=wcs)
+        WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
+        im = plt.imshow(image_data, origin='lower', cmap=cmap)
+        im.set_norm(PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
+        plt.xlabel('Right Ascension (J2000)', size=14)
+        plt.ylabel('Declination (J2000)', size=14)
+        plt.tick_params(axis='both', which='major', labelsize=12)
+
+        def fixed_color(shape, saved_attrs):
+            from pyregion.mpl_helper import properties_func_default
+            attr_list, attr_dict = saved_attrs
+            attr_dict["color"] = 'green'
+            kwargs = properties_func_default(shape, (attr_list, attr_dict))
+
+            return kwargs
+
+        if components is not None:
+            r = pyregion.open(components).as_imagecoord(header=hdu[0].header)
+            patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
+
+            # fig.add_axes(ax)
+            for patch in patch_list:
+                plt.gcf().gca().add_patch(patch)
+            for artist in artist_list:
+                plt.gca().add_artist(artist)
+
+
+        # p0 = axes[0].get_position().get_points().flatten()
+        # p2 = axes[2].get_position().get_points().flatten()
+
+        orientation = 'horizontal'
+        ax_cbar1 = fig.add_axes([0.22, 0.15, 0.73, 0.02])
+        cb = plt.colorbar(im, cax=ax_cbar1, orientation=orientation)
+        cb.set_label('Surface brightness [mJy/beam]', size=16)
+        cb.ax.tick_params(labelsize=16)
+
+        cb.outline.set_visible(False)
+
+        # Extend colorbar
+        bot = -0.05
+        top = 1.05
+
+        # Upper bound
+        xy = np.array([[0, 1], [0, top], [1, top], [1, 1]])
+        if orientation == "horizontal":
+            xy = xy[:, ::-1]
+
+        Path = mpath.Path
+
+        # Make Bezier curve
+        curve = [
+            Path.MOVETO,
+            Path.CURVE4,
+            Path.CURVE4,
+            Path.CURVE4,
+        ]
+
+        color = cb.cmap(cb.norm(cb._values[-1]))
+        patch = patches.PathPatch(
+            mpath.Path(xy, curve),
+            facecolor=color,
+            linewidth=0,
+            antialiased=False,
+            transform=cb.ax.transAxes,
+            clip_on=False,
+        )
+        cb.ax.add_patch(patch)
+
+        # Lower bound
+        xy = np.array([[0, 0], [0, bot], [1, bot], [1, 0]])
+        if orientation == "horizontal":
+            xy = xy[:, ::-1]
+
+        color = cb.cmap(cb.norm(cb._values[0]))
+        patch = patches.PathPatch(
+            mpath.Path(xy, curve),
+            facecolor=color,
+            linewidth=0,
+            antialiased=False,
+            transform=cb.ax.transAxes,
+            clip_on=False,
+        )
+        cb.ax.add_patch(patch)
+
+        # Outline
+        xy = np.array(
+            [[0, 0], [0, bot], [1, bot], [1, 0], [1, 1], [1, top], [0, top], [0, 1], [0, 0]]
+        )
+        if orientation == "horizontal":
+            xy = xy[:, ::-1]
+
+        Path = mpath.Path
+
+        curve = [
+            Path.MOVETO,
+            Path.CURVE4,
+            Path.CURVE4,
+            Path.CURVE4,
+            Path.LINETO,
+            Path.CURVE4,
+            Path.CURVE4,
+            Path.CURVE4,
+            Path.LINETO,
+        ]
+        path = mpath.Path(xy, curve, closed=True)
+
+        patch = patches.PathPatch(
+            path, facecolor="None", lw=1, transform=cb.ax.transAxes, clip_on=False
+        )
+        cb.ax.add_patch(patch)
+        tick_locator = ticker.MaxNLocator(nbins=3)
+        cb.locator = tick_locator
+        cb.update_ticks()
+
+        fig.tight_layout(pad=1.0)
+        plt.grid(False)
+        plt.grid('off')
+        plt.savefig(fitsfile.replace('.fits', '.png'), dpi=250, bbox_inches='tight')
+        plt.close()
+
+        hdu.close()
+
     else:
-        wcs = WCS(hdu[0].header, naxis=2)
 
-    fig = plt.figure(figsize=(7, 10), dpi=200)
-    plt.subplot(projection=wcs)
-    WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
-    im = plt.imshow(image_data, origin='lower', cmap=cmap)
-    im.set_norm(PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
-    plt.xlabel('Right Ascension (J2000)', size=14)
-    plt.ylabel('Declination (J2000)', size=14)
-    plt.tick_params(axis='both', which='major', labelsize=12)
+        for n, fitsfile in enumerate(fitsfiles):
 
-    def fixed_color(shape, saved_attrs):
-        from pyregion.mpl_helper import properties_func_default
-        attr_list, attr_dict = saved_attrs
-        attr_dict["color"] = 'green'
-        kwargs = properties_func_default(shape, (attr_list, attr_dict))
+            hdu = fits.open(fitsfile)
+            header = hdu[0].header
 
-        return kwargs
+            if n==0:
+                cdelt = abs(header['CDELT2'])
 
-    if components is not None:
-        r = pyregion.open(components).as_imagecoord(header=hdu[0].header)
-        patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
+                fig, axs = plt.subplots(2, 2,
+                                        figsize=(10, 8),
+                                        subplot_kw={'projection': WCS(header, naxis=2)})
+                imdat = hdu[0].data * 1000
+                or_header = header
+                or_shape = imdat.shape
 
-        # fig.add_axes(ax)
-        for patch in patch_list:
-            plt.gcf().gca().add_patch(patch)
-        for artist in artist_list:
-            plt.gca().add_artist(artist)
+            if n>0:
+                pixfact = cdelt/abs(header['CDELT2'])
+                shape = np.array(or_shape) * pixfact
+                center_sky = SkyCoord(f'{or_header["CRVAL1"]}deg', f'{or_header["CRVAL2"]}deg', frame='icrs')
+                w = WCS(header, naxis=2)
+                pix_coord = skycoord_to_pixel(center_sky, w, 0, 'all')
+                imdat = make_cutout(fitsfile=fitsfile,
+                                    pos=tuple([int(p) for p in pix_coord]),
+                                    size=tuple([int(p) for p in shape]))*1000
+
+            while imdat.ndim > 2:
+                imdat = imdat[0]
+
+            rms = get_rms(imdat)
+            vmin = rms
+            vmax = rms * 9
+
+            if n == 0 or n == 1:
+                m = 0
+            else:
+                m = 1
+
+            axs[m, n % 2].imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
+            axs[m, n % 2].set_xlabel('Right Ascension (J2000)', size=14)
+            axs[m, n % 2].set_ylabel('Declination (J2000)', size=14)
+            axs[m, n % 2].set_tick_params(axis='both', which='major', labelsize=12)
+            axs[m, n % 2].set_title(fitsfile)
+
+        fig.tight_layout(pad=1.0)
+        plt.grid(False)
+        plt.grid('off')
+        plt.savefig(fitsfiles[0].replace('.fits', '.png'), dpi=250, bbox_inches='tight')
 
 
-    # p0 = axes[0].get_position().get_points().flatten()
-    # p2 = axes[2].get_position().get_points().flatten()
 
-    orientation = 'horizontal'
-    ax_cbar1 = fig.add_axes([0.22, 0.15, 0.73, 0.02])
-    cb = plt.colorbar(im, cax=ax_cbar1, orientation=orientation)
-    cb.set_label('Surface brightness [mJy/beam]', size=16)
-    cb.ax.tick_params(labelsize=16)
-
-    cb.outline.set_visible(False)
-
-    # Extend colorbar
-    bot = -0.05
-    top = 1.05
-
-    # Upper bound
-    xy = np.array([[0, 1], [0, top], [1, top], [1, 1]])
-    if orientation == "horizontal":
-        xy = xy[:, ::-1]
-
-    Path = mpath.Path
-
-    # Make Bezier curve
-    curve = [
-        Path.MOVETO,
-        Path.CURVE4,
-        Path.CURVE4,
-        Path.CURVE4,
-    ]
-
-    color = cb.cmap(cb.norm(cb._values[-1]))
-    patch = patches.PathPatch(
-        mpath.Path(xy, curve),
-        facecolor=color,
-        linewidth=0,
-        antialiased=False,
-        transform=cb.ax.transAxes,
-        clip_on=False,
-    )
-    cb.ax.add_patch(patch)
-
-    # Lower bound
-    xy = np.array([[0, 0], [0, bot], [1, bot], [1, 0]])
-    if orientation == "horizontal":
-        xy = xy[:, ::-1]
-
-    color = cb.cmap(cb.norm(cb._values[0]))
-    patch = patches.PathPatch(
-        mpath.Path(xy, curve),
-        facecolor=color,
-        linewidth=0,
-        antialiased=False,
-        transform=cb.ax.transAxes,
-        clip_on=False,
-    )
-    cb.ax.add_patch(patch)
-
-    # Outline
-    xy = np.array(
-        [[0, 0], [0, bot], [1, bot], [1, 0], [1, 1], [1, top], [0, top], [0, 1], [0, 0]]
-    )
-    if orientation == "horizontal":
-        xy = xy[:, ::-1]
-
-    Path = mpath.Path
-
-    curve = [
-        Path.MOVETO,
-        Path.CURVE4,
-        Path.CURVE4,
-        Path.CURVE4,
-        Path.LINETO,
-        Path.CURVE4,
-        Path.CURVE4,
-        Path.CURVE4,
-        Path.LINETO,
-    ]
-    path = mpath.Path(xy, curve, closed=True)
-
-    patch = patches.PathPatch(
-        path, facecolor="None", lw=1, transform=cb.ax.transAxes, clip_on=False
-    )
-    cb.ax.add_patch(patch)
-    tick_locator = ticker.MaxNLocator(nbins=3)
-    cb.locator = tick_locator
-    cb.update_ticks()
-
-    fig.tight_layout(pad=1.0)
-    plt.grid(False)
-    plt.grid('off')
-    plt.savefig(fitsfile.replace('.fits', '.png'), dpi=250, bbox_inches='tight')
-    plt.close()
-
-    hdu.close()
 
 def run_pybdsf(fitsfile, rmsbox):
     """
@@ -350,6 +405,8 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Source detection')
     parser.add_argument('--rmsbox', type=int, help='rms box pybdsf', default=120)
     parser.add_argument('--no_pybdsf', action='store_true', help='Skip pybdsf')
+    parser.add_argument('--comparison_plots', nargs='+', help='Add fits filtes to compare with, '
+                                                              'with same field coverage')
     parser.add_argument('fitsf', nargs='+', help='fits files')
     # parser.add_argument('--ref_catalogue', help='fits table')
     return parser.parse_args()
@@ -419,7 +476,7 @@ def main():
                     or (T[T['Source_id'] == n]['Total_flux_over_peak_flux'][0] < beamarea/2
                         and T[T['Source_id'] == n]['Peak_flux'][0] < 2.5*rms):
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'deleted_sources/source_{m}_{n}.fits')
-                make_image(f'deleted_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
+                make_image([f'deleted_sources/source_{m}_{n}.fits']+args.comparison_plots, 'RdBu_r', 'components.reg')
                 to_delete.append(table_idx)
                 print("Delete Source_id: "+str(n))
 
@@ -428,7 +485,7 @@ def main():
                 imsize = max(int(max_dist(pix_coord)*3), 150)
                 idxs = '-'.join([str(p) for p in cluster_indices])
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(imsize, imsize), savefits=f'cluster_sources/source_{m}_{idxs}.fits')
-                make_image(f'cluster_sources/source_{m}_{idxs}.fits', 'RdBu_r', 'components.reg')
+                make_image([f'cluster_sources/source_{m}_{idxs}.fits']+args.comparison_plots, 'RdBu_r', 'components.reg')
                 for i in cluster_indices:
                     to_ignore.append(i)
 
@@ -437,11 +494,11 @@ def main():
                   and T[T['Source_id'] == n]['Total_flux_over_peak_flux'][0] < 2*beamarea):
 
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'weak_sources/source_{m}_{n}.fits')
-                make_image(f'weak_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
+                make_image([f'weak_sources/source_{m}_{n}.fits']+args.comparison_plots, 'RdBu_r', 'components.reg')
 
             else:
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'bright_sources/source_{m}_{n}.fits')
-                make_image(f'bright_sources/source_{m}_{n}.fits', 'RdBu_r', 'components.reg')
+                make_image([f'bright_sources/source_{m}_{n}.fits']+args.comparison_plots, 'RdBu_r', 'components.reg')
 
         for i in sorted(to_delete)[::-1]:
             del T[i]
