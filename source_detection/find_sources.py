@@ -302,6 +302,8 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             while imdat.ndim > 2:
                 imdat = imdat[0]
 
+            imdat*=1000
+
             if imdat.shape[0]<80:
                 rms = get_rms(hdu[0].data)
             else:
@@ -309,7 +311,6 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             vmin = rms
             vmax = rms * 9
 
-            imdat*=1000
 
             im = ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             ax.set_xlabel('Right Ascension (J2000)', size=14)
@@ -318,7 +319,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             if n!=0:
                 ax.set_title(fitsfile.split('/')[-2].replace('_', ' '))
 
-            cb = fig.colorbar(im, ax=ax, orientation='horizontal', shrink=0.8)
+            cb = fig.colorbar(im, ax=ax, orientation='horizontal', shrink=0.8, pad=0.6)
             cb.set_label('Surface brightness [mJy/beam]', size=14)
             cb.ax.tick_params(labelsize=14)
 
