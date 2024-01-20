@@ -300,10 +300,10 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
 
                 # fig.add_axes(ax)
-            for patch in patch_list:
-                axs[m, n %2].add_patch(patch)
-            for artist in artist_list:
-                axs[m, n %2].add_artist(artist)
+                for patch in patch_list:
+                    axs[m, n %2].add_patch(patch)
+                for artist in artist_list:
+                    axs[m, n %2].add_artist(artist)
 
             axs[m, n % 2].imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             axs[m, n % 2].set_xlabel('Right Ascension (J2000)', size=14)
