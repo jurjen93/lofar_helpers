@@ -288,7 +288,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                         ax.add_artist(artist)
 
 
-            elif n>0:
+            else:
                 pixfact = cdelt/abs(header['CDELT2'])
                 vmin = 0
                 vmax = rms * 9 / (pixfact**2)
