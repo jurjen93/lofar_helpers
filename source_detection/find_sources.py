@@ -305,7 +305,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             imdat*=1000
 
             if imdat.shape[0]<80:
-                rms = get_rms(hdu[0].data)
+                rms = get_rms(hdu[0].data*1000)
             else:
                 rms = get_rms(imdat)
             vmin = rms
