@@ -266,6 +266,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 fig, axs = plt.subplots(2, 2,
                                         figsize=(10, 8),
                                         subplot_kw={'projection': w})
+
                 imdat = hdu[0].data
                 while imdat.ndim > 2:
                     imdat = imdat[0]
@@ -274,7 +275,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 rms = get_rms(imdat)
                 vmin = 0
                 vmax = rms * 9
-                # ax = plt.subplot(220 + n)
+                ax = plt.subplot(220 + n+1, projection=w)
 
                 if components is not None:
                     r = pyregion.open(components).as_imagecoord(header=header)
@@ -282,13 +283,9 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
                     # fig.add_axes(ax)
                     for patch in patch_list:
-                        axs[0,0].add_patch(patch)
+                        ax.add_patch(patch)
                     for artist in artist_list:
-                        axs[0,0].add_artist(artist)
-
-                axs[0,0].imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
-                axs[0,0].set_xlabel('Right Ascension (J2000)', size=14)
-                axs[0,0].set_ylabel('Declination (J2000)', size=14)
+                        ax.add_artist(artist)
 
 
             elif n>0:
@@ -304,17 +301,18 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                                     pos=tuple([int(p) for p in pix_coord]),
                                     size=tuple([int(p) for p in shape]))
                 w = WCS(h, naxis=2)
-                ax = plt.subplot(220 + n, projection=w)
+                ax = plt.subplot(220 + n+1, projection=w)
 
-                while imdat.ndim > 2:
-                    imdat = imdat[0]
+            while imdat.ndim > 2:
+                imdat = imdat[0]
 
-                ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
-                ax.set_xlabel('Right Ascension (J2000)', size=14)
-                ax.set_ylabel('Declination (J2000)', size=14)
-                # axs[m, n % 2].set_tick_params(axis='both', which='major', labelsize=12)
-                if n!=0:
-                    ax.set_title(fitsfile.split('/')[-2].replace('_', ' '))
+
+            ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
+            ax.set_xlabel('Right Ascension (J2000)', size=14)
+            ax.set_ylabel('Declination (J2000)', size=14)
+            # axs[m, n % 2].set_tick_params(axis='both', which='major', labelsize=12)
+            if n!=0:
+                ax.set_title(fitsfile.split('/')[-2].replace('_', ' '))
 
         fig.tight_layout(pad=1.0)
         plt.grid(False)
