@@ -273,8 +273,6 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 or_shape = imdat.shape
                 skycenter = w.pixel_to_world(header['NAXIS1']//2, header['NAXIS2']//2)
                 rms = get_rms(imdat)
-                vmin = rms
-                vmax = rms * 9
                 ax = plt.subplot(220 + n+1, projection=w)
 
                 if components is not None:
@@ -304,13 +302,12 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             while imdat.ndim > 2:
                 imdat = imdat[0]
 
-            if imdat.shape[0]<100:
+            if imdat.shape[0]<80:
                 rms = get_rms(hdu[0].data)
             else:
                 rms = get_rms(imdat)
             vmin = rms
             vmax = rms * 9
-
 
             im = ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             ax.set_xlabel('Right Ascension (J2000)', size=14)
@@ -319,7 +316,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             if n!=0:
                 ax.set_title(fitsfile.split('/')[-2].replace('_', ' '))
 
-            cb = ax.colorbar(im, orientation='horizontal')
+            cb = fig.colorbar(im, ax=ax, orientation='horizontal')
             cb.set_label('Surface brightness [mJy/beam]', size=16)
             cb.ax.tick_params(labelsize=16)
 
