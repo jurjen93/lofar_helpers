@@ -303,12 +303,13 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
             while imdat.ndim > 2:
                 imdat = imdat[0]
-                if imdat.shape[0]<100:
-                    rms = get_rms(hdu[0].data)
-                else:
-                    rms = get_rms(imdat)
-                vmin = rms
-                vmax = rms * 9
+
+            if imdat.shape[0]<100:
+                rms = get_rms(hdu[0].data)
+            else:
+                rms = get_rms(imdat)
+            vmin = rms
+            vmax = rms * 9
 
 
             ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
