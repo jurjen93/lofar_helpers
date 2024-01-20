@@ -258,6 +258,11 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             hdu = fits.open(fitsfile)
             header = hdu[0].header
 
+            if n == 0 or n == 1:
+                m = 0
+            else:
+                m = 1
+
             if n==0:
                 cdelt = abs(header['CDELT2'])
 
@@ -275,6 +280,16 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 vmin = rms
                 vmax = rms * 9
 
+                if components is not None:
+                    r = pyregion.open(components).as_imagecoord(header=hdu[0].header)
+                    patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
+
+                    # fig.add_axes(ax)
+                    for patch in patch_list:
+                        axs[m, n % 2].add_patch(patch)
+                    for artist in artist_list:
+                        axs[m, n % 2].add_artist(artist)
+
 
             elif n>0:
                 pixfact = cdelt/abs(header['CDELT2'])
@@ -290,22 +305,8 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             while imdat.ndim > 2:
                 imdat = imdat[0]
 
-            if n == 0 or n == 1:
-                m = 0
-            else:
-                m = 1
-
-            axs[m, n % 2].set_wcs(w)
-            if components is not None:
-                r = pyregion.open(components).as_imagecoord(header=hdu[0].header)
-                patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
-
-                # fig.add_axes(ax)
-                for patch in patch_list:
-                    axs[m, n % 2].add_patch(patch)
-                for artist in artist_list:
-                    axs[m, n % 2].add_artist(artist)
-
+            if m==1 and n==1:
+                plt.subplot(11, projection=w)
             axs[m, n % 2].imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             axs[m, n % 2].set_xlabel('Right Ascension (J2000)', size=14)
             axs[m, n % 2].set_ylabel('Declination (J2000)', size=14)
