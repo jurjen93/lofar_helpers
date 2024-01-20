@@ -294,14 +294,14 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 pix_coord = skycoord_to_pixel(center_sky, w, 0, 'all')
                 imdat, h = make_cutout(fitsfile=fitsfile,
                                     pos=tuple([int(p) for p in pix_coord]),
-                                    size=tuple([max(int(p), 75) for p in shape]))
+                                    size=tuple([int(p) for p in shape]))
                 w = WCS(h, naxis=2)
                 ax = plt.subplot(220 + n+1, projection=w)
 
             while imdat.ndim > 2:
                 imdat = imdat[0]
 
-            imdat*=1000
+            imdat *= 1000
 
             rms = get_rms(imdat)
             vmin = rms
@@ -315,7 +315,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             if n!=0:
                 ax.set_title(fitsfile.split('/')[-2].replace('_', ' '))
 
-            cb = fig.colorbar(im, ax=ax, orientation='horizontal', shrink=0.6, pad=0.05)
+            cb = fig.colorbar(im, ax=ax, orientation='horizontal', shrink=0.7, pad=0.15)
             cb.set_label('Surface brightness [mJy/beam]', size=12)
             cb.ax.tick_params(labelsize=12)
 
