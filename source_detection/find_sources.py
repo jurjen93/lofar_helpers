@@ -308,7 +308,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 else:
                     rms = get_rms(imdat)
                 vmin = rms
-                vmax = rms * 9 / (pixfact**2)
+                vmax = rms * 9
 
 
             ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
