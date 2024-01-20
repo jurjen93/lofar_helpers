@@ -124,7 +124,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
         fitsfile = fitsfiles[0]
 
         hdu = fits.open(fitsfile)
-        image_data = hdu[0].data * 1000
+        image_data = hdu[0].data
         while image_data.ndim > 2:
             image_data = image_data[0]
         header = hdu[0].header
@@ -270,7 +270,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                                         figsize=(10, 8),
                                         subplot_kw={'projection': WCS(header, naxis=2)})
 
-                imdat = hdu[0].data * 1000
+                imdat = hdu[0].data
                 while imdat.ndim > 2:
                     imdat = imdat[0]
                 or_shape = imdat.shape
@@ -300,7 +300,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 pix_coord = skycoord_to_pixel(center_sky, w, 0, 'all')
                 imdat, h = make_cutout(fitsfile=fitsfile,
                                     pos=tuple([int(p) for p in pix_coord]),
-                                    size=tuple([int(p) for p in shape]))*1000
+                                    size=tuple([int(p) for p in shape]))
                 w = WCS(h, naxis=2)
 
             while imdat.ndim > 2:
