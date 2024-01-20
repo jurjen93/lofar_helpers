@@ -125,9 +125,12 @@ def get_distance_weights(center, arr, wcsheader):
     :param wcsheader: header
     :return: weights from center polygon
     """
-    return np.array([[1/center.separation(wcsheader.pixel_to_world(j, i, 0, 0)[0]).value.astype(np.float32)
-                      for j in range(arr.shape[0])]
-                     for i in range(arr.shape[1])]).astype(np.float32)
+
+    rows, cols = np.where(np.ones(arr.shape))
+    rows = rows.astype(np.int32)
+    cols = cols.astype(np.int32)
+    world_coords = wcsheader.pixel_to_world(rows, cols, 0, 0)[0]
+    return np.array(1/center.separation(world_coords).value.astype(np.float32)).astype(np.float32)
 
 def rms(image_data):
     """

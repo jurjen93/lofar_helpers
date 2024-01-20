@@ -290,7 +290,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             axs[m, n % 2].imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             axs[m, n % 2].set_xlabel('Right Ascension (J2000)', size=14)
             axs[m, n % 2].set_ylabel('Declination (J2000)', size=14)
-            axs[m, n % 2].set_tick_params(axis='both', which='major', labelsize=12)
+            # axs[m, n % 2].set_tick_params(axis='both', which='major', labelsize=12)
             axs[m, n % 2].set_title(fitsfile)
 
         fig.tight_layout(pad=1.0)
