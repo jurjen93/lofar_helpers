@@ -119,10 +119,13 @@ def get_distance_weights(center, arr, wcsheader):
     :param wcsheader: header
     :return: weights from center polygon
     """
-    return np.array([[1/center.separation(wcsheader.pixel_to_world(j, i, 0, 0)[0]).value.astype(np.float32)
-                      for j in range(arr.shape[0])]
-                     for i in range(arr.shape[1])]).astype(np.float32)
-    # return 1 / center.separation(coord_array).value
+
+    rows, cols = np.where(np.ones(arr.shape))
+    rows = rows.astype(np.int32)
+    cols = cols.astype(np.int32)
+    world_coords = wcsheader.pixel_to_world(rows, cols)[0]
+    return np.array(1/center.separation(world_coords).value.astype(np.float32)).astype(np.float32)
+
 
 def rms(image_data):
     """
@@ -257,7 +260,7 @@ def main():
         make_image(mask*imagedata, None, facet+'.png', 'CMRmap', header_new)
 
         fullmask |= ~np.isnan(imagedata)
-        facetweight = get_distance_weights(polycenter, mask, wcsheader) * mask
+        facetweight = get_distance_weights(polycenter, mask, WCS(header_new, naxis=2)) * mask
         # facetweight = mask
         facetweight[(~np.isfinite(imagedata)) | (~np.isfinite(facetweight)) | (imagedata == 0)] = 0  # so we can add
         imagedata *= facetweight

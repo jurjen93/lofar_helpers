@@ -129,7 +129,7 @@ def get_distance_weights(center, arr, wcsheader):
     rows, cols = np.where(np.ones(arr.shape))
     rows = rows.astype(np.int32)
     cols = cols.astype(np.int32)
-    world_coords = wcsheader.pixel_to_world(rows, cols, 0, 0)[0]
+    world_coords = wcsheader.pixel_to_world(rows, cols)[0]
     return np.array(1/center.separation(world_coords).value.astype(np.float32)).astype(np.float32)
 
 def rms(image_data):
@@ -214,7 +214,6 @@ def reproject(fitsfile, header, region):
     """
 
     hdu = fits.open(fitsfile)
-    wcsheader = WCS(hdu[0].header)
     hduflatten = flatten(hdu)
     imagedata, _ = reproject_interp_chunk_2d(hduflatten, header, hdu_in=0, parallel=False)
     imagedata = imagedata.astype(np.float32)
@@ -231,7 +230,7 @@ def reproject(fitsfile, header, region):
     # coordinates = get_array_coordinates(imagedata, wcsheader)
     # facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask
     # coordinates = get_array_coordinates(np.ones(mask.shape), wcsheader)
-    facetweight = get_distance_weights(polycenter, mask, wcsheader) * mask
+    facetweight = get_distance_weights(polycenter, mask, WCS(header, naxis=2)) * mask
     del mask
     # facetweight = mask
     facetweight[~np.isfinite(facetweight)] = 0  # so we can add
