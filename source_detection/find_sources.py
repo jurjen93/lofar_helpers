@@ -306,6 +306,9 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             while imdat.ndim > 2:
                 imdat = imdat[0]
 
+
+            if m==0 and n==0:
+                ax=plt.subplot(221, projection=w)
             if m==0 and n==1:
                 ax=plt.subplot(222, projection=w)
             if m==1 and n==0:
