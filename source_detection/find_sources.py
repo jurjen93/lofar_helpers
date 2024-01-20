@@ -285,7 +285,6 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                     for artist in artist_list:
                         ax.add_artist(artist)
 
-
             else:
                 pixfact = cdelt/abs(header['CDELT2'])
                 shape = np.array(or_shape) * pixfact
@@ -295,7 +294,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 pix_coord = skycoord_to_pixel(center_sky, w, 0, 'all')
                 imdat, h = make_cutout(fitsfile=fitsfile,
                                     pos=tuple([int(p) for p in pix_coord]),
-                                    size=tuple([int(p) for p in shape]))
+                                    size=tuple([max(int(p), 75) for p in shape]))
                 w = WCS(h, naxis=2)
                 ax = plt.subplot(220 + n+1, projection=w)
 
@@ -304,10 +303,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
             imdat*=1000
 
-            if imdat.shape[0]<80:
-                rms = get_rms(hdu[0].data*1000)
-            else:
-                rms = get_rms(imdat)
+            rms = get_rms(imdat)
             vmin = rms
             vmax = rms * 9
 
@@ -321,7 +317,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
             cb = fig.colorbar(im, ax=ax, orientation='horizontal', shrink=0.6, padding=0.95)
             cb.set_label('Surface brightness [mJy/beam]', size=12)
-            cb.ax.tick_params(labelsize=14)
+            cb.ax.tick_params(labelsize=12)
 
         fig.tight_layout(pad=1.0)
         plt.grid(False)
