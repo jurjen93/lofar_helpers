@@ -278,7 +278,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 ax = plt.subplot(220 + n, projection=w)
 
                 if components is not None:
-                    r = pyregion.open(components).as_imagecoord(header=hdu[0].header)
+                    r = pyregion.open(components).as_imagecoord(header=header)
                     patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
 
                     # fig.add_axes(ax)
