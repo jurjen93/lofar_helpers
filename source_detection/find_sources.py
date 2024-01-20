@@ -307,15 +307,15 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 imdat = imdat[0]
 
 
-            if m==0 and n==0:
-                ax=plt.subplot(221, projection=w)
-            if m==0 and n==1:
-                ax=plt.subplot(222, projection=w)
-            if m==1 and n==0:
-                ax=plt.subplot(223, projection=w)
-
-            if m==1 and n==1:
-                ax=plt.subplot(224, projection=w)
+            # if m==0 and n==0:
+            #     ax=plt.subplot(221, projection=w)
+            # if m==0 and n==1:
+            #     ax=plt.subplot(222, projection=w)
+            # if m==1 and n==0:
+            #     ax=plt.subplot(223, projection=w)
+            #
+            # if m==1 and n==1:
+            ax=plt.subplot(int(float(f'22{n+1}')), projection=w)
 
             ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             ax.set_xlabel('Right Ascension (J2000)', size=14)
