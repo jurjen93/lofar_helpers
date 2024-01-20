@@ -261,21 +261,20 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
             if n==0:
                 cdelt = abs(header['CDELT2'])
+                w = WCS(header, naxis=2)
 
                 fig, axs = plt.subplots(2, 2,
                                         figsize=(10, 8),
-                                        subplot_kw={'projection': WCS(header, naxis=2)})
-
+                                        subplot_kw={'projection': w})
                 imdat = hdu[0].data
                 while imdat.ndim > 2:
                     imdat = imdat[0]
                 or_shape = imdat.shape
-                w = WCS(header, naxis=2)
                 skycenter = w.pixel_to_world(header['NAXIS1']//2, header['NAXIS2']//2)
                 rms = get_rms(imdat)
-                vmin = rms
+                vmin = 0
                 vmax = rms * 9
-                ax = plt.subplot(220 + n, projection=w)
+                ax = plt.subplot(220 + n)
 
                 if components is not None:
                     r = pyregion.open(components).as_imagecoord(header=header)
@@ -290,6 +289,8 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
             elif n>0:
                 pixfact = cdelt/abs(header['CDELT2'])
+                vmin = 0
+                vmax = rms * 9 / (pixfact**2)
                 shape = np.array(or_shape) * pixfact
                 center_sky = SkyCoord(f'{skycenter.ra.value}deg', f'{skycenter.dec.value}deg', frame='icrs')
 
