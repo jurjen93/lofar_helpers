@@ -315,7 +315,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             if n!=0:
                 ax.set_title(fitsfile.split('/')[-2].replace('_', ' '))
 
-            cb = fig.colorbar(im, ax=ax, orientation='horizontal', shrink=0.7, pad=0.15)
+            cb = fig.colorbar(im, ax=ax, orientation='horizontal', shrink=0.65, pad=0.15)
             cb.set_label('Surface brightness [mJy/beam]', size=12)
             cb.ax.tick_params(labelsize=12)
 
