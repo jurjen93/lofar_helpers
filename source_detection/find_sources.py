@@ -273,7 +273,7 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 or_shape = imdat.shape
                 skycenter = w.pixel_to_world(header['NAXIS1']//2, header['NAXIS2']//2)
                 rms = get_rms(imdat)
-                vmin = 0
+                vmin = rms
                 vmax = rms * 9
                 ax = plt.subplot(220 + n+1, projection=w)
 
@@ -290,8 +290,6 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
             else:
                 pixfact = cdelt/abs(header['CDELT2'])
-                vmin = 0
-                vmax = rms * 9 / (pixfact**2)
                 shape = np.array(or_shape) * pixfact
                 center_sky = SkyCoord(f'{skycenter.ra.value}deg', f'{skycenter.dec.value}deg', frame='icrs')
 
@@ -305,6 +303,12 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
 
             while imdat.ndim > 2:
                 imdat = imdat[0]
+                if imdat.shape[0]<100:
+                    rms = get_rms(hdu[0].data)
+                else:
+                    rms = get_rms(imdat)
+                vmin = rms
+                vmax = rms * 9 / (pixfact**2)
 
 
             ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
