@@ -476,9 +476,7 @@ def main():
         os.system('mkdir -p bright_sources')
         os.system('mkdir -p weak_sources')
         os.system('mkdir -p cluster_sources')
-        os.system('mkdir -p deleted_sources')
 
-        to_delete = []
         to_ignore = []
 
         for c, n in coord:
@@ -494,16 +492,9 @@ def main():
                 cluster_indices = cluster_indices_large
             else:
                 cluster_indices = clusters_indices_small
-            cluster_indices = [idx for idx in cluster_indices if idx not in to_delete and idx not in to_ignore]
+            cluster_indices = [idx for idx in cluster_indices if idx not in to_ignore]
 
-            if (T[T['Source_id'] == n]['Peak_flux'][0] < rms * 2 or
-                T[T['Source_id'] == n]['Peak_flux_min'][0] < rms * (3/4)):
-                make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'deleted_sources/source_{m}_{n}.fits')
-                make_image([f'deleted_sources/source_{m}_{n}.fits']+args.comparison_plots, 'RdBu_r', 'components.reg')
-                to_delete.append(table_idx)
-                print("Delete Source_id: "+str(n))
-
-            elif len(cluster_indices) > 1:
+            if len(cluster_indices) > 1:
                 pix_coord = np.array([p[0] for p in coord])[cluster_indices]
                 imsize = max(int(max_dist(pix_coord)*3), 150)
                 idxs = '-'.join([str(p) for p in cluster_indices])
@@ -523,8 +514,6 @@ def main():
                 make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'bright_sources/source_{m}_{n}.fits')
                 make_image([f'bright_sources/source_{m}_{n}.fits']+args.comparison_plots, 'RdBu_r', 'components.reg')
 
-        for i in sorted(to_delete)[::-1]:
-            del T[i]
 
 
 if __name__ == '__main__':

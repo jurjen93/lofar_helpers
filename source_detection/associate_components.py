@@ -47,6 +47,12 @@ def associate(associate_components, table):
             t[main_ID]['Peak_flux'] = t[ids]['Peak_flux'].max()
             t[main_ID]['E_Peak_flux'] = error_prop(t[ids]['E_Peak_flux'])
             t[main_ID]['S_Code'] = 'M'
+            t[main_ID]['Maj'] = t[ids]['Maj'].min()
+            t[main_ID]['Min'] = t[ids]['Min'].min()
+            t[main_ID]['E_Maj'] = error_prop(t[ids]['E_Maj'])
+            t[main_ID]['E_Min'] = error_prop(t[ids]['E_Min'])
+            t[main_ID]['PA'] = t[ids]['PA'].min()
+            t[main_ID]['E_PA'] = error_prop(t[ids]['E_PA'])
             for i in ids:
                 to_delete.append(i)
         if type(p) == int:

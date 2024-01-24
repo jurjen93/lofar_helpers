@@ -31,6 +31,7 @@ from astropy.visualization.wcsaxes import WCSAxes
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 from past.utils import old_div
+from astropy.wcs.utils import skycoord_to_pixel
 
 plt.style.use('ggplot')
 
@@ -120,11 +121,13 @@ def get_distance_weights(center, arr, wcsheader):
     :return: weights from center polygon
     """
 
-    rows, cols = np.where(np.ones(arr.shape))
-    rows = rows.astype(np.int32)
-    cols = cols.astype(np.int32)
-    world_coords = wcsheader.pixel_to_world(rows, cols)[0]
-    return np.array(1/center.separation(world_coords).value.astype(np.float32)).astype(np.float32)
+    pix_center = [int(c) for c in skycoord_to_pixel(center, wcsheader)]
+    pix_pos = np.array(np.where(np.ones(arr.shape))).T.astype(np.float32)
+    pix_dist = np.linalg.norm(np.subtract(pix_center, pix_pos), axis=1).astype(np.float32)
+    weights = np.divide(wcsheader.to_header()['CRPIX1'], pix_dist).astype(np.float32)
+    # remove infinite
+    weights[np.where(weights == np.inf)[0].squeeze()] = weights[np.where(weights != np.inf)].max()
+    return weights.reshape(arr.shape).T.astype(np.float32)
 
 
 def rms(image_data):
@@ -159,7 +162,7 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
 
     RMS = 1.76e-05 #TODO: TEMPORARY
     vmin = RMS
-    vmax = RMS*15
+    vmax = RMS*20
 
     # if hdu is None:
     #     wcs = WCS(header, naxis=2)

@@ -7,7 +7,7 @@ You only need to run this script in the folder with your facetselfcal output as
 python selfcal_quality.py
 """
 
-__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
+__author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl), Robert Jan Schlimbach"
 
 import functools
 import re
@@ -22,9 +22,7 @@ import csv
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 import pandas as pd
-import sys
 from cv2 import bilateralFilter
-
 from typing import Union
 
 class SelfcalQuality:
@@ -33,18 +31,16 @@ class SelfcalQuality:
         Determine quality of selfcal from facetselfcal.py
 
         :param folder: path to directory where selfcal ran
-        :param dutch_only: consider dutch stations only for amp/phase stability
-        :param remote_only: consider remote stations only for amp/phase stability
-        :param international_only: consider international stations only for amp/phase stability
+        :param station: which stations to consider [dutch, remote, international, debug]
         """
 
         # selfcal folder
         self.folder = folder
 
         # merged selfcal h5parms
-        self.h5s = [h5 for h5 in glob(f"{self.folder}/*.h5") if 'linearfulljones' not in h5]
+        self.h5s = [h5 for h5 in glob(f"{self.folder}/merged_addCS_selfcalcyle*.h5") if 'linearfulljones' not in h5]
         if len(self.h5s) == 0:
-            self.h5s = glob(f"{self.folder}/*.h5")
+            self.h5s = glob(f"{self.folder}/merged_addCS_selfcalcyle*.h5")
         if len(self.h5s) == 0:
             raise FileNotFoundError("WARNING: No h5 files found")
         # assert len(self.h5s) != 0, "No h5 files found"
@@ -97,6 +93,7 @@ class SelfcalQuality:
 
         :param fitsfile: fits file name
         """
+
         cycle_num = int(float(re.findall(r"selfcalcyle(\d+)", fitsfile.split('/')[-1])[0]))
         assert cycle_num >= 0
         return cycle_num
@@ -217,6 +214,7 @@ class SelfcalQuality:
 
         def filter_stations(station_names):
             """Generate indices of filtered stations"""
+
             if self.station == 'debug':
                 return list(range(len(station_names)))
 

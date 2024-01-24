@@ -1,5 +1,5 @@
 from astropy.table import Table
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error, r2_score, accuracy_score
@@ -15,7 +15,8 @@ from glob import glob
 # Table columns
 cols = ['Source_id', 'E_Total_flux', 'E_Peak_flux',
         'S_Code', 'E_pos', 'Total_flux/peak_flux',
-        'Peak_flux/RMS', 'Total_flux/RMS']
+        'Peak_flux/RMS', 'Total_flux/RMS', 'E_MajMin',
+        'MajMin', 'PA', 'E_PA']
 
 sep = '\n##########################################################################\n'
 
@@ -118,6 +119,8 @@ def get_table_data(tbl):
     df['Peak_flux/RMS'] = df['Peak_flux'] / df['Isl_rms']
     df['Total_flux/RMS'] = df['Total_flux'] / df['Isl_rms']
     df['E_pos'] = np.sqrt(df['E_RA']**2+df['E_DEC']**2)
+    df["E_MajMin"] = np.sqrt(df["E_Maj"]**2 + df["E_Min"]**2)
+    df["MajMin"] = df["Maj"] * df["Min"]
 
     df = df[cols]
 
@@ -186,7 +189,7 @@ def clean_table(tbl, model):
     print(tbl)
     for i in sorted(to_remove)[::-1]:
         n = get_table_index(T, i)
-        if T[n]['Peak_flux'] < 3*T[n]['Isl_rms']:
+        if T[n]['Peak_flux'] < 5.5*T[n]['Isl_rms']:
             print('Deleted source ID: ' + str(i))
             del T[n]
 
@@ -198,16 +201,10 @@ def main():
     Main function
     """
 
-    # model_table = "facet_0_source_catalog.fits"
-    # df = get_table_data(model_table)
-    # # false positives from test data by eye
-    # falsepositives = []
-    #
+    train_table = "finalcat03/facet_19_source_catalog_final.fits"
+    df = get_table_data(train_table)
 
-
-    model_table = "finalcat03/facet_19_source_catalog_final.fits"
-    df = get_table_data(model_table)
-    # false positives from test data by eye
+    # false positive indices from test data by eye
     falsepositives = [246, 248, 249, 252, 253, 254, 258, 330, 263, 264, 282, 288, 289, 290, 291, 292, 293, 294,
                       295, 296, 297, 298, 299, 300, 301, 303, 305, 308, 347, 310, 313, 315, 316, 318, 319, 320,
                       322, 323, 327, 330, 331, 333, 334, 335, 341, 255, 259, 262, 266, 267, 268, 279, 284, 367,
@@ -218,26 +215,6 @@ def main():
     df['label'] = None
     df.loc[df.Source_id.isin(falsepositives), 'label'] = False
     df.loc[~df.Source_id.isin(falsepositives), 'label'] = True
-
-    model_table = "finalcat03/facet_10_source_catalog_final.fits"
-    df1 = get_table_data(model_table)
-    # false positives from test data by eye
-    falsepositives1 = [680, 692, 693, 701, 704, 707, 708, 709, 714, 715, 716, 719, 720, 721, 722, 723, 729, 731, 736, 737,
-                       738, 745, 748, 749, 750, 753, 754, 755, 758, 761, 762, 763, 766, 769, 770, 771, 772, 779, 789, 790,
-                       791, 793, 794, 795, 796, 797, 799, 800, 802, 804, 806, 807, 808, 809, 811, 812, 815, 818, 819, 820,
-                       821, 823, 824, 825, 826, 828, 829, 830, 831, 832, 833, 834, 835, 837, 839, 841, 842, 844, 845, 847,
-                       849, 850, 851, 852, 853, 854, 855, 856, 857, 858, 860, 861, 863, 864, 865, 868, 871, 873, 874, 875,
-                       876, 877, 879, 881, 679, 681, 682, 686, 689, 691, 691, 699, 702, 711, 717, 735, 741, 743, 747, 757,
-                       764, 765, 768, 777, 782, 925, 922, 918, 917, 916, 915, 913, 911, 910, 909, 907, 906, 905, 904, 903,
-                       902, 901, 894, 892, 888, 887, 885, 903, 884, 882, 870, 859, 848, 843]
-
-    falsepositives1 = sorted(list(set(falsepositives1)))
-
-    df1['label'] = None
-    df1.loc[df1.Source_id.isin(falsepositives1), 'label'] = False
-    df1.loc[~df1.Source_id.isin(falsepositives1), 'label'] = True
-
-    df = pd.concat([df, df1])
 
     gridsearch_test(df)
     model = gridsearch(df)
