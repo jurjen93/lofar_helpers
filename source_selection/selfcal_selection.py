@@ -9,6 +9,7 @@ python selfcal_quality.py
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
 
+import functools
 import re
 import tables
 from glob import glob
@@ -41,17 +42,22 @@ class SelfcalQuality:
         self.folder = folder
 
         # merged selfcal h5parms
-        self.h5s = [h5 for h5 in glob(f"{self.folder}/merged_selfcalcyle*.h5") if 'linearfulljones' not in h5]
+        self.h5s = [h5 for h5 in glob(f"{self.folder}/*.h5") if 'linearfulljones' not in h5]
         if len(self.h5s) == 0:
-            self.h5s = glob(f"{self.folder}/merged_selfcalcyle*.h5")
+            self.h5s = glob(f"{self.folder}/*.h5")
         if len(self.h5s) == 0:
             raise FileNotFoundError("WARNING: No h5 files found")
         # assert len(self.h5s) != 0, "No h5 files found"
 
         # select all sources
-        regex = "merged_selfcalcyle\d{3}\_"
-        self.sources = set([re.sub(regex, '', h.split('/')[-1]).replace('.ms.copy.phaseup.h5', '')
-                            for h in self.h5s])
+        sources = []
+        for h5 in self.h5s:
+            matches = re.findall(r'selfcalcyle\d+_(.*?)\.', h5.split('/')[-1])
+            assert len(matches) == 1
+            sources.append(matches[0])
+
+        self.sources = set(sources)
+
         assert len(self.sources) > 0, "No sources found"
 
         # select all fits images
@@ -91,7 +97,9 @@ class SelfcalQuality:
 
         :param fitsfile: fits file name
         """
-        return int(float(re.findall(r"\d{3}", fitsfile.split('/')[-1])[0]))
+        cycle_num = int(float(re.findall(r"selfcalcyle(\d+)", fitsfile.split('/')[-1])[0]))
+        assert cycle_num >= 0
+        return cycle_num
 
     @staticmethod
     def make_utf8(inp=None):
@@ -198,13 +206,14 @@ class SelfcalQuality:
         def extract_data(tables_path):
             with tables.open_file(tables_path) as f:
                 return (
-                    [self.make_utf8(station) for station in f.root.sol000.phase000[:]['name']],
+                    [self.make_utf8(station) for station in f.root.sol000.antenna[:]['name']],
                     self.make_utf8(f.root.sol000.phase000.val.attrs['AXES']).split(','),
+                    f.root.sol000.phase000.pol[:],
                     f.root.sol000.phase000.val[:],
                     f.root.sol000.phase000.weight[:],
-                    f.root.sol000.phase000.pol[:],
                     f.root.sol000.amplitude000.val[:],
                 )
+
 
         def filter_stations(station_names):
             """Generate indices of filtered stations"""
@@ -230,17 +239,17 @@ class SelfcalQuality:
         def weighted_vals(vals, weights):
             return np.nan_to_num(vals) * weights
 
-        axes1, station_names1, *params1 = extract_data(h5_1)
+        station_names1, axes1, phase_pols1, *params1 = extract_data(h5_1)
 
-        antenna_selection = partial(filter_params, filter_stations(station_names1), axes1.index('ant'))
-        phase_vals1, phase_weights1, phase_pols1, amps1 = antenna_selection(*params1)
+        antenna_selection = functools.partial(filter_params, filter_stations(station_names1), axes1.index('ant'))
+        phase_vals1, phase_weights1, amps1 = antenna_selection(*params1)
 
         prep_phase_score = weighted_vals(phase_vals1, phase_weights1)
         prep_amp_score = weighted_vals(amps1, phase_weights1)
 
         if h5_2 is not None:
-            _, _, *params2 = extract_data(h5_2)
-            phase_vals2, phase_weights2, phase_pols2, amps2 = antenna_selection(*params2)
+            _, _, phase_pols2, *params2 = extract_data(h5_2)
+            phase_vals2, phase_weights2, amps2 = antenna_selection(*params2)
 
             min_length = min(len(phase_pols1), len(phase_pols2))
             assert 0 < min_length < 2
@@ -250,7 +259,6 @@ class SelfcalQuality:
             prep_phase_score, prep_amp_score, phase_vals2, phase_weights2, amps2 = filter_params(
                 indices, axes1.index('pol'), prep_phase_score, prep_amp_score, phase_vals2, phase_weights2, amps2
             )
-
             prep_phase_score = np.subtract(prep_phase_score, weighted_vals(phase_vals2, phase_weights2))
             prep_amp_score = np.nan_to_num(
                 np.divide(prep_amp_score, weighted_vals(amps2, phase_weights2)),
@@ -276,19 +284,17 @@ class SelfcalQuality:
         assert len(self.sources) > 0
         for k, source in enumerate(self.sources):
             sub_h5s = sorted([h5 for h5 in self.h5s if source in h5])
+
             phase_scores = []
             amp_scores = []
             for m, sub_h5 in enumerate(sub_h5s):
                 number = self.get_cycle_num(sub_h5)
-                # print(sub_h5, sub_h5s[m - 1])
-                if number > 0:
-                    phasescore, ampscore = self.get_solution_scores(sub_h5, sub_h5s[m - 1])
-                elif number == 0:
-                    phasescore, ampscore = self.get_solution_scores(sub_h5, None)
-                else:
-                    raise ValueError("No solution found")
-                phase_scores.append(phasescore)
-                amp_scores.append(ampscore)
+
+                phase_score, amp_score = self.get_solution_scores(sub_h5, sub_h5s[m - 1] if number > 0 else None)
+
+                phase_scores.append(phase_score)
+                amp_scores.append(amp_score)
+
             if k == 0:
                 total_phase_scores = [phase_scores]
                 total_amp_scores = [amp_scores]
@@ -297,7 +303,7 @@ class SelfcalQuality:
             total_amp_scores = np.append(total_amp_scores, [amp_scores], axis=0)
 
         # plot
-        plotname = f'selfcal_stability{self.station}.png'
+        plotname = f'selfcal_stability_{self.station}.png'
 
         finalphase, finalamp = (np.mean(score, axis=0) for score in (total_phase_scores, total_amp_scores))
 
@@ -478,7 +484,7 @@ def parse_args():
     """
 
     parser = ArgumentParser(description='Determine selfcal quality')
-    parser.add_argument('--selfcal_folder', default='.')
+    parser.add_argument('--selfcal_folder', required=True)
     parser.add_argument('--bilateral_filter', action='store_true')
     parser.add_argument('--station', type=str, default='dutch', choices=['dutch', 'remote', 'international', 'debug'])
     return parser.parse_args()
