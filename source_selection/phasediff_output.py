@@ -249,24 +249,24 @@ def main():
     writer = csv.writer(f)
     writer.writerow(["source", "spd_score", "best_solint", 'RA', 'DEC'])
     for h5 in h5s:
-        try:
-            S = GetSolint(h5, optimal_score, ref_solint)
-            if args.all_stations:
-                H = tables.open_file(h5)
-                stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
-                H.close()
-            else:
-                stations = [station]
-            for station in stations:
-                std = S.get_phasediff_score(station=station)
-                solint = S.best_solint
-                H = tables.open_file(h5)
-                dir = rad_to_degree(H.root.sol000.source[:]['dir'])
-                writer.writerow([h5 + station, std, solint, dir[0], dir[1]])
-                S.plot_C("T=" + str(round(solint, 2)) + " min", saveas=h5 + station + '.png')
-                H.close()
-        except:
-            pass
+        # try:
+        S = GetSolint(h5, optimal_score, ref_solint)
+        if args.all_stations:
+            H = tables.open_file(h5)
+            stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
+            H.close()
+        else:
+            stations = [station]
+        for station in stations:
+            std = S.get_phasediff_score(station=station)
+            solint = S.best_solint
+            H = tables.open_file(h5)
+            dir = rad_to_degree(H.root.sol000.source[:]['dir'])
+            writer.writerow([h5 + station, std, solint, dir[0], dir[1]])
+            S.plot_C("T=" + str(round(solint, 2)) + " min", saveas=h5 + station + '.png')
+            H.close()
+        # except:
+        #     pass
 
     f.close()
 
