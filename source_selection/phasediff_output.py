@@ -237,7 +237,9 @@ def main():
     ref_solint = 10
 
     h5s = args.h5
-    if h5s is None:
+    if len(h5s)==1 and ' ' in h5s:
+        h5s = h5s.split(" ")
+    elif h5s is None:
         h5s = glob("P*_phasediff/phasediff0*.h5")
 
     if args.station is not None:
