@@ -219,7 +219,7 @@ def parse_args():
     """
 
     parser = ArgumentParser()
-    parser.add_argument('h5', nargs='+', help='selfcal phasediff solutions', default=None)
+    parser.add_argument('--h5', nargs='+', help='selfcal phasediff solutions', default=None)
     parser.add_argument('--station', help='for one specific station', default=None)
     parser.add_argument('--all_stations', action='store_true', help='for all stations specifically')
     return parser.parse_args()
