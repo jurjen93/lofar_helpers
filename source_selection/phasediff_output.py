@@ -147,6 +147,7 @@ class GetSolint:
         H = tables.open_file(self.h5)
 
         stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
+        print(stations)
 
         if station is None:
             stations_idx = [stations.index(stion) for stion in stations if
@@ -241,7 +242,6 @@ def main():
         h5s = h5s[0].split(" ")
     elif h5s is None:
         h5s = glob("P*_phasediff/phasediff0*.h5")
-
 
     if args.station is not None:
         station = args.station
