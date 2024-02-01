@@ -4,13 +4,14 @@
 #MSLIST TEXT FILE WITH PATH TO MS
 MSLIST=$1
 
-#SCRIPT FOLDER
-LOFAR_HELPERS=/home/lofarvwf-jdejong/scripts/lofar_helpers
-SCRIPT_DIR=${LOFAR_HELPERS}/phasediff_scores/phasediff_selection
-
 #SINGULARITY
 BIND=$( python3 $HOME/parse_settings.py --BIND ) # SEE --> https://github.com/jurjen93/lofar_vlbi_helpers/blob/main/parse_settings.py
 SIMG=$( python3 $HOME/parse_settings.py --SIMG )
+
+#SCRIPT FOLDER
+LOFAR_HELPERS=$( python3 $HOME/parse_settings.py --lofar_helpers )
+SCRIPT_DIR=${LOFAR_HELPERS}/phasediff_scores/phasediff_selection
+
 
 #phasediff output folder
 mkdir -p phasediff_h5s
@@ -29,4 +30,4 @@ while read -r MS; do
 done <$MSLIST
 
 #RETURN SCORES
-singularity exec -B $BIND $SIMG python ${SCRIPT_DIR}/phasediff_output.py --h5 phasediff_h5s/*.h5
+singularity exec -B $BIND $SIMG python ${SCRIPT_DIR}/phasediff_output.py h5 phasediff_h5s/*.h5

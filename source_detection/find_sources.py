@@ -431,10 +431,9 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Source detection')
     parser.add_argument('--rmsbox', type=int, help='rms box pybdsf', default=120)
     parser.add_argument('--no_pybdsf', action='store_true', help='Skip pybdsf')
-    parser.add_argument('--comparison_plots', nargs='+', help='Add fits filtes to compare with, '
+    parser.add_argument('--comparison_plots', nargs='+', help='Add fits files to compare with, '
                                                               'with same field coverage')
-    parser.add_argument('fitsf', nargs='+', help='fits files')
-    # parser.add_argument('--ref_catalogue', help='fits table')
+    parser.add_argument('fits', nargs='+', help='fits files')
     return parser.parse_args()
 
 
@@ -444,7 +443,7 @@ def main():
     """
 
     args = parse_args()
-    for m, fts in enumerate(args.fitsf):
+    for m, fts in enumerate(args.fits):
         if not args.no_pybdsf:
             tbl = run_pybdsf(fts, args.rmsbox)
         else:

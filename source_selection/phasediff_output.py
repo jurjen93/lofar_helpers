@@ -1,24 +1,20 @@
 import tables
-import numpy as np
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from numpy.random import normal
 from scipy.stats import circstd
 from glob import glob
 import csv
 import sys
 from argparse import ArgumentParser
-# sys.path.append("..")
-# from find_solint import GetSolint
+from typing import Union
 
 try:
     import scienceplots
+
     plt.style.use(['science', 'ieee'])
 except:
     pass
-
-limit = np.pi
 
 
 def make_utf8(inp):
@@ -43,19 +39,21 @@ def rad_to_degree(inp):
     :param inp: two coordinates (RA, DEC)
     :return: output in degrees
     """
+
     try:
-        if abs(inp[0])<np.pi and abs(inp[1])<np.pi:
-            return inp*360/2/np.pi % 360
+        if abs(inp[0]) < np.pi and abs(inp[1]) < np.pi:
+            return inp * 360 / 2 / np.pi % 360
         else:
             return inp
-    except ValueError:
-        if abs(inp[0][0])<np.pi and abs(inp[0][1])<np.pi:
-            return inp[0]*360/2/np.pi % 360
+    except ValueError: # ugly code..
+        if abs(inp[0][0]) < np.pi and abs(inp[0][1]) < np.pi:
+            return inp[0] * 360 / 2 / np.pi % 360
         else:
             return inp[0]
 
+
 class GetSolint:
-    def __init__(self, h5, optimal_score=0.5, ref_solint=10, station=None):
+    def __init__(self, h5: str = None, optimal_score: float = 0.5, ref_solint: float = 10., station: str = None):
         """
         Get a score based on the phase difference between XX and YY. This reflects the noise in the observation.
         From this score we can determine an optimal solution interval, by fitting a wrapped normal distribution.
@@ -69,27 +67,29 @@ class GetSolint:
         :param optimal_score: score to fit solution interval
         :param ref_solint: reference solution interval
         """
+
         self.h5 = h5
         self.optimal_score = optimal_score
         self.ref_solint = ref_solint
         self.cstd = 0
         self.C = None
         self.station = station
+        self.limit = np.pi
 
-
-    def plot_C(self, title=None, saveas=None, extrapoints=None):
+    def plot_C(self, title: str = None, saveas: str = None, extrapoints: Union[list, tuple] = None):
         """
         Plot circstd score in function of solint for given C
 
         :param C: constant defining the noise level
         :param title: title for plot
         """
+
         # normal_sigmas = [n / 1000 for n in range(1, 10000)]
         # values = [circstd(normal(0, n, 300)) for n in normal_sigmas]
         # x = (self.C*limit**2) / (np.array(normal_sigmas) ** 2) / 2
         bestsolint = self.best_solint
         # plt.plot(x, values, alpha=0.5)
-        solints = np.array(range(1, int(max(bestsolint * 200, self.ref_solint * 150))))/100
+        solints = np.array(range(1, int(max(bestsolint * 200, self.ref_solint * 150)))) / 100
         plt.plot(solints, [self.theoretical_curve(float(t)) for t in solints], color='green')
         plt.scatter([self.ref_solint], [self.cstd], c='blue', label='measurement', s=80, marker='x')
         plt.scatter([bestsolint], [self.optimal_score], color='red', label='best solint', s=80, marker='x')
@@ -109,19 +109,18 @@ class GetSolint:
 
         return self
 
-
-    def _circvar_to_normvar(self, circ_var):
+    def _circvar_to_normvar(self, circ_var: float = None):
         """
         Convert circular variance to normal variance
 
         return: circular variance
         """
-        if circ_var > limit**2:
+
+        if circ_var > self.limit ** 2:
             sys.exit('ERROR: optimal score cannot be larger than pi')
         else:
-            normvar = -2 * np.log(1 - circ_var / (limit**2))
-            return normvar if normvar==normvar else sys.exit('ERROR: variance gives NaN')
-
+            normvar = -2 * np.log(1 - circ_var / (self.limit ** 2))
+            return normvar if normvar == normvar else sys.exit('ERROR: variance gives NaN')
 
     @property
     def _get_C(self):
@@ -132,23 +131,24 @@ class GetSolint:
 
         :return: C
         """
-        if self.cstd==0:
+
+        if self.cstd == 0:
             self.get_phasediff_score(station=self.station)
         normvar = self._circvar_to_normvar(self.cstd ** 2)
         return normvar * self.ref_solint
 
-
-    def get_phasediff_score(self, station=False):
+    def get_phasediff_score(self, station: str = None):
         """
         Calculate score for phasediff
 
         :return: circular standard deviation score
         """
+
         H = tables.open_file(self.h5)
 
         stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
 
-        if not station:
+        if station is None:
             stations_idx = [stations.index(stion) for stion in stations if
                             ('RS' not in stion) &
                             ('ST' not in stion) &
@@ -185,7 +185,6 @@ class GetSolint:
 
         return circstd(phasemod, nan_policy='omit')
 
-
     @property
     def best_solint(self):
         """
@@ -193,12 +192,12 @@ class GetSolint:
 
         :return: value corresponding with increase solution interval
         """
-        if self.cstd==0:
+
+        if self.cstd == 0:
             self.get_phasediff_score(station=self.station)
         self.C = self._get_C
         optimal_cirvar = self.optimal_score ** 2
         return self.C / (self._circvar_to_normvar(optimal_cirvar))
-
 
     def theoretical_curve(self, t):
         """
@@ -206,9 +205,11 @@ class GetSolint:
         :param t: solution interval
         :return: circular std
         """
+
         if self.C is None:
             self.C = self._get_C
-        return limit * np.sqrt(1 - np.exp(-(self.C / (2 * t))))
+        return self.limit * np.sqrt(1 - np.exp(-(self.C / (2 * t))))
+
 
 def parse_args():
     """
@@ -216,22 +217,21 @@ def parse_args():
 
     :return: parsed arguments
     """
+
     parser = ArgumentParser()
-    parser.add_argument('--h5', nargs='+', help='selfcal phasediff solutions', default=None)
-    parser.add_argument('--station', help='for specific station', default=None)
+    parser.add_argument('h5', nargs='+', help='selfcal phasediff solutions', default=None)
+    parser.add_argument('--station', help='for one specific station', default=None)
     parser.add_argument('--all_stations', action='store_true', help='for all stations specifically')
     return parser.parse_args()
 
 
-
-if __name__ == '__main__':
-
+def main():
     ###STILL AN EXPERIMENT!###
 
     args = parse_args()
 
     # set std score, for which you want to find the solint
-    optimal_score = 2.5
+    optimal_score = 2.3
 
     # reference solution interval
     ref_solint = 10
@@ -255,7 +255,6 @@ if __name__ == '__main__':
                 H = tables.open_file(h5)
                 stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
                 H.close()
-
             else:
                 stations = [station]
             for station in stations:
@@ -264,13 +263,16 @@ if __name__ == '__main__':
                 H = tables.open_file(h5)
                 dir = rad_to_degree(H.root.sol000.source[:]['dir'])
                 writer.writerow([h5 + station, std, solint, dir[0], dir[1]])
-                S.plot_C("T=" + str(round(solint, 2)) + " min", saveas=h5+station+'.png')
+                S.plot_C("T=" + str(round(solint, 2)) + " min", saveas=h5 + station + '.png')
                 H.close()
         except:
             pass
-
 
     f.close()
 
     # sort output
     pd.read_csv('phasediff_output.csv').sort_values(by='spd_score').to_csv('phasediff_output.csv', index=False)
+
+
+if __name__ == '__main__':
+    main()
