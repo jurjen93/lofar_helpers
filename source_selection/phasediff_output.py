@@ -149,7 +149,7 @@ class GetSolint:
         stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
         print(stations)
 
-        if station is None:
+        if station is None or station == '':
             stations_idx = [stations.index(stion) for stion in stations if
                             ('RS' not in stion) &
                             ('ST' not in stion) &
