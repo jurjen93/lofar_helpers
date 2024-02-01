@@ -223,6 +223,7 @@ def parse_args():
     parser.add_argument('--h5', nargs='+', help='selfcal phasediff solutions', default=None)
     parser.add_argument('--station', help='for one specific station', default=None)
     parser.add_argument('--all_stations', action='store_true', help='for all stations specifically')
+    parser.add_argument('--make_plot', action='store_true', help='make phasediff plot')
     return parser.parse_args()
 
 
@@ -266,7 +267,8 @@ def main():
             H = tables.open_file(h5)
             dir = rad_to_degree(H.root.sol000.source[:]['dir'])
             writer.writerow([h5 + station, std, solint, dir[0], dir[1]])
-            S.plot_C("T=" + str(round(solint, 2)) + " min", saveas=h5 + station + '.png')
+            if args.make_plot:
+                S.plot_C("T=" + str(round(solint, 2)) + " min", saveas=h5 + station + '.png')
             H.close()
         # except:
         #     pass
