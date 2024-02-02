@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#NOTE: WORKS ONLY FROM TOIL>6.0.0
+
 #### UPDATE THESE ####
 
 export TOIL_SLURM_ARGS="--export=ALL --job-name phasediff -p normal -t 4:00:00"
