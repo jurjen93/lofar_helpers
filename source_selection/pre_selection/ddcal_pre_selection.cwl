@@ -4,7 +4,6 @@ id: selfcal pre-selection
 doc: |
    This is a workflow to do a pre-selection for the LOFAR-VLBI pipeline direction-dependent calibrator selection
 
-
 requirements:
   - class: SubworkflowFeatureRequirement
   - class: MultipleInputFeatureRequirement
@@ -22,7 +21,7 @@ inputs:
       doc: The selfcal directory.
 
 steps:
-    - id: pre_averaging_dp3
+    - id: dp3_prephasediff
       label: Pre-averaging with DP3
       in:
         - id: msin
@@ -37,7 +36,7 @@ steps:
       label: Get phase difference with facetselfcal
       in:
         - id: phasediff_ms
-          source: pre_averaging_dp3/phasediff_ms
+          source: dp3_prephasediff/phasediff_ms
         - id: h5merger
           source: h5merger
         - id: selfcal
@@ -52,7 +51,7 @@ steps:
       label: Calculate phase difference score
       in:
         - id: phasediff_h5
-          source: phasediff/phasediff_h5out
+          source: get_phasediff/phasediff_h5out
         - id: h5merger
           source: h5merger
       out:
