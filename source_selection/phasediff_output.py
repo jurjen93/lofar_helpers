@@ -212,6 +212,15 @@ class GetSolint:
         return self.limit * np.sqrt(1 - np.exp(-(self.C / (2 * t))))
 
 
+def parse_source_name(string):
+    """
+    Give sensible output names
+    """
+    no_prefix = '_'.join([s for s in string.split("/")[-1].split("_")
+                          if 'scalarphase' not in s and 'skyselfcal' not in s])
+    return no_prefix.replace('.ms', '').replace('.h5', '').replace('.', '_')
+
+
 def parse_args():
     """
     Command line argument parser
@@ -225,7 +234,6 @@ def parse_args():
     parser.add_argument('--all_stations', action='store_true', help='for all stations specifically')
     parser.add_argument('--make_plot', action='store_true', help='make phasediff plot')
     return parser.parse_args()
-
 
 def main():
     ###STILL AN EXPERIMENT!###
@@ -266,7 +274,7 @@ def main():
             solint = S.best_solint
             H = tables.open_file(h5)
             dir = rad_to_degree(H.root.sol000.source[:]['dir'])
-            writer.writerow([h5 + station, std, solint, dir[0], dir[1]])
+            writer.writerow([parse_source_name(h5) + station, std, solint, dir[0], dir[1]])
             if args.make_plot:
                 S.plot_C("T=" + str(round(solint, 2)) + " min", saveas=h5 + station + '.png')
             H.close()
