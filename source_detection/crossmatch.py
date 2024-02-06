@@ -1,4 +1,4 @@
-#RUN python source_detection/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat03/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits
+"""Code to crossmatch catalogues"""
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -9,6 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import warnings
+import scienceplots
+
+plt.style.use('science')
 
 # Disable all warnings temporarily
 warnings.filterwarnings("ignore")
@@ -17,6 +20,7 @@ def find_matches(cat1, cat2, separation_asec):
     """
     Find crossmatches with two catalogues
     """
+
     catalog1 = Table.read(cat1, format='fits')
     catalog2 = Table.read(cat2, format='fits')
 
@@ -39,18 +43,17 @@ def find_matches(cat1, cat2, separation_asec):
     return matched_sources_catalog1, matched_sources_catalog2
 
 
-def remove_non_matches(cat1, cat2, separation_asec, rms_thresh=5.5, flux_thresh=4):
+def separation_match(cat1, cat2, separation_asec):
     """
-    Find the non-crossmatches between two catalogues and remove those from catalogue 1
+    Find non-crossmatches between two catalogues and remove those from catalogue 1 based on distance in arcsec
 
     :param cat1: catalogue 1
     :param cat2: catalogue 2
-    :param separation_asec: max separation between catalogue matches
-    :param rms_thresh: consider only non-detections below this RMS threshold
-    :param flux_thresh: flux ratio threshold between catalogue 1 and catalogue 2
+    :param separation_asec: max separation between catalogue matches in arcsec
 
     :return: corrected catalogue 1, removed sources from catalogue 1
     """
+
     catalog1 = Table.read(cat1, format='fits')
     catalog2 = Table.read(cat2, format='fits')
 
@@ -61,27 +64,16 @@ def remove_non_matches(cat1, cat2, separation_asec, rms_thresh=5.5, flux_thresh=
     # Perform the crossmatch using Astropy's match_coordinates_sky function
     idx_catalog2, separation, _ = match_coordinates_sky(coords1, coords2)
     catalog1['separation_cat2'] = separation
-    # catalog1['Total_flux_ratio'] = catalog1['Total_flux']/catalog2[idx_catalog2]['Total_flux']
 
     # Define a maximum separation threshold (adjustplots as needed)
     max_sep_threshold_large = separation_asec * u.arcsec
-    # max_sep_threshold_small = separation_asec/2 * u.arcsec
-    # factor = max_sep_threshold_large.value/max_sep_threshold_small.value
 
     # Sources below RMS threshold and above separation threshold
     non_matches_large = catalog1[(catalog1['separation_cat2'] > max_sep_threshold_large)]
-    # # Sources below RMS threshold/2 and above smaller separation threshold
-    # non_matches_small = catalog1[(catalog1['separation_cat2'] > max_sep_threshold_small)
-    #                              & (catalog1['Peak_flux'] < rms_thresh/factor * catalog1['Isl_rms'])]
-    # # Sources above flux ratio threshold and below threshold/2
-    # non_matches_flux = catalog1[((catalog1['Total_flux_ratio']>flux_thresh) | (catalog1['Total_flux_ratio']<1/flux_thresh))
-    #                             & (catalog1['Peak_flux'] < rms_thresh/factor * catalog1['Isl_rms'])]
 
     non_match_mask_large = np.sum([non_matches_large['Source_id'] == i for i in catalog1['Source_id']], axis=1).astype(bool)
-    # non_match_mask_small = np.sum([non_matches_small['Source_id'] == i for i in catalog1['Source_id']], axis=1).astype(bool)
-    # non_match_mask_flux = np.sum([non_matches_flux['Source_id'] == i for i in catalog1['Source_id']], axis=1).astype(bool)
 
-    non_match_mask = non_match_mask_large #| non_match_mask_small | non_match_mask_flux
+    non_match_mask = non_match_mask_large
 
     catalog1_corrected = catalog1[~non_match_mask]
     catalog1_removed = catalog1[non_match_mask]
@@ -109,6 +101,7 @@ def crossmatch_itself(catalog, min_sep=0.15):
 
 
 def make_plots(cat, res=0.3):
+    """Make plots"""
 
     # make peak flux plot
     plt.hist(np.log10(cat['Peak_flux'] * 1000), bins=30)
@@ -119,7 +112,7 @@ def make_plots(cat, res=0.3):
     # make total flux plot
     plt.hist(np.log10(cat['Total_flux'] * 1000), bins=30)
     plt.xlabel('Total flux (mJy)')
-    plt.savefig('total_flux.png')
+    plt.savefig('total_flux.png', dpi=150)
     plt.close()
 
     ############### 2D HISTOGRAM ###############
@@ -144,8 +137,31 @@ def make_plots(cat, res=0.3):
     plt.plot([mediandRA]*len(axs), axs, color='black', linestyle='--')
     plt.xlim(-6, 6)
     plt.ylim(-6, 6)
-    plt.savefig('dRA_dDEC.png')
+    plt.savefig('dRA_dDEC.png', dpi=150)
     plt.close()
+
+
+    ############# Flux ratio 6" ##############
+    subcat = cat[(cat['S_Code'] == 'S') & (cat['Total_flux'] * 1000 > 0.1)]
+    subcat = subcat[(subcat['dDEC_0.3']*3600 < 0.15) & (subcat['dRA_0.3']*3600 < 0.15)]
+    R = subcat['Total_flux_6'] / subcat['Total_flux']
+    plt.scatter(subcat['Total_flux_6'], R, color='darkred')
+    plt.xscale('log')
+    plt.yscale('log')
+    plt.xlabel("Total flux")
+    plt.ylabel("Flux ratio")
+    plt.title(f'Median ratio: {round(np.median(R[np.isfinite(R)]), 2)}')
+    plt.savefig('lotssdeep_ratio.png', dpi=150)
+
+    ############# Peak flux over Total flux ##############
+    subcat = cat[(cat['S_Code'] == 'S') & (cat['Total_flux'] * 1000 > 1)]
+    R = subcat['Peak_flux'] / subcat['Total_flux']
+    plt.scatter(subcat['Total_flux'], R)
+    plt.xscale('log')
+    plt.xlabel("Total flux")
+    plt.ylabel("Peakflux/Totalflux")
+    plt.title(f'Median ratio: {round(np.median(R[np.isfinite(R)]), 2)}')
+    plt.savefig('peak_total.png', dpi=150)
 
 
 def merge_with_table(catalog1, catalog2, sep=6, res=0.3):
@@ -188,9 +204,7 @@ def merge_with_table(catalog1, catalog2, sep=6, res=0.3):
 
 
 def parse_args():
-    """
-    Parse input arguments
-    """
+    """Parse input arguments"""
 
     parser = argparse.ArgumentParser(description='Catalogue matching')
     parser.add_argument('--cat1', nargs='+', help='Catalogue 1 (can be multiple)', default=None)
@@ -200,7 +214,7 @@ def parse_args():
                           "6asec/pybdsf_sources_6asec.fits")
     parser.add_argument('--separation_asec', type=float, default=6, help=
                         'minimal separation between catalogue 1 and catalogue 2')
-    parser.add_argument('--cat_prefix', type=str)
+    parser.add_argument('--source_id_prefix', type=str)
     parser.add_argument('--out_table', type=str, default='final_merged.fits')
     parser.add_argument('--resolution', type=float, default=0.3)
     parser.add_argument('--only_plot', action='store_true', help='make only plot')
@@ -211,8 +225,8 @@ def parse_args():
 def main():
     """Main"""
 
-    outcols = ['Cat_id', 'Isl_id', 'RA','E_RA','DEC','E_DEC','Total_flux','E_Total_flux','Peak_flux','E_Peak_flux',
-               'Maj','E_Maj','Min','E_Min','PA','E_PA', 'S_Code', 'Isl_rms']
+    outcols = ['Cat_id', 'Isl_id', 'RA', 'E_RA', 'DEC','E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
+               'Maj', 'E_Maj', 'Min', 'E_Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms']
 
     args = parse_args()
 
@@ -222,9 +236,9 @@ def main():
     else:
         for n, cat in enumerate(args.cat1):
             print(cat)
-            catalog1_new, _ = remove_non_matches(cat, args.cat2, args.separation_asec)
-            if args.cat_prefix is not None:
-                catalog1_new['Cat_id'] = [f'{args.cat_prefix}_{id}' for id in list(catalog1_new['Source_id'])]
+            catalog1_new, _ = separation_match(cat, args.cat2, args.separation_asec)
+            if args.source_id_prefix is not None:
+                catalog1_new['Cat_id'] = [f'{args.source_id_prefix}_{id}' for id in list(catalog1_new['Source_id'])]
             else:
                 catalog1_new['Cat_id'] = [f'{cat.split("/")[-1].split("_")[1]}_{id}' for id in list(catalog1_new['Source_id'])]
             if n==0:
@@ -250,3 +264,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+# python source_detection/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat03/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_03.fits
+# python source_detection/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat06/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_06.fits

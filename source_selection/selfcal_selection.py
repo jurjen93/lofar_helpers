@@ -24,26 +24,31 @@ from skimage.morphology import disk
 import pandas as pd
 from cv2 import bilateralFilter
 from typing import Union
+import warnings
+
+# Ignore all warnings
+warnings.filterwarnings('ignore')
+
+plt.style.use('ggplot')
 
 class SelfcalQuality:
-    def __init__(self, folder: str, station: str):
+    def __init__(self, h5s: list, fitsim: list, station: str):
         """
         Determine quality of selfcal from facetselfcal.py
 
+        :param fitsim: fits images
+        :param h5s: h5parm solutions
         :param folder: path to directory where selfcal ran
         :param station: which stations to consider [dutch, remote, international, debug]
         """
 
-        # selfcal folder
-        self.folder = folder
-
         # merged selfcal h5parms
-        self.h5s = [h5 for h5 in glob(f"{self.folder}/merged_addCS_selfcalcyle*.h5") if 'linearfulljones' not in h5]
-        if len(self.h5s) == 0:
-            self.h5s = glob(f"{self.folder}/merged_addCS_selfcalcyle*.h5")
-        if len(self.h5s) == 0:
-            raise FileNotFoundError("WARNING: No h5 files found")
-        # assert len(self.h5s) != 0, "No h5 files found"
+        self.h5s = h5s
+        assert len(self.h5s) != 0, "WARNING: No h5 files given"
+
+        # selfcal images
+        self.fitsfiles = fitsim
+        assert len(self.fitsfiles) != 0, "No fits files found"
 
         # select all sources
         sources = []
@@ -51,20 +56,17 @@ class SelfcalQuality:
             matches = re.findall(r'selfcalcyle\d+_(.*?)\.', h5.split('/')[-1])
             assert len(matches) == 1
             sources.append(matches[0])
-
         self.sources = set(sources)
-
         assert len(self.sources) > 0, "No sources found"
-
-        # select all fits images
-        fitsfiles = sorted(glob(self.folder + "/*MFS-I-image.fits"))
-        if len(fitsfiles) == 0 or '000' not in fitsfiles[0]:
-            fitsfiles = sorted(glob(self.folder + "/*MFS-image.fits"))
-        self.fitsfiles = [f for f in fitsfiles if 'arcsectaper' not in f]
-        assert len(self.fitsfiles) != 0, "No fits files found"
 
         # for phase/amp evolution
         self.station = station
+
+        self.station_codes = (
+            ('CS',) if self.station == 'dutch' else
+            ('RS',) if self.station == 'remote' else
+            ('IE', 'SE', 'PL', 'UK', 'LV')  # i.e.: if self.station == 'international'
+        )
 
         # output csv
         self.textfile = open(f'selfcal_performance.csv', 'w')
@@ -134,8 +136,6 @@ class SelfcalQuality:
         # ax1.set_ylim(0, np.pi/2)
         ax1.set_xlim(1, 11)
         ax1.grid(False)
-        ax1.grid('off')
-        ax1.grid(None)
 
         if vals2 is not None:
 
@@ -151,8 +151,6 @@ class SelfcalQuality:
             # ax2.set_ylim(0, 2)
             ax2.set_xlim(1, 11)
             ax2.grid(False)
-            ax2.grid('off')
-            ax2.grid(None)
 
         fig.tight_layout()
 
@@ -189,6 +187,30 @@ class SelfcalQuality:
         print(f"Entropy: {val}")
         return val
 
+    def filter_stations(self, station_names):
+        """Generate indices of filtered stations"""
+
+        if self.station == 'debug':
+            return list(range(len(station_names)))
+
+        output_stations = [
+            i for i, station_name in enumerate(station_names)
+            if any(station_code in station_name for station_code in self.station_codes)
+        ]
+
+        return output_stations
+
+    def print_station_names(self, h5):
+        """Print station names"""
+        H = tables.open_file(h5)
+        v_make_utf8 = np.vectorize(self.make_utf8)
+        stations = v_make_utf8(H.root.sol000.antenna[:]['name'])
+
+        stations_used = ', '.join([station_name for station_name in stations
+            if any(station_code in station_name for station_code in self.station_codes)])
+        print(f'Used the following stations: {stations_used}')
+        return self
+
     def get_solution_scores(self, h5_1: str, h5_2: str = None):
         """
         Get solution scores
@@ -202,31 +224,34 @@ class SelfcalQuality:
 
         def extract_data(tables_path):
             with tables.open_file(tables_path) as f:
-                return (
-                    [self.make_utf8(station) for station in f.root.sol000.antenna[:]['name']],
-                    self.make_utf8(f.root.sol000.phase000.val.attrs['AXES']).split(','),
-                    f.root.sol000.phase000.pol[:],
-                    f.root.sol000.phase000.val[:],
-                    f.root.sol000.phase000.weight[:],
-                    f.root.sol000.amplitude000.val[:],
-                )
-
-
-        def filter_stations(station_names):
-            """Generate indices of filtered stations"""
-
-            if self.station == 'debug':
-                return list(range(len(station_names)))
-
-            station_codes = (
-                ('CS',) if self.station == 'dutch' else
-                ('RS',) if self.station == 'remote' else
-                ('RS', 'CS', 'ST')  # i.e.: if self.station == 'international'
-            )
-            return [
-                i for i, station_name in enumerate(station_names)
-                if any(station_code in station_name for station_code in station_codes)
-            ]
+                axes = self.make_utf8(f.root.sol000.phase000.val.attrs['AXES']).split(',')
+                if 'pol' in axes:
+                    return (
+                        [self.make_utf8(station) for station in f.root.sol000.antenna[:]['name']],
+                        self.make_utf8(f.root.sol000.phase000.val.attrs['AXES']).split(','),
+                        f.root.sol000.phase000.pol[:],
+                        f.root.sol000.phase000.val[:],
+                        f.root.sol000.phase000.weight[:],
+                        f.root.sol000.amplitude000.val[:],
+                    )
+                elif 'amplitude000' in list(f.root.sol000._v_groups.keys()):
+                    return (
+                        [self.make_utf8(station) for station in f.root.sol000.antenna[:]['name']],
+                        self.make_utf8(f.root.sol000.phase000.val.attrs['AXES']).split(','),
+                        ['XX'],
+                        f.root.sol000.phase000.val[:],
+                        f.root.sol000.phase000.weight[:],
+                        f.root.sol000.amplitude000.val[:],
+                    )
+                else:
+                    return (
+                        [self.make_utf8(station) for station in f.root.sol000.antenna[:]['name']],
+                        self.make_utf8(f.root.sol000.phase000.val.attrs['AXES']).split(','),
+                        ['XX'],
+                        f.root.sol000.phase000.val[:],
+                        f.root.sol000.phase000.weight[:],
+                        np.ones(f.root.sol000.phase000.val.shape),
+                    )
 
         def filter_params(station_indices, axes, *parameters):
             return tuple(
@@ -239,7 +264,7 @@ class SelfcalQuality:
 
         station_names1, axes1, phase_pols1, *params1 = extract_data(h5_1)
 
-        antenna_selection = functools.partial(filter_params, filter_stations(station_names1), axes1.index('ant'))
+        antenna_selection = functools.partial(filter_params, self.filter_stations(station_names1), axes1.index('ant'))
         phase_vals1, phase_weights1, amps1 = antenna_selection(*params1)
 
         prep_phase_score = weighted_vals(phase_vals1, phase_weights1)
@@ -250,13 +275,15 @@ class SelfcalQuality:
             phase_vals2, phase_weights2, amps2 = antenna_selection(*params2)
 
             min_length = min(len(phase_pols1), len(phase_pols2))
-            assert 0 < min_length < 2
+            assert 0 < min_length <= 4
 
             indices = [0] if min_length == 1 else [0, -1]
 
-            prep_phase_score, prep_amp_score, phase_vals2, phase_weights2, amps2 = filter_params(
-                indices, axes1.index('pol'), prep_phase_score, prep_amp_score, phase_vals2, phase_weights2, amps2
-            )
+            if 'pol' in axes1:
+                prep_phase_score, prep_amp_score, phase_vals2, phase_weights2, amps2 = filter_params(
+                    indices, axes1.index('pol'), prep_phase_score, prep_amp_score, phase_vals2, phase_weights2, amps2
+                )
+
             prep_phase_score = np.subtract(prep_phase_score, weighted_vals(phase_vals2, phase_weights2))
             prep_amp_score = np.nan_to_num(
                 np.divide(prep_amp_score, weighted_vals(amps2, phase_weights2)),
@@ -270,8 +297,6 @@ class SelfcalQuality:
 
     def solution_stability(self):
         """
-        #TODO: Under development
-
         Get solution stability scores and make figure
 
         :return:    bestcycle --> best cycle according to solutions
@@ -279,12 +304,15 @@ class SelfcalQuality:
         """
 
         # loop over sources to get scores
-        assert len(self.sources) > 0
         for k, source in enumerate(self.sources):
+            print(source)
+
             sub_h5s = sorted([h5 for h5 in self.h5s if source in h5])
 
             phase_scores = []
             amp_scores = []
+
+            self.print_station_names(sub_h5s[0])
             for m, sub_h5 in enumerate(sub_h5s):
                 number = self.get_cycle_num(sub_h5)
 
@@ -307,17 +335,27 @@ class SelfcalQuality:
 
         self.make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', plotname)
 
+        # best cycle based on phase solution stability
         bestcycle = np.array(finalphase).argmin()
 
         self.writer.writerow(['phase', np.nan] + list(finalphase))
         self.writer.writerow(['amp', np.nan] + list(finalamp))
 
-        if len(finalphase) > 3:
-            phase_decrease, phase_quality, amp_quality = self.linreg_slope(finalphase[:4]), self.linreg_slope(
-                finalphase[-3:]), self.linreg_slope(finalamp[-3:])
-            print(phase_decrease, phase_quality, amp_quality)
-            accept = phase_decrease < 0 and abs(phase_quality) < 0.05 and abs(amp_quality) < 0.05
+        # selection based on slope
+        if len(finalphase) > 4:
+            phase_decrease, phase_quality, amp_quality = (self.linreg_slope(finalphase[1:4]),
+                                                                        self.linreg_slope(finalphase[-4:]),
+                                                                        self.linreg_slope(finalamp[-4:]))
+            if not all(v==0 for v in finalamp):
+                amp_decrease = self.linreg_slope([i for i in finalamp if i != 0][1:3])
+            else:
+                amp_decrease = 0
 
+            accept = (phase_decrease <= 0
+                      and amp_decrease <= 0
+                      and phase_quality <= 0.1
+                      and amp_quality <= 0.1
+                      and bestcycle > 0)
             return bestcycle, accept
         else:
             return None, False
@@ -380,6 +418,8 @@ class SelfcalQuality:
     @staticmethod
     def bilateral_filter(fitsfile=None, sigma_x=1, sigma_y=1, sigma_z=1, general_sigma=None):
         """
+        #TODO: In development
+
         Bilateral filter
         See: https://www.projectpro.io/recipes/what-is-bilateral-filtering-opencv
 
@@ -460,16 +500,13 @@ class SelfcalQuality:
                                                                                                  minmaxs)).slope
 
         # acceptance criteria
-        if minmax_slope > 0 and rms_slope > 0:
-            accept = False
-        elif minmax_slope_start > 0 or rms_slope_start > 0:
-            accept = False
-        elif len(self.fitsfiles) < 5:
-            accept = False
-        elif bestcycle + 2 < len(rmss):
-            accept = True
-        else:
-            accept = True
+        accept = ((minmax_slope <= 0
+                  or rms_slope <= 0)
+                  and minmax_slope_start <= 0
+                  and rms_slope_start <= 0
+                  and len(self.fitsfiles) >= 5
+                  and bestcycle+2 < len(rmss)
+                  and bestcycle > 1)
 
         return bestcycle - 1, accept
 
@@ -482,9 +519,10 @@ def parse_args():
     """
 
     parser = ArgumentParser(description='Determine selfcal quality')
-    parser.add_argument('--selfcal_folder', required=True)
+    parser.add_argument('--fits', nargs='+', help='selfcal fits images', default=[])
+    parser.add_argument('--h5', nargs='+', help='h5 solutions', default=[])
     parser.add_argument('--bilateral_filter', action='store_true')
-    parser.add_argument('--station', type=str, default='dutch', choices=['dutch', 'remote', 'international', 'debug'])
+    parser.add_argument('--station', type=str, help='', default='international', choices=['dutch', 'remote', 'international', 'debug'])
     return parser.parse_args()
 
 
@@ -494,19 +532,15 @@ def main():
     """
     args = parse_args()
 
-    sq = SelfcalQuality(args.selfcal_folder, args.station)
-    if len(sq.h5s) > 0 or len(sq.fitsfiles) > 0:
-        if len(sq.h5s) > 0:
-            bestcycle_solutions, accept_solutions = sq.solution_stability()
+    sq = SelfcalQuality(args.h5, args.fits, args.station)
+    if len(sq.h5s) > 1 and len(sq.fitsfiles) > 1:
+        bestcycle_solutions, accept_solutions = sq.solution_stability()
+        bestcycle_image, accept_image = sq.image_stability(bilateral_filter=args.bilateral_filter)
 
-            print(f"Best cycle according to solutions {bestcycle_solutions}")
-            print(f"Accept according to solutions {accept_solutions}")
-
-        if len(sq.fitsfiles) > 0:
-            bestcycle_image, accept_image = sq.image_stability(bilateral_filter=args.bilateral_filter)
-
-            print(f"Best cycle according to image {bestcycle_image}")
-            print(f"Accept according to image {accept_image}")
+        print(f"Best cycle according to image {bestcycle_image}")
+        print(f"Accept according to image {accept_image}")
+        print(f"Best cycle according to solutions {bestcycle_solutions}")
+        print(f"Accept according to solutions {accept_solutions}")
 
         sq.textfile.close()
         df = pd.read_csv(f'selfcal_performance.csv').set_index('solutions').T
