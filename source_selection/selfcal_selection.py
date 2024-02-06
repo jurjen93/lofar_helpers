@@ -27,7 +27,6 @@ import csv
 from skimage.filters.rank import entropy
 from skimage.morphology import disk
 import pandas as pd
-from cv2 import bilateralFilter
 from typing import Union
 
 class SelfcalQuality:
@@ -201,11 +200,16 @@ class SelfcalQuality:
 
     def print_station_names(self, h5):
         """Print station names"""
-        H = tables.open_file(h5)
-        v_make_utf8 = np.vectorize(self.make_utf8)
-        stations = v_make_utf8(H.root.sol000.antenna[:]['name'])
-        stations_used = ', '.join([station_name for station_name in stations
-            if any(station_code in station_name for station_code in self.station_codes)])
+
+        with tables.open_file(h5) as H:
+            station_names = H.root.sol000.antenna[:]['name']
+
+        stations = map(self.make_utf8, station_names)
+
+        stations_used = ', '.join([
+            station_name for station_name in stations
+            if any(station_code in station_name for station_code in self.station_codes)
+        ])
         print(f'Used the following stations: {stations_used}')
         return self
 
@@ -282,10 +286,13 @@ class SelfcalQuality:
                     indices, axes1.index('pol'), prep_phase_score, prep_amp_score, phase_vals2, phase_weights2, amps2
                 )
 
+            np.seterr(all='raise')
             prep_phase_score = np.subtract(prep_phase_score, weighted_vals(phase_vals2, phase_weights2))
-            prep_amp_score = np.nan_to_num(
-                np.divide(prep_amp_score, weighted_vals(amps2, phase_weights2)),
-                posinf=0, neginf=0
+            prep_amp_score = np.divide(
+                prep_amp_score,
+                weighted_vals(amps2, phase_weights2),
+                out=np.zeros_like(prep_amp_score),
+                where=phase_weights2 != 0
             )
 
         phase_score = circstd(prep_phase_score[prep_phase_score != 0], nan_policy='omit')
@@ -412,26 +419,26 @@ class SelfcalQuality:
         print(f"min/max: {minmax}")
         return minmax
 
-    @staticmethod
-    def bilateral_filter(fitsfile=None, sigma_x=1, sigma_y=1, sigma_z=1, general_sigma=None):
-        """
-        #TODO: In development
-
-        Bilateral filter
-        See: https://www.projectpro.io/recipes/what-is-bilateral-filtering-opencv
-
-        :param image: image data
-        :param sigma: standard deviation that controls the influence of distant pixels
-
-        :return: Bilateral filter output
-        """
-
-        with fits.open(fitsfile) as hdul:
-            data = hdul[0].data
-
-        if general_sigma is not None:
-            sigma_x = sigma_y = sigma_z = int(general_sigma)
-        return bilateralFilter(data, sigma_x, sigma_y, sigma_z)
+    # @staticmethod
+    # def bilateral_filter(fitsfile=None, sigma_x=1, sigma_y=1, sigma_z=1, general_sigma=None):
+    #     """
+    #     #TODO: In development
+    #
+    #     Bilateral filter
+    #     See: https://www.projectpro.io/recipes/what-is-bilateral-filtering-opencv
+    #
+    #     :param image: image data
+    #     :param sigma: standard deviation that controls the influence of distant pixels
+    #
+    #     :return: Bilateral filter output
+    #     """
+    #
+    #     with fits.open(fitsfile) as hdul:
+    #         data = hdul[0].data
+    #
+    #     if general_sigma is not None:
+    #         sigma_x = sigma_y = sigma_z = int(general_sigma)
+    #     return bilateralFilter(data, sigma_x, sigma_y, sigma_z)
 
     @staticmethod
     def select_cycle(cycles=None):
@@ -516,8 +523,8 @@ def parse_args():
     """
 
     parser = ArgumentParser(description='Determine selfcal quality')
-    parser.add_argument('--fits', nargs='+', help='selfcal fits images', default=[])
-    parser.add_argument('--h5', nargs='+', help='h5 solutions', default=[])
+    parser.add_argument('--fits', nargs='+', help='selfcal fits images')
+    parser.add_argument('--h5', nargs='+', help='h5 solutions')
     parser.add_argument('--bilateral_filter', action='store_true')
     parser.add_argument('--station', type=str, help='', default='international', choices=['dutch', 'remote', 'international', 'debug'])
     return parser.parse_args()
@@ -556,7 +563,11 @@ def calc_all_scores(sources_root, subfolders=('autosettings',), stations='dutch'
         star_folder, star_name = item, item.name
 
         try:
-            sq = SelfcalQuality(str(star_folder), stations)
+            sq = SelfcalQuality(
+                list(map(str, star_folder.glob('*.h5'))),
+                list(map(str, star_folder.glob('*.fits'))),
+                stations
+            )
             bestcycle_solutions, accept_solutions = sq.solution_stability()
         except Exception as e:
             print(f"skipping {star_folder} due to {e}")
@@ -571,6 +582,8 @@ def calc_all_scores(sources_root, subfolders=('autosettings',), stations='dutch'
     all_files = [str(item.absolute()) for subfolder in subfolders for item in Path(sources_root, subfolder).iterdir()]
 
     results = Parallel(n_jobs=len(sched_getaffinity(0)))(delayed(get_solutions)(f) for f in all_files)
+
+    print(results)
 
     return results
 
