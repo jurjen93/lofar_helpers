@@ -10,7 +10,13 @@ python selfcal_quality.py --fits *.fits --h5 merged*.h5
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl), Robert Jan Schlimbach"
 
 import functools
+import pickle
 import re
+from collections import defaultdict
+from pathlib import Path
+from os import sched_getaffinity
+
+from joblib import Parallel, delayed
 import tables
 from scipy.stats import circstd, linregress
 import numpy as np
@@ -23,12 +29,6 @@ from skimage.morphology import disk
 import pandas as pd
 from cv2 import bilateralFilter
 from typing import Union
-import warnings
-
-# Ignore all warnings
-warnings.filterwarnings('ignore')
-
-plt.style.use('ggplot')
 
 class SelfcalQuality:
     def __init__(self, h5s: list, fitsim: list, station: str):
@@ -548,6 +548,33 @@ def main():
         sq.textfile.close()
         print(f"Need more than 1 h5 or fits file")
 
+def calc_all_scores(sources_root, subfolders=('autosettings',), stations='dutch'):
+    def get_solutions(item):
+        item = Path(item)
+        if not (item.is_dir() and any(file.suffix == '.h5' for file in item.iterdir())):
+            return None
+        star_folder, star_name = item, item.name
+
+        try:
+            sq = SelfcalQuality(str(star_folder), stations)
+            bestcycle_solutions, accept_solutions = sq.solution_stability()
+        except Exception as e:
+            print(f"skipping {star_folder} due to {e}")
+            return star_name, None, None
+
+        print(f"Best cycle according to solutions {bestcycle_solutions}")
+        print(f"Accept according to solutions {accept_solutions}")
+
+        return star_name, accept_solutions, bestcycle_solutions
+
+
+    all_files = [str(item.absolute()) for subfolder in subfolders for item in Path(sources_root, subfolder).iterdir()]
+
+    results = Parallel(n_jobs=len(sched_getaffinity(0)))(delayed(get_solutions)(f) for f in all_files)
+
+    return results
+
 
 if __name__ == '__main__':
+    # calc_all_scores()
     main()
