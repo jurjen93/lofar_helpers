@@ -3,8 +3,8 @@ This script can be used to select the best self-calibration cycle from facetself
 https://github.com/rvweeren/lofar_facet_selfcal/blob/main/facetselfcal.py
 It will return a few plots and a csv with the statistics for each self-calibration cycle.
 
-You only need to run this script in the folder with your facetselfcal output as
-python selfcal_quality.py
+You can run this script in the folder with your facetselfcal output as
+python selfcal_quality.py --fits *.fits --h5 merged*.h5
 """
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl), Robert Jan Schlimbach"
@@ -12,7 +12,6 @@ __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl), Robert Jan Schli
 import functools
 import re
 import tables
-from glob import glob
 from scipy.stats import circstd, linregress
 import numpy as np
 import matplotlib.pyplot as plt
@@ -44,7 +43,7 @@ class SelfcalQuality:
 
         # merged selfcal h5parms
         self.h5s = h5s
-        assert len(self.h5s) != 0, "WARNING: No h5 files given"
+        assert len(self.h5s) != 0, "No h5 files given"
 
         # selfcal images
         self.fitsfiles = fitsim
@@ -205,7 +204,6 @@ class SelfcalQuality:
         H = tables.open_file(h5)
         v_make_utf8 = np.vectorize(self.make_utf8)
         stations = v_make_utf8(H.root.sol000.antenna[:]['name'])
-
         stations_used = ', '.join([station_name for station_name in stations
             if any(station_code in station_name for station_code in self.station_codes)])
         print(f'Used the following stations: {stations_used}')
@@ -389,7 +387,6 @@ class SelfcalQuality:
             if np.abs((rms - rmsold) / rmsold) < diff:
                 break
             rmsold = rms
-
 
         print(f'rms: {rms}')
 
