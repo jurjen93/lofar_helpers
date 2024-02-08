@@ -1,3 +1,7 @@
+"""
+Use this script to apply solutions in the correct order with beam corrections, based on input from an h5 solution file.
+"""
+
 import tables
 from subprocess import call
 from argparse import ArgumentParser

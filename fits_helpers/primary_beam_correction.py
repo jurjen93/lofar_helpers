@@ -1,3 +1,10 @@
+"""
+Use this script if you want to do a primary beam correction with wsclean in case you forgot to turn on the primary beam
+settings and don't want to run the entire imaging.
+
+Run the script in your wsclean output folder.
+"""
+
 from astropy.io import fits
 from glob import glob
 import numpy as np

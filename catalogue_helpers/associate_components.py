@@ -1,11 +1,6 @@
 from astropy.table import Table
 import numpy as np
 
-"""
-ds9 <FITS_IMAGE> -asinh -region components.reg -scale limits -0.000001 0.001 -cmap ch05m151008
-"""
-
-
 def error_prop(errors):
     return np.sqrt(np.sum(np.power(errors, 2)))
 
@@ -23,15 +18,6 @@ def associate(associate_components, table):
     """
 
     t = Table.read(table, format='fits')
-    # columns = ['Source_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
-    #            'S_Code', 'Isl_rms']
-    # Take Source_id, RA, E_RA, DEC, E_DEC main component
-    # Total_flux sum of all components
-    # E_Total_flux uncertainty all components
-    # Peak flux max of all components
-    # S_Code = 'M'
-
-    # t = t[columns]
 
     to_delete = []
     to_not_delete = []

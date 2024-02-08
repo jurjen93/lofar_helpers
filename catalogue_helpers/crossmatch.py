@@ -1,4 +1,10 @@
-"""Code to crossmatch catalogues"""
+"""
+Code to crossmatch catalogues
+
+Note that this code is in some parts of the main function hardcoded as it was used for crossmatching
+4 catalogues obtained after reducing data from ELAIS-N1 with LOFAR.
+So, feel free to adapt and use it for your own purposes.
+"""
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -10,6 +16,8 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import warnings
 import scienceplots
+import math
+from scipy.special import erf
 
 plt.style.use('science')
 
@@ -35,7 +43,6 @@ def find_matches(cat1, cat2, separation_asec):
     max_sep_threshold = separation_asec * u.arcsec
     matched_sources_mask = separation < max_sep_threshold
 
-    # idx_catalog2 contains the indices of matched sources in catalog2
     # You can use the mask to filter the matched sources in catalog1
     matched_sources_catalog1 = catalog1[matched_sources_mask]
     matched_sources_catalog2 = catalog2[idx_catalog2[matched_sources_mask]]
@@ -78,6 +85,9 @@ def separation_match(cat1, cat2, separation_asec):
     catalog1_corrected = catalog1[~non_match_mask]
     catalog1_removed = catalog1[non_match_mask]
 
+    print(f'Source count after cross-match deep field DR2: {len(catalog1_corrected)} '
+          f'({int(round(1 - len(catalog1_corrected) / len(catalog1),2)*100)}% removed)')
+
     return catalog1_corrected, catalog1_removed
 
 
@@ -100,8 +110,39 @@ def crossmatch_itself(catalog, min_sep=0.15):
     print(catalog[nearest_neighbour]['Cat_id'])
 
 
-def make_plots(cat, res=0.3):
+def fluxration_smearing(central_freq_hz, bandwidth_hz, integration_time_s, resolution,
+                                         distance_from_phase_center_deg):
+    """
+    Calculate the expected peak flux over integrated flux ratio due to smearing,
+    as a function of distance from the pointing center.
+    """
+
+    # Convert distance from degrees to radians
+    distance_from_phase_center_rad = np.deg2rad(distance_from_phase_center_deg)
+
+    # Calculate angular resolution (radians)
+    angular_resolution_rad = resolution*4.8481*1e-6
+    gamma = np.sqrt(np.log(2))*2
+    beta = (bandwidth_hz / central_freq_hz * distance_from_phase_center_rad / angular_resolution_rad)
+
+    # Bandwidth Smearing Factor (formula 18-24 from Bridle 1999)
+    bw_smearing = erf(gamma*beta/2)*np.sqrt(np.pi)/(gamma*beta)
+    # Time Smearing Factor (formula 18-43 from Bridle 1999)
+    time_smearing = 1-1.2288710615597145e-09*(integration_time_s*(distance_from_phase_center_rad) /
+                            angular_resolution_rad)**2
+
+    total_smearing = bw_smearing*time_smearing
+
+    return time_smearing, bw_smearing, total_smearing
+
+
+def make_plots(cat, res=0.3, outputfolder=None):
     """Make plots"""
+
+    def dist_pointing_center(pos):
+        # HARD CODED FOR ELAIS-N1
+        pointing_center = SkyCoord(242.75 * u.degree, 54.95 * u.degree, frame='icrs')
+        return pointing_center.separation(SkyCoord(pos['RA'] * u.deg, pos['DEC'] * u.deg, frame='icrs')).value
 
     # make peak flux plot
     plt.hist(np.log10(cat['Peak_flux'] * 1000), bins=30)
@@ -117,52 +158,110 @@ def make_plots(cat, res=0.3):
 
     ############### 2D HISTOGRAM ###############
     # 6arcsec offset
-    subcat = cat[(cat[f'dRA_{res}'] == cat[f'dRA_{res}']) & (cat['S_Code'] == 'S') & (cat['Total_flux_6']*1000 > 0.5)]
+    subcat = cat[(cat[f'dRA_{res}'] == cat[f'dRA_{res}'])
+                 & (cat['S_Code'] == 'S')
+                 & (cat['S_Code_6'] == 'S')
+                 & (cat['Total_flux_6']*1000 > 0.5)
+                 & (cat['Total_flux']*1000 > 0.5)]
     print(f"Number of sources for hist2d plot: {len(subcat)}")
 
-    plt.hist2d(subcat[f'dRA_{res}'] * 3600,
+    plt.hexbin(subcat[f'dRA_{res}'] * 3600,
                subcat[f'dDEC_{res}'] * 3600,
-               bins=50, cmap=plt.cm.jet, norm=LogNorm())
+               gridsize=30, cmap='viridis', norm=LogNorm())
     plt.xlabel("dRA (arcsec)")
     plt.ylabel("dDEC (arcsec)")
     plt.colorbar(label='Source count')
 
     mediandRA = round(np.median(subcat[f'dRA_{res}']) * 3600, 4)
     mediandDEC = round(np.median(subcat[f'dDEC_{res}']) * 3600, 4)
-    plt.title(f"Mean dRA: {mediandRA} "
+    print(f"Mean dRA: {mediandRA} "
               f"Mean dDEC: {mediandDEC}")
 
     axs = np.arange(-16, 17)
     plt.plot(axs, [mediandDEC]*len(axs), color='black', linestyle='--')
     plt.plot([mediandRA]*len(axs), axs, color='black', linestyle='--')
-    plt.xlim(-6, 6)
-    plt.ylim(-6, 6)
-    plt.savefig('dRA_dDEC.png', dpi=150)
+    plt.xlim(-4, 4)
+    plt.ylim(-4, 4)
+    plt.savefig(f'{outputfolder}/dRA_dDEC_{res}.png', dpi=150)
     plt.close()
 
-
     ############# Flux ratio 6" ##############
-    subcat = cat[(cat['S_Code'] == 'S') & (cat['Total_flux'] * 1000 > 0.1)]
-    subcat = subcat[(subcat['dDEC_0.3']*3600 < 0.15) & (subcat['dRA_0.3']*3600 < 0.15)]
+    subcat = cat[(cat['S_Code'] == 'S')
+                 & (cat['S_Code_6'] == 'S')
+                 & (cat['Peak_flux'] * 1000 > 1)
+                 & (cat['Peak_flux_6'] * 1000 > 1)]
+    subcat = subcat[(subcat[f'dDEC_{res}']*3600 < res/2) & (subcat[f'dRA_{res}']*3600 < res/2)]
+    random_index = np.random.choice(len(subcat), size=50)
+    subcat = subcat[random_index]
+    print(f"Number of sources for flux ratio 6'': {len(subcat)}")
+
     R = subcat['Total_flux_6'] / subcat['Total_flux']
-    plt.scatter(subcat['Total_flux_6'], R, color='darkred')
+    R_err = R * np.sqrt((subcat['E_Total_flux_6'] / subcat['Total_flux_6']) ** 2
+                        + (subcat[f'E_Total_flux'] / subcat[f'Total_flux']) ** 2)
+    plt.errorbar(subcat['Total_flux_6'], R, xerr=subcat['E_Total_flux_6'], yerr=R_err, color='darkred',
+                 ecolor='darkred', markersize=1, fmt='o', capsize=2)
     plt.xscale('log')
-    plt.yscale('log')
     plt.xlabel("Total flux")
     plt.ylabel("Flux ratio")
-    plt.title(f'Median ratio: {round(np.median(R[np.isfinite(R)]), 2)}')
-    plt.savefig('lotssdeep_ratio.png', dpi=150)
+    plt.plot([subcat['Total_flux_6'].min(), subcat['Total_flux_6'].max()], [1, 1], color='black', linestyle='--')
+    plt.ylim(0.5, 1.5)
+    plt.savefig(f'{outputfolder}/lotssdeep_ratio_{res}.png', dpi=150)
+    print(f'Median ratio Total_flux_6/Total_flux: {round(np.median(R[np.isfinite(R)]), 2)}')
+    plt.close()
 
     ############# Peak flux over Total flux ##############
-    subcat = cat[(cat['S_Code'] == 'S') & (cat['Total_flux'] * 1000 > 1)]
+    subcat = cat[(cat['S_Code'] == 'S')
+                 & (cat['Total_flux'] * 1000 > 1) & (cat['Maj']*3600<res*5/3) & (cat['Min']*3600<res*5/3)]
+    print(f"Number of sources for peak flux over total flux: {len(subcat)}")
     R = subcat['Peak_flux'] / subcat['Total_flux']
-    plt.scatter(subcat['Total_flux'], R)
+    plt.scatter(subcat['Total_flux'], R, s=5)
     plt.xscale('log')
     plt.xlabel("Total flux")
     plt.ylabel("Peakflux/Totalflux")
-    plt.title(f'Median ratio: {round(np.median(R[np.isfinite(R)]), 2)}')
-    plt.savefig('peak_total.png', dpi=150)
+    plt.savefig(f'{outputfolder}/peak_total_{res}.png', dpi=150)
+    print(f'Peak_flux/Total_flux: {round(np.median(R[np.isfinite(R)]), 2)}')
+    plt.close()
 
+    subcat = cat[(cat['S_Code'] == 'S')
+                 & (cat['Peak_flux'] > cat['Isl_rms'] * 25) & (cat['Maj']*3600<5/3*res) & (cat['Min']*3600<5/3*res)]
+    R = subcat['Peak_flux'] / subcat['Total_flux']
+    subcat['dist'] = list(map(dist_pointing_center, subcat['RA', 'DEC']))
+    plt.figure(figsize=(5,4))
+
+    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R, s=20, alpha=0.75)
+    plt.xlabel("Right Ascension (degrees)")
+    plt.ylabel("Declination (degrees)")
+    plt.colorbar(label='Peak / integrated flux')
+    plt.savefig(f'{outputfolder}/peak_total_{res}_im.png', dpi=150)
+    plt.close()
+
+    subcat = cat[(cat['S_Code'] == 'S')
+                 & (cat['Peak_flux'] > cat['Isl_rms'] * 25) & (cat['Maj']*3600<5/3*res) & (cat['Min']*3600<5/3*res)]
+    R = subcat['Peak_flux'] / subcat['Total_flux']
+    subcat['dist'] = list(map(dist_pointing_center, subcat['RA', 'DEC']))
+    degree = 2
+    coeffs = np.polyfit(subcat['dist'], R, degree)
+    poly_func = np.poly1d(coeffs)
+    x_fit = np.linspace(subcat['dist'].min(), subcat['dist'].max(), 100)
+    y_fit = poly_func(x_fit)
+
+    centralhz = 140232849.121094
+    bandwidth = 12207*res/0.3
+    inttime = 1*res/0.3
+    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime, res, np.linspace(subcat['dist'].min(), subcat['dist'].max(), 100))
+
+    plt.figure(figsize=(5,4))
+    plt.plot(x_fit, totals, color='darkblue', label='Theoretical peak response', linestyle='-.')
+    plt.plot(x_fit, y_fit, color='black', label='Peak/integrated flux fit', linestyle='--')
+    plt.scatter(subcat['dist'], R, s=6, c=np.clip(subcat['Peak_flux']/subcat['Isl_rms'], a_min=5,  a_max=50), alpha=0.75)
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("Peak / integrated flux")
+    plt.colorbar(label='Peak/RMS')
+    plt.ylim(0.4, 1)
+    plt.xlim(0, 1.25)
+    plt.legend()
+    plt.savefig(f'{outputfolder}/peak_total_{res}_dist.png', dpi=150)
+    plt.close()
 
 def merge_with_table(catalog1, catalog2, sep=6, res=0.3):
     """Merge with other table"""
@@ -172,31 +271,25 @@ def merge_with_table(catalog1, catalog2, sep=6, res=0.3):
     idx_catalog2, separation, _ = match_coordinates_sky(coords1, coords2)
 
     match_idxs = np.where(separation < sep * u.arcsec)[0]
-    nonmatch_idxs = np.where(separation >= sep * u.arcsec)[0]
+
+    catalog2 = catalog2[idx_catalog2][match_idxs]
 
     for col in ['Total_flux', 'Peak_flux', 'E_Total_flux', 'E_Peak_flux', 'Maj', 'Min', 'PA', 'E_PA', 'S_Code']:
         if col != 'S_Code':
             catalog1[col + "_6"] = np.nan
         else:
             catalog1[col + "_6"] = ''
-        for idx in match_idxs:
-            catalog1[idx][col + "_6"] = catalog2[idx][col]
+        catalog1[col + "_6"][match_idxs] = catalog2[col]
 
     catalog1[f'dRA_{res}'] = np.nan
     catalog1[f'dDEC_{res}'] = np.nan
     catalog1[f'E_dRA_{res}'] = np.nan
     catalog1[f'E_dDEC_{res}'] = np.nan
 
-    catalog1[f'dRA_{res}'] = catalog1['RA'] % 360 - catalog2[idx_catalog2]['RA'] % 360
-    catalog1[f'dDEC_{res}'] = catalog1['DEC'] % 360 - catalog2[idx_catalog2]['DEC'] % 360
-    catalog1[f'E_dRA_{res}'] = np.sqrt(catalog1['E_RA'] ** 2 + catalog2[idx_catalog2]['E_RA'] ** 2)
-    catalog1[f'E_dDEC_{res}'] = np.sqrt(catalog1['E_DEC'] ** 2 + catalog2[idx_catalog2]['E_DEC'] ** 2)
-
-    for idx in nonmatch_idxs:
-        catalog1[idx][f'dRA_{res}'] = np.nan
-        catalog1[idx][f'dDEC_{res}'] = np.nan
-        catalog1[idx][f'E_dRA_{res}'] = np.nan
-        catalog1[idx][f'E_dDEC_{res}'] = np.nan
+    catalog1[f'dRA_{res}'][match_idxs] = catalog1[match_idxs] ['RA'] % 360 - catalog2['RA'] % 360
+    catalog1[f'dDEC_{res}'][match_idxs] = catalog1[match_idxs] ['DEC'] % 360 - catalog2['DEC'] % 360
+    catalog1[f'E_dRA_{res}'][match_idxs] = np.sqrt(catalog1[match_idxs] ['E_RA'] ** 2 + catalog2['E_RA'] ** 2)
+    catalog1[f'E_dDEC_{res}'][match_idxs] = np.sqrt(catalog1[match_idxs] ['E_DEC'] ** 2 + catalog2['E_DEC'] ** 2)
 
     print(f"Number of cross-matches between two catalogs {len(match_idxs)} ({int(len(match_idxs)/len(catalog1)*100)}% matched)")
 
@@ -259,11 +352,11 @@ def main():
         totalcat.write(args.out_table, format='fits', overwrite=True)
 
     print(len(totalcat))
-    make_plots(totalcat, res=args.resolution)
+    make_plots(totalcat, res=args.resolution, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
 
 
 if __name__ == '__main__':
     main()
 
-# python source_detection/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat03/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_03.fits
-# python source_detection/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat06/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_06.fits
+# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat03/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_03.fits
+# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat06/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_06.fits --resolution 0.6

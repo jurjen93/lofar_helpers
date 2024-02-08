@@ -10,7 +10,6 @@ class FindClosestDir:
     """
     Make template h5
     """
-
     def __init__(self, h5_in, template_name):
         os.system(' '.join(['cp', h5_in, template_name]))
         print(f'Created {template_name}')

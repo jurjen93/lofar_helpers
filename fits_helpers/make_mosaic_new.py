@@ -1,4 +1,6 @@
 """
+(Alternative to make_mosaic.py, meant for doing the mosaicing in parallel)
+
 This script is meant to mosaic together facets.
 The algorithm uses feathering for overlapping facets.
 
@@ -19,6 +21,7 @@ from __future__ import print_function
 import sys
 from argparse import ArgumentParser
 from reproj_test import reproject_interp_chunk_2d
+# from reproject import reproject_interp
 from auxcodes import flatten
 from shapely import geometry
 import numpy as np
@@ -44,34 +47,20 @@ def make_header(fitsfile, fullpixsize):
 
     :return: header
     """
-    hdu = fits.open(fitsfile)
+    hdu = update_header(fits.open(fitsfile))
     himsize = fullpixsize // 2
     header = fits.Header()
-    header['BITPIX'] = -32
+    for k in list(hdu[0].header.keys()):
+        if k=='HISTORY' or k=='COMMENT':
+            continue
+        header[k] = hdu[0].header[k]
     header['NAXIS'] = 2
-    header['WCSAXES'] = 2
     header['NAXIS1'] = 2 * himsize
     header['NAXIS2'] = 2 * himsize
-    header['CTYPE1'] = 'RA---SIN'
-    header['CTYPE2'] = 'DEC--SIN'
-    header['CUNIT1'] = 'deg'
-    header['CUNIT2'] = 'deg'
     header['CRPIX1'] = himsize
     header['CRPIX2'] = himsize
     header['CRVAL1'] = CRVAL1
     header['CRVAL2'] = CRVAL2
-    header['CDELT1'] = -hdu[0].header['CDELT2']
-    header['CDELT2'] = hdu[0].header['CDELT2']
-    header['LATPOLE'] = header['CRVAL2']
-    header['BMAJ'] = hdu[0].header['BMAJ']
-    header['BMIN'] = hdu[0].header['BMIN']
-    header['BPA'] = hdu[0].header['BPA']
-    header['TELESCOPE'] = 'LOFAR'
-    header['OBSERVER'] = 'LoTSS'
-    header['BUNIT'] = 'JY/BEAM'
-    header['BSCALE'] = 1.0
-    header['BZERO'] = 0
-    header['BTYPE'] = 'Intensity'
     header['OBJECT'] = OBJECT_NAME
     return header
 
@@ -106,16 +95,6 @@ def get_array_coordinates(pix_array, wcsheader):
     pixarray = np.argwhere(pix_array)
     return wcsheader.pixel_to_world(pixarray[:, 0], pixarray[:, 1], 0, 0)[0]
 
-
-# def get_distance_weights(center, coord_array):
-#     """
-#     Get weights based on center polygon to coordinates in array
-#
-#     :param center: center polygon
-#     :param coord_array: coordinates field
-#     :return: weights from center polygon
-#     """
-#     return 1 / center.separation(coord_array).value
 
 def get_distance_weights(center, arr, wcsheader):
     """
@@ -199,6 +178,23 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
         plt.show()
 
 
+def update_header(hdu):
+    """Important to prevent mismatches in wcs headers"""
+
+    for _ in range(100):
+        for n, h in enumerate(hdu):
+            max_d = len(h.data.shape)
+            for key in h.header.keys():
+                if key[-1].isdigit():
+                    if int(float(key[-1]))>2:
+                        h.header.remove(key)
+                        print(key)
+
+            hdu[n] = h
+
+    return hdu
+
+
 def parse_arg():
     """
     Command line argument parser
@@ -208,19 +204,23 @@ def parse_arg():
     parser.add_argument('--resolution', help='resolution in arcsecond', required=True, type=float)
     parser.add_argument('--fits', type=str, nargs='+', help='facets to merge')
     parser.add_argument('--regions', type=str, nargs='+', help='regions corresponding to facets')
+    parser.add_argument('--skip_reproject', action='store_true', help='Skip reproject')
     return parser.parse_args()
 
 
-def reproject(fitsfile, header, region):
+def reproject(fitsfile, header, region, skip):
     """
     Reproject fits file with new header and region file
     """
 
-    hdu = fits.open(fitsfile)
-    hduflatten = flatten(hdu)
-    imagedata, _ = reproject_interp_chunk_2d(hduflatten, header, hdu_in=0, parallel=False)
+    hdu = update_header(fits.open(fitsfile))
+    if not skip:
+        hduflatten = flatten(hdu)
+        imagedata, _ = reproject_interp_chunk_2d(hduflatten, header, parallel=True)
+        del hduflatten
+    else:
+        imagedata = hdu[0].data
     imagedata = imagedata.astype(np.float32)
-    del hduflatten
     polycenter = get_polygon_center(region)
     r = pyregion.open(region).as_imagecoord(header=header)
     mask = r.get_mask(hdu=hdu[0], shape=(header["NAXIS1"], header["NAXIS2"])).astype(np.int16)
@@ -230,12 +230,8 @@ def reproject(fitsfile, header, region):
     make_image(mask*imagedata, None, fitsfile.replace('.fits', 'full.png'), 'CMRmap', header)
     del imagedata
 
-    # coordinates = get_array_coordinates(imagedata, wcsheader)
-    # facetweight = get_distance_weights(polycenter, coordinates).reshape(imagedata.shape) * mask
-    # coordinates = get_array_coordinates(np.ones(mask.shape), wcsheader)
     facetweight = get_distance_weights(polycenter, mask, WCS(header, naxis=2)) * mask
     del mask
-    # facetweight = mask
     facetweight[~np.isfinite(facetweight)] = 0  # so we can add
     hdu = fits.PrimaryHDU(header=header, data=facetweight)
     hdu.writeto(fitsfile.replace('.fits', '.weights.fits'), overwrite=True)
@@ -260,13 +256,13 @@ def main():
     else:
         sys.exit('ERROR: only use resolution 0.3 or 1.2')
 
-    fullpixsize = int(2.5 * 3600 / pixelscale*1.1)
+    fullpixsize = int(2.5 * 3600 / pixelscale)
 
     header_new = make_header(facets[0], fullpixsize)
 
     for n, facet in enumerate(facets):
         print(facet)
-        reproject(facet,  header_new, regions[n])
+        reproject(facet,  header_new, regions[n], args.skip_reproject)
 
 
 

@@ -1,3 +1,9 @@
+"""
+This is an experimental script to use Random Forest classifiers to separate spurious detections from real detections.
+
+Use it for your own needs. Be aware of hardcoded paths.
+"""
+
 from astropy.table import Table
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.preprocessing import LabelEncoder
@@ -219,7 +225,7 @@ def main():
     gridsearch_test(df)
     model = gridsearch(df)
     importances, labels = sort_feature_importance(model.feature_importances_,
-                                                  [c for c in cols if c not in ['Source_id', 'label']])
+                                              [c for c in cols if c not in ['Source_id', 'label']])
     plot_feature_importance(importances, labels)
 
     for cat in glob("finalcat03/facet_*_source_catalog.fits"):

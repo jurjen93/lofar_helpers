@@ -57,6 +57,7 @@ class SelfcalQuality:
             sources.append(matches[0])
         self.sources = set(sources)
         assert len(self.sources) > 0, "No sources found"
+        self.main_source = list(self.sources)[0].split("_")[-1]
 
         # for phase/amp evolution
         self.station = station
@@ -327,7 +328,7 @@ class SelfcalQuality:
             total_amp_scores = np.append(total_amp_scores, [amp_scores], axis=0)
 
         # plot
-        plotname = f'selfcal_stability_{self.station}.png'
+        plotname = f'selfcal_stability_{self.station}_{self.main_source}.png'
 
         finalphase, finalamp = (np.mean(score, axis=0) for score in (total_phase_scores, total_amp_scores))
 
@@ -353,7 +354,8 @@ class SelfcalQuality:
                       and amp_decrease <= 0
                       and phase_quality <= 0.1
                       and amp_quality <= 0.1
-                      and bestcycle > 0)
+                      and bestcycle > 0
+                      and finalphase[bestcycle] < 0.2)
             return bestcycle, accept
         else:
             return None, False
@@ -471,17 +473,13 @@ class SelfcalQuality:
             rmss = [self.get_rms(fts) * 1000 for fts in self.fitsfiles]
             minmaxs = [self.get_minmax(fts) for fts in self.fitsfiles]
 
-        self.make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'image_stability.png')
+        self.make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'image_stability_{self.main_source}.png')
 
         self.writer.writerow(['min/max'] + minmaxs + [np.nan])
         self.writer.writerow(['rms'] + rmss + [np.nan])
 
         # scores
-        best_rms_cycle = self.select_cycle(rmss)
-        best_minmax_cycle = self.select_cycle(minmaxs)
-
-        # best cycle
-        bestcycle = (best_minmax_cycle + best_rms_cycle) // 2
+        bestcycle = self.select_cycle(np.array(rmss)/np.max(rmss) + np.array(minmaxs)/np.max(minmaxs))
 
         # getting slopes for selection
         if len(rmss) > 4:
@@ -493,12 +491,10 @@ class SelfcalQuality:
             rms_slope_start, minmax_slope_start = 1, 1
 
         rms_slope, minmax_slope = linregress(list(range(len(rmss))), rmss).slope, linregress(list(range(len(rmss))),
-                                                                                             np.array(
-                                                                                                 minmaxs)).slope
+                                                                                             np.array(minmaxs)).slope
 
         # acceptance criteria
-        accept = ((minmax_slope <= 0
-                  or rms_slope <= 0)
+        accept = ((minmax_slope <= 0 or rms_slope <= 0)
                   and minmax_slope_start <= 0
                   and rms_slope_start <= 0
                   and len(self.fitsfiles) >= 5
@@ -534,19 +530,27 @@ def main():
         bestcycle_solutions, accept_solutions = sq.solution_stability()
         bestcycle_image, accept_image = sq.image_stability(bilateral_filter=args.bilateral_filter)
 
-        print(f"Best cycle according to image {bestcycle_image}")
-        print(f"Accept according to image {accept_image}")
-        print(f"Best cycle according to solutions {bestcycle_solutions}")
-        print(f"Accept according to solutions {accept_solutions}")
+        print(f"Best cycle according to image: {bestcycle_image}")
+        print(f"Accept according to image: {accept_image}")
+        print(f"Best cycle according to solutions: {bestcycle_solutions}")
+        print(f"Accept according to solutions: {accept_solutions}")
 
         sq.textfile.close()
         df = pd.read_csv(f'selfcal_performance.csv').set_index('solutions').T
         # print(df)
         df.to_csv(f'selfcal_performance.csv', index=False)
 
+        ## OUTPUT ##
+        best_cycle = max(bestcycle_solutions, bestcycle_image)
+        accept = accept_image | accept_solutions
+
     else:
         sq.textfile.close()
         print(f"Need more than 1 h5 or fits file")
+
+        ## OUTPUT ##
+        best_cycle = None
+        accept = False
 
 
 if __name__ == '__main__':

@@ -1,6 +1,6 @@
 """
-Split a ds9 region file with multiple facets in it into separate facet region files, corresponding to an h5 solution file.
-This is useful if you want to make images of individual facets instead of full facet-imaging in wsclean.
+Split a ds9 region file with multiple facets in it into separate facet region files (these correspond to input h5 files).
+This is helpful if you want to make images of individual facets instead of full facet-imaging in wsclean.
 The script also return a polygon_info.csv containing the center of the polygon and the calibrator source direction with a polygon area
 and an estimate for how many times you can average based on the measurement sets from a 2.5x2.5 degree wide-field (for long-baselines)
 
@@ -115,7 +115,7 @@ def ds9_poly_info(point, poly_reg):
 def parse_args():
     """Argument parser"""
 
-    parser = ArgumentParser(description='Split facet file into smaller facets (Values standard in degrees)')
+    parser = ArgumentParser(description='Split facet file with multiple polygons into multiple files per facet (Values standard in degrees)')
     parser.add_argument('--reg', help='region file', type=str, required=True)
     parser.add_argument('--h5', help='h5 file to write directions from', type=str, required=True)
     parser.add_argument('--extra_boundary', help='make polygons with extra boundaries', type=float, default=0.)
