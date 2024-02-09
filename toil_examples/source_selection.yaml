@@ -1,0 +1,11 @@
+msin:
+   - class: "Directory"
+     path: "/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/ddcal/alldirs/L686962_P17565.ms"
+   - class: "Directory"
+     path: "/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/ddcal/alldirs/L686962_P16883.ms"
+selfcal:
+  class: "Directory"
+  path: "/project/lofarvwf/Software/lofar_facet_selfcal"
+h5merger:
+  class: "Directory"
+  path: "/project/lofarvwf/Software/lofar_helpers"

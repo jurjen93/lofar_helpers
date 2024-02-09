@@ -248,9 +248,9 @@ def main():
         hdu_weight = fits.open(facet.replace('reproject', 'weights'))
 
         imagedata = hdu[0].data.astype(np.float32)
-        imagedata[~np.isfinite(imagedata)] = 0.  # so we can add
+        imagedata[(~np.isfinite(imagedata)) | (imagedata != imagedata)] = 0.  # so we can add
         facetweight = hdu_weight[0].data.astype(np.float32)
-        facetweight[~np.isfinite(facetweight)] = 0.  # so we can add
+        facetweight[(~np.isfinite(facetweight)) | (facetweight != facetweight)] = 0.  # so we can add
         imagedata *= facetweight
         isum += imagedata
         del imagedata
