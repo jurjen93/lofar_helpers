@@ -537,7 +537,7 @@ def main(h5s, fits, station):
     return sq.main_source, accept, best_cycle, accept_solutions, bestcycle_solutions, accept_image, bestcycle_image
 
 
-def calc_all_scores(sources_root, subfolders=('autosettings',), stations='dutch'):
+def calc_all_scores(sources_root, subfolders=('optimizedsettings',), stations='international'):
 
     assert len(subfolders) == 1, "For now only 1 subfolder is supported"
 
