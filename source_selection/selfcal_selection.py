@@ -58,6 +58,8 @@ class SelfcalQuality:
         self.sources = set(sources)
         assert len(self.sources) > 0, "No sources found"
 
+        self.main_source = list(self.sources)[0].split("_")[-1]
+
         # for phase/amp evolution
         self.station = station
 
@@ -300,11 +302,14 @@ def solution_accept_reject(finalphase, finalamp):
         else:
             amp_decrease = 0
 
-        accept = (phase_decrease <= 0
-                  and amp_decrease <= 0
-                  and phase_quality <= 0.1
-                  and amp_quality <= 0.1
-                  and bestcycle > 0)
+        accept = (
+            phase_decrease <= 0
+            and amp_decrease <= 0
+            and phase_quality <= 0.1
+            and amp_quality <= 0.1
+            and bestcycle > 0
+            and finalphase[bestcycle] < 0.2
+        )
         return bestcycle, accept
     else:
         return None, False
@@ -499,12 +504,20 @@ def main():
 
     bestcycle_image, accept_image = sq.image_stability(rmss, minmaxs)
 
+    best_cycle = max(bestcycle_solutions, bestcycle_image)
+    accept = accept_image | accept_solutions
+
     logger.info(
+        f"{sq.main_source} | accept: {accept}, best cycle: {best_cycle}"
+    )
+    logger.debug(
+        f"{sq.main_source} | "
         f"Best cycle according to image: {bestcycle_image}, accept image: {accept_image}. "
-        f"Best cycle according to solutions: {bestcycle_solutions}, accept solution: {accept_solutions}."
+        f"Best cycle according to solutions: {bestcycle_solutions}, accept solution: {accept_solutions}. "
     )
 
-    with open(f'selfcal_performance.csv', 'w') as textfile:
+    fname = f'selfcal_performance_{sq.main_source}.csv'
+    with open(fname, 'w') as textfile:
         # output csv
         csv_writer = csv.writer(textfile)
         csv_writer.writerow(['solutions', 'dirty'] + [str(i) for i in range(len(sq.fitsfiles))])
@@ -516,11 +529,11 @@ def main():
         csv_writer.writerow(['min/max'] + minmaxs + [np.nan])
         csv_writer.writerow(['rms'] + rmss + [np.nan])
 
-    make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'solution_stability_{sq.station}.png')
-    make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'image_stability_{sq.station}.png')
+    make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'solution_stability_{sq.main_source}.png')
+    make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'image_stability_{sq.main_source}.png')
 
-    df = pd.read_csv(f'selfcal_performance.csv').set_index('solutions').T
-    df.to_csv(f'selfcal_performance.csv', index=False)
+    df = pd.read_csv(fname).set_index('solutions').T
+    df.to_csv(fname, index=False)
 
 
 def calc_all_scores(sources_root, subfolders=('autosettings',), stations='dutch'):
