@@ -1,4 +1,4 @@
-"""With this script you can cut a region from a fits file"""
+"""With this script you can make a cutout with a ds9 region file"""
 
 import pyregion
 from astropy.io import fits

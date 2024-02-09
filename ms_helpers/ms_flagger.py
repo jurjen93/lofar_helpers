@@ -14,6 +14,7 @@ def parse_args():
     parser.add_argument('--ant', help='Antenna (example: RS409HBA)', required=True)
     return parser.parse_args()
 
+
 def main():
     """
     Main function

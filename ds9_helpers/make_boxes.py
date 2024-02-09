@@ -1,4 +1,8 @@
 """
+This script has been used for a study of two pre-merging clusters:
+https://www.aanda.org/articles/aa/full_html/2022/12/aa44346-22/aa44346-22.html
+-----------------------------------------------------------------------
+
 Use this script to return region files of directions that need a selfcal.
 
 Use make_boxes.py as a standalone script by running on the command line:
@@ -6,7 +10,7 @@ python make_boxes.py <FLAGS>
 You can use the following flags:
 
     -f --> followed by the fits file name (and path)
-    -l --> followed by the location (path) to store the data
+    -l --> followed by the location (path) to store the output
     --no_images --> don't save the images locally
     --ds9 --> interactive mode to validate the box selection in ds9
     -mb --> max number of boxes
@@ -32,6 +36,8 @@ from pandas import DataFrame, concat
 import csv
 import sys
 import matplotlib.pyplot as plt
+from matplotlib.colors import SymLogNorm, PowerNorm
+
 
 __all__ = ['']
 
@@ -73,16 +79,13 @@ class Imaging:
 
         if image_data is None:
             image_data = self.image_data
-        try:
-            plt.figure(figsize=(10, 10))
-            plt.subplot(projection=self.wcs)
-            plt.imshow(image_data, norm=SymLogNorm(linthresh=self.vmin/20, vmin=self.vmin/50, vmax=self.vmax), origin='lower', cmap=cmap)
-            plt.xlabel('Galactic Longitude')
-            plt.ylabel('Galactic Latitude')
-            plt.show()
-        except:
-            print('Error making images with matplotlib. Images will not be made.')
-            args.no_images = True
+        plt.figure(figsize=(10, 10))
+        plt.subplot(projection=self.wcs)
+        plt.imshow(image_data, norm=SymLogNorm(linthresh=self.vmin/20, vmin=self.vmin/50, vmax=self.vmax), origin='lower', cmap=cmap)
+        plt.xlabel('Galactic Longitude')
+        plt.ylabel('Galactic Latitude')
+        plt.show()
+
 
         return self
 
@@ -103,7 +106,7 @@ class Imaging:
         return out.data, out.wcs
 
 class SetBoxes(Imaging):
-    def __init__(self, fits_file: str = None, initial_box_size: float = 0.4, peak_flux=0.07):
+    def __init__(self, fits_file: str = None, initial_box_size: float = 0.4, peak_flux=0.07, angular_cutoff=None):
         """
         :param fits_file: fits file to find boxes
         :param initial_box_size: initial box size to start with (making this lower, makes it more likely you get a smaller box)
@@ -145,14 +148,14 @@ class SetBoxes(Imaging):
         self.df_peaks = concat([df_peaks, resampled_df_peaks], axis=0).\
             drop_duplicates(subset=['pix_y', 'pix_x'])
 
-        if args.angular_cutoff:
+        if angular_cutoff is not None:
             self.df_peaks['distance_from_center_deg'] = self.df_peaks.apply(lambda x: self.angular_distance((self.header['CRPIX1'], self.header['CRPIX2']),
                                (x['pix_x'], x['pix_y'])).value, axis=1)
-            excluded_sources = self.df_peaks[self.df_peaks.distance_from_center_deg > args.angular_cutoff]
+            excluded_sources = self.df_peaks[self.df_peaks.distance_from_center_deg > angular_cutoff]
             excluded_sources['angular_position'] = excluded_sources.apply(
                 lambda x: ';'.join([str(self.degree_to_radian(i)) for i in self.wcs.pixel_to_world(x['pix_x'], x['pix_y']).to_string().split()]), axis=1)
             excluded_sources.to_csv('excluded_sources.csv', index=False)
-            self.df_peaks = self.df_peaks[self.df_peaks.distance_from_center_deg<=args.angular_cutoff]
+            self.df_peaks = self.df_peaks[self.df_peaks.distance_from_center_deg<=angular_cutoff]
 
         self.df_peaks = self.df_peaks.reset_index(drop=True)
 
@@ -368,7 +371,7 @@ class SetBoxes(Imaging):
 
         return self
 
-    def source_to_csv(self, sources):
+    def source_to_csv(self, sources, folder):
         """Write source to a csv file"""
         with open(f'{folder}/source_file.csv', 'a+') as source_file:
             source_file.write(f'{self.image_number},{self.pix_x},{self.pix_y},{self.flux},{str(self.after.shape).replace(",", ";")},{str(sources).replace(",", ";")}\n')
@@ -444,9 +447,9 @@ def parse_args():
 
     parser = ArgumentParser()
     parser.add_argument('-f', '--file', type=str, help='fits file name')
-    parser.add_argument('-l', '--location', type=str, help='data location folder name', default='.')
+    parser.add_argument('-l', '--location', type=str, help='output path', default='.')
     parser.add_argument('--no_images', action='store_true', help='store images')
-    parser.add_argument('--make_DL_food', action='store_true', help='store images for creating the DL model')
+    parser.add_argument('--make_DL_food', action='store_true', help='store images for creating deep learning model')
     parser.add_argument('--ds9', action='store_true',
                         help='open ds9 to interactively check and change the box selection')
     parser.add_argument('-ac', '--angular_cutoff', type=float, default=None,
@@ -478,19 +481,6 @@ def main():
             with open("{LOCATION}/DL_data/label_data.csv".format(LOCATION=folder), 'w') as file:
                 writer = csv.writer(file)
                 writer.writerow(["Name", "Recalibrate"])
-        # try: # Install tkinter/tk for using interactive window mode
-        #     import importlib
-        #     importlib_found = importlib.util.find_spec("tk") is not None
-        #     if not importlib_found:
-        #         os.system('pip install --user tk')
-        #     try:
-        #         import tk
-        #         use_tk = True
-        #     except ModuleNotFoundError:
-        #         use_tk = False
-        # except:
-        #     print('ERROR: tk cannot be installed')
-        #     use_tk = False
 
     # check if folder exists and create if not
     folders = folder.split('/')
@@ -511,7 +501,7 @@ def main():
             print('Failed to import matplotlib. Check your version.\nNo images will be made.')
             args.no_images = True
 
-    image = SetBoxes(fits_file=args.file)
+    image = SetBoxes(fits_file=args.file, angular_cutoff=args.angular_cutoff)
 
     if not args.no_images:
         os.system(f'rm -rf {folder}/box_images; mkdir {folder}/box_images')  # make folder with box images
@@ -565,27 +555,8 @@ def main():
         # we now check if there are in our box sources from our list of peak sources, which we can skip later on
         other_sources, _ = image.other_sources_in_image
 
-        # check if boxes contain multiple times the same source. If so, we replace this box with a better new one.
-        #TODO: Fix double source issues
-
-        # found=False
-        # for source in other_sources:
-        #     if source in sources_done:
-        #         sources = read_csv('source_file.csv')['sources']
-        #         for M, source_list in enumerate(sources):
-        #             if len(source_list.replace('[','').replace(']',''))>0:
-        #                 source_list = [int(s) for s in source_list.replace('[','').replace(']','').replace(' ','').split(';')]
-        #                 if bool(set(other_sources) & set(source_list)):
-        #                     if not args.no_images:
-        #                         os.system(f'rm {folder}/box_images/box_{M+1}.png')
-        #                     os.system(f'rm {folder}/boxes/box_{M+1}.reg')
-        #                     replace, found = True, True
-        #                     break
-        #     if found:
-        #         break
-
         sources_done += other_sources
-        image.source_to_csv(other_sources)
+        image.source_to_csv(other_sources, args.location)
 
         # make image with before and after repositioning of our box
         if not replace:
@@ -603,18 +574,11 @@ def main():
                 plt.imshow(image.after, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/20, vmax=image.vmax), origin='lower',
                               cmap='CMRmap')
                 plt.subplots_adjust(left=0.2, bottom=0.3, right=0.7, top=0.5, wspace=0.1, hspace=0.1)
-                # if replace:
-                #     fig.savefig(f'{folder}/box_images/box_{M+1}.png')
-                # else:
                 fig.savefig(f'{folder}/box_images/box_{m}.png')
             except:
                 print('Error making images with matplotlib. Images will not be made.')
                 args.no_images = True
 
-        # if replace:
-        #     print(f'Replace box {M+1}.')
-        #     image.save_box(box_name=f'{folder}/boxes/box_{M+1}.reg')
-        # else:
         print(f'Create box {m}.')
         image.save_box(box_name=f'{folder}/boxes/box_{m}.reg')
 
@@ -631,7 +595,8 @@ def main():
 
 
     if args.ds9:
-        from ds9_helpers.move_regions import move_regions
+        # note hardcoded path..
+        from .move_regions import move_regions
         move_regions(args.file, folder)
 
 if __name__ == '__main__':

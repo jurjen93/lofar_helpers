@@ -1,8 +1,10 @@
 """
 This script runs pybdsf on a fits file image to extract sources and components.
-From the source table, it makes cut out images of all resolved sources (fits and png images).
+From the source table, it makes cut out images of all sources (fits and png images) for inspection.
 
-TODO: Make contours and see which sources are contained in same contour
+This has been used for catalogue reduction of the ELAIS-N1 field.
+Feel free to adapt to your own needs. (Watch out for hardcoded parameters or paths)
+
 """
 
 import bdsf
@@ -154,10 +156,6 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
                 plt.gcf().gca().add_patch(patch)
             for artist in artist_list:
                 plt.gca().add_artist(artist)
-
-
-        # p0 = axes[0].get_position().get_points().flatten()
-        # p2 = axes[2].get_position().get_points().flatten()
 
         orientation = 'horizontal'
         ax_cbar1 = fig.add_axes([0.22, 0.15, 0.73, 0.02])
@@ -311,7 +309,6 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
             im = ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
             ax.set_xlabel('Right Ascension (J2000)', size=12)
             ax.set_ylabel('Declination (J2000)', size=12)
-            # axs[m, n % 2].set_tick_params(axis='both', which='major', labelsize=12)
             if n!=0:
                 ax.set_title(fitsfile.split('/')[-2].replace('_', ' '))
 
@@ -323,8 +320,6 @@ def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
         plt.grid(False)
         plt.grid('off')
         plt.savefig(fitsfiles[0].replace('.fits', '.png'), dpi=250, bbox_inches='tight')
-
-
 
 
 def run_pybdsf(fitsfile, rmsbox):
@@ -432,7 +427,7 @@ def parse_args():
     parser.add_argument('--rmsbox', type=int, help='rms box pybdsf', default=120)
     parser.add_argument('--no_pybdsf', action='store_true', help='Skip pybdsf')
     parser.add_argument('--comparison_plots', nargs='+', help='Add fits files to compare with, '
-                                                              'with same field coverage')
+                                                              'with same field coverage', default=[])
     parser.add_argument('fits', nargs='+', help='fits files')
     return parser.parse_args()
 
@@ -447,9 +442,6 @@ def main():
         if not args.no_pybdsf:
             tbl = run_pybdsf(fts, args.rmsbox)
         else:
-            # if len(glob(fts.replace('.fits', '') + '_source_catalog_final.fits'))>0:
-            #     tbl = fts.replace('.fits', '') + '_source_catalog_final.fits'
-            # else:
             tbl = fts.replace('.fits', '') + '_source_catalog.fits'
 
         # make ds9 region file with sources in it
@@ -465,8 +457,6 @@ def main():
         f = fits.open(fts)
         pixscale = np.sqrt(abs(f[0].header['CDELT2']*f[0].header['CDELT1']))
         beamarea = get_beamarea(f)
-        # imdat = f[0].data
-        # im_rms = get_rms(imdat)
         f.close()
 
         clusters_small = get_clusters_ra_dec(T, pixscale*100)

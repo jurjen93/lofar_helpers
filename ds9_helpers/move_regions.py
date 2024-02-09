@@ -1,5 +1,5 @@
 """
-Move ds9 region files from existing ds9.
+Move ds9 regions.
 Save them under a new name in $PWD/boxes such that this script will recognize you made changes.
 When closing, the new region files will be generated.
 
