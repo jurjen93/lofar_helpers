@@ -312,7 +312,7 @@ def solution_accept_reject(finalphase, finalamp):
         )
         return bestcycle, accept
     else:
-        return None, False
+        return -1, False
 
 
 def linreg_slope(values=None):
@@ -486,13 +486,12 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def main(h5s, fits, station):
     """
     Main function
     """
-    args = parse_args()
+    sq = SelfcalQuality(h5s, fits, station)
 
-    sq = SelfcalQuality(args.h5, args.fits, args.station)
 
     assert len(sq.h5s) > 1 and len(sq.fitsfiles) > 1, "Need more than 1 h5 or fits file"
 
@@ -516,7 +515,7 @@ def main():
         f"Best cycle according to solutions: {bestcycle_solutions}, accept solution: {accept_solutions}. "
     )
 
-    fname = f'selfcal_performance_{sq.main_source}.csv'
+    fname = f'./out/selfcal_performance_{sq.main_source}.csv'
     with open(fname, 'w') as textfile:
         # output csv
         csv_writer = csv.writer(textfile)
@@ -529,14 +528,19 @@ def main():
         csv_writer.writerow(['min/max'] + minmaxs + [np.nan])
         csv_writer.writerow(['rms'] + rmss + [np.nan])
 
-    make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'solution_stability_{sq.main_source}.png')
-    make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'image_stability_{sq.main_source}.png')
+    make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'./out/solution_stability_{sq.main_source}.png')
+    make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'./out/image_stability_{sq.main_source}.png')
 
     df = pd.read_csv(fname).set_index('solutions').T
     df.to_csv(fname, index=False)
 
+    return sq.main_source, accept, best_cycle, accept_solutions, bestcycle_solutions, accept_image, bestcycle_image
+
 
 def calc_all_scores(sources_root, subfolders=('autosettings',), stations='dutch'):
+
+    assert len(subfolders) == 1, "For now only 1 subfolder is supported"
+
     def get_solutions(item):
         item = Path(item)
         if not (item.is_dir() and any(file.suffix == '.h5' for file in item.iterdir())):
@@ -544,31 +548,32 @@ def calc_all_scores(sources_root, subfolders=('autosettings',), stations='dutch'
         star_folder, star_name = item, item.name
 
         try:
-            sq = SelfcalQuality(
-                list(map(str, star_folder.glob('*.h5'))),
-                list(map(str, star_folder.glob('*.fits'))),
-                stations
-            )
-            finalphase, finalamp = sq.solution_stability()
-            bestcycle_solutions, accept_solutions = solution_accept_reject(finalphase, finalamp)
+            return main(list(map(str, star_folder.glob('*.h5'))), list(map(str, star_folder.glob('*.fits'))), stations)
         except Exception as e:
             logger.warning(f"skipping {star_folder} due to {e}")
-            return star_name, None, None
-
-        logger.debug(f"Best cycle according to solutions {bestcycle_solutions}")
-        logger.debug(f"Accept according to solutions {accept_solutions}")
-
-        return star_name, accept_solutions, bestcycle_solutions
+            return star_name, None, None, None, None, None, None
 
     all_files = [str(item.absolute()) for subfolder in subfolders for item in Path(sources_root, subfolder).iterdir()]
 
     results = Parallel(n_jobs=len(sched_getaffinity(0)))(delayed(get_solutions)(f) for f in all_files)
 
-    logger.info(results)
+    results = filter(None, results)
 
-    return results
+    fname = f'./out/selfcal_performance_{subfolders[0]}.csv'
+    with open(fname, 'w') as textfile:
+        csv_writer = csv.writer(textfile)
+        csv_writer.writerow(
+            ['source', 'accept', 'bestcycle', 'accept_solutions', 'bestcycle_solutions', 'accept_images', 'bestcycle_images']
+        )
+
+        for res in results:
+             # output csv
+            csv_writer.writerow(res)
+
 
 
 if __name__ == '__main__':
-    # calc_all_scores('/scratch-node/robertsc.5169940/')
-    main()
+    calc_all_scores('/scratch-node/robertsc.5169940/')
+
+    # args = parse_args()
+    # main(args.h5, args.fits, args.station)
