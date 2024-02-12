@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import SymLogNorm
 from cv2 import resize, INTER_AREA
-
+from PIL import Image
 
 def get_rms(inp, maskSup = 1e-7):
     """
@@ -44,9 +44,9 @@ def make_image(imdat, plotname):
     """
     Make an image of data
     """
-    plt.imshow(imdat, cmap='RdBu_r')
-    plt.colorbar()
-    plt.clim(0, 1)
+    plt.imshow(imdat)
+    # plt.colorbar()
+    # plt.clim(0, 1)
     plt.savefig(plotname)
     plt.close()
 
@@ -99,10 +99,23 @@ class FitsDataset(Dataset):
             image_data = image_data[0]
         rms = get_rms(image_data)
         norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms*50000, base=10)
+
+        # crop data (half data size)
         image_data = crop(image_data)
+
+        # re-normalize data (such that values are between 0 and 1)
         image_data = norm(image_data)
         image_data = np.clip(image_data - image_data.min(), a_min=0, a_max=1)
-        image_data = resize(image_data, (256, 256), interpolation=INTER_AREA)
+
+        # make RGB image
+        cmap = plt.get_cmap('RdBu_r')
+        image_data = cmap(image_data)
+        image_data = np.delete(image_data, 3, 2)
+        image_data = (255 * image_data).astype(np.uint8)
+        image_data = Image.fromarray(image_data)
+        image_data = image_data.resize((256, 256))
+        image_data = np.array(image_data)
+
         return image_data
 
     def __len__(self):
