@@ -4,7 +4,6 @@ from astropy.io import fits
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import SymLogNorm
-from cv2 import resize, INTER_AREA
 from PIL import Image
 
 def get_rms(inp, maskSup = 1e-7):
