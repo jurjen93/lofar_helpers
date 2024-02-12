@@ -172,6 +172,10 @@ def make_plots(cat, res=0.3, outputfolder=None):
     plt.ylabel("dDEC (arcsec)")
     plt.colorbar(label='Source count')
 
+    medianedRA = round(np.mean(subcat[f'E_dRA_{res}']) * 3600, 4)
+    medianedDEC = round(np.mean(subcat[f'E_dDEC_{res}']) * 3600, 4)
+    print(f"Mean E_dRA: {medianedRA} "
+              f"Mean E_dDEC: {medianedDEC}")
     mediandRA = round(np.median(subcat[f'dRA_{res}']) * 3600, 4)
     mediandDEC = round(np.median(subcat[f'dDEC_{res}']) * 3600, 4)
     print(f"Mean dRA: {mediandRA} "
@@ -188,11 +192,11 @@ def make_plots(cat, res=0.3, outputfolder=None):
     ############# Flux ratio 6" ##############
     subcat = cat[(cat['S_Code'] == 'S')
                  & (cat['S_Code_6'] == 'S')
-                 & (cat['Peak_flux'] * 1000 > 1)
-                 & (cat['Peak_flux_6'] * 1000 > 1)]
+                 & (cat['Peak_flux'] * 1000 > 0.5)
+                 & (cat['Peak_flux_6'] * 1000 > 0.5)]
     subcat = subcat[(subcat[f'dDEC_{res}']*3600 < res/2) & (subcat[f'dRA_{res}']*3600 < res/2)]
-    random_index = np.random.choice(len(subcat), size=50)
-    subcat = subcat[random_index]
+    # random_index = np.random.choice(len(subcat), size=50)
+    # subcat = subcat[random_index]
     print(f"Number of sources for flux ratio 6'': {len(subcat)}")
 
     R = subcat['Total_flux_6'] / subcat['Total_flux']
@@ -206,12 +210,14 @@ def make_plots(cat, res=0.3, outputfolder=None):
     plt.plot([subcat['Total_flux_6'].min(), subcat['Total_flux_6'].max()], [1, 1], color='black', linestyle='--')
     plt.ylim(0.5, 1.5)
     plt.savefig(f'{outputfolder}/lotssdeep_ratio_{res}.png', dpi=150)
+    print(f'Median error on the ratio Total_flux_6/Total_flux: {round(np.mean(R_err), 2)}')
     print(f'Median ratio Total_flux_6/Total_flux: {round(np.median(R[np.isfinite(R)]), 2)}')
+    print(f'Percentage of sources with ratio above 1 {round(len(R[R>1])/len(R), 3)} and below 1 {round(len(R[R<1])/len(R), 3)}')
     plt.close()
 
     ############# Peak flux over Total flux ##############
     subcat = cat[(cat['S_Code'] == 'S')
-                 & (cat['Total_flux'] * 1000 > 1) & (cat['Maj']*3600<res*5/3) & (cat['Min']*3600<res*5/3)]
+                 & (cat['Peak_flux'] > cat['Isl_rms'] * 30)]
     print(f"Number of sources for peak flux over total flux: {len(subcat)}")
     R = subcat['Peak_flux'] / subcat['Total_flux']
     plt.scatter(subcat['Total_flux'], R, s=5)
@@ -222,8 +228,8 @@ def make_plots(cat, res=0.3, outputfolder=None):
     print(f'Peak_flux/Total_flux: {round(np.median(R[np.isfinite(R)]), 2)}')
     plt.close()
 
-    subcat = cat[(cat['S_Code'] == 'S')
-                 & (cat['Peak_flux'] > cat['Isl_rms'] * 25) & (cat['Maj']*3600<5/3*res) & (cat['Min']*3600<5/3*res)]
+    # subcat = cat[(cat['S_Code'] == 'S')
+    #              & (cat['Peak_flux'] > cat['Isl_rms'] * 30)]
     R = subcat['Peak_flux'] / subcat['Total_flux']
     subcat['dist'] = list(map(dist_pointing_center, subcat['RA', 'DEC']))
     plt.figure(figsize=(5,4))
@@ -235,8 +241,8 @@ def make_plots(cat, res=0.3, outputfolder=None):
     plt.savefig(f'{outputfolder}/peak_total_{res}_im.png', dpi=150)
     plt.close()
 
-    subcat = cat[(cat['S_Code'] == 'S')
-                 & (cat['Peak_flux'] > cat['Isl_rms'] * 25) & (cat['Maj']*3600<5/3*res) & (cat['Min']*3600<5/3*res)]
+    # subcat = cat[(cat['S_Code'] == 'S')
+    #              & (cat['Peak_flux'] > cat['Isl_rms'] * 30)]
     R = subcat['Peak_flux'] / subcat['Total_flux']
     subcat['dist'] = list(map(dist_pointing_center, subcat['RA', 'DEC']))
     degree = 2
@@ -253,12 +259,12 @@ def make_plots(cat, res=0.3, outputfolder=None):
     plt.figure(figsize=(5,4))
     plt.plot(x_fit, totals, color='darkblue', label='Theoretical peak response', linestyle='-.')
     plt.plot(x_fit, y_fit, color='black', label='Peak/integrated flux fit', linestyle='--')
-    plt.scatter(subcat['dist'], R, s=6, c=np.clip(subcat['Peak_flux']/subcat['Isl_rms'], a_min=5,  a_max=50), alpha=0.75)
+    plt.scatter(subcat['dist'], R, s=6, c=np.clip(subcat['Peak_flux']/subcat['Isl_rms'], a_min=5,  a_max=80), alpha=0.75)
     plt.xlabel("Distance from pointing center (degrees)")
     plt.ylabel("Peak / integrated flux")
     plt.colorbar(label='Peak/RMS')
     plt.ylim(0.4, 1)
-    plt.xlim(0, 1.25)
+    plt.xlim(0, x_fit.max())
     plt.legend()
     plt.savefig(f'{outputfolder}/peak_total_{res}_dist.png', dpi=150)
     plt.close()
@@ -358,5 +364,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat03/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_03.fits
-# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat06/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_06.fits --resolution 0.6
+# python catalogue_helpers/crossmatch_multiple_tables.py --cat1 final_merged_03.fits --cat2 final_merged_06.fits --cat3 final_merged_12.fits

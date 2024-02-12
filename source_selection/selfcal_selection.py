@@ -3,8 +3,12 @@ This script can be used to select the best self-calibration cycle from facetself
 https://github.com/rvweeren/lofar_facet_selfcal/blob/main/facetselfcal.py
 It will return a few plots and a csv with the statistics for each self-calibration cycle.
 
-You can run this script in the folder with your facetselfcal output as
+You can run this script in the folder with your facetselfcal output on 1 source as
 python selfcal_quality.py --fits *.fits --h5 merged*.h5
+
+Alternatively (for testing), you can also run the script on multiple sources at the same time with
+python selfcal_quality.py --parallel --root_folder_parallel <my_path>
+where '<my_path>' is the path directed to where all calibrator source folders are located
 """
 
 __author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl), Robert Jan Schlimbach (robert-jan.schlimbach@surf.nl)"
@@ -14,7 +18,8 @@ import functools
 import re
 import csv
 from pathlib import Path
-from os import sched_getaffinity
+from os import sched_getaffinity, system
+import sys
 
 from joblib import Parallel, delayed
 import tables
@@ -479,10 +484,13 @@ def parse_args():
     """
 
     parser = ArgumentParser(description='Determine selfcal quality')
-    parser.add_argument('--fits', nargs='+', help='selfcal fits images', required=True)
-    parser.add_argument('--h5', nargs='+', help='h5 solutions', required=True)
+    parser.add_argument('--fits', nargs='+', help='selfcal fits images')
+    parser.add_argument('--h5', nargs='+', help='h5 solutions')
     parser.add_argument('--station', type=str, help='', default='international',
                         choices=['dutch', 'remote', 'international', 'debug'])
+    parser.add_argument('--parallel', action='store_true', help='run parallel over multiple sources (for testing)')
+    parser.add_argument('--root_folder_parallel', type=str, help='root folder (if parallel is on), '
+                                                                 'which is the path to where all calibrator source folders are located')
     return parser.parse_args()
 
 
@@ -537,9 +545,7 @@ def main(h5s, fits, station):
     return sq.main_source, accept, best_cycle, accept_solutions, bestcycle_solutions, accept_image, bestcycle_image
 
 
-def calc_all_scores(sources_root, subfolders=('optimizedsettings',), stations='international'):
-
-    assert len(subfolders) == 1, "For now only 1 subfolder is supported"
+def calc_all_scores(sources_root, stations='international'):
 
     def get_solutions(item):
         item = Path(item)
@@ -548,18 +554,18 @@ def calc_all_scores(sources_root, subfolders=('optimizedsettings',), stations='i
         star_folder, star_name = item, item.name
 
         try:
-            return main(list(map(str, star_folder.glob('*.h5'))), list(map(str, star_folder.glob('*.fits'))), stations)
+            return main(list(map(str, star_folder.glob('merged*.h5'))), list(map(str, star_folder.glob('*MFS-*image.fits'))), stations)
         except Exception as e:
             logger.warning(f"skipping {star_folder} due to {e}")
             return star_name, None, None, None, None, None, None
 
-    all_files = [str(item.absolute()) for subfolder in subfolders for item in Path(sources_root, subfolder).iterdir()]
+    all_files = [p for p in Path(sources_root).iterdir() if p.is_dir()]
 
     results = Parallel(n_jobs=len(sched_getaffinity(0)))(delayed(get_solutions)(f) for f in all_files)
 
     results = filter(None, results)
 
-    fname = f'./out/selfcal_performance_{subfolders[0]}.csv'
+    fname = f'./out/selfcal_performance.csv'
     with open(fname, 'w') as textfile:
         csv_writer = csv.writer(textfile)
         csv_writer.writerow(
@@ -571,9 +577,18 @@ def calc_all_scores(sources_root, subfolders=('optimizedsettings',), stations='i
             csv_writer.writerow(res)
 
 
-
 if __name__ == '__main__':
-    calc_all_scores('/scratch-node/robertsc.5169940/')
+    args = parse_args()
 
-    # args = parse_args()
-    # main(args.h5, args.fits, args.station)
+    output_folder='./out'
+    system(f'mkdir {output_folder}')
+
+    if args.parallel:
+        print(f"Running parallel in {args.root_folder_parallel}")
+        if args.root_folder_parallel is not None:
+            calc_all_scores(args.root_folder_parallel)
+        else:
+            sys.exit("ERROR: if parallel, you need to specify --root_folder_parallel")
+    else:
+        args = parse_args()
+        main(args.h5, args.fits, args.station)
