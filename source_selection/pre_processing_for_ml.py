@@ -97,13 +97,13 @@ class FitsDataset(Dataset):
         """
         while image_data.ndim > 2:
             image_data = image_data[0]
-        rms = get_rms(image_data)
-        norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms*50000, base=10)
 
         # crop data (half data size)
         image_data = crop(image_data)
 
         # re-normalize data (such that values are between 0 and 1)
+        rms = get_rms(image_data)
+        norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms*50000, base=10)
         image_data = norm(image_data)
         image_data = np.clip(image_data - image_data.min(), a_min=0, a_max=1)
 
