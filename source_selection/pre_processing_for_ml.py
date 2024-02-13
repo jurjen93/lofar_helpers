@@ -1,3 +1,6 @@
+import random
+
+import torch
 from torch.utils.data import Dataset
 import os
 from astropy.io import fits
@@ -5,22 +8,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import SymLogNorm
 from PIL import Image
+import torchvision.transforms as T
 
-def get_rms(inp, maskSup = 1e-7):
+def get_rms(data: np.ndarray, maskSup = 1e-7):
     """
     find the rms of an array, from Cycil Tasse/kMS
 
-    :param inp: fits file name or numpy array
+    :param data: numpy array
     :param maskSup: mask threshold
 
     :return: rms --> rms of image
     """
-
-    if isinstance(inp, str):
-        with fits.open(inp) as hdul:
-            data = hdul[0].data
-    else:
-        data = inp
 
     mIn = np.ndarray.flatten(data)
     m = mIn[np.abs(mIn) > maskSup]
@@ -83,6 +81,9 @@ class FitsDataset(Dataset):
         # Load dataset
         for cls in self.classes:
             cls_path = os.path.join(self.root_dir, cls)
+            if not os.path.isdir(cls_path):
+                continue
+
             for file in os.listdir(cls_path):
                 if file.endswith('.fits'):
                     self.data.append(os.path.join(cls_path, file))
@@ -110,10 +111,15 @@ class FitsDataset(Dataset):
         cmap = plt.get_cmap('RdBu_r')
         image_data = cmap(image_data)
         image_data = np.delete(image_data, 3, 2)
-        image_data = (255 * image_data).astype(np.uint8)
-        image_data = Image.fromarray(image_data)
-        image_data = image_data.resize((256, 256))
-        image_data = np.array(image_data)
+
+        image_data = -image_data + 1  # make the peak exist at zero
+
+        if random.randint(0, 1):
+            image_data = -image_data
+
+        image_data = torch.from_numpy(image_data)
+        image_data = torch.movedim(image_data, -1, 0)
+        image_data = T.Resize((256, 256))(image_data)
 
         return image_data
 
@@ -124,12 +130,12 @@ class FitsDataset(Dataset):
         fits_path = self.data[idx]
         with fits.open(fits_path) as hdul:
             image_data = hdul[0].data
-            image_data = np.array(image_data, dtype=np.float32)
 
-            # Pre-processing
-            image_data = self.transform_data(image_data).data
+        # Pre-processing
+        image_data = self.transform_data(image_data.astype(np.float64))
 
         label = self.labels[idx]
+
         return image_data, label
 
 
