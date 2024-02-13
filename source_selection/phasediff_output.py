@@ -147,7 +147,6 @@ class GetSolint:
         H = tables.open_file(self.h5)
 
         stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
-        print(stations)
 
         if station is None or station == '':
             stations_idx = [stations.index(stion) for stion in stations if

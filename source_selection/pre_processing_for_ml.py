@@ -87,7 +87,7 @@ class FitsDataset(Dataset):
             for file in os.listdir(cls_path):
                 if file.endswith('.fits'):
                     self.data.append(os.path.join(cls_path, file))
-                    label = 'good' in cls
+                    label = 'stop' in cls
                     self.labels.append(int(label))
 
     @staticmethod
