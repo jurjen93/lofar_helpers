@@ -154,7 +154,8 @@ class GetSolint:
                             ('RS' not in stion) &
                             ('ST' not in stion) &
                             ('CS' not in stion) &
-                            ('DE' not in stion)]
+                            ('DE' not in stion) &
+                            ('PL' not in stion)]
         else:
             stations_idx = [stations.index(station)]
 
