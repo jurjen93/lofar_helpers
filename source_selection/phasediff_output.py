@@ -66,6 +66,7 @@ class GetSolint:
         :param h5: h5parm
         :param optimal_score: score to fit solution interval
         :param ref_solint: reference solution interval
+        :param station: station name
         """
 
         self.h5 = h5
@@ -79,9 +80,6 @@ class GetSolint:
     def plot_C(self, title: str = None, saveas: str = None, extrapoints: Union[list, tuple] = None):
         """
         Plot circstd score in function of solint for given C
-
-        :param C: constant defining the noise level
-        :param title: title for plot
         """
 
         # normal_sigmas = [n / 1000 for n in range(1, 10000)]
@@ -116,18 +114,15 @@ class GetSolint:
         return: circular variance
         """
 
-        if circ_var > self.limit ** 2:
-            sys.exit('ERROR: optimal score cannot be larger than pi')
+        if circ_var >= self.limit ** 2:
+            return 999 # replacement for infinity
         else:
-            normvar = -2 * np.log(1 - circ_var / (self.limit ** 2))
-            return normvar if normvar == normvar else sys.exit('ERROR: variance gives NaN')
+            return -2 * np.log(1 - circ_var / (self.limit ** 2))
 
     @property
     def _get_C(self):
         """
         Get constant defining the normal circular distribution
-
-        :param cstd: circular standard deviation
 
         :return: C
         """
@@ -203,7 +198,6 @@ class GetSolint:
     def theoretical_curve(self, t):
         """
         Theoretical curve based on circ statistics
-        :param t: solution interval
         :return: circular std
         """
 
