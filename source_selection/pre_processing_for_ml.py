@@ -1,4 +1,5 @@
 import random
+from pathlib import Path
 
 import torch
 from torch.utils.data import Dataset
@@ -10,7 +11,8 @@ from matplotlib.colors import SymLogNorm
 from PIL import Image
 import torchvision.transforms as T
 
-def get_rms(data: np.ndarray, maskSup = 1e-7):
+
+def get_rms(data: np.ndarray, maskSup=1e-7):
     """
     find the rms of an array, from Cycil Tasse/kMS
 
@@ -52,11 +54,11 @@ def crop(data):
     """
     Crop image
     """
-    width, height = list(np.array(data.shape)//2)
+    width, height = list(np.array(data.shape) // 2)
 
     half_width = width // 2
     half_height = height // 2
-    x, y = half_width*2, half_height*2
+    x, y = half_width * 2, half_height * 2
 
     x_min = max(x - half_width, 0)
     x_max = min(x + half_width, data.shape[1])
@@ -68,27 +70,44 @@ def crop(data):
 
 
 class FitsDataset(Dataset):
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, mode='train', train_split=0.85):
         """
         Args:
             root_dir (string): Directory with good/bad folders in it.
         """
-        self.root_dir = root_dir
-        self.data = []
-        self.labels = []
-        self.classes = os.listdir(root_dir)
 
-        # Load dataset
-        for cls in self.classes:
-            cls_path = os.path.join(self.root_dir, cls)
-            if not os.path.isdir(cls_path):
-                continue
+        assert mode in ('train', 'validation')
+        assert 0 <= train_split <= 1
 
-            for file in os.listdir(cls_path):
-                if file.endswith('.fits'):
-                    self.data.append(os.path.join(cls_path, file))
-                    label = 'good' in cls
-                    self.labels.append(int(label))
+        classes = {'stop': 0, 'continue': 1}
+        # Yes this code is way overengineered. Yes I also derive pleasure from writing it :) - RJS
+        #
+        # Actual documentation:
+        # You want all 'self.x' variables to be non-python objects such as numpy arrays,
+        # otherwise you get memory leaks in the PyTorch dataloader
+        data_paths, labels = map(np.asarray, list(zip(*(
+            (str(file), val)
+            for cls, val in classes.items()
+            for file in Path(root_dir, cls).rglob('*.fits')
+        ))))
+
+        # Filter found data_paths and labels on train/val splits
+        # TODO: make this a bit cleaner
+        filtered_paths, filtered_labels = [], []
+        for val in classes.values():
+            indices = np.nonzero(labels == val)[0]
+            split = train_split if mode == 'train' else 1 - train_split
+            num_examples = np.int32((np.floor if mode == 'train' else np.ceil)(split * len(indices)))
+
+            if num_examples == 0:
+                print(f"Warning: num remaining examples is 0 for class {val} and split {split}")
+
+            filtered_idx = (indices[:num_examples] if mode == 'train' else indices[-num_examples:],)
+            filtered_paths.append(data_paths[filtered_idx])
+            filtered_labels.append(labels[filtered_idx])
+
+        self.data_paths, self.labels = map(np.concatenate, (filtered_paths, filtered_labels))
+
 
     @staticmethod
     def transform_data(image_data):
@@ -103,7 +122,7 @@ class FitsDataset(Dataset):
 
         # re-normalize data (such that values are between 0 and 1)
         rms = get_rms(image_data)
-        norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms*50000, base=10)
+        norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms * 50000, base=10)
         image_data = norm(image_data)
         image_data = np.clip(image_data - image_data.min(), a_min=0, a_max=1)
 
@@ -114,25 +133,28 @@ class FitsDataset(Dataset):
 
         image_data = -image_data + 1  # make the peak exist at zero
 
-        if random.randint(0, 1):
-            image_data = -image_data
+        # if random.randint(0, 1):
+        #     image_data = -image_data
 
         image_data = torch.from_numpy(image_data)
         image_data = torch.movedim(image_data, -1, 0)
-        image_data = T.Resize((256, 256))(image_data)
+        # image_data = T.Resize((256, 256))(image_data)
+        # Just some regularization
+        image_data = image_data + 0.1*torch.randn_like(image_data)
+        image_data = image_data.to(torch.float32)
 
         return image_data
 
     def __len__(self):
-        return len(self.data)
+        return len(self.data_paths)
 
     def __getitem__(self, idx):
-        fits_path = self.data[idx]
+        fits_path = self.data_paths[idx]
         with fits.open(fits_path) as hdul:
             image_data = hdul[0].data
 
         # Pre-processing
-        image_data = self.transform_data(image_data.astype(np.float64))
+        image_data = self.transform_data(image_data.astype(np.float32))
 
         label = self.labels[idx]
 
@@ -145,4 +167,4 @@ if __name__ == '__main__':
     Idat = FitsDataset(root)
     for n in range(Idat.__len__()):
         imdat, label = Idat.__getitem__(n)
-        make_image(imdat, f'{label}_{Idat.data[n].split("/")[-1].replace(".fits","")}.png')
+        make_image(imdat, f'{label}_{Idat.data[n].split("/")[-1].replace(".fits", "")}.png')
