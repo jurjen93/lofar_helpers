@@ -79,6 +79,8 @@ class FitsDataset(Dataset):
         assert mode in ('train', 'validation')
         assert 0 <= train_split <= 1
 
+        random.seed(42)
+
         classes = {'stop': 0, 'continue': 1}
         # Yes this code is way overengineered. Yes I also derive pleasure from writing it :) - RJS
         #
@@ -88,11 +90,17 @@ class FitsDataset(Dataset):
         data_paths, labels = map(np.asarray, list(zip(*(
             (str(file), val)
             for cls, val in classes.items()
-            for file in Path(root_dir, cls).rglob('*.fits')
+            for file in (Path(root_dir, cls).rglob('*.fits'))
         ))))
 
         # Filter found data_paths and labels on train/val splits
         # TODO: make this a bit cleaner
+
+        # First randomly permute so that the train/val splits are randomly distributed
+        rng = np.random.default_rng(42)
+        p = rng.permutation(len(labels))
+        data_paths, labels = data_paths[p], labels[p]
+
         filtered_paths, filtered_labels = [], []
         for val in classes.values():
             indices = np.nonzero(labels == val)[0]
@@ -107,6 +115,9 @@ class FitsDataset(Dataset):
             filtered_labels.append(labels[filtered_idx])
 
         self.data_paths, self.labels = map(np.concatenate, (filtered_paths, filtered_labels))
+
+        sources = ", ".join(sorted([str(elem).split('/')[-1].strip('.fits') for elem in self.data_paths]))
+        print(f'{mode}: using the following sources: {sources}')
 
 
     @staticmethod
@@ -123,6 +134,7 @@ class FitsDataset(Dataset):
         # re-normalize data (such that values are between 0 and 1)
         rms = get_rms(image_data)
         norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms * 50000, base=10)
+
         image_data = norm(image_data)
         image_data = np.clip(image_data - image_data.min(), a_min=0, a_max=1)
 
@@ -132,16 +144,21 @@ class FitsDataset(Dataset):
         image_data = np.delete(image_data, 3, 2)
 
         image_data = -image_data + 1  # make the peak exist at zero
+        # image_data = np.e ** image_data
+        #
+        # image_data = image_data - np.array([1.34517796, 1.2179354 , 1.15546612])
+        # image_data = image_data / np.array([0.37540418, 0.18891336, 0.13838379])
+
 
         # if random.randint(0, 1):
         #     image_data = -image_data
 
-        image_data = torch.from_numpy(image_data)
+        image_data = torch.from_numpy(image_data).to(dtype=torch.float32)
         image_data = torch.movedim(image_data, -1, 0)
         # image_data = T.Resize((256, 256))(image_data)
         # Just some regularization
         image_data = image_data + 0.1*torch.randn_like(image_data)
-        image_data = image_data.to(torch.float32)
+        image_data = image_data
 
         return image_data
 

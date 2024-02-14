@@ -16,7 +16,6 @@ from pre_processing_for_ml import FitsDataset
 class ImagenetTransferLearning(LightningModule):
     def __init__(self):
         super().__init__()
-        self.accuracy = torchmetrics.classification.Accuracy(task="binary")
 
         # init a pretrained resnet
         backbone = models.resnet50(weights="DEFAULT")
@@ -27,7 +26,12 @@ class ImagenetTransferLearning(LightningModule):
 
         num_target_classes = 1
         num_filters = backbone.fc.in_features
-        self.classifier = nn.Linear(num_filters, num_target_classes)
+
+        self.classifier = nn.Sequential(
+            nn.Linear(num_filters, num_filters),
+            nn.ReLU(),
+            nn.Linear(num_filters, num_target_classes),
+        )
 
     def forward(self, x):
         with torch.no_grad():
@@ -76,7 +80,7 @@ def main(root: str):
     num_workers = len(os.sched_getaffinity(0))
     # num_workers = 0
     prefetch_factor, persistent_workers = (
-        (5, True) if num_workers > 0 else
+        (2, True) if num_workers > 0 else
         (None, False)
     )
 
@@ -87,7 +91,7 @@ def main(root: str):
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,
             persistent_workers=persistent_workers,
-            pin_memory=True,
+            pin_memory=False,
             drop_last=(True if mode == 'train' else False),  # needed for torch.compile,
             shuffle=(True if mode == 'train' else False),
         )
