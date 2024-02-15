@@ -7,10 +7,14 @@ import torchmetrics
 from lightning import LightningModule, Trainer
 from matplotlib import pyplot as plt
 from torch import nn
+from torchmetrics import AveragePrecision
+from torchmetrics.classification import BinaryAveragePrecision
 from torchvision import models
 from torchmetrics.functional import accuracy
 
 from pre_processing_for_ml import FitsDataset
+
+
 
 
 class ImagenetTransferLearning(LightningModule):
@@ -19,6 +23,9 @@ class ImagenetTransferLearning(LightningModule):
 
         # init a pretrained resnet
         backbone = models.resnet50(weights="DEFAULT")
+        # backbone = models.resnet152(weights="DEFAULT")
+        # backbone = models.resnext101_64x4d(weights="DEFAULT")
+        # backbone = models.efficientnet_v2_l
 
         layers = list(backbone.children())[:-1]
         self.feature_extractor = nn.Sequential(*layers)
@@ -33,6 +40,11 @@ class ImagenetTransferLearning(LightningModule):
             nn.Linear(num_filters, num_target_classes),
         )
 
+        self.average_precision = nn.ModuleDict({
+            'train_ap': BinaryAveragePrecision(),
+            'val_ap': BinaryAveragePrecision()
+        })
+
     def forward(self, x):
         with torch.no_grad():
             representations = self.feature_extractor(x).flatten(1)
@@ -40,34 +52,46 @@ class ImagenetTransferLearning(LightningModule):
         return x
 
     def training_step(self, batch):
-        inputs, target = batch
-
-        output = self(inputs)
-
-        target = target[None].T.to(dtype=output.dtype)  # massaging the targets into the correct dtype
-        loss = torch.nn.functional.binary_cross_entropy(torch.sigmoid(output), target)
-        train_accuracy = accuracy(output, target, task="binary")
-
-        self.log("train_bce_loss", loss, on_step=True, on_epoch=False, prog_bar=True, logger=True)
-        self.log("train_accuracy", train_accuracy, on_step=True, on_epoch=False, prog_bar=True, logger=True)
+        loss = self.shared_step(batch, mode='train')
         return loss
 
     def validation_step(self, batch):
+        loss = self.shared_step(batch, 'val')
+        return loss
+
+    def shared_step(self, batch, mode):
+        assert mode in ('train', 'val', 'test')
+
         inputs, target = batch
 
-        output = self(inputs)
+        if torch.isnan(inputs).any():
+            breakpoint()
+
+        output = torch.sigmoid(self(inputs))
 
         target = target[None].T.to(dtype=output.dtype)  # massaging the targets into the correct dtype
-        val_loss = torch.nn.functional.binary_cross_entropy(torch.sigmoid(output), target)
-        val_accuracy = accuracy(output, target, task="binary")
+        loss = torch.nn.functional.binary_cross_entropy(output, target)
+        acc = accuracy(output, target, task="binary")
+        ap = self.average_precision[f"{mode}_ap"](output, target.int())
 
-        self.log("val_bce_loss", val_loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
-        self.log("val_accuracy", val_accuracy, on_step=False, on_epoch=True, prog_bar=True, logger=True)
+        self.log_dict(
+            {
+                f"{mode}_{name}": val for name, val in [
+                    ("bce_loss", loss),
+                    ("accuracy", acc),
+                    ("average_precision", ap)
+                ]
+            },
+            on_step=mode == 'train',
+            on_epoch=mode != 'train',
+            prog_bar=True,
+            logger=True,
+        )
 
-        return val_loss
+        return loss
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.classifier.parameters(), lr=1e-3)
+        return torch.optim.AdamW(self.classifier.parameters(), lr=1e-4)
 
 
 def main(root: str):
@@ -87,13 +111,13 @@ def main(root: str):
     train_dataloader, val_dataloader = (
         torch.utils.data.DataLoader(
             dataset=FitsDataset(root, mode=mode),
-            batch_size=32,
+            batch_size=128,
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,
             persistent_workers=persistent_workers,
             pin_memory=False,
             drop_last=(True if mode == 'train' else False),  # needed for torch.compile,
-            shuffle=(True if mode == 'train' else False),
+            shuffle=True,
         )
         for mode in ('train', 'validation')
     )

@@ -70,51 +70,57 @@ def crop(data):
 
 
 class FitsDataset(Dataset):
-    def __init__(self, root_dir, mode='train', train_split=0.85):
+    def __init__(self, root_dir, mode='train'):
         """
         Args:
             root_dir (string): Directory with good/bad folders in it.
         """
 
         assert mode in ('train', 'validation')
-        assert 0 <= train_split <= 1
-
-        random.seed(42)
 
         classes = {'stop': 0, 'continue': 1}
+
+        root_dir = Path(root_dir)
+        assert root_dir.exists()
+
+        for folder in (root_dir / (cls + ('' if mode == 'train' else '_val')) for cls in classes):
+            assert folder.exists()
+            assert len(list(folder.glob('*.fits'))) > 0
+
         # Yes this code is way overengineered. Yes I also derive pleasure from writing it :) - RJS
         #
         # Actual documentation:
         # You want all 'self.x' variables to be non-python objects such as numpy arrays,
         # otherwise you get memory leaks in the PyTorch dataloader
-        data_paths, labels = map(np.asarray, list(zip(*(
+        self.data_paths, self.labels = map(np.asarray, list(zip(*(
             (str(file), val)
             for cls, val in classes.items()
-            for file in (Path(root_dir, cls).rglob('*.fits'))
+            for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob('*.fits')
         ))))
 
-        # Filter found data_paths and labels on train/val splits
+        assert len(self.data_paths) > 0
+
         # TODO: make this a bit cleaner
-
+        # Filter found data_paths and labels on train/val splits
         # First randomly permute so that the train/val splits are randomly distributed
-        rng = np.random.default_rng(42)
-        p = rng.permutation(len(labels))
-        data_paths, labels = data_paths[p], labels[p]
+        # rng = np.random.default_rng(42)
+        # p = rng.permutation(len(labels))
+        # data_paths, labels = data_paths[p], labels[p]
 
-        filtered_paths, filtered_labels = [], []
-        for val in classes.values():
-            indices = np.nonzero(labels == val)[0]
-            split = train_split if mode == 'train' else 1 - train_split
-            num_examples = np.int32((np.floor if mode == 'train' else np.ceil)(split * len(indices)))
-
-            if num_examples == 0:
-                print(f"Warning: num remaining examples is 0 for class {val} and split {split}")
-
-            filtered_idx = (indices[:num_examples] if mode == 'train' else indices[-num_examples:],)
-            filtered_paths.append(data_paths[filtered_idx])
-            filtered_labels.append(labels[filtered_idx])
-
-        self.data_paths, self.labels = map(np.concatenate, (filtered_paths, filtered_labels))
+        # filtered_paths, filtered_labels = [], []
+        # for val in classes.values():
+        #     indices = np.nonzero(labels == val)[0]
+        #     split = train_split if mode == 'train' else 1 - train_split
+        #     num_examples = np.int32((np.floor if mode == 'train' else np.ceil)(split * len(indices)))
+        #
+        #     if num_examples == 0:
+        #         print(f"Warning: num remaining examples is 0 for class {val} and split {split}")
+        #
+        #     filtered_idx = (indices[:num_examples] if mode == 'train' else indices[-num_examples:],)
+        #     filtered_paths.append(data_paths[filtered_idx])
+        #     filtered_labels.append(labels[filtered_idx])
+        #
+        # self.data_paths, self.labels = map(np.concatenate, (filtered_paths, filtered_labels))
 
         sources = ", ".join(sorted([str(elem).split('/')[-1].strip('.fits') for elem in self.data_paths]))
         print(f'{mode}: using the following sources: {sources}')
@@ -148,7 +154,6 @@ class FitsDataset(Dataset):
         #
         # image_data = image_data - np.array([1.34517796, 1.2179354 , 1.15546612])
         # image_data = image_data / np.array([0.37540418, 0.18891336, 0.13838379])
-
 
         # if random.randint(0, 1):
         #     image_data = -image_data
