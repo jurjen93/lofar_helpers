@@ -74,21 +74,6 @@ class SelfcalQuality:
             ('IE', 'SE', 'PL', 'UK', 'LV')  # i.e.: if self.station == 'international'
         )
 
-    # def get_max_min_pix(self):
-    #     """
-    #     Get max/min pixels from images (measure of dynamic range)
-    #     """
-    #
-    #     maxp, minp = 0, 0
-    #     for f in self.fitsfiles:
-    #         with fits.open(f) as fts:
-    #             d = fts[0].data
-    #         if d.min() < minp:
-    #             minp = d.min()
-    #         if d.max() > maxp:
-    #             maxp = d.max()
-    #     return maxp, minp
-
     # def image_entropy(self, fitsfile: str = None):
     #     """
     #     Calculate entropy of image
@@ -229,7 +214,6 @@ class SelfcalQuality:
             phase_scores = []
             amp_scores = []
 
-            self.print_station_names(sub_h5s[0])
             for m, sub_h5 in enumerate(sub_h5s):
                 number = get_cycle_num(sub_h5)
 
@@ -250,74 +234,85 @@ class SelfcalQuality:
 
         return finalphase, finalamp
 
-    def image_stability(self, rmss, minmaxs):
+    @staticmethod
+    def solution_accept_reject(finalphase, finalamp):
+
+        bestcycle = int(np.array(finalphase).argmin())
+
+        # selection based on slope
+        phase_decrease = linreg_slope(finalphase[:bestcycle+1])
+        if not all(v == 0 for v in finalamp) and len(finalamp) >= 3:
+            # amplitude solves start typically later than phase solves
+            start_cycle = 0
+            for a in finalamp:
+                if a==0:
+                    start_cycle += 1
+            if bestcycle-start_cycle > 3:
+                amp_decrease = linreg_slope([i for i in finalamp if i != 0][start_cycle:bestcycle+1])
+            else:
+                amp_decrease = 0
+        else:
+            amp_decrease = 0
+        accept = (
+                (phase_decrease <= 0
+                or amp_decrease <= 0)
+                and bestcycle >= 1
+                and finalphase[bestcycle] < 1
+                and finalphase[0] > finalphase[bestcycle]
+        )
+        return bestcycle, accept
+
+    @staticmethod
+    def image_stability(rmss, minmaxs):
         """
         Determine image stability
 
-        :param minmaxs:
-        :param rmss:
+        :param minmaxs: absolute values of min/max for each self-cal cycle
+        :param rmss: rms (noise) for each self-cal cycle
 
         :return: bestcycle --> best solution cycle
                  accept    --> accept this selfcal
         """
 
-        # scores
-        best_rms_cycle = select_cycle(rmss)
-        best_minmax_cycle = select_cycle(minmaxs)
+        # metric scores
+        combined_metric = min_max_norm(rmss) * min_max_norm(minmaxs)
 
         # best cycle
-        bestcycle = (best_minmax_cycle + best_rms_cycle) // 2
+        bestcycle = select_cycle(combined_metric)
 
         # getting slopes for selection
-        if len(rmss) > 4:
-            rms_slope_start, minmax_slope_start = linregress(list(range(len(rmss[:4]))), rmss[:4]).slope, linregress(
-                list(range(len(rmss[:4]))),
-                np.array(
-                    minmaxs[:4])).slope
-        else:
-            rms_slope_start, minmax_slope_start = 1, 1
+        rms_slope, minmax_slope = linregress(list(range(len(rmss[:bestcycle+1]))), rmss[:bestcycle+1]).slope, linregress(
+            list(range(len(rmss[:bestcycle+1]))),
+            np.array(
+                minmaxs[:bestcycle+1])).slope
 
-        rms_slope, minmax_slope = linregress(list(range(len(rmss))), rmss).slope, linregress(list(range(len(rmss))),
-                                                                                             np.array(
-                                                                                                 minmaxs)).slope
         # acceptance criteria
-        accept = ((minmax_slope <= 0
-                   or rms_slope <= 0)
-                  and minmax_slope_start <= 0
-                  and rms_slope_start <= 0
-                  and len(self.fitsfiles) >= 5
-                  and bestcycle + 2 < len(rmss)
-                  and bestcycle > 1)
+        accept = ((rms_slope <= 0
+                  or minmax_slope <= 0)
+                  and rmss[0] > rmss[bestcycle]
+                  and minmaxs[0] > minmaxs[bestcycle]
+                  and bestcycle >= 1)
 
-        return bestcycle - 1, accept
-
-
-def solution_accept_reject(finalphase, finalamp):
-    bestcycle = np.array(finalphase).argmin()
-
-    # selection based on slope
-    if len(finalphase) > 4:
-        phase_decrease, phase_quality, amp_quality = (
-            linreg_slope(finalphase[1:4]),
-            linreg_slope(finalphase[-4:]),
-            linreg_slope(finalamp[-4:])
-        )
-        if not all(v == 0 for v in finalamp):
-            amp_decrease = linreg_slope([i for i in finalamp if i != 0][1:3])
-        else:
-            amp_decrease = 0
-
-        accept = (
-            phase_decrease <= 0
-            and amp_decrease <= 0
-            and phase_quality <= 0.1
-            and amp_quality <= 0.1
-            and bestcycle > 0
-            and finalphase[bestcycle] < 0.2
-        )
         return bestcycle, accept
-    else:
-        return -1, False
+
+    def peak_flux_constraint(self):
+        """
+        Validate if the peak flux is larger than 100 times the local rms
+        """
+        return get_peakflux(self.fitsfiles[0])/get_rms(self.fitsfiles[0]) > 100
+
+
+def min_max_norm(lst):
+    """Normalize list values between 0 and 1"""
+
+    # find the minimum and maximum
+    min_value = min(lst)
+    max_value = max(lst)
+
+    # normalize
+    normalized_floats = [(x - min_value) / (max_value - min_value) for x in lst]
+
+    return np.array(normalized_floats)
 
 
 def linreg_slope(values=None):
@@ -350,6 +345,25 @@ def get_minmax(inp: Union[str, np.ndarray]):
 
     logger.debug(f"min/max: {minmax}")
     return minmax
+
+def get_peakflux(inp: Union[str, np.ndarray]):
+    """
+    Get min/max value
+
+    :param inp: fits file name or numpy array
+
+    :return: minmax --> pixel min/max value
+    """
+    if isinstance(inp, str):
+        with fits.open(inp) as hdul:
+            data = hdul[0].data
+    else:
+        data = inp
+
+    mx = data.max()
+
+    logger.debug(f"Peak flux: {mx}")
+    return mx
 
 
 def select_cycle(cycles=None):
@@ -434,7 +448,7 @@ def make_utf8(inp=None):
         return inp
 
 
-def make_figure(vals1=None, vals2=None, label1=None, label2=None, plotname=None):
+def make_figure(vals1=None, vals2=None, label1=None, label2=None, plotname=None, bestcycle=None):
     """
     Make figure (with optionally two axis)
 
@@ -443,37 +457,39 @@ def make_figure(vals1=None, vals2=None, label1=None, label2=None, plotname=None)
     :param label1: label corresponding to values 1
     :param label2: label corresponding to values 2
     :param plotname: plot name
+    :param bestcycle: plot best cycle
     """
+
+    plt.style.use('ggplot')
 
     fig, ax1 = plt.subplots()
 
-    color = 'tab:red'
+    color = 'red'
     ax1.set_xlabel('cycle')
-    ax1.set_ylabel(label1, color=color)
-    ax1.plot([i + 1 for i in range(len(vals1))], vals1, color=color)
-    ax1.tick_params(axis='y', labelcolor=color)
-    # ax1.set_ylim(0, np.pi/2)
-    ax1.set_xlim(1, 11)
+    ax1.set_ylabel(label1, color="tab:"+color)
+    ax1.plot([i for i in range(len(vals1))], vals1, color='dark'+color, linewidth=2, marker='s',
+             markerfacecolor="tab:"+color, markersize=3, alpha=0.7, dash_capstyle='round', dash_joinstyle='round')
+    ax1.tick_params(axis='y', labelcolor="tab:"+color)
     ax1.grid(False)
+    ax1.plot([bestcycle, bestcycle], [0, max(vals1)], linestyle='--', color='black')
+    ax1.set_ylim(0, max(vals1))
 
     if vals2 is not None:
 
         ax2 = ax1.twinx()
 
-        color = 'tab:blue'
-        ax2.set_ylabel(label2, color=color)
-        if 'Amp' in label2:
-            ax2.plot([i for i in range(len(vals2))][3:], vals2[3:], color=color)
-        else:
-            ax2.plot([i for i in range(len(vals2))], vals2, color=color)
-        ax2.tick_params(axis='y', labelcolor=color)
-        # ax2.set_ylim(0, 2)
-        ax2.set_xlim(1, 11)
+        color = 'blue'
+        ax2.set_ylabel(label2, color="tab:"+color)
+        ax2.plot([i for i, v in enumerate(vals2) if v!=0], [v for v in vals2 if v!=0], color='dark'+color, linewidth=2,
+                 marker='s', markerfacecolor="tab:"+color, markersize=3, alpha=0.7, dash_capstyle='round',
+                 dash_joinstyle='round')
+        ax2.tick_params(axis='y', labelcolor="tab:"+color)
         ax2.grid(False)
+        ax2.set_ylim(0, max(vals2))
 
     fig.tight_layout()
 
-    plt.savefig(plotname, dpi=300)
+    plt.savefig(plotname, dpi=150)
 
 
 def parse_args():
@@ -494,33 +510,39 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(h5s, fits, station):
+def main(h5s, fitsfiles, station):
     """
     Main function
     """
-    sq = SelfcalQuality(h5s, fits, station)
-
+    sq = SelfcalQuality(h5s, fitsfiles, station)
 
     assert len(sq.h5s) > 1 and len(sq.fitsfiles) > 1, "Need more than 1 h5 or fits file"
 
     finalphase, finalamp = sq.solution_stability()
-    bestcycle_solutions, accept_solutions = solution_accept_reject(finalphase, finalamp)
+    bestcycle_solutions, accept_solutions = sq.solution_accept_reject(finalphase, finalamp)
 
     rmss = [get_rms(fts) * 1000 for fts in sq.fitsfiles]
     minmaxs = [get_minmax(fts) for fts in sq.fitsfiles]
 
-    bestcycle_image, accept_image = sq.image_stability(rmss, minmaxs)
+    bestcycle_image, accept_image_stability = sq.image_stability(rmss, minmaxs)
+    accept_peak = sq.peak_flux_constraint()
 
-    best_cycle = max(bestcycle_solutions, bestcycle_image)
-    accept = accept_image | accept_solutions
+    best_cycle = int(round((bestcycle_solutions + bestcycle_image - 1)//2, 0))
+    # final accept
+    accept = (accept_image_stability
+              and accept_peak
+              and accept_solutions
+              and (rmss[best_cycle] < rmss[0] or minmaxs[best_cycle] < minmaxs[0])
+              )
 
     logger.info(
-        f"{sq.main_source} | accept: {accept}, best cycle: {best_cycle}"
-    )
-    logger.debug(
         f"{sq.main_source} | "
-        f"Best cycle according to image: {bestcycle_image}, accept image: {accept_image}. "
+        f"Best cycle according to image stability: {bestcycle_image}, accept image: {accept_image_stability}. "
         f"Best cycle according to solutions: {bestcycle_solutions}, accept solution: {accept_solutions}. "
+    )
+
+    logger.info(
+        f"{sq.main_source} | accept: {accept}, best solutions: {sq.h5s[best_cycle]}"
     )
 
     fname = f'./out/selfcal_performance_{sq.main_source}.csv'
@@ -536,13 +558,13 @@ def main(h5s, fits, station):
         csv_writer.writerow(['min/max'] + minmaxs + [np.nan])
         csv_writer.writerow(['rms'] + rmss + [np.nan])
 
-    make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'./out/solution_stability_{sq.main_source}.png')
-    make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'./out/image_stability_{sq.main_source}.png')
+    make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'./out/solution_stability_{sq.main_source}.png', best_cycle)
+    make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'./out/image_stability_{sq.main_source}.png', best_cycle+1)
 
     df = pd.read_csv(fname).set_index('solutions').T
     df.to_csv(fname, index=False)
 
-    return sq.main_source, accept, best_cycle, accept_solutions, bestcycle_solutions, accept_image, bestcycle_image
+    return sq.main_source, accept, best_cycle, accept_solutions, bestcycle_solutions, accept_image_stability, bestcycle_image
 
 
 def calc_all_scores(sources_root, stations='international'):
@@ -554,7 +576,8 @@ def calc_all_scores(sources_root, stations='international'):
         star_folder, star_name = item, item.name
 
         try:
-            return main(list(map(str, star_folder.glob('merged*.h5'))), list(map(str, star_folder.glob('*MFS-*image.fits'))), stations)
+            return main(list(map(str, sorted(star_folder.glob('merged*.h5')))),
+                        list(map(str, sorted(star_folder.glob('*MFS-*image.fits')))), stations)
         except Exception as e:
             logger.warning(f"skipping {star_folder} due to {e}")
             return star_name, None, None, None, None, None, None
@@ -581,7 +604,7 @@ if __name__ == '__main__':
     args = parse_args()
 
     output_folder='./out'
-    system(f'mkdir {output_folder}')
+    system(f'mkdir -p {output_folder}')
 
     if args.parallel:
         print(f"Running parallel in {args.root_folder_parallel}")
@@ -590,5 +613,4 @@ if __name__ == '__main__':
         else:
             sys.exit("ERROR: if parallel, you need to specify --root_folder_parallel")
     else:
-        args = parse_args()
         main(args.h5, args.fits, args.station)
