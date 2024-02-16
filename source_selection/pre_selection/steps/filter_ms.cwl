@@ -27,16 +27,19 @@ requirements:
           import json
 
           inputs = json.loads(r"""$(inputs)""")
+
+          print(inputs)
+
           mslist = inputs['msin']
 
           df = pd.read_csv(inputs['phasediff_score_csv']['location'])
           selection = df[df['spd_score'] < 2.4]['source'].to_list()
 
           for s in selection:
-            print(s)
-            for ms in mslist:
-              if s in ms['basename']:
-                os.system(f"cp -r {ms['location']} {ms['basename']}_selected.ms")
+             print(s)
+             for ms in mslist:
+                if s in ms['basename']:
+                   os.system(f"cp -r {ms['location']} {ms['basename']}_selected.ms")
 
 hints:
   - class: DockerRequirement

@@ -58,8 +58,6 @@ steps:
         - phasediff_score_csv
       run: ./steps/get_source_scores.cwl
 
-    - id:
-
 outputs:
     - id: phasediff_score_csv
       type: File
