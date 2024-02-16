@@ -22,24 +22,20 @@ requirements:
         writable: true
       - entryname: select_final.py
         entry: |
-          import os
+          import subprocess
           import pandas as pd
           import json
 
           inputs = json.loads(r"""$(inputs)""")
-
-          print(inputs)
-
           mslist = inputs['msin']
 
           df = pd.read_csv(inputs['phasediff_score_csv']['location'])
           selection = df[df['spd_score'] < 2.4]['source'].to_list()
 
           for s in selection:
-             print(s)
              for ms in mslist:
                 if s in ms['basename']:
-                   os.system(f"cp -r {ms['location']} {ms['basename']}_selected.ms")
+                   subprocess.run(f"cp -r {ms['basename']} {ms['basename']}_selected.ms")
 
 hints:
   - class: DockerRequirement
