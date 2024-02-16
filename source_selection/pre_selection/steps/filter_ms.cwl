@@ -17,7 +17,9 @@ requirements:
   - class: InitialWorkDirRequirement
     listing:
       - entry: $(inputs.phasediff_score_csv)
+        writable: true
       - entry: $(inputs.msin)
+        writable: true
       - entryname: select_final.py
         entry: |
           import os
