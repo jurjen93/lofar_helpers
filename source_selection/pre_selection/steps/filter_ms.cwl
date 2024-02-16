@@ -27,7 +27,7 @@ requirements:
           import json
 
           inputs = json.loads(r"""$(inputs)""")
-          msin = inputs['msin']
+          mslist = inputs['msin']
 
           df = pd.read_csv(inputs['phasediff_score_csv')
           selection = df[df['spd_score'] < 2.4]['source'].to_list()
