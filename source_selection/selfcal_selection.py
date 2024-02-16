@@ -58,12 +58,7 @@ class SelfcalQuality:
         sources = []
         for h5 in self.h5s:
             filename = h5.split('/')[-1]
-            if 'ILTJ' in filename:
-                matches = re.findall(r'ILTJ\d+\..\d+\+\d+.\d+', filename)
-            else:
-                matches = re.findall(r'selfcalcyle\d+_(.*?)\.', filename)
-            assert len(matches) == 1
-            sources.append(matches[0])
+            sources.append(parse_source_from_h5(filename))
         self.sources = set(sources)
         assert len(self.sources) > 0, "No sources found"
 
@@ -75,7 +70,8 @@ class SelfcalQuality:
         self.station_codes = (
             ('CS',) if self.station == 'dutch' else
             ('RS',) if self.station == 'remote' else
-            ('IE', 'SE', 'PL', 'UK', 'LV')  # i.e.: if self.station == 'international'
+            ('CS', 'RS') if self.station == 'alldutch' else
+            ('IE', 'SE', 'PL', 'UK', 'LV', 'DE')  # i.e.: if self.station == 'international'
         )
 
     # def image_entropy(self, fitsfile: str = None):
@@ -306,6 +302,18 @@ class SelfcalQuality:
         return get_peakflux(self.fitsfiles[0])/get_rms(self.fitsfiles[0]) > 100
 
 
+def parse_source_from_h5(h5):
+    """
+    Parse sensible output names
+    """
+    if 'ILTJ' in h5:
+        matches = re.findall(r'ILTJ\d+\..\d+\+\d+.\d+_L\d+', h5)
+    else:
+        matches = re.findall(r'selfcalcyle\d+_(.*?)\.', h5)
+    assert len(matches) == 1
+    return matches[0]
+
+
 def min_max_norm(lst):
     """Normalize list values between 0 and 1"""
 
@@ -507,16 +515,31 @@ def parse_args():
     parser.add_argument('--fits', nargs='+', help='selfcal fits images')
     parser.add_argument('--h5', nargs='+', help='h5 solutions')
     parser.add_argument('--station', type=str, help='', default='international',
-                        choices=['dutch', 'remote', 'international', 'debug'])
+                        choices=['dutch', 'remote', 'alldutch', 'international', 'debug'])
     parser.add_argument('--parallel', action='store_true', help='run parallel over multiple sources (for testing)')
     parser.add_argument('--root_folder_parallel', type=str, help='root folder (if parallel is on), '
                                                                  'which is the path to where all calibrator source folders are located')
     return parser.parse_args()
 
 
-def main(h5s, fitsfiles, station):
+def main(h5s: list = None, fitsfiles: list = None, station: str = 'international'):
     """
     Main function
+
+    Input:
+        - List of h5 files
+        - List of fits files
+        - Station type
+
+    Returns:
+        - Source name
+        - Accept source (total)
+        - Best cycle (total)
+        - Accept according to solutions
+        - Best cycle according to solutions
+        - Accept according to images
+        - Best cycle according to images
+        - Best h5parm
     """
     sq = SelfcalQuality(h5s, fitsfiles, station)
 
@@ -541,7 +564,7 @@ def main(h5s, fitsfiles, station):
 
     logger.info(
         f"{sq.main_source} | "
-        f"Best cycle according to image stability: {bestcycle_image}, accept image: {accept_image_stability}. "
+        f"Best cycle according to images: {bestcycle_image}, accept image: {accept_image_stability}. "
         f"Best cycle according to solutions: {bestcycle_solutions}, accept solution: {accept_solutions}. "
     )
 
@@ -549,7 +572,7 @@ def main(h5s, fitsfiles, station):
         f"{sq.main_source} | accept: {accept}, best solutions: {sq.h5s[best_cycle]}"
     )
 
-    fname = f'./out/selfcal_performance_{sq.main_source}.csv'
+    fname = f'./selection_output/selfcal_performance_{sq.main_source}.csv'
     with open(fname, 'w') as textfile:
         # output csv
         csv_writer = csv.writer(textfile)
@@ -562,16 +585,19 @@ def main(h5s, fitsfiles, station):
         csv_writer.writerow(['min/max'] + minmaxs + [np.nan])
         csv_writer.writerow(['rms'] + rmss + [np.nan])
 
-    make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'./out/solution_stability_{sq.main_source}.png', best_cycle)
-    make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'./out/image_stability_{sq.main_source}.png', best_cycle+1)
+    make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'./selection_output/solution_stability_{sq.main_source}.png', best_cycle)
+    make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'./selection_output/image_stability_{sq.main_source}.png', best_cycle+1)
 
     df = pd.read_csv(fname).set_index('solutions').T
     df.to_csv(fname, index=False)
 
-    return sq.main_source, accept, best_cycle, accept_solutions, bestcycle_solutions, accept_image_stability, bestcycle_image
+    return sq.main_source, accept, best_cycle, accept_solutions, bestcycle_solutions, accept_image_stability, bestcycle_image, sq.h5s[best_cycle]
 
 
 def calc_all_scores(sources_root, stations='international'):
+    """
+    For parallel calculation (for testing purposes only)
+    """
 
     def get_solutions(item):
         item = Path(item)
@@ -592,7 +618,7 @@ def calc_all_scores(sources_root, stations='international'):
 
     results = filter(None, results)
 
-    fname = f'./out/selfcal_performance.csv'
+    fname = f'./selection_output/selfcal_performance.csv'
     with open(fname, 'w') as textfile:
         csv_writer = csv.writer(textfile)
         csv_writer.writerow(

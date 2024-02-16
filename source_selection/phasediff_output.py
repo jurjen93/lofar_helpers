@@ -1,3 +1,11 @@
+"""
+This script is used to utilize h5parm with scalarphasediff solutions from facetselfcal
+to derive a score for the amount of available flux at the longest baselines with LOFAR.
+"""
+
+author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
+__all__ = ['GetSolint']
+
 import tables
 import pandas as pd
 import numpy as np
@@ -9,11 +17,11 @@ import sys
 from argparse import ArgumentParser
 from typing import Union
 
-try:
+try: # fix this
+    from selfcal_selection import parse_source_from_h5
     import scienceplots
-
     plt.style.use(['science', 'ieee'])
-except:
+except ImportError:
     pass
 
 
@@ -45,7 +53,7 @@ def rad_to_degree(inp):
             return inp * 360 / 2 / np.pi % 360
         else:
             return inp
-    except ValueError: # ugly code..
+    except ValueError: # Sorry for the ugly code..
         if abs(inp[0][0]) < np.pi and abs(inp[0][1]) < np.pi:
             return inp[0] * 360 / 2 / np.pi % 360
         else:
@@ -206,15 +214,6 @@ class GetSolint:
         return self.limit * np.sqrt(1 - np.exp(-(self.C / (2 * t))))
 
 
-def parse_source_name(string):
-    """
-    Give sensible output names
-    """
-    no_prefix = '_'.join([s for s in string.split("/")[-1].split("_")
-                          if 'scalarphase' not in s and 'skyselfcal' not in s])
-    return no_prefix.replace('.ms', '').replace('.h5', '').replace('.', '_')
-
-
 def parse_args():
     """
     Command line argument parser
@@ -227,15 +226,17 @@ def parse_args():
     parser.add_argument('--station', help='for one specific station', default=None)
     parser.add_argument('--all_stations', action='store_true', help='for all stations specifically')
     parser.add_argument('--make_plot', action='store_true', help='make phasediff plot')
+    parser.add_argument('--optimal_score', help='optimal score between 0 and pi', default=2.4, type=float)
     return parser.parse_args()
 
 def main():
+
     ###STILL AN EXPERIMENT!###
 
     args = parse_args()
 
     # set std score, for which you want to find the solint
-    optimal_score = 2.3
+    optimal_score = args.optimal_score
 
     # reference solution interval
     ref_solint = 10
@@ -251,34 +252,34 @@ def main():
     else:
         station = ''
 
-    f = open('phasediff_output.csv', 'w')
-    writer = csv.writer(f)
-    writer.writerow(["source", "spd_score", "best_solint", 'RA', 'DEC'])
-    for h5 in h5s:
-        # try:
-        S = GetSolint(h5, optimal_score, ref_solint)
-        if args.all_stations:
-            H = tables.open_file(h5)
-            stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
-            H.close()
-        else:
-            stations = [station]
-        for station in stations:
-            std = S.get_phasediff_score(station=station)
-            solint = S.best_solint
-            H = tables.open_file(h5)
-            dir = rad_to_degree(H.root.sol000.source[:]['dir'])
-            writer.writerow([parse_source_name(h5) + station, std, solint, dir[0], dir[1]])
-            if args.make_plot:
-                S.plot_C("T=" + str(round(solint, 2)) + " min", saveas=h5 + station + '.png')
-            H.close()
-        # except:
-        #     pass
-
-    f.close()
+    with open('phasediff_output.csv', 'w') as f:
+        writer = csv.writer(f)
+        writer.writerow(["source", "spd_score", "best_solint", 'RA', 'DEC'])
+        for h5 in h5s:
+            # try:
+            S = GetSolint(h5, optimal_score, ref_solint)
+            if args.all_stations:
+                H = tables.open_file(h5)
+                stations = [make_utf8(s) for s in list(H.root.sol000.antenna[:]['name'])]
+                H.close()
+            else:
+                stations = [station]
+            for station in stations:
+                std = S.get_phasediff_score(station=station)
+                solint = S.best_solint
+                H = tables.open_file(h5)
+                dir = rad_to_degree(H.root.sol000.source[:]['dir'])
+                writer.writerow([parse_source_from_h5(h5) + station, std, solint, dir[0], dir[1]])
+                if args.make_plot:
+                    S.plot_C("T=" + str(round(solint, 2)) + " min", saveas=h5 + station + '.png')
+                H.close()
+            # except:
+            #     pass
 
     # sort output
-    pd.read_csv('phasediff_output.csv').sort_values(by='spd_score').to_csv('phasediff_output.csv', index=False)
+    df = pd.read_csv('phasediff_output.csv').sort_values(by='spd_score')
+    df.to_csv('phasediff_output.csv', index=False)
+
 
 
 if __name__ == '__main__':
