@@ -66,7 +66,6 @@ class SelfcalQuality:
             sources.append(matches[0])
         self.sources = set(sources)
         assert len(self.sources) > 0, "No sources found"
-        logger.info(f"Source(s): {', '.join(self.sources)}")
 
         self.main_source = list(self.sources)[0].split("_")[-1]
 
