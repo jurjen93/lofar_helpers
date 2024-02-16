@@ -44,10 +44,14 @@ hints:
     dockerPull: vlbi-cwl
 
 outputs:
-  filtered_directories:
-    type: Directory
-    outputBinding:
-      glob: *_selected.ms
+    - id: selected_ms
+      type: File
+      outputBinding:
+        glob: "*_selected.ms"
+    - id: logfile
+      type: File[]
+      outputBinding:
+        glob: select_final*.log
 
 stdout: select_final.log
 stderr: select_final.log
