@@ -252,6 +252,7 @@ def main():
 
         imagedata, _ = reproject_interp_chunk_2d(hduflatten, header_new, hdu_in=0, parallel=True)
         imagedata = imagedata.astype(np.float32)
+        hduflatten = None
         del hduflatten
 
         reg = regions[n]
@@ -269,8 +270,10 @@ def main():
         imagedata *= facetweight
         imagedata[~np.isfinite(imagedata)] = 0  # so we can add
         isum += imagedata
+        imagedata = None
         del imagedata
         weights += facetweight
+        facetweight = None
         del facetweight
 
         make_image(isum, None, facet+'full.png', 'CMRmap', header_new)

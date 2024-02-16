@@ -57,11 +57,16 @@ class SelfcalQuality:
         # select all sources
         sources = []
         for h5 in self.h5s:
-            matches = re.findall(r'selfcalcyle\d+_(.*?)\.', h5.split('/')[-1])
+            filename = h5.split('/')[-1]
+            if 'ILTJ' in filename:
+                matches = re.findall(r'ILTJ\d+\..\d+\+\d+.\d+', filename)
+            else:
+                matches = re.findall(r'selfcalcyle\d+_(.*?)\.', filename)
             assert len(matches) == 1
             sources.append(matches[0])
         self.sources = set(sources)
         assert len(self.sources) > 0, "No sources found"
+        logger.info(f"Source(s): {', '.join(self.sources)}")
 
         self.main_source = list(self.sources)[0].split("_")[-1]
 
