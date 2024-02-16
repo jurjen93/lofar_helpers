@@ -29,7 +29,7 @@ requirements:
           inputs = json.loads(r"""$(inputs)""")
           mslist = inputs['msin']
 
-          df = pd.read_csv(inputs['phasediff_score_csv')
+          df = pd.read_csv(inputs['phasediff_score_csv']['path'])
           selection = df[df['spd_score'] < 2.4]['source'].to_list()
 
           os.system('mkdir -p output_ms')
