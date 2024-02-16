@@ -21,9 +21,7 @@ requirements:
       - entryname: select_final.py
         entry: |
           import os
-          import sys
           import pandas as pd
-          from glob import glob
           import json
 
           inputs = json.loads(r"""$(inputs)""")
@@ -31,8 +29,6 @@ requirements:
 
           df = pd.read_csv(inputs['phasediff_score_csv']['path'])
           selection = df[df['spd_score'] < 2.4]['source'].to_list()
-
-          os.system('mkdir -p output_ms')
 
           for s in selection:
             print(s)
