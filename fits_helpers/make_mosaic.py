@@ -32,6 +32,7 @@ import astropy.units as u
 from astropy.coordinates import SkyCoord
 from past.utils import old_div
 from astropy.wcs.utils import skycoord_to_pixel
+import gc
 
 plt.style.use('ggplot')
 
@@ -275,8 +276,9 @@ def main():
         weights += facetweight
         facetweight = None
         del facetweight
+        gc.collect()
 
-        make_image(isum, None, facet+'full.png', 'CMRmap', header_new)
+        make_image(isum, None, facet.split('/')[-1]+'full.png', 'CMRmap', header_new)
 
     print('FACET COMPLETED ... ADDING CORRECT WEIGHTS ...')
 

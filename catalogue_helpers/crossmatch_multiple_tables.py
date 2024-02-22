@@ -47,15 +47,112 @@ def merge_with_table(catalog1, catalog2, res_2=0.6):
             catalog1[col + f"_{res_2}"] = ''
         catalog1[col + f"_{res_2}"][match_idxs] = catalog2[col]
 
-    print(f"Number of cross-matches between two catalogs {len(match_idxs)} ({int(len(match_idxs)/len(catalog1)*100)}% matched)")
+    # print(f"Number of cross-matches between two catalogs {len(match_idxs)} ({int(len(match_idxs)/len(catalog1)*100)}% matched)")
+    if len(catalog1)>0:
+        perc = len(match_idxs)/len(catalog1)
+    else:
+        perc = 0
+    return catalog1[match_idxs], perc, len(catalog1)
 
-    return catalog1[match_idxs]
+def detectibility(cats, outputfolder=None):
+    DR1 = '/home/jurjen/Documents/ELAIS/catalogues/en1_final_cross_match_catalogue-v1.0.fits'
+    DR2 = '/home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits'
+    lotss = Table.read(DR2, format='fits')
+    lotss['dist'] = list(map(dist_pointing_center, lotss['RA', 'DEC']))
+    for n in range(len(cats)):
+        # cat = cat[(cat['Total_flux']*1000>10) & (cat['S_Code']=='S')]
+        cats[n]['dist'] = list(map(dist_pointing_center, cats[n]['RA', 'DEC']))
+        cats[n] = cats[n][(cats[n]['dist'] < 1.25) & (cats[n]['Peak_flux'] > 5*cats[n]['Isl_rms'])]
+    lotss = lotss[(lotss['dist'] < 1.25) & (lotss['Peak_flux'] > 5*lotss['Isl_rms'])]
+
+    resolutions = ['0.3"', '0.6"', '1.2"', '6"']
+    colors = ['darkred', 'darkblue', 'darkgreen', 'orange']
+    linestyle = ['-.', ':', '-', '--']
+
+    plt.close()
+    xp = np.logspace(-1, 3, 17)
+    for n, cat in enumerate(cats):
+        output = []
+        e_output = []
+        x_axis = []
+        for m, x in enumerate(xp):
+            try:
+
+                _, out, N = merge_with_table(lotss[(lotss['Total_flux']*1000>x) & (lotss['Total_flux']*1000<xp[m+1])], cat, 12)
+                err = np.sqrt((out*(1-out))/N)
+                err = np.sqrt(1/N)
+                if out==0:
+                    break
+                output.append(out)
+                e_output.append(err)
+                x_axis.append((x+xp[m+1])/2)
+            except:
+                pass
+        plt.fill_between(x_axis, output, np.array(output)+np.array(e_output), alpha=0.1, color=colors[n])
+        plt.fill_between(x_axis, output, np.array(output)-np.array(e_output), alpha=0.1, color=colors[n])
+        plt.plot(x_axis, output, label=resolutions[n], color=colors[n], linestyle=linestyle[n])
+        plt.xscale('log')
+    plt.ylim(0, 1.2)
+    plt.legend()
+    plt.xlabel('$S_{6}$ [mJy]')
+    plt.ylabel('Detectability')
+    plt.savefig(f'{outputfolder}/detectability.png', dpi=150)
+    plt.close()
+
+    lotss = lotss[(lotss['S_Code']=='S')]
+
+    resolutions = ['0.3"', '0.6"', '1.2"', '6"']
+    colors = ['darkred', 'darkblue', 'darkgreen', 'orange']
+    linestyle = ['-.', ':', '-', '--']
+
+    plt.close()
+    xp = np.logspace(-1, 1, 15)
+    for n, cat in enumerate(cats):
+        output = []
+        e_output = []
+        x_axis = []
+        for m, x in enumerate(xp):
+            try:
+
+                _, out, N = merge_with_table(lotss[(lotss['Total_flux']*1000>x) & (lotss['Total_flux']*1000<xp[m+1])], cat, 12)
+                err = np.sqrt((out*(1-out))/N)
+                err = np.sqrt(1/N)
+                if out==0:
+                    break
+                output.append(out)
+                e_output.append(err)
+                x_axis.append((x+xp[m+1])/2)
+            except:
+                pass
+        plt.fill_between(x_axis, output, np.array(output)+np.array(e_output), alpha=0.1, color=colors[n])
+        plt.fill_between(x_axis, output, np.array(output)-np.array(e_output), alpha=0.1, color=colors[n])
+        plt.plot(x_axis, output, label=resolutions[n], color=colors[n], linestyle=linestyle[n])
+        plt.xscale('log')
+    plt.plot([0.1, 10], [1, 1], linestyle='--', color='black')
+    plt.ylim(0, 1.2)
+    plt.xlim(0.1, 10)
+    plt.legend()
+    plt.xlabel('$S_{6}$ [mJy]')
+    plt.ylabel('Detectability')
+    plt.savefig(f'{outputfolder}/detectability_compact.png', dpi=150)
+    plt.close()
+
 
 def get_compact(c):
     snr_factor = 15
     compact = c[(c['S_Code'] == 'S')
                 & (c['S_Code_0.6'] == 'S')
                 & (c['S_Code_1.2'] == 'S')
+                & (c['Total_flux']>snr_factor*c['Isl_rms'])
+                & (c['Total_flux_0.6']>snr_factor*c['Isl_rms_0.6'])
+                & (c['Total_flux_1.2']>snr_factor*c['Isl_rms_1.2'])]
+    return compact
+
+def get_not_compact(c):
+    snr_factor = 15
+    compact = c[(c['S_Code'] == 'M')
+                & (c['S_Code_0.6'] == 'M')
+                & (c['S_Code_1.2'] == 'M')
                 & (c['Total_flux']>snr_factor*c['Isl_rms'])
                 & (c['Total_flux_0.6']>snr_factor*c['Isl_rms_0.6'])
                 & (c['Total_flux_1.2']>snr_factor*c['Isl_rms_1.2'])]
@@ -90,16 +187,21 @@ def ratio_err(total_flux, e_total_flux, peak_flux, e_peak_flux):
     return peak_flux/total_flux * np.sqrt((e_total_flux / total_flux) ** 2
                         + (e_peak_flux / peak_flux) ** 2)
 
+def dist_pointing_center(pos):
+    # HARD CODED FOR ELAIS-N1
+    pointing_center = SkyCoord(242.75 * u.degree, 54.95 * u.degree, frame='icrs')
+    return pointing_center.separation(SkyCoord(pos['RA'] * u.deg, pos['DEC'] * u.deg, frame='icrs')).value
 
-def make_plots(subcat, outputfolder=None):
+
+
+def make_plots_combine(subcat, outputfolder=None):
     """Make plots"""
 
-    def dist_pointing_center(pos):
-        # HARD CODED FOR ELAIS-N1
-        pointing_center = SkyCoord(242.75 * u.degree, 54.95 * u.degree, frame='icrs')
-        return pointing_center.separation(SkyCoord(pos['RA'] * u.deg, pos['DEC'] * u.deg, frame='icrs')).value
 
     print(len(subcat))
+
+    def model(x, m, a, b):
+        return m * x ** 2 + a * x + b
 
     ############# Peak flux over Total flux ##############
     R_03 = subcat['Peak_flux'] / subcat['Total_flux']
@@ -114,24 +216,24 @@ def make_plots(subcat, outputfolder=None):
     R_03 *=1.1
 
 
-    plt.figure(figsize=(5,4))
-    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R_03, s=20, alpha=0.75, vmin=0, vmax=1)
+    # plt.figure(figsize=(5,4))
+    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R_03, s=10, alpha=0.75, vmin=0, vmax=1)
     plt.xlabel("Right Ascension (degrees)")
     plt.ylabel("Declination (degrees)")
     plt.colorbar(label='Peak / integrated flux')
     plt.savefig(f'{outputfolder}/peak_total_total_im_03.png', dpi=150)
     plt.close()
 
-    plt.figure(figsize=(5,4))
-    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R_06, s=20, alpha=0.75, vmin=0, vmax=1)
+    # plt.figure(figsize=(5,4))
+    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R_06, s=10, alpha=0.75, vmin=0, vmax=1)
     plt.xlabel("Right Ascension (degrees)")
     plt.ylabel("Declination (degrees)")
     plt.colorbar(label='Peak / integrated flux')
     plt.savefig(f'{outputfolder}/peak_total_total_im_06.png', dpi=150)
     plt.close()
 
-    plt.figure(figsize=(5,4))
-    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R_12, s=20, alpha=0.75, vmin=0, vmax=1)
+    # plt.figure(figsize=(5,4))
+    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R_12, s=10, alpha=0.75, vmin=0, vmax=1)
     plt.xlabel("Right Ascension (degrees)")
     plt.ylabel("Declination (degrees)")
     plt.colorbar(label='Peak / integrated flux')
@@ -149,8 +251,12 @@ def make_plots(subcat, outputfolder=None):
     subcat['dist'] = list(map(dist_pointing_center, subcat['RA', 'DEC']))
     # degree = 2
 
-    def model(x, m, a, b):
-        return m * x**2 + a*x + b
+    centralhz = 140232849.121094
+    bandwidth = 12207
+    inttime = 1
+    xdist = np.linspace(subcat['dist'].min(), 1.25, 100)
+    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime, 0.3, xdist)
+
 
     params_03, cov_03 = curve_fit(model, subcat['dist'], R_03, sigma=E_R03, absolute_sigma=True)
     m_fit_03, a_fit_03, b_fit_03 = params_03
@@ -186,12 +292,7 @@ def make_plots(subcat, outputfolder=None):
     y_fit_12_upper = model(x_fit, a_fit_12_lower, m_fit_12_upper, b_fit_12_upper)
     y_fit_12_lower = model(x_fit, a_fit_12_lower, m_fit_12_lower, b_fit_12_lower)
 
-    centralhz = 140232849.121094
-    bandwidth = 12207
-    inttime = 1
-    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime, 0.3, np.linspace(subcat['dist'].min(), subcat['dist'].max(), 100))
-
-    plt.figure(figsize=(5,4))
+    # plt.figure(figsize=(5,4))
     # plt.plot(x_fit, totals, color='darkblue', label='Theoretical peak response', linestyle='-.')
     plt.plot(x_fit, y_fit_03, color='darkred', label='0.3"', linestyle='-.')
     plt.fill_between(x_fit, y_fit_03_lower, y_fit_03_upper,
@@ -201,20 +302,227 @@ def make_plots(subcat, outputfolder=None):
     plt.fill_between(x_fit, y_fit_06_lower, y_fit_06_upper,
                              color='blue', alpha=0.2)
 
-    plt.plot(x_fit, y_fit_12, color='darkgreen', label='1.2"', linestyle='--')
+    plt.plot(x_fit, y_fit_12, color='darkgreen', label='1.2"', linestyle='-')
     plt.fill_between(x_fit, y_fit_12_lower, y_fit_12_upper,
                              color='green', alpha=0.2)
+
+    plt.plot(xdist, totals, color='black', label='$\Delta$t=1s', linestyle='--')
+    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime*2, 0.33, xdist)
+    plt.plot(xdist, totals, color='black', label='$\Delta$t=2s', linestyle=':')
+
     # plt.plot(x_fit, y_fit_6, color='orange', label='6"', linestyle='--')
 
     # plt.scatter(subcat['dist'], R, s=6, c=np.clip(subcat['Peak_flux']/subcat['Isl_rms'], a_min=5,  a_max=80), alpha=0.75)
     plt.xlabel("Distance from pointing center (degrees)")
-    plt.ylabel("Peak / integrated flux")
+    plt.ylabel("Peak / total intensity")
     plt.ylim(0.2, 1)
 
     plt.xlim(0, 1.25)
     plt.legend()
+    plt.tight_layout()
     plt.savefig(f'{outputfolder}/peak_total_total_dist.png', dpi=150)
     plt.close()
+
+
+    # plt.plot(xdist, bws, color='red', label='$\Delta$t', linestyle='dashed')
+    # plt.plot(xdist, ts, color='red', label='$\Delta$t', linestyle='dashed')
+
+
+    # plt.ylim(0, 1)
+    # plt.xlim(0, 1.25)
+    # plt.xlabel("Distance from pointing center (degrees)")
+    # plt.ylabel("I / I$_{0}$")
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.savefig(f'{outputfolder}/theoretical_smearing.png', dpi=150)
+
+def circ_size(dist):
+    return dist**2*np.pi
+
+def make_plots_compare(cats, outputfolder=''):
+
+    resolutions = ['0.3"', '0.6"', '1.2"', '6"']
+    colors = ['darkred', 'darkblue', 'darkgreen', 'orange']
+    linestyle = ['-.', ':', '-', '--']
+
+    for n in range(len(cats)):
+        # cat = cat[(cat['Total_flux']*1000>10) & (cat['S_Code']=='S')]
+        cats[n]['dist'] = list(map(dist_pointing_center, cats[n]['RA', 'DEC']))
+
+    plt.close()
+    for n, cat in enumerate(cats):
+        kwargs = dict(histtype='step', alpha=1, bins=np.logspace(-1.2, 1, 30), color=colors[n], linestyle=linestyle[n], label=resolutions[n], linewidth=1.3)
+        df = cat.to_pandas()
+        df = df[df['dist']<1.25]
+        plt.hist(df['Total_flux']*1000, **kwargs)
+    # plt.plot([10**-0.323, 10**-0.323], [0, 850], linestyle='--', color='black')
+    plt.legend()
+    plt.xlabel('$S$ [mJy]')
+    plt.ylabel('Counts')
+    # plt.ylim(0, 850)
+    plt.xscale('log')
+    plt.savefig(f'{outputfolder}/source_count_flux.png', dpi=150)
+    plt.close()
+
+    # plt.figure(figsize=(5, 4))
+    for n, cat in enumerate(cats):
+        counts, bin_edges = np.histogram(cat['dist'], bins=100)
+        cumsum = np.cumsum(counts)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        plt.plot(bin_centers, cumsum, linestyle=linestyle[n], label=resolutions[n], color=colors[n])
+    plt.xlim(0, 1.75)
+    plt.ylim(0, )
+    # plt.plot([1.25, 1.25], [0, 9500], color='black', linestyle='--')
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("Cumulative count")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/cumulative_dist_count.png', dpi=150)
+    plt.close()
+
+    for n, cat in enumerate(cats):
+        counts, bin_edges = np.histogram(cat['dist'], bins=np.arange(0, 1.75, 0.2))
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        density = [c/(circ_size(bin_edges[n+1])-circ_size(bin_edges[n])) for n, c in enumerate(counts)]
+        plt.plot(bin_centers[1:], density[1:], linestyle=linestyle[n], label=resolutions[n], color=colors[n], linewidth=1)
+    plt.xlim(0, 1.75)
+    plt.ylim(0, )
+    # plt.plot([1.25, 1.25], [0, 9500], color='black', linestyle='--')
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("Source density (degree$^{-2})$")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/density.png', dpi=150)
+    plt.close()
+
+    # plt.figure(figsize=(5, 4))
+    for n, cat in enumerate(cats):
+        counts, bin_edges = np.histogram(cat['dist'], bins=500)
+        cumsum = np.cumsum(counts)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        plt.plot(bin_centers, cumsum/max(cumsum), linestyle=linestyle[n], label=resolutions[n], color=colors[n])
+    plt.xlim(0, 1.75)
+    plt.ylim(0, )
+    # plt.plot([1.25, 1.25], [0, 9500], color='black', linestyle='--')
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("Cumulative distribution")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/cumulative_dist.png', dpi=150)
+    plt.close()
+
+    # plt.figure(figsize=(5, 4))
+    for n, cat in enumerate(cats):
+        kwargs = dict(histtype='step', alpha=1, bins=np.linspace(0, 1.75, 20), color=colors[n], linestyle=linestyle[n], label=resolutions[n], linewidth=1)
+        plt.hist(cat.to_pandas()['dist'], **kwargs)
+    plt.xlim(0, 1.75)
+    plt.ylim(0, )
+    # plt.plot([1.25, 1.25], [0, 9500], color='black', linestyle='--')
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("Count")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/hist_dist.png', dpi=150)
+    plt.close()
+
+    # plt.figure(figsize=(5, 4))
+    for n, cat in enumerate(cats):
+        _, bin_edges = np.histogram(cat['dist'], bins=30)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        rms = []
+        for i in range(len(bin_centers)):
+            if i==0:
+                bi = 0
+            else:
+                bi = bin_edges[i-1]
+            rms.append(np.median(cat[(cat['dist']>bi) & (cat['dist']<bin_edges[i])]['Isl_rms'])*1000)
+        params = np.polyfit(bin_centers[1:], rms[1:], 4)
+        polynomial_function = np.poly1d(params)
+        # plt.plot(bin_edges[1:], rms, linestyle=linestyle[n], label=resolutions[n], color=colors[n])
+        xp = np.linspace(bin_centers[1], 1.75, 400)
+        data = polynomial_function(xp)
+        # data = [data[0]]+list(data[100:])
+        # data = [d if d>data[m-1] else  for m, d in enumerate(data)][1:]
+        plt.plot(xp, data, linestyle=linestyle[n], label=resolutions[n], color=colors[n], linewidth=1)
+    plt.legend()
+    plt.xlabel("Distance from pointing center (degree)")
+    plt.ylabel("RMS (mJy/beam)")
+    plt.xlim(0, 1.5)
+    plt.ylim(0, )
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/rms_dist.png', dpi=150)
+    plt.close()
+
+    # plt.figure(figsize=(5, 4))
+    xp = np.linspace(bin_centers[1], 1.75, 400)
+    for n, cat in enumerate(cats):
+        _, bin_edges = np.histogram(cat['dist'], bins=30)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        rms = []
+        for i in range(len(bin_centers)):
+            if i==0:
+                bi = 0
+            else:
+                bi = bin_edges[i-1]
+            rms.append(np.median(cat[(cat['dist']>bi) & (cat['dist']<bin_edges[i])]['Isl_rms'])*1000)
+        params = np.polyfit(bin_centers[1:], rms[1:], 4)
+        polynomial_function = np.poly1d(params)
+        # plt.plot(bin_edges[1:], rms, linestyle=linestyle[n], label=resolutions[n], color=colors[n])
+        data = polynomial_function(xp)
+        # data = [data[0]]+list(data[100:])
+        # data = [d if d>data[m-1] else  for m, d in enumerate(data)][1:]
+        plt.plot(xp, data/min(data), linestyle=linestyle[n], label=resolutions[n], color=colors[n], linewidth=1)
+    plt.plot(xp, primary_beam_intensity_140(xp, 1.02), linestyle='--', label='$\\alpha=1.02$', color='black')
+    plt.plot(xp, primary_beam_intensity_140(xp, 1.3), linestyle=':', label='$\\alpha=1.3$', color='black')
+    plt.legend()
+    plt.xlabel("Distance from pointing center (degree)")
+    plt.ylabel("Relative RMS")
+    plt.xlim(0, 1.5)
+    plt.ylim(0.9, 3)
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/rms_dist_relative.png', dpi=150)
+
+def flux_ratios(T):
+    T = T[T['Total_flux'] > 20 * T['Isl_rms']]
+    R = T['Total_flux_6'] / T['Total_flux']
+    print(f'median ratio: '+str(np.median(R[~np.isnan(R)])))
+    print(f'std ratio: '+str(np.std(R[~np.isnan(R)])))
+    print('Percentage above 1')
+    print(len(R[R>1])/len(R))
+    print('Percentage below 1')
+    print(len(R[R<1])/len(R))
+
+def primary_beam_intensity_140(theta, alpha):
+    """
+    Calculate the primary beam intensity as a function of angular distance.
+    Parameters:
+    - theta: Angular distance from the pointing center (in degrees).
+    - fwhm: Full Width at Half Maximum of the beam (in degrees).
+    Returns:
+    - Intensity at the given angular distance, relative to the peak intensity.
+    """
+    # fwhm = 3/3600
+    fwhm = alpha*2.173
+    sigma = fwhm / (2 * np.sqrt(2 * np.log(2)))
+    intensity = np.exp(-0.5 * (theta / sigma) ** 2)
+    return 1/intensity
+
+
+def primary_beam_intensity_168(theta, alpha):
+    """
+    Calculate the primary beam intensity as a function of angular distance.
+    Parameters:
+    - theta: Angular distance from the pointing center (in degrees).
+    - fwhm: Full Width at Half Maximum of the beam (in degrees).
+    Returns:
+    - Intensity at the given angular distance, relative to the peak intensity.
+    """
+    # fwhm = 3/3600
+    fwhm = alpha*1.810998735777497
+    sigma = fwhm / (2 * np.sqrt(2 * np.log(2)))
+    intensity = np.exp(-0.5 * (theta / sigma) ** 2)
+    return 1/intensity
+
 
 def parse_args():
     """Parse input arguments"""
@@ -235,10 +543,16 @@ def main():
     catalog1 = Table.read(args.cat1)
     catalog2 = Table.read(args.cat2)
     catalog3 = Table.read(args.cat3)
-    total = merge_with_table(catalog1, catalog2, res_2=0.6)
-    total = merge_with_table(total, catalog3, res_2=1.2)
-    total = get_compact(total)
-    make_plots(total, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    # flux_ratios(catalog1)
+    # flux_ratios(catalog2)
+    # flux_ratios(catalog3)
+    # #
+    # total = merge_with_table(catalog1, catalog2, res_2=0.6)[0]
+    # total = merge_with_table(total, catalog3, res_2=1.2)[0]
+    # compact = get_compact(total)
+    # detectibility([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    # make_plots_combine(compact, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    make_plots_compare([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
 
 
 

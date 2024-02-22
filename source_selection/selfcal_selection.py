@@ -586,7 +586,7 @@ def main(h5s: list = None, fitsfiles: list = None, station: str = 'international
         csv_writer.writerow(['rms'] + rmss + [np.nan])
 
     make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'./selection_output/solution_stability_{sq.main_source}.png', best_cycle)
-    make_figure(rmss, minmaxs, '$RMS (mJy)$', '$|min/max|$', f'./selection_output/image_stability_{sq.main_source}.png', best_cycle+1)
+    make_figure(rmss, minmaxs, 'RMS (mJy/beam)', '$|min/max|$', f'./selection_output/image_stability_{sq.main_source}.png', best_cycle+1)
 
     df = pd.read_csv(fname).set_index('solutions').T
     df.to_csv(fname, index=False)

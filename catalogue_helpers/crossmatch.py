@@ -91,12 +91,17 @@ def separation_match(cat1, cat2, separation_asec):
     return catalog1_corrected, catalog1_removed
 
 
-def remove_snr(catalog, snr=5):
+def remove_snr(catalog, snr=5, cat=None):
     """Remove sources based on Signal-To-Noise"""
 
     print(f"Source count before SNR cut {len(catalog)}")
     newcat = catalog[catalog['Peak_flux'] > snr * catalog['Isl_rms']]
     print(f'Source count after SNR cut {len(newcat)} ({int(abs(1-len(catalog)/len(newcat))*100)}% removed)')
+    if cat is not None:
+        for name, dens in density.items():
+            if name in cat:
+                print(name, cat)
+                print(f'Density: {len(newcat)/dens} sources/arcsec**2')
 
     return newcat
 
@@ -280,7 +285,7 @@ def merge_with_table(catalog1, catalog2, sep=6, res=0.3):
 
     catalog2 = catalog2[idx_catalog2][match_idxs]
 
-    for col in ['Total_flux', 'Peak_flux', 'E_Total_flux', 'E_Peak_flux', 'Maj', 'Min', 'PA', 'E_PA', 'S_Code']:
+    for col in ['Total_flux', 'Peak_flux', 'E_Total_flux', 'E_Peak_flux', 'Maj', 'Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms']:
         if col != 'S_Code':
             catalog1[col + "_6"] = np.nan
         else:
@@ -336,6 +341,7 @@ def main():
         for n, cat in enumerate(args.cat1):
             print(cat)
             catalog1_new, _ = separation_match(cat, args.cat2, args.separation_asec)
+            remove_snr(catalog1_new, snr=5, cat=cat)
             if args.source_id_prefix is not None:
                 catalog1_new['Cat_id'] = [f'{args.source_id_prefix}_{id}' for id in list(catalog1_new['Source_id'])]
             else:
@@ -362,6 +368,36 @@ def main():
 
 
 if __name__ == '__main__':
+    density = {'facet_0': 0.24143183950617234,
+               'facet_1': 0.13690175308641947,
+               'facet_10': 0.20427424691357982,
+               'facet_11': 0.2855608888888883,
+               'facet_12': 0.22253392592592544,
+               'facet_13': 0.19539255555555515,
+               'facet_14': 0.16753998765432063,
+               'facet_15': 0.10965179012345656,
+               'facet_16': 0.12828291358024665,
+               'facet_17': 0.34949097530864126,
+               'facet_18': 0.26597167901234514,
+               'facet_19': 0.09615233333333313,
+               'facet_2': 0.12172407407407382,
+               'facet_20': 0.11137129629629607,
+               'facet_21': 0.14146774074074045,
+               'facet_22': 0.20576508641975266,
+               'facet_23': 0.4636706543209867,
+               'facet_24': 0.07083577777777762,
+               'facet_25': 0.23814687654320937,
+               'facet_26': 0.47480614814814714,
+               'facet_27': 0.219969469135802,
+               'facet_28': 0.22957644444444394,
+               'facet_29': 0.23002959259259212,
+               'facet_3': 0.23208735802469085,
+               'facet_4': 0.19441218518518477,
+               'facet_5': 0.22606349382716,
+               'facet_6': 0.12530912345678985,
+               'facet_7': 0.1945322962962959,
+               'facet_8': 0.15238839506172808,
+               'facet_9': 0.21153599999999956}
     main()
 
 # python catalogue_helpers/crossmatch_multiple_tables.py --cat1 final_merged_03.fits --cat2 final_merged_06.fits --cat3 final_merged_12.fits
