@@ -323,7 +323,7 @@ class MergeH5:
                             time = st._f_get_child('time')[:]
                             self.ax_time = sort(unique(append(self.ax_time, time)))
                         else:
-                            print('No time axes in ' + h5 + '/' + solset + '/' + soltab)
+                            print('No time axes in ' + h5_name + '/' + solset + '/' + soltab)
                         if 'freq' in axes:
                             freq = st._f_get_child('freq')[:]
                             self.ax_freq = sort(unique(append(self.ax_freq, freq)))
@@ -372,12 +372,12 @@ class MergeH5:
                             time = st._f_get_child('time')[:]
                             self.ax_time = sort(unique(append(self.ax_time, time)))
                         else:
-                            print('No time axes in ' + h5 + '/' + solset + '/' + soltab)
+                            print('No time axes in ' + h5_name + '/' + solset + '/' + soltab)
                         if 'freq' in axes:
                             freq = st._f_get_child('freq')[:]
                             self.ax_freq = sort(unique(append(self.ax_freq, freq)))
                         else:
-                            print('No freq axes in ' + h5 + '/' + solset + '/' + soltab)
+                            print('No freq axes in ' + h5_name + '/' + solset + '/' + soltab)
                 h5.close()
 
         # get polarization output axis and check number of error and tec tables in merge list
