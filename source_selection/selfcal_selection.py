@@ -633,7 +633,7 @@ def calc_all_scores(sources_root, stations='international'):
 if __name__ == '__main__':
     args = parse_args()
 
-    output_folder='./out'
+    output_folder='./selection_output'
     system(f'mkdir -p {output_folder}')
 
     if args.parallel:

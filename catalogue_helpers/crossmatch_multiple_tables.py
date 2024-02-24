@@ -19,6 +19,9 @@ import scienceplots
 import math
 from scipy.special import erf
 from scipy.optimize import curve_fit
+from sklearn.linear_model import RANSACRegressor
+from sklearn.pipeline import make_pipeline
+from sklearn.preprocessing import PolynomialFeatures
 
 plt.style.use('science')
 
@@ -192,51 +195,111 @@ def dist_pointing_center(pos):
     pointing_center = SkyCoord(242.75 * u.degree, 54.95 * u.degree, frame='icrs')
     return pointing_center.separation(SkyCoord(pos['RA'] * u.deg, pos['DEC'] * u.deg, frame='icrs')).value
 
+def model(x, m, a, b):
+    return -abs(m) * x ** 2 + a * x + b
+
+def get_inliers(x, y, threshold_factor=2, max_iterations=5):
+    """
+    Fits a non-linear model of the form y = A*exp(-B*x^2) + C to the data,
+    removes outliers, and refits.
+
+    Parameters:
+    - x, y: Arrays of x and y data points.
+    - threshold_factor: Factor to multiply by the standard deviation to define outliers.
+    - max_iterations: Maximum number of iterations to refine fitting by removing outliers.
+
+    Returns:
+    - popt: Optimized parameters [A, B, C] of the fitted model.
+    - mask: Boolean array indicating which points are not considered outliers.
+    """
+    mask = np.ones(len(x), dtype=bool)  # Start with all points included
+
+    for _ in range(max_iterations):
+        x_filtered, y_filtered = x[mask], y[mask]
+
+        # Fit the non-linear model
+        popt, pcov = curve_fit(model, x_filtered, y_filtered)
+
+        # Calculate residuals
+        y_pred = model(x_filtered, *popt)
+        residuals = y_filtered - y_pred
+        std_residual = np.std(residuals)
+
+        # Determine outliers
+        outliers = np.abs(residuals) > threshold_factor * std_residual
+
+        # Update the mask to exclude new outliers
+        if not np.any(outliers):
+            break
+        mask[mask] = ~outliers  # Update mask only where it was previously True
+    return mask, np.ones(mask.shape).astype(bool)
 
 
-def make_plots_combine(subcat, outputfolder=None):
+def make_plots_combine(subcats, outputfolder=None):
     """Make plots"""
 
 
-    print(len(subcat))
+    subcat_03, subcat_06, subcat_12 = subcats
 
-    def model(x, m, a, b):
-        return m * x ** 2 + a * x + b
+    rms_treshold=15
+    subcat_03 = subcat_03[(subcat_03['S_Code']=='S') & (subcat_03['Peak_flux'] > rms_treshold*subcat_03['Isl_rms'])]
+    subcat_06 = subcat_06[(subcat_06['S_Code']=='S') & (subcat_06['Peak_flux'] > rms_treshold*subcat_06['Isl_rms'])]
+    subcat_12 = subcat_12[(subcat_12['S_Code']=='S') & (subcat_12['Peak_flux'] > rms_treshold*subcat_12['Isl_rms'])]
+
+    subcat_03['dist'] = list(map(dist_pointing_center, subcat_03['RA', 'DEC']))
+    subcat_06['dist'] = list(map(dist_pointing_center, subcat_06['RA', 'DEC']))
+    subcat_12['dist'] = list(map(dist_pointing_center, subcat_12['RA', 'DEC']))
+
+
+
 
     ############# Peak flux over Total flux ##############
-    R_03 = subcat['Peak_flux'] / subcat['Total_flux']
-    E_R03 = ratio_err(subcat['Total_flux'], subcat['E_Total_flux'], subcat['Peak_flux'], subcat['E_Peak_flux'])
-    R_06 = subcat['Peak_flux_0.6'] / subcat['Total_flux_0.6']
-    E_R06 = ratio_err(subcat['Total_flux_0.6'], subcat['E_Total_flux_0.6'], subcat['Peak_flux_0.6'], subcat['E_Peak_flux_0.6'])
-    R_12 = subcat['Peak_flux_1.2'] / subcat['Total_flux_1.2']
-    E_R12 = ratio_err(subcat['Total_flux_1.2'], subcat['E_Total_flux_1.2'], subcat['Peak_flux_1.2'], subcat['E_Peak_flux_1.2'])
+    R_03 = subcat_03['Peak_flux'] / subcat_03['Total_flux']
+    E_R03 = ratio_err(subcat_03['Total_flux'], subcat_03['E_Total_flux'], subcat_03['Peak_flux'], subcat_03['E_Peak_flux'])
+    R_06 = subcat_06['Peak_flux'] / subcat_06['Total_flux']
+    E_R06 = ratio_err(subcat_06['Total_flux'], subcat_06['E_Total_flux'], subcat_06['Peak_flux'], subcat_06['E_Peak_flux'])
+    R_12 = subcat_12['Peak_flux'] / subcat_12['Total_flux']
+    E_R12 = ratio_err(subcat_12['Total_flux'], subcat_12['E_Total_flux'], subcat_12['Peak_flux'], subcat_12['E_Peak_flux'])
     # R_6 = subcat['Peak_flux_6'] / subcat['Total_flux_6']
 
-    subcat['dist'] = list(map(dist_pointing_center, subcat['RA', 'DEC']))
-    R_03 *=1.1
+    print(max(R_03))
+    print(max(R_06))
+    print(max(R_12))
+
+    # R_03 *=1.1
+
+    subcat_03['RA']%=360
+    subcat_06['RA']%=360
+    subcat_12['RA']%=360
 
 
     # plt.figure(figsize=(5,4))
-    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R_03, s=10, alpha=0.75, vmin=0, vmax=1)
+    plt.scatter(subcat_03[R_03>0.8]['RA'], subcat_03[R_03>0.8]['DEC'], c=R_03[R_03>0.8], s=10, alpha=0.75, vmax=1)
     plt.xlabel("Right Ascension (degrees)")
     plt.ylabel("Declination (degrees)")
     plt.colorbar(label='Peak / integrated flux')
+    plt.xlim(subcat_03['RA'].min(), subcat_03['RA'].max())
+    plt.ylim(subcat_03['DEC'].min(), subcat_03['DEC'].max())
     plt.savefig(f'{outputfolder}/peak_total_total_im_03.png', dpi=150)
     plt.close()
 
     # plt.figure(figsize=(5,4))
-    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R_06, s=10, alpha=0.75, vmin=0, vmax=1)
+    plt.scatter(subcat_06[R_06>0.8]['RA'], subcat_06[R_06>0.8]['DEC'], c=R_06[R_06>0.8], s=10, alpha=0.75, vmax=1)
     plt.xlabel("Right Ascension (degrees)")
     plt.ylabel("Declination (degrees)")
     plt.colorbar(label='Peak / integrated flux')
+    plt.xlim(subcat_03['RA'].min(), subcat_03['RA'].max())
+    plt.ylim(subcat_03['DEC'].min(), subcat_03['DEC'].max())
     plt.savefig(f'{outputfolder}/peak_total_total_im_06.png', dpi=150)
     plt.close()
 
     # plt.figure(figsize=(5,4))
-    plt.scatter(subcat['RA'] % 360, subcat['DEC'] % 360, c=R_12, s=10, alpha=0.75, vmin=0, vmax=1)
+    plt.scatter(subcat_12[R_12>0.8]['RA'], subcat_12[R_12>0.8]['DEC'], c=R_12[R_12>0.8], s=10, alpha=0.75, vmax=1)
     plt.xlabel("Right Ascension (degrees)")
     plt.ylabel("Declination (degrees)")
     plt.colorbar(label='Peak / integrated flux')
+    plt.xlim(subcat_03['RA'].min(), subcat_03['RA'].max())
+    plt.ylim(subcat_03['DEC'].min(), subcat_03['DEC'].max())
     plt.savefig(f'{outputfolder}/peak_total_total_im_12.png', dpi=150)
     plt.close()
 
@@ -248,67 +311,75 @@ def make_plots_combine(subcat, outputfolder=None):
     # plt.savefig(f'{outputfolder}/peak_total_total_im_6.png', dpi=150)
     # plt.close()
 
-    subcat['dist'] = list(map(dist_pointing_center, subcat['RA', 'DEC']))
+    # subcat_03['dist'] = list(map(dist_pointing_center, subcat['RA', 'DEC']))
     # degree = 2
 
-    centralhz = 140232849.121094
-    bandwidth = 12207
-    inttime = 1
-    xdist = np.linspace(subcat['dist'].min(), 1.25, 100)
-    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime, 0.3, xdist)
+    # ransac = RANSACRegressor(base_estimator=curve_fit, min_samples=10, residual_threshold=5)
+    # ransac.fit(subcat['dist'][:, np.newaxis], R_03)
+    # m_fit_03, a_fit_03, b_fit_03 = ransac.estimator_.coef_
+
+    # def model(x, A, B, C):
+    #     return np.exp(-B * x ** 2) + C
 
 
-    params_03, cov_03 = curve_fit(model, subcat['dist'], R_03, sigma=E_R03, absolute_sigma=True)
+
+    inlier_mask, _ = get_inliers(subcat_03['dist'], R_03)
+    params_03, cov_03 = curve_fit(model, subcat_03['dist'][inlier_mask], R_03[inlier_mask], sigma=E_R03[inlier_mask], absolute_sigma=True)
     m_fit_03, a_fit_03, b_fit_03 = params_03
-    params_03_upper, cov_03_upper = curve_fit(model, subcat['dist'], R_03+E_R03, sigma=E_R03, absolute_sigma=True)
-    m_fit_03_upper,a_fit_03_upper, b_fit_03_upper = params_03_upper
-    params_03_lower, cov_03_lower = curve_fit(model, subcat['dist'], R_03-E_R03, sigma=E_R03, absolute_sigma=True)
-    m_fit_03_lower,a_fit_03_lower, b_fit_03_lower = params_03_lower
+    # params_03_upper, cov_03_upper = curve_fit(model, subcat_03['dist'][inlier_mask], R_03[inlier_mask]+E_R03[inlier_mask], sigma=E_R03[inlier_mask], absolute_sigma=True)
+    # m_fit_03_upper,a_fit_03_upper, b_fit_03_upper = params_03_upper
+    # params_03_lower, cov_03_lower = curve_fit(model, subcat_03['dist'][inlier_mask], R_03[inlier_mask]-E_R03[inlier_mask], sigma=E_R03[inlier_mask], absolute_sigma=True)
+    # m_fit_03_lower,a_fit_03_lower, b_fit_03_lower = params_03_lower
 
-    params_06, cov_06 = curve_fit(model, subcat['dist'], R_06, sigma=E_R06, absolute_sigma=True)
+    inlier_mask, _ = get_inliers(subcat_06['dist'], R_06)
+    params_06, cov_06 = curve_fit(model, subcat_06['dist'][inlier_mask], R_06[inlier_mask], sigma=E_R06[inlier_mask], absolute_sigma=True)
     m_fit_06, a_fit_06, b_fit_06 = params_06
-    params_06_upper, cov_06_upper = curve_fit(model, subcat['dist'], R_06+E_R06, sigma=E_R06, absolute_sigma=True)
-    m_fit_06_upper, a_fit_06_upper, b_fit_06_upper = params_06_upper
-    params_06_lower, cov_06_lower = curve_fit(model, subcat['dist'], R_06-E_R06, sigma=E_R06, absolute_sigma=True)
-    m_fit_06_lower,a_fit_06_lower, b_fit_06_lower = params_06_lower
+    # params_06_upper, cov_06_upper = curve_fit(model, subcat_06['dist'][inlier_mask], R_06[inlier_mask]+E_R06[inlier_mask], sigma=E_R06[inlier_mask], absolute_sigma=True)
+    # m_fit_06_upper, a_fit_06_upper, b_fit_06_upper = params_06_upper
+    # params_06_lower, cov_06_lower = curve_fit(model, subcat_06['dist'][inlier_mask], R_06[inlier_mask]-E_R06[inlier_mask], sigma=E_R06[inlier_mask], absolute_sigma=True)
+    # m_fit_06_lower,a_fit_06_lower, b_fit_06_lower = params_06_lower
 
-    params_12, cov_12 = curve_fit(model, subcat['dist'], R_12, sigma=E_R12, absolute_sigma=True)
+    _, inlier_mask = get_inliers(subcat_12['dist'], R_12)
+    params_12, cov_12 = curve_fit(model, subcat_12['dist'][inlier_mask], R_12[inlier_mask], sigma=E_R12[inlier_mask], absolute_sigma=True)
     m_fit_12, a_fit_12, b_fit_12 = params_12
-    params_12_upper, cov_12_upper = curve_fit(model, subcat['dist'], R_12+E_R12, sigma=E_R12, absolute_sigma=True)
-    m_fit_12_upper, a_fit_12_upper, b_fit_12_upper = params_12_upper
-    params_12_lower, cov_12_lower = curve_fit(model, subcat['dist'], R_12-E_R12, sigma=E_R12, absolute_sigma=True)
-    m_fit_12_lower, a_fit_12_lower, b_fit_12_lower = params_12_lower
+    # params_12_upper, cov_12_upper = curve_fit(model, subcat_12['dist'][inlier_mask], R_12[inlier_mask]+E_R12[inlier_mask], sigma=E_R12[inlier_mask], absolute_sigma=True)
+    # m_fit_12_upper, a_fit_12_upper, b_fit_12_upper = params_12_upper
+    # params_12_lower, cov_12_lower = curve_fit(model, subcat_12['dist'][inlier_mask], R_12[inlier_mask]-E_R12[inlier_mask], sigma=E_R12[inlier_mask], absolute_sigma=True)
+    # m_fit_12_lower, a_fit_12_lower, b_fit_12_lower = params_12_lower
 
-    x_fit = np.linspace(subcat['dist'].min(), subcat['dist'].max(), len(R_03))
-    y_fit_03 = model(x_fit, a_fit_03, m_fit_03, b_fit_03)
-    y_fit_03_upper = model(x_fit,a_fit_03_upper, m_fit_03_upper, b_fit_03_upper)
-    y_fit_03_lower = model(x_fit,a_fit_03_lower, m_fit_03_lower, b_fit_03_lower)
+    x_fit_03 = np.linspace(subcat_03['dist'].min(), subcat_03['dist'].max(), len(R_03))
+    y_fit_03 = model(x_fit_03, a_fit_03, m_fit_03, b_fit_03)
+    # y_fit_03_upper = model(x_fit_03, a_fit_03_upper, m_fit_03_upper, b_fit_03_upper)
+    # y_fit_03_lower = model(x_fit_03,a_fit_03_lower, m_fit_03_lower, b_fit_03_lower)
 
-    y_fit_06 = model(x_fit, a_fit_06, m_fit_06, b_fit_06)
-    y_fit_06_upper = model(x_fit, a_fit_06_upper, m_fit_06_upper, b_fit_06_upper)
-    y_fit_06_lower = model(x_fit,a_fit_06_lower, m_fit_06_lower, b_fit_06_lower)
+    x_fit_06 = np.linspace(subcat_06['dist'].min(), subcat_06['dist'].max(), len(R_03))
+    y_fit_06 = model(x_fit_06, a_fit_06, m_fit_06, b_fit_06)
+    # y_fit_06_upper = model(x_fit_06, a_fit_06_upper, m_fit_06_upper, b_fit_06_upper)
+    # y_fit_06_lower = model(x_fit_06,a_fit_06_lower, m_fit_06_lower, b_fit_06_lower)
 
-    y_fit_12 = model(x_fit, a_fit_12, m_fit_12, b_fit_12)
-    y_fit_12_upper = model(x_fit, a_fit_12_lower, m_fit_12_upper, b_fit_12_upper)
-    y_fit_12_lower = model(x_fit, a_fit_12_lower, m_fit_12_lower, b_fit_12_lower)
+    x_fit_12 = np.linspace(subcat_12['dist'].min(), subcat_12['dist'].max(), len(R_03))
+    y_fit_12 = model(x_fit_12, a_fit_12, m_fit_12, b_fit_12)
+    # y_fit_12_upper = model(x_fit_12, a_fit_12_lower, m_fit_12_upper, b_fit_12_upper)
+    # y_fit_12_lower = model(x_fit_12, a_fit_12_lower, m_fit_12_lower, b_fit_12_lower)
 
     # plt.figure(figsize=(5,4))
     # plt.plot(x_fit, totals, color='darkblue', label='Theoretical peak response', linestyle='-.')
-    plt.plot(x_fit, y_fit_03, color='darkred', label='0.3"', linestyle='-.')
-    plt.fill_between(x_fit, y_fit_03_lower, y_fit_03_upper,
+    plt.plot(x_fit_03, y_fit_03, color='darkred', label='0.3"', linestyle='-.')
+    plt.fill_between(x_fit_03, y_fit_03-np.mean(E_R03), y_fit_03+np.mean(E_R03),
                              color='red', alpha=0.2)
 
-    plt.plot(x_fit, y_fit_06, color='darkblue', label='0.6"', linestyle=':')
-    plt.fill_between(x_fit, y_fit_06_lower, y_fit_06_upper,
+    plt.plot(x_fit_06, y_fit_06, color='darkblue', label='0.6"', linestyle=':')
+    plt.fill_between(x_fit_06, y_fit_06-np.mean(E_R06), y_fit_06+np.mean(E_R06),
                              color='blue', alpha=0.2)
 
-    plt.plot(x_fit, y_fit_12, color='darkgreen', label='1.2"', linestyle='-')
-    plt.fill_between(x_fit, y_fit_12_lower, y_fit_12_upper,
+    # y_fit_12 = sorted(y_fit_12)[::-1]
+    plt.plot(x_fit_12, y_fit_12, color='darkgreen', label='1.2"', linestyle='-')
+    plt.fill_between(x_fit_12, y_fit_12-np.mean(E_R12), y_fit_12+np.mean(E_R12),
                              color='green', alpha=0.2)
 
-    plt.plot(xdist, totals, color='black', label='$\Delta$t=1s', linestyle='--')
-    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime*2, 0.33, xdist)
-    plt.plot(xdist, totals, color='black', label='$\Delta$t=2s', linestyle=':')
+    # plt.plot(xdist, totals, color='black', label='$\Delta$t=1s', linestyle='--')
+    # ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime*2, 0.33, xdist)
+    # plt.plot(xdist, totals, color='black', label='$\Delta$t=2s', linestyle=':')
 
     # plt.plot(x_fit, y_fit_6, color='orange', label='6"', linestyle='--')
 
@@ -323,18 +394,22 @@ def make_plots_combine(subcat, outputfolder=None):
     plt.savefig(f'{outputfolder}/peak_total_total_dist.png', dpi=150)
     plt.close()
 
+    centralhz = 140232849.121094
+    bandwidth = 12207
+    inttime = 1
+    xdist = np.linspace(subcat_03['dist'].min(), 1.25, 100)
+    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime, 0.3, xdist)
 
-    # plt.plot(xdist, bws, color='red', label='$\Delta$t', linestyle='dashed')
-    # plt.plot(xdist, ts, color='red', label='$\Delta$t', linestyle='dashed')
+    plt.plot(xdist, bws, color='red', label='$\Delta$t', linestyle='dashed')
+    plt.plot(xdist, ts, color='red', label='$\Delta$t', linestyle='dashed')
 
-
-    # plt.ylim(0, 1)
-    # plt.xlim(0, 1.25)
-    # plt.xlabel("Distance from pointing center (degrees)")
-    # plt.ylabel("I / I$_{0}$")
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.savefig(f'{outputfolder}/theoretical_smearing.png', dpi=150)
+    plt.ylim(0, 1)
+    plt.xlim(0, 1.25)
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("I / I$_{0}$")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/theoretical_smearing.png', dpi=150)
 
 def circ_size(dist):
     return dist**2*np.pi
@@ -343,6 +418,9 @@ def make_plots_compare(cats, outputfolder=''):
 
     resolutions = ['0.3"', '0.6"', '1.2"', '6"']
     colors = ['darkred', 'darkblue', 'darkgreen', 'orange']
+    e_colors = ['red', 'blue', 'green', 'orange']
+    markers = ['o', 's', 'd']
+
     linestyle = ['-.', ':', '-', '--']
 
     for n in range(len(cats)):
@@ -364,6 +442,79 @@ def make_plots_compare(cats, outputfolder=''):
     plt.savefig(f'{outputfolder}/source_count_flux.png', dpi=150)
     plt.close()
 
+    for n, cat in enumerate(cats):
+        _, bin_edges = np.histogram(cat['dist'], bins=15)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        med = []
+        err = []
+        for i in range(len(bin_centers)):
+            if i==0:
+                bi = 0
+            else:
+                bi = bin_edges[i-1]
+            subcat = cat[(cat['dist']>bi)
+                         & (cat['dist']<bin_edges[i])
+                         & (cat['S_Code']=='S')
+                         & (cat['Peak_flux']>10*cat['Isl_rms'])]
+            R = subcat['Peak_flux']/subcat['Total_flux']
+            # mask = get_inliers(subcat['dist'], R)
+            err.append(np.mean(ratio_err(subcat['Total_flux'], subcat['E_Total_flux'], subcat['Peak_flux'],
+                      subcat['E_Peak_flux'])))
+            # p = np.nanpercentile(R, 50)
+            # m = np.median(R[R<p])
+            med.append(np.median(R))
+        params = np.polyfit(bin_centers[1:], med[1:], 2, w=err[1:])
+        polynomial_function = np.poly1d(params)
+        # plt.plot(bin_edges[1:], rms, linestyle=linestyle[n], label=resolutions[n], color=colors[n])
+        xp = np.linspace(0, 1.75, 400)
+        data = polynomial_function(xp)
+        # data = [data[0]]+list(data[100:])
+        # data = [d if d>data[m-1] else  for m, d in enumerate(data)][1:]
+        plt.errorbar(bin_centers, med, yerr=err, color=colors[n], ecolor=colors[n], fmt='o', capsize=2, markersize=3,
+                     label=resolutions[n], marker=markers[n])
+        plt.plot(xp, data, linestyle=':', color=colors[n], linewidth=1)
+        # plt.fill_between(xp, np.array(data) - np.mean(err), np.array(data) + np.mean(err),
+        #                  color=colors[n], alpha=0.2)
+    plt.legend()
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("Peak/Total intensity")
+    plt.xlim(0, 1.5)
+    plt.ylim(0, 1)
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/peak_int.png', dpi=150)
+    plt.close()
+
+    for n, cat in enumerate(cats):
+        bin_centers = np.linspace(0, 1.5, 11)
+        bar_width = bin_centers[1]/7  # Width of each bar, adjust as necessary
+        spacing = bin_centers[1]/20
+        adjusted_bin_centers = bin_centers[1:-1] + (n-1) * (bar_width + spacing)
+        med = []
+        for i in range(len(bin_centers[1:-1])):
+            if i==0:
+                bi = 0
+            else:
+                bi = bin_centers[i-1]
+            subcat = cat[(cat['dist']>bi)
+                         & (cat['dist']<bin_centers[i+1])
+                         & (cat['S_Code']=='S')
+                         & (cat['Peak_flux']>15*cat['Isl_rms'])]
+            R = subcat['Peak_flux']/subcat['Total_flux']
+            print(np.max(R))
+            if len(R)!=0:
+                med.append(len(R[(R>0.85)])/len(R))
+            else:
+                med.append(np.nan)
+        plt.bar(adjusted_bin_centers, med, color=colors[n], width=bar_width, label=resolutions[n])
+    plt.legend()
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("Fraction$>0.85$")
+    plt.xlim(0, 1.5)
+    plt.ylim(0, 0.34)
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/peak_int_perc.png', dpi=150)
+    plt.close()
+
     # plt.figure(figsize=(5, 4))
     for n, cat in enumerate(cats):
         counts, bin_edges = np.histogram(cat['dist'], bins=100)
@@ -379,6 +530,7 @@ def make_plots_compare(cats, outputfolder=''):
     plt.tight_layout()
     plt.savefig(f'{outputfolder}/cumulative_dist_count.png', dpi=150)
     plt.close()
+
 
     for n, cat in enumerate(cats):
         counts, bin_edges = np.histogram(cat['dist'], bins=np.arange(0, 1.75, 0.2))
@@ -445,7 +597,7 @@ def make_plots_compare(cats, outputfolder=''):
         # data = [d if d>data[m-1] else  for m, d in enumerate(data)][1:]
         plt.plot(xp, data, linestyle=linestyle[n], label=resolutions[n], color=colors[n], linewidth=1)
     plt.legend()
-    plt.xlabel("Distance from pointing center (degree)")
+    plt.xlabel("Distance from pointing center (degrees)")
     plt.ylabel("RMS (mJy/beam)")
     plt.xlim(0, 1.5)
     plt.ylim(0, )
@@ -472,13 +624,13 @@ def make_plots_compare(cats, outputfolder=''):
         # data = [data[0]]+list(data[100:])
         # data = [d if d>data[m-1] else  for m, d in enumerate(data)][1:]
         plt.plot(xp, data/min(data), linestyle=linestyle[n], label=resolutions[n], color=colors[n], linewidth=1)
-    plt.plot(xp, primary_beam_intensity_140(xp, 1.02), linestyle='--', label='$\\alpha=1.02$', color='black')
-    plt.plot(xp, primary_beam_intensity_140(xp, 1.3), linestyle=':', label='$\\alpha=1.3$', color='black')
+    plt.plot(xp, primary_beam_intensity_140(xp, 1.3, True), linestyle='--', label='International', color='black')
+    plt.plot(xp, primary_beam_intensity_140(xp, 1.3, False), linestyle=':', label='Dutch core', color='black')
     plt.legend()
-    plt.xlabel("Distance from pointing center (degree)")
+    plt.xlabel("Distance from pointing center (degrees)")
     plt.ylabel("Relative RMS")
     plt.xlim(0, 1.5)
-    plt.ylim(0.9, 3)
+    plt.ylim(0.9, 2.4)
     plt.tight_layout()
     plt.savefig(f'{outputfolder}/rms_dist_relative.png', dpi=150)
 
@@ -492,7 +644,7 @@ def flux_ratios(T):
     print('Percentage below 1')
     print(len(R[R<1])/len(R))
 
-def primary_beam_intensity_140(theta, alpha):
+def primary_beam_intensity_140(theta, alpha, international=True):
     """
     Calculate the primary beam intensity as a function of angular distance.
     Parameters:
@@ -502,7 +654,10 @@ def primary_beam_intensity_140(theta, alpha):
     - Intensity at the given angular distance, relative to the peak intensity.
     """
     # fwhm = 3/3600
-    fwhm = alpha*2.173
+    if international:
+        fwhm = alpha*2.173
+    else:
+        fwhm = alpha * 4
     sigma = fwhm / (2 * np.sqrt(2 * np.log(2)))
     intensity = np.exp(-0.5 * (theta / sigma) ** 2)
     return 1/intensity
@@ -550,8 +705,8 @@ def main():
     # total = merge_with_table(catalog1, catalog2, res_2=0.6)[0]
     # total = merge_with_table(total, catalog3, res_2=1.2)[0]
     # compact = get_compact(total)
-    # detectibility([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
-    # make_plots_combine(compact, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    detectibility([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    make_plots_combine([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
     make_plots_compare([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
 
 

@@ -17,8 +17,7 @@ from collections import OrderedDict
 from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
-from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
-    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose, cumsum, insert
+import numpy as np
 import os
 import re
 from scipy.interpolate import interp1d
@@ -29,9 +28,9 @@ from argparse import ArgumentParser
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-__all__ = ['merge_h5', 'output_check', 'move_source_in_sourcetable', 'h5_check']
+__all__ = ["merge_h5", "output_check", "move_source_in_sourcetable", "h5_check"]
 
 diagdiag_math = """
 Diagonal times Diagonal
@@ -97,7 +96,7 @@ YY = RR - RL - LR + LL
 -----------------------------
 """
 
-debug_message = 'Please contact jurjendejong@strw.leidenuniv.nl.'
+debug_message = "Please contact jurjendejong@strw.leidenuniv.nl."
 
 
 def remove_numbers(inp):
@@ -118,7 +117,7 @@ def make_utf8(inp):
     """
 
     try:
-        inp = inp.decode('utf8')
+        inp = inp.decode("utf8")
         return inp
     except (UnicodeDecodeError, AttributeError):
         return inp
@@ -139,24 +138,26 @@ def overwrite_table(T, solset, table, values, title=None):
     try:
         T.root
     except:
-        sys.exit('ERROR: Create table failed. Given table is not opened with the package "tables" (https://pypi.org/project/tables/).')
+        sys.exit(
+            'ERROR: Create table failed. Given table is not opened with the package "tables" (https://pypi.org/project/tables/).'
+        )
 
-    if 'sol' not in solset:
-        print('WARNING: Usual input have sol*** as solset name.')
+    if "sol" not in solset:
+        print("WARNING: Usual input have sol*** as solset name.")
 
     ss = T.root._f_get_child(solset)
     ss._f_get_child(table)._f_remove()
-    if table == 'source':
-        values = array(values, dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
-        title = 'Source names and directions'
-    elif table == 'antenna':
-        title = 'Antenna names and positions'
-        values = array(values, dtype=[('name', 'S16'), ('position', '<f4', (3,))])
+    if table == "source":
+        values = np.array(values, dtype=[("name", "S128"), ("dir", "<f4", (2,))])
+        title = "Source names and directions"
+    elif table == "antenna":
+        title = "Antenna names and positions"
+        values = np.array(values, dtype=[("name", "S16"), ("position", "<f4", (3,))])
     else:
         try:  # check if numpy structure
             values.shape
         except:
-            values = array(values)
+            values = np.array(values)
     T.create_table(ss, table, values, title=title)
 
     return
@@ -173,30 +174,38 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
 
     # Read MS antennas
     t = ct.table(MS + "::ANTENNA", ack=False)
-    new_antlist = t.getcol('NAME')
-    new_antpos = t.getcol('POSITION')
+    new_antlist = t.getcol("NAME")
+    new_antpos = t.getcol("POSITION")
     antennas_ms = list(zip(new_antlist, new_antpos))
     t.close()
 
     # Open H5 antenna table
-    T = tables.open_file(h5, 'r+')
+    T = tables.open_file(h5, "r+")
     ss = T.root._f_get_child(solset)
-    ants_h5 = [a.decode('utf8') if type(a) != str else a for a in
-               T.root._f_get_child(solset)._f_get_child(list(ss._v_groups.keys())[0]).ant[:]]
+    ants_h5 = [
+        a.decode("utf8") if type(a) != str else a
+        for a in T.root._f_get_child(solset)
+        ._f_get_child(list(ss._v_groups.keys())[0])
+        .ant[:]
+    ]
 
     # Write antenna table
     if ants_h5 == new_antlist:
-        overwrite_table(T, solset, 'antenna', antennas_ms, title=None)
+        overwrite_table(T, solset, "antenna", antennas_ms, title=None)
     else:
-        new_antennas = list(zip(ants_h5, [[0., 0., 0.]] * len(ants_h5)))
+        new_antennas = list(zip(ants_h5, [[0.0, 0.0, 0.0]] * len(ants_h5)))
         for n, ant in enumerate(antennas_ms):
             ant_ms = make_utf8(ant[0])
             # add antenna from ms if not in H5
             if ant_ms in list(ants_h5):
                 new_antennas[ants_h5.index(ant_ms)] = ant
         ss.antenna._f_remove()
-        T.create_table(ss, 'antenna', array(new_antennas, dtype=[('name', 'S16'), ('position', '<f4', (3,))]),
-                       title='Antenna names and positions')
+        T.create_table(
+            ss,
+            "antenna",
+            np.array(new_antennas, dtype=[("name", "S16"), ("position", "<f4", (3,))]),
+            title="Antenna names and positions",
+        )
     T.close()
 
     return
@@ -224,8 +233,11 @@ def take_numpy_axis(numpy_array, axis, idx):
     elif axis == 4:
         return numpy_array[:, :, :, :, idx, ...]
     else:
-        sys.exit('ERROR: typical index number does not exceed 4, but you asked for ' + str(axis) +
-                 '\nOr this script is outdated or you made a mistake.')
+        sys.exit(
+            "ERROR: typical index number does not exceed 4, but you asked for "
+            + str(axis)
+            + "\nOr this script is outdated or you made a mistake."
+        )
 
 
 def has_integer(input):
@@ -245,6 +257,7 @@ def has_integer(input):
     except:  # dangerous but ok for now ;-)
         return False
 
+
 def coordinate_distance(c1, c2):
     """
     Find distance between sources
@@ -256,20 +269,131 @@ def coordinate_distance(c1, c2):
         print("WARNING: --min_distance function does not work in Python 2")
         return 9999
 
-    if abs(c1[0])<2*pi and abs(c1[1])<pi/2 and abs(c2[0])<2*pi and abs(c2[1])<pi/2:
-        c1 = SkyCoord(c1[0], c1[1], unit='radian', frame='icrs')  # your coords
-        c2 = SkyCoord(c2[0], c2[1], unit='radian', frame='icrs')
+    if (
+        abs(c1[0]) < 2 * np.pi
+        and abs(c1[1]) < np.pi / 2
+        and abs(c2[0]) < 2 * np.pi
+        and abs(c2[1]) < np.pi / 2
+    ):
+        c1 = SkyCoord(c1[0], c1[1], unit="radian", frame="icrs")  # your coords
+        c2 = SkyCoord(c2[0], c2[1], unit="radian", frame="icrs")
     else:
-        c1 = SkyCoord(c1[0], c1[1], unit='degree', frame='icrs')  # your coords
-        c2 = SkyCoord(c2[0], c2[1], unit='degree', frame='icrs')
+        c1 = SkyCoord(c1[0], c1[1], unit="degree", frame="icrs")  # your coords
+        c2 = SkyCoord(c2[0], c2[1], unit="degree", frame="icrs")
     return c1.separation(c2).to(u.degree).value
+
+
+def tecphase_conver(tec, freqs):
+    """
+    convert tec to phase --> See Equation 1 from Sweijen et al. 2022
+
+    :param tec: TEC
+    :param freqs: frequencies
+
+    :return: tec phase converted values
+    """
+
+    return -8.44797245e9 * tec / freqs
+
+
+def interp_along_axis(x, interp_from, interp_to, axis):
+    """
+    Interpolate along axis.
+
+    :param x: frequency or time axis. Must be equal to the length of interp_from.
+    :param interp_from: interpolate from this axis.
+    :param interp_to: interpolate to this axis
+    :param axis: interpolation axis
+
+    :return: the interpolated result
+    """
+
+    # axis with length 1
+    if len(interp_from) == 1:
+        new_vals = x
+        for _ in range(len(interp_to) - 1):
+            new_vals = np.append(new_vals, x, axis=axis)
+    else:
+        interp_vals = interp1d(
+            interp_from, x, axis=axis, kind="nearest", fill_value="extrapolate"
+        )
+        new_vals = interp_vals(interp_to)
+    return new_vals
+
+
+def get_number_of_directions(st):
+    """
+    Get number of directions in solution table
+
+    :param st: solution table
+
+    :return: number of directions
+    """
+
+    if "dir" in st.getAxesNames():
+        dir_index = st.getAxesNames().index("dir")
+        return st.getValues()[0].shape[dir_index]
+    else:
+        return 1
+
+
+def remove_invalid_values(soltab, values, axlist):
+    """
+    Correct invalid values in tables (infinite, nan).
+
+    Only finite values allowed.
+
+    :param soltab: solution table name
+    :param values: numpy array values
+    :param axlist: list with axes
+
+    :return: new values
+    """
+
+    if "phase" in soltab or "tec" in soltab:
+        values[~np.isfinite(values)] = 0.0
+    elif "amplitude" in soltab:
+        if "pol" in axlist:
+            if axlist.index("pol") == 0:
+                values[(~np.isfinite(values))] = 0.0
+                values[0, ...][
+                    (~np.isfinite(values[0, ...])) | (values[0, ...] == 0.0)
+                ] = 1.0
+                values[-1, ...][
+                    (~np.isfinite(values[-1, ...])) | (values[-1, ...] == 0.0)
+                ] = 1.0
+            elif axlist.index("pol") - len(axlist) == -1:
+                values[(~np.isfinite(values))] = 0.0
+                values[..., 0][
+                    (~np.isfinite(values[..., 0])) | (values[..., 0] == 0.0)
+                ] = 1.0
+                values[..., -1][
+                    (~np.isfinite(values[..., -1])) | (values[..., -1] == 0.0)
+                ] = 1.0
+            else:
+                sys.exit("ERROR: polarization found at unexpected axis " + str(axlist))
+        else:
+            values[(~np.isfinite(values)) | (values == 0.0)] = 1.0
+
+    return values
+
 
 class MergeH5:
     """Merge multiple h5 tables"""
 
-    def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True,
-                 merge_all_in_one=False,
-                 solset='sol000', filtered_dir=None, no_antenna_crash=None, merge_diff_freq=None):
+    def __init__(
+        self,
+        h5_out,
+        h5_tables=None,
+        ms_files=None,
+        h5_time_freq=None,
+        convert_tec=True,
+        merge_all_in_one=False,
+        solset="sol000",
+        filtered_dir=None,
+        no_antenna_crash=None,
+        merge_diff_freq=None,
+    ):
         """
         :param h5_out: name of merged output h5 table
         :param h5_tables: h5 tables to merge, can be both list and string
@@ -303,37 +427,58 @@ class MergeH5:
         elif type(h5_tables) == str:
             self.h5_tables = glob(h5_tables)
         else:
-            print('No h5 table given. Use all h5 tables in current folder.')
-            self.h5_tables = tuple(glob('*.h5'))
+            print("No h5 table given. Use all h5 tables in current folder.")
+            self.h5_tables = tuple(glob("*.h5"))
 
         # get time and freq axis
         if type(h5_time_freq) == bool and h5_time_freq == True:
             if len(self.ms) > 0:
-                print('Ignore MS for time and freq axis, as --h5_time_freq is given.')
-            self.ax_time = array([])
-            self.ax_freq = array([])
+                print("Ignore MS for time and freq axis, as --h5_time_freq is given.")
+            self.ax_time = np.array([])
+            self.ax_freq = np.array([])
             for h5_name in self.h5_tables:
                 h5 = tables.open_file(h5_name)
                 for solset in h5.root._v_groups.keys():
                     ss = h5.root._f_get_child(solset)
                     for soltab in ss._v_groups.keys():
                         st = ss._f_get_child(soltab)
-                        axes = make_utf8(st.val.attrs['AXES']).split(',')
-                        if 'time' in axes:
-                            time = st._f_get_child('time')[:]
-                            self.ax_time = sort(unique(append(self.ax_time, time)))
+                        axes = make_utf8(st.val.attrs["AXES"]).split(",")
+                        if "time" in axes:
+                            time = st._f_get_child("time")[:]
+                            self.ax_time = np.sort(
+                                np.unique(np.append(self.ax_time, time))
+                            )
                         else:
-                            print('No time axes in ' + h5_name + '/' + solset + '/' + soltab)
-                        if 'freq' in axes:
-                            freq = st._f_get_child('freq')[:]
-                            self.ax_freq = sort(unique(append(self.ax_freq, freq)))
+                            print(
+                                "No time axes in "
+                                + h5_name
+                                + "/"
+                                + solset
+                                + "/"
+                                + soltab
+                            )
+                        if "freq" in axes:
+                            freq = st._f_get_child("freq")[:]
+                            self.ax_freq = np.sort(
+                                np.unique(np.append(self.ax_freq, freq))
+                            )
                         else:
-                            print('No freq axes in ' + h5_name + '/' + solset + '/' + soltab)
+                            print(
+                                "No freq axes in "
+                                + h5_name
+                                + "/"
+                                + solset
+                                + "/"
+                                + soltab
+                            )
                 h5.close()
         elif type(h5_time_freq) == str:
             if len(self.ms) > 0:
-                print('Ignore MS for time and freq axis, as --h5_time_freq is given.')
-            print('Take the time and freq from the following h5 solution file:\n' + h5_time_freq)
+                print("Ignore MS for time and freq axis, as --h5_time_freq is given.")
+            print(
+                "Take the time and freq from the following h5 solution file:\n"
+                + h5_time_freq
+            )
             T = tables.open_file(h5_time_freq)
             self.ax_time = T.root.sol000.phase000.time[:]
             self.ax_freq = T.root.sol000.phase000.freq[:]
@@ -341,43 +486,67 @@ class MergeH5:
 
         # use ms files for available information
         elif len(self.ms) > 0:
-            print('Take the time and freq from the following measurement sets:\n' + '\n'.join(self.ms))
-            self.ax_time = array([])
-            self.ax_freq = array([])
+            print(
+                "Take the time and freq from the following measurement sets:\n"
+                + "\n".join(self.ms)
+            )
+            self.ax_time = np.array([])
+            self.ax_freq = np.array([])
             for m in self.ms:
-                t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + m + '::SPECTRAL_WINDOW')
-                self.ax_freq = append(self.ax_freq, t.getcol('CHAN_FREQ')[0])
+                t = ct.taql(
+                    "SELECT CHAN_FREQ, CHAN_WIDTH FROM " + m + "::SPECTRAL_WINDOW"
+                )
+                self.ax_freq = np.append(self.ax_freq, t.getcol("CHAN_FREQ")[0])
                 t.close()
 
                 t = ct.table(m)
-                self.ax_time = append(self.ax_time, t.getcol('TIME'))
+                self.ax_time = np.append(self.ax_time, t.getcol("TIME"))
                 t.close()
-            self.ax_time = array(sorted(unique(self.ax_time)))
-            self.ax_freq = array(sorted(unique(self.ax_freq)))
+            self.ax_time = np.array(sorted(np.unique(self.ax_time)))
+            self.ax_freq = np.array(sorted(np.unique(self.ax_freq)))
 
         # if no ms files, use the longest time and frequency resolution from h5 tables
         else:
             print(
-                'No MS or h5 file given for time/freq axis.\nUse frequency and time axis by combining all input h5 tables.')
-            self.ax_time = array([])
-            self.ax_freq = array([])
+                "No MS or h5 file given for time/freq axis.\nUse frequency and time axis by combining all input h5 tables."
+            )
+            self.ax_time = np.array([])
+            self.ax_freq = np.array([])
             for h5_name in self.h5_tables:
                 h5 = tables.open_file(h5_name)
                 for solset in h5.root._v_groups.keys():
                     ss = h5.root._f_get_child(solset)
                     for soltab in ss._v_groups.keys():
                         st = ss._f_get_child(soltab)
-                        axes = make_utf8(st.val.attrs['AXES']).split(',')
-                        if 'time' in axes:
-                            time = st._f_get_child('time')[:]
-                            self.ax_time = sort(unique(append(self.ax_time, time)))
+                        axes = make_utf8(st.val.attrs["AXES"]).split(",")
+                        if "time" in axes:
+                            time = st._f_get_child("time")[:]
+                            self.ax_time = np.sort(
+                                np.unique(np.append(self.ax_time, time))
+                            )
                         else:
-                            print('No time axes in ' + h5_name + '/' + solset + '/' + soltab)
-                        if 'freq' in axes:
-                            freq = st._f_get_child('freq')[:]
-                            self.ax_freq = sort(unique(append(self.ax_freq, freq)))
+                            print(
+                                "No time axes in "
+                                + h5_name
+                                + "/"
+                                + solset
+                                + "/"
+                                + soltab
+                            )
+                        if "freq" in axes:
+                            freq = st._f_get_child("freq")[:]
+                            self.ax_freq = np.sort(
+                                np.unique(np.append(self.ax_freq, freq))
+                            )
                         else:
-                            print('No freq axes in ' + h5_name + '/' + solset + '/' + soltab)
+                            print(
+                                "No freq axes in "
+                                + h5_name
+                                + "/"
+                                + solset
+                                + "/"
+                                + soltab
+                            )
                 h5.close()
 
         # get polarization output axis and check number of error and tec tables in merge list
@@ -386,8 +555,9 @@ class MergeH5:
         self.tecnum, self.errornum = 0, 0  # to average in case of multiple tables
         for n, h5_name in enumerate(self.h5_tables):
             h5 = tables.open_file(h5_name)
-            if 'phase000' in h5.root.sol000._v_children.keys() \
-                    and 'pol' in make_utf8(h5.root.sol000.phase000.val.attrs["AXES"]).split(','):
+            if "phase000" in h5.root.sol000._v_children.keys() and "pol" in make_utf8(
+                h5.root.sol000.phase000.val.attrs["AXES"]
+            ).split(","):
                 polarizations = h5.root.sol000.phase000.pol[:]
 
                 # having two fulljones solution files to merge --> we will use a matrix multiplication for this type of merge
@@ -403,9 +573,9 @@ class MergeH5:
                 else:
                     self.polarizations = polarizations.copy()
 
-            if 'tec000' in h5.root.sol000._v_children.keys():
+            if "tec000" in h5.root.sol000._v_children.keys():
                 self.tecnum += 1
-            if 'error000' in h5.root.sol000._v_children.keys():
+            if "error000" in h5.root.sol000._v_children.keys():
                 self.errornum += 1
 
             h5.close()
@@ -414,20 +584,24 @@ class MergeH5:
         if len(self.polarizations) == 4:
             self.fulljones = True
         elif len(self.polarizations) > 4 or len(self.polarizations) == 3:
-            sys.exit('Output solutions cannot have ' + str(len(self.polarizations)) + ' solutions')
+            sys.exit(
+                "Output solutions cannot have "
+                + str(len(self.polarizations))
+                + " solutions"
+            )
         else:
             self.fulljones = False
 
-        print('Output polarization:\n' + str(self.polarizations))
+        print("Output polarization:\n" + str(self.polarizations))
         self.poldim = len(self.polarizations)
 
         # validation checks
         if len(self.ax_freq) == 0:
-            sys.exit('ERROR: Cannot read frequency axis from input MS set or input H5.')
+            sys.exit("ERROR: Cannot read frequency axis from input MS set or input H5.")
         if len(self.ax_time) == 0:
-            sys.exit('ERROR: Cannot read time axis from input MS or input H5.')
+            sys.exit("ERROR: Cannot read time axis from input MS or input H5.")
         if not self.have_same_antennas and not no_antenna_crash:
-            sys.exit('ERROR: Antenna tables are not the same')
+            sys.exit("ERROR: Antenna tables are not the same")
 
         # convert tec to phase?
         self.convert_tec = convert_tec
@@ -438,12 +612,14 @@ class MergeH5:
             self.filtered_dir = None
 
         # possible solution axis in order used for our merging script
-        self.solaxnames = ['pol', 'dir', 'ant', 'freq', 'time']
+        self.solaxnames = ["pol", "dir", "ant", "freq", "time"]
 
         # directions in an ordered dictionary
         self.directions = OrderedDict()
         if len(self.directions) > 1 and self.doublefulljones:
-            sys.exit("ERROR: Merging not compatitable with multiple directions and double fuljones merge")  # TODO: update
+            sys.exit(
+                "ERROR: Merging not compatitable with multiple directions and double fuljones merge"
+            )  # TODO: update
 
         self.merge_diff_freq = merge_diff_freq
 
@@ -462,26 +638,42 @@ class MergeH5:
                 ss1 = H_ref.root._f_get_child(solset1)
                 antennas_ref = ss1.antenna[:]
                 for soltab1 in ss1._v_groups.keys():
-                    if (len(antennas_ref['name']) != len(ss1._f_get_child(soltab1).ant[:])) or \
-                            (not all(antennas_ref['name'] == ss1._f_get_child(soltab1).ant[:])):
-                        message = '\n'.join(['\nMismatch in antenna tables in ' + h5_name1,
-                                             'Antennas from ' + '/'.join([solset1, 'antenna']),
-                                             str(antennas_ref['name']),
-                                             'Antennas from ' + '/'.join([solset1, soltab1, 'ant']),
-                                             ss1._f_get_child(soltab1).ant[:]])
+                    if len(antennas_ref["name"]) != len(ss1._f_get_child(soltab1).ant[:]) \
+                     or not np.all(
+                            antennas_ref["name"] == ss1._f_get_child(soltab1).ant[:]
+                        ):
+                        message = "\n".join(
+                            [
+                                "\nMismatch in antenna tables in " + h5_name1,
+                                "Antennas from " + "/".join([solset1, "antenna"]),
+                                str(antennas_ref["name"]),
+                                "Antennas from " + "/".join([solset1, soltab1, "ant"]),
+                                ss1._f_get_child(soltab1).ant[:],
+                            ]
+                        )
                         print(message)
                         H_ref.close()
                         return False
                     for soltab2 in ss1._v_groups.keys():
-                        if (len(ss1._f_get_child(soltab1).ant[:]) !=
-                            len(ss1._f_get_child(soltab2).ant[:])) or \
-                                (not all(ss1._f_get_child(soltab1).ant[:] ==
-                                         ss1._f_get_child(soltab2).ant[:])):
-                            message = '\n'.join(['\nMismatch in antenna tables in ' + h5_name1,
-                                                 'Antennas from ' + '/'.join([solset1, soltab1, 'ant']),
-                                                 ss1._f_get_child(soltab1).ant[:],
-                                                 'Antennas from ' + '/'.join([solset1, soltab2, 'ant']),
-                                                 ss1._f_get_child(soltab2).ant[:]])
+                        if (
+                            len(ss1._f_get_child(soltab1).ant[:])
+                            != len(ss1._f_get_child(soltab2).ant[:])
+                        ) or (
+                            not np.all(
+                                ss1._f_get_child(soltab1).ant[:] == ss1._f_get_child(soltab2).ant[:]
+                            )
+                        ):
+                            message = "\n".join(
+                                [
+                                    "\nMismatch in antenna tables in " + h5_name1,
+                                    "Antennas from "
+                                    + "/".join([solset1, soltab1, "ant"]),
+                                    ss1._f_get_child(soltab1).ant[:],
+                                    "Antennas from "
+                                    + "/".join([solset1, soltab2, "ant"]),
+                                    ss1._f_get_child(soltab2).ant[:],
+                                ]
+                            )
                             print(message)
                             H_ref.close()
                             return False
@@ -490,14 +682,21 @@ class MergeH5:
                     for solset2 in H.root._v_groups.keys():
                         ss2 = H.root._f_get_child(solset2)
                         antennas = ss2.antenna[:]
-                        if (len(antennas_ref['name']) != len(antennas['name'])) \
-                                or (not all(antennas_ref['name'] == antennas['name'])):
-                            message = '\n'.join(
-                                ['\nMismatch between antenna tables from ' + h5_name1 + ' and ' + h5_name2,
-                                 'Antennas from ' + h5_name1 + ' and ',
-                                 str(antennas_ref['name']),
-                                 'Antennas from ' + h5_name2 + ':',
-                                 str(antennas['name'])])
+                        if (len(antennas_ref["name"]) != len(antennas["name"])) or (
+                            not np.all(antennas_ref["name"] == antennas["name"])
+                        ):
+                            message = "\n".join(
+                                [
+                                    "\nMismatch between antenna tables from "
+                                    + h5_name1
+                                    + " and "
+                                    + h5_name2,
+                                    "Antennas from " + h5_name1 + " and ",
+                                    str(antennas_ref["name"]),
+                                    "Antennas from " + h5_name2 + ":",
+                                    str(antennas["name"]),
+                                ]
+                            )
                             print(message)
                             H.close()
                             H_ref.close()
@@ -519,138 +718,178 @@ class MergeH5:
         """
 
         # Check if there is a polarization axes
-        if 'pol' in st.getAxesNames():
-            print("polarization is in {solset}/{soltab}".format(solset=solset, soltab=soltab))
+        if "pol" in st.getAxesNames():
+            print(
+                "polarization is in {solset}/{soltab}".format(
+                    solset=solset, soltab=soltab
+                )
+            )
         else:
-            print("polarization is not in {solset}/{soltab}".format(solset=solset, soltab=soltab))
+            print(
+                "polarization is not in {solset}/{soltab}".format(
+                    solset=solset, soltab=soltab
+                )
+            )
 
         # Get time axes
-        time_axes = st.getAxisValues('time')
+        time_axes = st.getAxisValues("time")
 
         # Get freq axes
-        if 'freq' in st.getAxesNames():
-            freq_axes = st.getAxisValues('freq')
+        if "freq" in st.getAxesNames():
+            freq_axes = st.getAxisValues("freq")
         else:
             freq_axes = self.ax_freq
 
         # Do checks
         if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1]:
-            sys.exit("ERROR: Time axes of h5 and MS are not overlapping.\n"
-                     "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
+            sys.exit(
+                "ERROR: Time axes of h5 and MS are not overlapping.\n"
+                "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis."
+            )
         if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1]:
-            sys.exit("ERROR: Frequency axes of h5 and MS are not overlapping.\n"
-                     "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
+            sys.exit(
+                "ERROR: Frequency axes of h5 and MS are not overlapping.\n"
+                "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis."
+            )
         if float(soltab[-3:]) > 0:
             sys.exit("ERROR: {soltab} does not end on 000".format(soltab=soltab))
         for av in self.axes_final:
             if av in st.getAxesNames() and st.getAxisLen(av) == 0:
-                print("No {av} in {solset}/{soltab}".format(av=av, solset=solset, soltab=soltab))
+                print(
+                    "No {av} in {solset}/{soltab}".format(
+                        av=av, solset=solset, soltab=soltab
+                    )
+                )
 
         if len(st.getAxesNames()) != len(st.getValues()[0].shape):
-            sys.exit('ERROR: Axes ({axlen}) and Value dimensions ({vallen}) are not equal'.format(
-                axlen=len(st.getAxesNames()), vallen=len(st.getValues()[0].shape)))
+            sys.exit(
+                "ERROR: Axes ({axlen}) and Value dimensions ({vallen}) are not equal".format(
+                    axlen=len(st.getAxesNames()), vallen=len(st.getValues()[0].shape)
+                )
+            )
 
-        print('Value shape before --> {values}'.format(values=st.getValues()[0].shape))
+        print("Value shape before --> {values}".format(values=st.getValues()[0].shape))
 
         # Reorder and add dir
         axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
-        if 'dir' in st.getAxesNames():
+        if "dir" in st.getAxesNames():
             values = reorderAxes(st.getValues()[0], st.getAxesNames(), axes_current)
         else:
-            print('Add dir axis.')
+            print("Add dir axis.")
             origin_values = st.getValues()[0]
-            if 'dir' not in axes_current:
-                if 'pol' not in axes_current:
-                    axes_current.insert(0, 'dir')
+            if "dir" not in axes_current:
+                if "pol" not in axes_current:
+                    axes_current.insert(0, "dir")
                 else:
-                    axes_current.insert(1, 'dir')
-            values = reorderAxes(origin_values.reshape(origin_values.shape + (1,)), st.getAxesNames() + ['dir'],
-                                 axes_current)
+                    axes_current.insert(1, "dir")
+            values = reorderAxes(
+                origin_values.reshape(origin_values.shape + (1,)),
+                st.getAxesNames() + ["dir"],
+                axes_current,
+            )
 
         # current axes for reordering of axes
         self.axes_current = [an for an in self.solaxnames if an in st.getAxesNames()]
 
-        if 'dir' not in self.axes_current:
-            if 'pol' in self.axes_current:
-                self.axes_current.insert(1, 'dir')
+        if "dir" not in self.axes_current:
+            if "pol" in self.axes_current:
+                self.axes_current.insert(1, "dir")
             else:
-                self.axes_current.insert(0, 'dir')
+                self.axes_current.insert(0, "dir")
 
         # remove invalid values
-        values = self.remove_invalid_values(st.getType(), values, self.axes_current)
+        values = remove_invalid_values(st.getType(), values, self.axes_current)
 
-        if remove_numbers(st.getType()) == 'tec':
+        if remove_numbers(st.getType()) == "tec":
             # add frequencies
-            if 'freq' not in st.getAxesNames():
-                ax = self.axes_final.index('freq') - len(self.axes_final)
-                values = expand_dims(values, axis=ax)
-                self.axes_current.insert(-1, 'freq')
+            if "freq" not in st.getAxesNames():
+                ax = self.axes_final.index("freq") - len(self.axes_final)
+                values = np.expand_dims(values, axis=ax)
+                self.axes_current.insert(-1, "freq")
                 valuestmp = values
                 for _ in range(len(self.ax_freq) - 1):
-                    values = append(values, valuestmp, axis=-2)
+                    values = np.append(values, valuestmp, axis=-2)
 
             if self.convert_tec:
                 # convert tec to phase
                 shape = [1 for _ in range(values.ndim)]
-                shape[self.axes_current.index('freq')] = -1
-                values = self.tecphase_conver(values, self.ax_freq.reshape(shape))
-                soltab = 'phase'
+                shape[self.axes_current.index("freq")] = -1
+                values = tecphase_conver(values, self.ax_freq.reshape(shape))
+                soltab = "phase"
 
         # expand pol dimensions
         if self.fulljones:
-            if 'pol' not in self.axes_current:
+            if "pol" not in self.axes_current:
                 values = self._expand_poldim(values, 4, remove_numbers(soltab), False)
-                self.axes_current.insert(0, 'pol')
-            elif st.getAxisLen('pol') != 4:
+                self.axes_current.insert(0, "pol")
+            elif st.getAxisLen("pol") != 4:
                 values = self._expand_poldim(values, 4, remove_numbers(soltab), True)
-        elif 'pol' in self.axes_current and 'pol' in self.axes_final:
-            if st.getAxisLen('pol') > self.phases.shape[0]:
-                self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), remove_numbers(soltab), True)
-            elif len(self.polarizations) > st.getAxisLen('pol'):
-                values = self._expand_poldim(values, len(self.polarizations), remove_numbers(soltab), True)
-        elif 'pol' not in self.axes_current and 'pol' in self.axes_final:
-            values = self._expand_poldim(values, len(self.polarizations), remove_numbers(soltab), False)
-            self.axes_current.insert(0, 'pol')
-        elif 'pol' in self.axes_current and 'pol' not in self.axes_final:
-            self.phases = self._expand_poldim(self.phases, st.getAxisLen('pol'), remove_numbers(soltab), False)
-            self.axes_final.insert(0, 'pol')
-        elif 'pol' not in self.axes_current and 'pol' not in self.axes_final and len(
-                self.polarizations) > 0:
+        elif "pol" in self.axes_current and "pol" in self.axes_final:
+            if st.getAxisLen("pol") > self.phases.shape[0]:
+                self.phases = self._expand_poldim(
+                    self.phases, st.getAxisLen("pol"), remove_numbers(soltab), True
+                )
+            elif len(self.polarizations) > st.getAxisLen("pol"):
+                values = self._expand_poldim(
+                    values, len(self.polarizations), remove_numbers(soltab), True
+                )
+        elif "pol" not in self.axes_current and "pol" in self.axes_final:
+            values = self._expand_poldim(
+                values, len(self.polarizations), remove_numbers(soltab), False
+            )
+            self.axes_current.insert(0, "pol")
+        elif "pol" in self.axes_current and "pol" not in self.axes_final:
+            self.phases = self._expand_poldim(
+                self.phases, st.getAxisLen("pol"), remove_numbers(soltab), False
+            )
+            self.axes_final.insert(0, "pol")
+        elif (
+            "pol" not in self.axes_current
+            and "pol" not in self.axes_final
+            and len(self.polarizations) > 0
+        ):
             if len(self.phases.shape) != 5:
-                self.phases = self._expand_poldim(self.phases, len(self.polarizations), remove_numbers(soltab), False)
-                if 'pol' not in self.axes_final:
-                    self.axes_final.insert(0, 'pol')
-            values = self._expand_poldim(values, len(self.polarizations), remove_numbers(soltab), False)
-            self.axes_final.insert(0, 'pol')
+                self.phases = self._expand_poldim(
+                    self.phases, len(self.polarizations), remove_numbers(soltab), False
+                )
+                if "pol" not in self.axes_final:
+                    self.axes_final.insert(0, "pol")
+            values = self._expand_poldim(
+                values, len(self.polarizations), remove_numbers(soltab), False
+            )
+            self.axes_final.insert(0, "pol")
 
         # interpolate time axis
-        values = self._interp_along_axis(values, time_axes, self.ax_time,
-                                         self.axes_current.index('time'))
+        values = interp_along_axis(
+            values, time_axes, self.ax_time, self.axes_current.index("time")
+        )
 
         # make sure that the interpolation is performed well when merging tables with different frequencies
         if self.merge_diff_freq:
-            ax = 'freq'
+            ax = "freq"
             shape = list(values.shape)
-            shape[self.axes_current.index('freq')] = len(self.ax_freq)
-            values_tmp = zeros(shape)
-            if 'pol' in self.axes_current and 'amplitude' in st.getType():
-                if self.axes_current.index('pol') == 0:
+            shape[self.axes_current.index("freq")] = len(self.ax_freq)
+            values_tmp = np.zeros(shape)
+            if "pol" in self.axes_current and "amplitude" in st.getType():
+                if self.axes_current.index("pol") == 0:
                     values_tmp[-1, ...] = 1
                     values_tmp[0, ...] = 1
-                elif self.axes_current.index('pol') == 1:
+                elif self.axes_current.index("pol") == 1:
                     values_tmp[:, -1, ...] = 1
                     values_tmp[:, 0, ...] = 1
-                elif self.axes_current.index('pol') == 2:
+                elif self.axes_current.index("pol") == 2:
                     values_tmp[:, :, -1, ...] = 1
                     values_tmp[:, :, 0, ...] = 1
-                elif self.axes_current.index('pol') == 3:
+                elif self.axes_current.index("pol") == 3:
                     values_tmp[:, :, :, -1, ...] = 1
                     values_tmp[:, :, :, 0, ...] = 1
-                elif self.axes_current.index('pol') == 4:
+                elif self.axes_current.index("pol") == 4:
                     values_tmp[:, :, :, :, -1, ...] = 1
                     values_tmp[:, :, :, :, 0, ...] = 1
             for idx_old, f_v in enumerate(freq_axes):
-                idx_new = list([round(i / 1000000, 1) for i in self.ax_freq]).index(round(f_v / 1000000, 1))
+                idx_new = list([round(i / 1000000, 1) for i in self.ax_freq]).index(
+                    round(f_v / 1000000, 1)
+                )
 
                 if self.axes_current.index(ax) == 0:
                     values_tmp[idx_new, ...] = values[idx_old, ...]
@@ -665,15 +904,21 @@ class MergeH5:
                     values_tmp[:, :, :, idx_new, ...] = values[:, :, :, idx_old, ...]
 
                 elif self.axes_current.index(ax) == 4:
-                    values_tmp[:, :, :, :, idx_new, ...] = values[:, :, :, :, idx_old, ...]
+                    values_tmp[:, :, :, :, idx_new, ...] = values[
+                        :, :, :, :, idx_old, ...
+                    ]
 
             values = values_tmp.copy()
 
-        elif remove_numbers(st.getType()) != 'tec' and remove_numbers(st.getType()) != 'error':
+        elif (
+            remove_numbers(st.getType()) != "tec"
+            and remove_numbers(st.getType()) != "error"
+        ):
 
             # interpolate freq axis
-            values = self._interp_along_axis(values, freq_axes, self.ax_freq,
-                                             self.axes_current.index('freq'))
+            values = interp_along_axis(
+                values, freq_axes, self.ax_freq, self.axes_current.index("freq")
+            )
 
         return values
 
@@ -693,27 +938,31 @@ class MergeH5:
 
         soltabs = set(soltabs)
         if self.convert_tec:
-            tp_phasetec = [li for li in soltabs if 'tec' in li or 'phase' in li]
-            tp_amplitude = [li for li in soltabs if 'amplitude' in li]
-            tp_rotation = [li for li in soltabs if 'rotation' in li]
-            tp_error = [li for li in soltabs if 'error' in li]
-            return [sorted(tp_amplitude, key=lambda x: float(x[-3:])),
-                    sorted(tp_rotation, key=lambda x: float(x[-3:])),
-                    sorted(sorted(tp_phasetec), key=lambda x: float(x[-3:])),
-                    sorted(tp_error, key=lambda x: float(x[-3:]))]
+            tp_phasetec = [li for li in soltabs if "tec" in li or "phase" in li]
+            tp_amplitude = [li for li in soltabs if "amplitude" in li]
+            tp_rotation = [li for li in soltabs if "rotation" in li]
+            tp_error = [li for li in soltabs if "error" in li]
+            return [
+                sorted(tp_amplitude, key=lambda x: float(x[-3:])),
+                sorted(tp_rotation, key=lambda x: float(x[-3:])),
+                sorted(sorted(tp_phasetec), key=lambda x: float(x[-3:])),
+                sorted(tp_error, key=lambda x: float(x[-3:])),
+            ]
         else:
-            tp_phase = [li for li in soltabs if 'phase' in li]
-            tp_tec = [li for li in soltabs if 'tec' in li]
-            tp_amplitude = [li for li in soltabs if 'amplitude' in li]
-            tp_rotation = [li for li in soltabs if 'rotation' in li]
-            tp_error = [li for li in soltabs if 'error' in li]
-            return [sorted(tp_phase, key=lambda x: float(x[-3:])),
-                    sorted(tp_tec, key=lambda x: float(x[-3:])),
-                    sorted(tp_amplitude, key=lambda x: float(x[-3:])),
-                    sorted(tp_rotation, key=lambda x: float(x[-3:])),
-                    sorted(tp_error, key=lambda x: float(x[-3:]))]
+            tp_phase = [li for li in soltabs if "phase" in li]
+            tp_tec = [li for li in soltabs if "tec" in li]
+            tp_amplitude = [li for li in soltabs if "amplitude" in li]
+            tp_rotation = [li for li in soltabs if "rotation" in li]
+            tp_error = [li for li in soltabs if "error" in li]
+            return [
+                sorted(tp_phase, key=lambda x: float(x[-3:])),
+                sorted(tp_tec, key=lambda x: float(x[-3:])),
+                sorted(tp_amplitude, key=lambda x: float(x[-3:])),
+                sorted(tp_rotation, key=lambda x: float(x[-3:])),
+                sorted(tp_error, key=lambda x: float(x[-3:])),
+            ]
 
-    def get_allkeys(self):
+    def _get_allkeys(self):
         """
         Get all solution sets, solutions tables, and ax names in lists.
         This returns an order that is optimized for this code.
@@ -734,11 +983,13 @@ class MergeH5:
                 for n, soltab in enumerate(ss.getSoltabNames()):
                     self.all_soltabs += [soltab]
                     st = ss.getSoltab(soltab)
-                    self.all_axes += ['/'.join([solset, soltab, an]) for an in st.getAxesNames()]
+                    self.all_axes += [
+                        "/".join([solset, soltab, an]) for an in st.getAxesNames()
+                    ]
                     if n == 0:
-                        self.ant = st.getAxisValues('ant')  # check if same for all h5
-                    elif list(self.ant) != list(st.getAxisValues('ant')):
-                        sys.exit('ERROR: antennas not the same.')
+                        self.ant = st.getAxisValues("ant")  # check if same for all h5
+                    elif list(self.ant) != list(st.getAxisValues("ant")):
+                        sys.exit("ERROR: antennas not the same.")
             h5.close()
         self.all_soltabs = self._sort_soltabs(self.all_soltabs)
         self.all_solsets = set(self.all_solsets)
@@ -755,77 +1006,81 @@ class MergeH5:
 
         num_dir = max(len(self.directions), 1)
 
-        if 'amplitude' in soltab and len(self.polarizations) > 0:
-            self.amplitudes = ones(
-                (max(len(self.polarizations), 1), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+        if "amplitude" in soltab and len(self.polarizations) > 0:
+            self.amplitudes = np.ones(
+                (
+                    max(len(self.polarizations), 1),
+                    num_dir,
+                    len(self.ant),
+                    len(self.ax_freq),
+                    len(self.ax_time),
+                )
+            )
             if len(self.polarizations) == 4:
-                self.amplitudes[1, ...] = 0.
-                self.amplitudes[2, ...] = 0.
+                self.amplitudes[1, ...] = 0.0
+                self.amplitudes[2, ...] = 0.0
         else:
-            self.amplitudes = ones((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+            self.amplitudes = np.ones(
+                (num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time))
+            )
 
-        if 'phase' in soltab and len(self.polarizations) > 0:
-            self.phases = zeros(
-                (max(len(self.polarizations), 1), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
-        elif 'rotation' in soltab:
-            self.phases = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+        if "phase" in soltab and len(self.polarizations) > 0:
+            self.phases = np.zeros(
+                (
+                    max(len(self.polarizations), 1),
+                    num_dir,
+                    len(self.ant),
+                    len(self.ax_freq),
+                    len(self.ax_time),
+                )
+            )
+        elif "rotation" in soltab:
+            self.phases = np.zeros(
+                (num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time))
+            )
         else:
-            self.phases = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+            self.phases = np.zeros(
+                (num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time))
+            )
 
-        if 'tec' in soltab and not self.convert_tec and len(self.polarizations) > 0:
-            self.tec = zeros(
-                (max(len(self.polarizations), 1), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
-        elif 'tec' in soltab and not self.convert_tec:
-            self.tec = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+        if "tec" in soltab and not self.convert_tec and len(self.polarizations) > 0:
+            self.tec = np.zeros(
+                (
+                    max(len(self.polarizations), 1),
+                    num_dir,
+                    len(self.ant),
+                    len(self.ax_freq),
+                    len(self.ax_time),
+                )
+            )
+        elif "tec" in soltab and not self.convert_tec:
+            self.tec = np.zeros(
+                (num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time))
+            )
 
-        if 'error' in soltab and len(self.polarizations) > 0:
-            self.error = zeros(
-                (max(len(self.polarizations), 1), num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
-        elif 'error' in soltab:
-            self.error = zeros((num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+        if "error" in soltab and len(self.polarizations) > 0:
+            self.error = np.zeros(
+                (
+                    max(len(self.polarizations), 1),
+                    num_dir,
+                    len(self.ant),
+                    len(self.ax_freq),
+                    len(self.ax_time),
+                )
+            )
+        elif "error" in soltab:
+            self.error = np.zeros(
+                (num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time))
+            )
 
         if self.doublefulljones:
-            self.fullgains = ones((4, num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time)))
+            self.fullgains = np.ones(
+                (4, num_dir, len(self.ant), len(self.ax_freq), len(self.ax_time))
+            )
 
         self.n = len(self.directions)  # direction number reset
 
         return self
-
-    @staticmethod
-    def tecphase_conver(tec, freqs):
-        """
-        convert tec to phase --> See Equation 1 from Sweijen et al. 2022
-
-        :param tec: TEC
-        :param freqs: frequencies
-
-        :return: tec phase converted values
-        """
-
-        return -8.44797245e9 * tec / freqs
-
-    @staticmethod
-    def _interp_along_axis(x, interp_from, interp_to, axis):
-        """
-        Interpolate along axis.
-
-        :param x: frequency or time axis. Must be equal to the length of interp_from.
-        :param interp_from: interpolate from this axis.
-        :param interp_to: interpolate to this axis
-        :param axis: interpolation axis
-
-        :return: the interpolated result
-        """
-
-        # axis with length 1
-        if len(interp_from) == 1:
-            new_vals = x
-            for _ in range(len(interp_to) - 1):
-                new_vals = append(new_vals, x, axis=axis)
-        else:
-            interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value='extrapolate')
-            new_vals = interp_vals(interp_to)
-        return new_vals
 
     def get_model_h5(self, solset, soltab):
         """
@@ -835,7 +1090,7 @@ class MergeH5:
         :param soltab: solution table name
         """
 
-        if '000' in soltab:
+        if "000" in soltab:
 
             # make template
             for h5_name in self.h5_tables:
@@ -844,7 +1099,7 @@ class MergeH5:
 
                 if solset not in h5_to_merge.getSolsetNames():
                     h5_to_merge.close()
-                    sys.exit('ERROR ' + solset + ' does not exist in ' + h5_name)
+                    sys.exit("ERROR " + solset + " does not exist in " + h5_name)
                 else:
                     ss = h5_to_merge.getSolset(solset)
                 if soltab not in ss.getSoltabNames():
@@ -853,46 +1108,40 @@ class MergeH5:
                 else:
                     st = ss.getSoltab(soltab)
 
-                if not self.convert_tec or (self.convert_tec and 'tec' not in soltab):
+                if not self.convert_tec or (self.convert_tec and "tec" not in soltab):
                     self._make_template_values(soltab)
-                    self.axes_final = [an for an in self.solaxnames if an in st.getAxesNames()]
-                    if len(self.polarizations) > 1 and 'pol' not in st.getAxesNames():
-                        self.axes_final.insert(0, 'pol')
-                elif 'tec' in soltab and self.convert_tec:
+                    self.axes_final = [
+                        an for an in self.solaxnames if an in st.getAxesNames()
+                    ]
+                    if len(self.polarizations) > 1 and "pol" not in st.getAxesNames():
+                        self.axes_final.insert(0, "pol")
+                elif "tec" in soltab and self.convert_tec:
                     for st_group in self.all_soltabs:
-                        if soltab in st_group and ('phase000' not in st_group and 'phase{n}'.format(n=soltab[-3:])):
+                        if soltab in st_group and (
+                            "phase000" not in st_group
+                            and "phase{n}".format(n=soltab[-3:])
+                        ):
                             self._make_template_values(soltab)
-                            self.axes_final = [an for an in self.solaxnames if an in st.getAxesNames()]
-                            if len(self.polarizations) > 1 and 'pol' not in st.getAxesNames():
-                                self.axes_final = ['pol'] + self.axes_final
+                            self.axes_final = [
+                                an for an in self.solaxnames if an in st.getAxesNames()
+                            ]
+                            if (
+                                len(self.polarizations) > 1
+                                and "pol" not in st.getAxesNames()
+                            ):
+                                self.axes_final = ["pol"] + self.axes_final
 
                 # add dir if missing
-                if 'dir' not in self.axes_final:
-                    if 'pol' in self.axes_final:
-                        self.axes_final.insert(1, 'dir')
+                if "dir" not in self.axes_final:
+                    if "pol" in self.axes_final:
+                        self.axes_final.insert(1, "dir")
                     else:
-                        self.axes_final.insert(0, 'dir')
+                        self.axes_final.insert(0, "dir")
 
                 h5_to_merge.close()
                 break
 
         return self
-
-    @staticmethod
-    def get_number_of_directions(st):
-        """
-        Get number of directions in solution table
-
-        :param st: solution table
-
-        :return: number of directions
-        """
-
-        if 'dir' in st.getAxesNames():
-            dir_index = st.getAxesNames().index('dir')
-            return st.getValues()[0].shape[dir_index]
-        else:
-            return 1
 
     def add_direction(self, source):
         """
@@ -905,39 +1154,6 @@ class MergeH5:
         self.directions = OrderedDict(sorted(self.directions.items()))
 
         return self
-
-    @staticmethod
-    def remove_invalid_values(soltab, values, axlist):
-        """
-        Correct invalid values in tables (infinite, nan).
-
-        Only finite values allowed.
-
-        :param soltab: solution table name
-        :param values: numpy array values
-        :param axlist: list with axes
-
-        :return: new values
-        """
-
-        if 'phase' in soltab or 'tec' in soltab:
-            values[~isfinite(values)] = 0.
-        elif 'amplitude' in soltab:
-            if 'pol' in axlist:
-                if axlist.index('pol') == 0:
-                    values[(~isfinite(values))] = 0.
-                    values[0, ...][(~isfinite(values[0, ...])) | (values[0, ...] == 0.)] = 1.
-                    values[-1, ...][(~isfinite(values[-1, ...])) | (values[-1, ...] == 0.)] = 1.
-                elif axlist.index('pol') - len(axlist) == -1:
-                    values[(~isfinite(values))] = 0.
-                    values[..., 0][(~isfinite(values[..., 0])) | (values[..., 0] == 0.)] = 1.
-                    values[..., -1][(~isfinite(values[..., -1])) | (values[..., -1] == 0.)] = 1.
-                else:
-                    sys.exit('ERROR: polarization found at unexpected axis ' + str(axlist))
-            else:
-                values[(~isfinite(values)) | (values == 0.)] = 1.
-
-        return values
 
     @staticmethod
     def _expand_poldim(values, dim_pol, type, haspol):
@@ -953,23 +1169,28 @@ class MergeH5:
         """
 
         if dim_pol == 3 or dim_pol > 4:
-            sys.exit('ERROR: Invalid number of polarizations.'
-                     '\nOnly 1, 2, or 4 are allowed. '
-                     'This corresponds to XX, (XY, YX,) YY or RR, (RL, LR,) LL.')
+            sys.exit(
+                "ERROR: Invalid number of polarizations."
+                "\nOnly 1, 2, or 4 are allowed. "
+                "This corresponds to XX, (XY, YX,) YY or RR, (RL, LR,) LL."
+            )
 
         if dim_pol == 4:
             print("Convert matrix to fulljones for merge")
 
         if values.ndim < 5 and not haspol:
-            if type == 'amplitude':
-                values_new = ones((dim_pol,) + values.shape)
+            if type == "amplitude":
+                values_new = np.ones((dim_pol,) + values.shape)
                 if dim_pol == 4:
                     values_new[1, ...] = 0
                     values_new[2, ...] = 0
-            elif type in ['phase', 'error', 'tec']:
-                values_new = zeros((dim_pol,) + values.shape)
+            elif type in ["phase", "error", "tec"]:
+                values_new = np.zeros((dim_pol,) + values.shape)
             else:
-                sys.exit('ERROR: Only type in [amplitude, phase] allowed [%s requested].' % str(type))
+                sys.exit(
+                    "ERROR: Only type in [amplitude, phase] allowed [%s requested]."
+                    % str(type)
+                )
             for i in range(dim_pol):
                 if dim_pol == 4:
                     if i in [0, 3]:
@@ -978,27 +1199,30 @@ class MergeH5:
                     values_new[i, ...] = values
 
         elif values.shape[0] in [1, 2] and dim_pol in [2, 4] and haspol:
-            if type == 'amplitude':
-                values_new = ones((dim_pol,) + values.shape[1:])
+            if type == "amplitude":
+                values_new = np.ones((dim_pol,) + values.shape[1:])
                 if dim_pol == 4:
                     values_new[1, ...] = 0
                     values_new[2, ...] = 0
-            elif type in ['phase', 'error', 'tec']:
-                values_new = zeros((dim_pol,) + values.shape[1:])
+            elif type in ["phase", "error", "tec"]:
+                values_new = np.zeros((dim_pol,) + values.shape[1:])
             else:
-                sys.exit('ERROR: Only type in [amplitude, phase] allowed [%s requested].' % str(type))
+                sys.exit(
+                    "ERROR: Only type in [amplitude, phase] allowed [%s requested]."
+                    % str(type)
+                )
             values_new[0, ...] = values[0, ...]
             if values.shape[0] == 2:
                 values_new[-1, ...] = values[1, ...]
             elif values.shape[0] == 1:
                 values_new[-1, ...] = values[0, ...]
         else:
-            print('WARNING: No pol ax dimension changed.')
+            print("WARNING: No pol ax dimension changed.")
             return values
 
         return values_new
 
-    def merge_tables(self, solset=None, soltab=None, min_distance=0.):
+    def merge_tables(self, solset=None, soltab=None, min_distance=0.0):
         """
         Merge solution files
 
@@ -1025,9 +1249,9 @@ class MergeH5:
 
             st = ss.getSoltab(soltab)
 
-            print('Solution table from {table}'.format(table=h5_name.split('/')[-1]))
-            num_dirs = self.get_number_of_directions(st)  # number of directions
-            print('This table has {dircount} direction(s)'.format(dircount=num_dirs))
+            print("Solution table from {table}".format(table=h5_name.split("/")[-1]))
+            num_dirs = get_number_of_directions(st)  # number of directions
+            print("This table has {dircount} direction(s)".format(dircount=num_dirs))
 
             # get values from h5 file
             table_values = self._unpack_h5(st, solset, soltab)
@@ -1039,105 +1263,159 @@ class MergeH5:
                         continue
 
                 # different axes if pol in output
-                if 'pol' in self.axes_final:
+                if "pol" in self.axes_final:
                     values = table_values[:, dir_idx, ...]
                 else:
                     values = table_values[dir_idx, ...]
 
                 # get source coordinates
                 dirs = ss.getSou()
-                if 'dir' in list(dirs.keys())[0].lower() and list(dirs.keys())[0][-1].isnumeric():
+                if (
+                    "dir" in list(dirs.keys())[0].lower()
+                    and list(dirs.keys())[0][-1].isnumeric()
+                ):
                     dirs = OrderedDict(sorted(dirs.items()))
                 elif len(dirs) > 1 and (
-                        sys.version_info.major == 2 or (sys.version_info.major == 3 and sys.version_info.minor < 6)):
+                    sys.version_info.major == 2
+                    or (sys.version_info.major == 3 and sys.version_info.minor < 6)
+                ):
                     print(
-                        'WARNING: Order of source directions from h5 table might not be ordered. This is an old Python issue.'
-                        '\nSuggest to switch to Python 3.6 or higher')
+                        "WARNING: Order of source directions from h5 table might not be ordered. This is an old Python issue."
+                        "\nSuggest to switch to Python 3.6 or higher"
+                    )
 
                 # coordinate list
                 source_coords = dirs[list(dirs.keys())[dir_idx]]
 
                 if self.merge_all_in_one and self.n == 1:
                     idx = 0
-                    print('Merging direction {:f},{:f} with previous direction'.format(*source_coords))
-                    if abs(self.directions['Dir00'][0]) > 0 and abs(self.directions['Dir00'][1]) > 0:
-                        self.add_direction({'Dir00': source_coords})  # 0.0 coordinate bug
-                        print('Adding new direction {:f},{:f}'.format(*source_coords))
-                elif any([array_equal(source_coords, list(sv)) for sv in self.directions.values()]):
+                    print(
+                        "Merging direction {:f},{:f} with previous direction".format(
+                            *source_coords
+                        )
+                    )
+                    if (
+                        abs(self.directions["Dir00"][0]) > 0
+                        and abs(self.directions["Dir00"][1]) > 0
+                    ):
+                        self.add_direction(
+                            {"Dir00": source_coords}
+                        )  # 0.0 coordinate bug
+                        print("Adding new direction {:f},{:f}".format(*source_coords))
+                elif any(
+                    [
+                        np.array_equal(source_coords, list(sv))
+                        for sv in self.directions.values()
+                    ]
+                ):
                     # Direction already exists, add to the existing solutions.
-                    print('Direction {:f},{:f} already exists. Adding to this direction.'.format(*source_coords))
+                    print(
+                        "Direction {:f},{:f} already exists. Adding to this direction.".format(
+                            *source_coords
+                        )
+                    )
                     # Matching on 5 decimals rounding
-                    idx = list([[round(l[0], 5), round(l[1], 5)] for l in self.directions.values()]). \
-                        index([round(source_coords[0], 5), round(source_coords[1], 5)])
-                elif any([coordinate_distance(source_coords, list(sv))<=min_distance for sv in self.directions.values()]):
+                    idx = list(
+                        [
+                            [round(l[0], 5), round(l[1], 5)]
+                            for l in self.directions.values()
+                        ]
+                    ).index([round(source_coords[0], 5), round(source_coords[1], 5)])
+                elif any(
+                    [
+                        coordinate_distance(source_coords, list(sv)) <= min_distance
+                        for sv in self.directions.values()
+                    ]
+                ):
                     # Direction closer than minimal allowed distance.
                     md = 999
                     for i, d in enumerate(self.directions.values()):
-                        if coordinate_distance(source_coords, list(d))<md:
+                        if coordinate_distance(source_coords, list(d)) < md:
                             md = coordinate_distance(source_coords, list(d))
                             idx = i
-                    print('Direction {:f},{:f}'.format(*source_coords)+' is closer than minimal distance of '
-                          +str(min_distance) +' to '+str(list(self.directions.values())[idx])
-                          .replace('[','').replace(']','').replace('  ',','))
+                    print(
+                        "Direction {:f},{:f}".format(*source_coords)
+                        + " is closer than minimal distance of "
+                        + str(min_distance)
+                        + " to "
+                        + str(list(self.directions.values())[idx])
+                        .replace("[", "")
+                        .replace("]", "")
+                        .replace("  ", ",")
+                    )
 
                 else:  # new direction
                     if abs(source_coords[0]) > 0 and abs(source_coords[1]) > 0:
-                        print('Adding new direction {:f},{:f}'.format(*source_coords))
+                        print("Adding new direction {:f},{:f}".format(*source_coords))
                     idx = self.n
-                    self.add_direction({'Dir{:02d}'.format(self.n): source_coords})
+                    self.add_direction({"Dir{:02d}".format(self.n): source_coords})
                     if not self.merge_all_in_one:
                         self.n += 1
                     if self.n > 1:  # for self.n==1 --> dont have to do anything
-                        if (st.getType() in ['tec', 'phase', 'rotation'] and self.convert_tec) \
-                                or (st.getType() in ['phase', 'rotation'] and not self.convert_tec):
+                        if (
+                            st.getType() in ["tec", "phase", "rotation"]
+                            and self.convert_tec
+                        ) or (
+                            st.getType() in ["phase", "rotation"]
+                            and not self.convert_tec
+                        ):
                             shape = list(self.phases.shape)
                             dir_index = self.phases.ndim - 4
                             if dir_index < 0:
-                                sys.exit('ERROR: Missing dir axes.')
+                                sys.exit("ERROR: Missing dir axes.")
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
-                                self.phases = append(self.phases, zeros(shape),
-                                                     axis=dir_index)  # add clean phase to merge with
-                        elif st.getType() == 'amplitude':
+                                self.phases = np.append(
+                                    self.phases, np.zeros(shape), axis=dir_index
+                                )  # add clean phase to merge with
+                        elif st.getType() == "amplitude":
                             shape = list(self.amplitudes.shape)
                             dir_index = self.amplitudes.ndim - 4
                             if dir_index < 0:
-                                sys.exit('ERROR: Missing dir axes.')
+                                sys.exit("ERROR: Missing dir axes.")
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
-                                self.amplitudes = append(self.amplitudes, ones(shape),
-                                                         axis=dir_index)  # add clean gain to merge with
-                        elif st.getType() == 'tec' and not self.convert_tec:
+                                self.amplitudes = np.append(
+                                    self.amplitudes, np.ones(shape), axis=dir_index
+                                )  # add clean gain to merge with
+                        elif st.getType() == "tec" and not self.convert_tec:
                             shape = list(self.tec.shape)
                             dir_index = self.tec.ndim - 4
                             if dir_index < 0:
-                                sys.exit('ERROR: Missing dir axes.')
+                                sys.exit("ERROR: Missing dir axes.")
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
-                                self.tec = append(self.tec, zeros(shape),
-                                                  axis=dir_index)  # add clean phase to merge with
-                        elif st.getType() == 'error':
+                                self.tec = np.append(
+                                    self.tec, np.zeros(shape), axis=dir_index
+                                )  # add clean phase to merge with
+                        elif st.getType() == "error":
                             dir_index = self.error.ndim - 4
                             if dir_index < 0:
-                                sys.exit('ERROR: Missing dir axes.')
+                                sys.exit("ERROR: Missing dir axes.")
                             if self.n > shape[dir_index]:
                                 shape[dir_index] = 1
-                                self.error = append(self.error, zeros(shape),
-                                                    axis=dir_index)  # add clean phase to merge with
+                                self.error = np.append(
+                                    self.error, np.zeros(shape), axis=dir_index
+                                )  # add clean phase to merge with
 
                 # Add the solution table axis --> tec, phase, rotation, amplitude, or error
                 if (
-                        st.getType() == 'tec' and self.convert_tec) or st.getType() == 'phase' or st.getType() == 'rotation':
+                    (st.getType() == "tec" and self.convert_tec)
+                    or st.getType() == "phase"
+                    or st.getType() == "rotation"
+                ):
 
                     # add values
                     if self.fulljones and not self.doublefulljones:
 
-                        if 'pol' in st.getAxesNames() and not fulljones_done:
-                            if st.getAxisLen('pol') == 4:
-                                self.phases[1, idx, ...] = self.phases[0, idx, ...] + values[
-                                    1, ...]  # Axx * Bxy
-                                self.phases[2, idx, ...] = self.phases[-1, idx, ...] + values[
-                                    2, ...]  # Ayy * Byx
+                        if "pol" in st.getAxesNames() and not fulljones_done:
+                            if st.getAxisLen("pol") == 4:
+                                self.phases[1, idx, ...] = (
+                                    self.phases[0, idx, ...] + values[1, ...]
+                                )  # Axx * Bxy
+                                self.phases[2, idx, ...] = (
+                                    self.phases[-1, idx, ...] + values[2, ...]
+                                )  # Ayy * Byx
                                 fulljones_done = True
                                 print(diagfull_math)
 
@@ -1150,19 +1428,21 @@ class MergeH5:
                         self.phases[-1, idx, ...] += values[-1, ...]  # Ayy * Byy
 
                     elif not self.doublefulljones:
-                        if 'pol' in self.axes_current:
+                        if "pol" in self.axes_current:
                             self.phases[:, idx, ...] += values[:, ...]
                         else:
                             self.phases[idx, ...] += values[...]
                         print(diagdiag_math)
 
-                    elif self.doublefulljones:  # save table for in later double fulljones merge
+                    elif (
+                        self.doublefulljones
+                    ):  # save table for in later double fulljones merge
                         self.fulljones_phases.update({h5_name: values})
 
                     else:
                         sys.exit("ERROR: Broken code. Should not be here.")
 
-                elif st.getType() == 'tec' and not self.convert_tec:
+                elif st.getType() == "tec" and not self.convert_tec:
 
                     # add values
                     if len(self.polarizations) > 0:
@@ -1172,7 +1452,7 @@ class MergeH5:
                         # average tec
                         self.tec[idx, ...] += values[...] / self.tecnum
 
-                elif st.getType() == 'error':
+                elif st.getType() == "error":
 
                     # add values
                     if len(self.polarizations) > 0:
@@ -1182,18 +1462,19 @@ class MergeH5:
                         # average error
                         self.error[idx, ...] += values[...] / self.errornum
 
-
-                elif st.getType() == 'amplitude':
+                elif st.getType() == "amplitude":
 
                     # add values
                     if self.fulljones and not self.doublefulljones:
 
-                        if 'pol' in st.getAxesNames() and not fulljones_done:
-                            if st.getAxisLen('pol') == 4:
-                                self.amplitudes[1, idx, ...] = self.amplitudes[0, idx, ...] * values[
-                                    1, ...]  # Axx * Bxy
-                                self.amplitudes[2, idx, ...] = self.amplitudes[-1, idx, ...] * values[
-                                    2, ...]  # Ayy * Byx
+                        if "pol" in st.getAxesNames() and not fulljones_done:
+                            if st.getAxisLen("pol") == 4:
+                                self.amplitudes[1, idx, ...] = (
+                                    self.amplitudes[0, idx, ...] * values[1, ...]
+                                )  # Axx * Bxy
+                                self.amplitudes[2, idx, ...] = (
+                                    self.amplitudes[-1, idx, ...] * values[2, ...]
+                                )  # Ayy * Byx
                                 fulljones_done = True
                                 print(diagfull_math)
 
@@ -1206,7 +1487,7 @@ class MergeH5:
                         self.amplitudes[-1, idx, ...] *= values[-1, ...]  # Ayy * Byy
 
                     elif not self.doublefulljones:
-                        if 'pol' in self.axes_current:
+                        if "pol" in self.axes_current:
                             self.amplitudes[:, idx, ...] *= values[:, ...]
                         else:
                             self.amplitudes[idx, ...] *= values[...]
@@ -1240,22 +1521,24 @@ class MergeH5:
         tables = []
         for h5, t in self.fulljones_phases.items():
             if h5 in self.fulljones_amplitudes.keys():
-                tables.append(self.fulljones_amplitudes[h5].astype(complex128) * exp(t * 1j))
+                tables.append(
+                    self.fulljones_amplitudes[h5].astype(np.complex128) * np.exp(t * 1j)
+                )
             else:
-                out = exp(t * 1j)
-                out[1] = 0.
-                out[2] = 0.
+                out = np.exp(t * 1j)
+                out[1] = 0.0
+                out[2] = 0.0
                 tables.append(out)
 
-        pol_ax = self.axes_final.index('pol')
-        output_table = self.amplitudes.astype(complex128) * exp(self.phases * 1j)
+        pol_ax = self.axes_final.index("pol")
+        output_table = self.amplitudes.astype(np.complex128) * np.exp(self.phases * 1j)
         print("Calculating...")
 
         # Set template matrix
-        Axx = take(output_table, indices=[0], axis=pol_ax)
-        Axy = zeros(Axx.shape).astype(complex128)
-        Ayx = zeros(Axx.shape).astype(complex128)
-        Ayy = take(output_table, indices=[3], axis=pol_ax)
+        Axx = np.take(output_table, indices=[0], axis=pol_ax)
+        Axy = np.zeros(Axx.shape).astype(np.complex128)
+        Ayx = np.zeros(Axx.shape).astype(np.complex128)
+        Ayy = np.take(output_table, indices=[3], axis=pol_ax)
 
         # if sys.version_info.major > 2:
         #     print('0%', end='...')
@@ -1267,10 +1550,10 @@ class MergeH5:
             # if sys.version_info.major > 2:
             #     print(str(int((n+1)*100/len(tables)))+'%', end='...')
 
-            Bxx = reshape_dir(take(input_table, indices=[0], axis=pol_ax))
-            Bxy = reshape_dir(take(input_table, indices=[1], axis=pol_ax))
-            Byx = reshape_dir(take(input_table, indices=[2], axis=pol_ax))
-            Byy = reshape_dir(take(input_table, indices=[3], axis=pol_ax))
+            Bxx = reshape_dir(np.take(input_table, indices=[0], axis=pol_ax))
+            Bxy = reshape_dir(np.take(input_table, indices=[1], axis=pol_ax))
+            Byx = reshape_dir(np.take(input_table, indices=[2], axis=pol_ax))
+            Byy = reshape_dir(np.take(input_table, indices=[3], axis=pol_ax))
 
             # Necessary to make sure Axx, .. Ayy are not overwritten during calculations
             nAxx = Axx * Bxx + Axy * Byx
@@ -1284,7 +1567,7 @@ class MergeH5:
             Ayx = nAyx.copy()
             Ayy = nAyy.copy()
 
-        print('Done\n')
+        print("Done\n")
 
         # Construct final output matrix
         if pol_ax == 0:
@@ -1293,10 +1576,12 @@ class MergeH5:
             output_table[2, ...] = Ayx
             output_table[3, ...] = Ayy
         else:
-            sys.exit('ERROR: double fulljones merge error --> polarization axis is not 0')
+            sys.exit(
+                "ERROR: double fulljones merge error --> polarization axis is not 0"
+            )
 
         # Convert output matrix to phases and amplitudes
-        self.phases = angle(output_table)
+        self.phases = np.angle(output_table)
         self.amplitudes = abs(output_table)
 
         return self
@@ -1310,22 +1595,26 @@ class MergeH5:
         :return: New DP3 axes
         """
 
-        if 'pol' in self.axes_final and len(self.axes_final) == 5:
-            DP3_axes = ['time', 'freq', 'ant', 'dir', 'pol']
-        elif 'pol' not in self.axes_final and len(self.axes_final) == 4:
-            DP3_axes = ['time', 'ant', 'dir', 'freq']
+        if "pol" in self.axes_final and len(self.axes_final) == 5:
+            DP3_axes = ["time", "freq", "ant", "dir", "pol"]
+        elif "pol" not in self.axes_final and len(self.axes_final) == 4:
+            DP3_axes = ["time", "ant", "dir", "freq"]
             if self.phases.ndim == 5:
                 self.phases = self.phases[0]
         else:
             DP3_axes = []
 
-        if 'phase' in soltab or ('tec' in soltab and self.convert_tec) or 'rotation' in soltab:
+        if (
+            "phase" in soltab
+            or ("tec" in soltab and self.convert_tec)
+            or "rotation" in soltab
+        ):
             self.phases = reorderAxes(self.phases, self.axes_final, DP3_axes)
-        elif 'amplitude' in soltab:
+        elif "amplitude" in soltab:
             self.amplitudes = reorderAxes(self.amplitudes, self.axes_final, DP3_axes)
-        elif 'tec' in soltab and not self.convert_tec:
+        elif "tec" in soltab and not self.convert_tec:
             self.tec = reorderAxes(self.tec, self.axes_final, DP3_axes)
-        elif 'error' in soltab:
+        elif "error" in soltab:
             self.error = reorderAxes(self.error, self.axes_final, DP3_axes)
 
         return DP3_axes
@@ -1336,7 +1625,7 @@ class MergeH5:
         with this extra step.
         """
 
-        H = tables.open_file(self.h5name_out, 'r+')
+        H = tables.open_file(self.h5name_out, "r+")
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
             # Not needed if only 1 source
@@ -1346,19 +1635,27 @@ class MergeH5:
             # Problem when source table is empty
             elif len(ss.source[:]) == 0:
                 H.close()
-                sys.exit('ERROR: No sources in output table ' + '/'.join([solset, 'source']))
+                sys.exit(
+                    "ERROR: No sources in output table " + "/".join([solset, "source"])
+                )
             # No reordering needed
-            elif all(ss.source[:]['name'] == ss._f_get_child(list(ss._v_groups.keys())[0]).dir[:]):
+            elif all(
+                ss.source[:]["name"]
+                == ss._f_get_child(list(ss._v_groups.keys())[0]).dir[:]
+            ):
                 H.close()
                 return self
             # Reordering needed
             else:
-                sources = array(sort(ss.source[:]), dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
-                overwrite_table(H, solset, 'source', sources)
+                sources = np.array(
+                    np.sort(ss.source[:]),
+                    dtype=[("name", "S128"), ("dir", "<f4", (2,))],
+                )
+                overwrite_table(H, solset, "source", sources)
                 for soltab in ss._v_groups.keys():
                     st = ss._f_get_child(soltab)
                     st.dir._f_remove()
-                    H.create_array(st, 'dir', array(sources['name'], dtype='|S5'))
+                    H.create_array(st, "dir", np.array(sources["name"], dtype="|S5"))
         H.close()
         return self
 
@@ -1368,11 +1665,11 @@ class MergeH5:
         Python 3 saves it automatically in more than that number (for yet some unknown reason).
         """
 
-        T = tables.open_file(self.h5name_out, 'r+')
+        T = tables.open_file(self.h5name_out, "r+")
         for solset in T.root._v_groups.keys():
             ss = T.root._f_get_child(solset)
             if ss.source[:][0].nbytes > 140:
-                overwrite_table(T, solset, 'source', ss.source[:])
+                overwrite_table(T, solset, "source", ss.source[:])
         T.close()
         return self
 
@@ -1387,13 +1684,17 @@ class MergeH5:
         :return: New unique sources
         """
 
-        current_sources_dir = [source[0].decode('UTF-8') for source in current_sources]
+        current_sources_dir = [source[0].decode("UTF-8") for source in current_sources]
         current_sources_coor = [source[1] for source in current_sources]
-        new_sources = [source for source in new_sources if source[0] not in current_sources_dir]
+        new_sources = [
+            source for source in new_sources if source[0] not in current_sources_dir
+        ]
         del_index = []
         for coor in current_sources_coor:
             for n, source in enumerate(new_sources):
-                if round(coor[0], 5) == round(source[1][0], 5) and round(coor[1], 5) == round(source[1][1], 5):
+                if round(coor[0], 5) == round(source[1][0], 5) and round(
+                    coor[1], 5
+                ) == round(source[1][1], 5):
                     del_index.append(n)
 
         return [source for i, source in enumerate(new_sources) if i not in del_index]
@@ -1415,65 +1716,98 @@ class MergeH5:
         else:
             solsetout = self.h5_out.makeSolset(solset)
 
-        new_sources = self.keep_new_sources(solsetout.obj.source[:], list(self.directions.items()))
+        new_sources = self.keep_new_sources(
+            solsetout.obj.source[:], list(self.directions.items())
+        )
 
         if len(new_sources) > 0:
             solsetout.obj.source.append(new_sources)
 
-        axes_vals = {'dir': list(self.directions.keys()),
-                     'ant': self.ant,
-                     'freq': self.ax_freq,
-                     'time': self.ax_time}
+        axes_vals = {
+            "dir": list(self.directions.keys()),
+            "ant": self.ant,
+            "freq": self.ax_freq,
+            "time": self.ax_time,
+        }
 
         DP3_axes = self._DP3_order(soltab)  # reorder the axis to DP3 style
 
-        if 'pol' in self.axes_final:
-            axes_vals.update({'pol': self.polarizations})
+        if "pol" in self.axes_final:
+            axes_vals.update({"pol": self.polarizations})
             self.axes_final = DP3_axes
         elif len(self.axes_final) == 4 and len(DP3_axes) > 0:
             self.axes_final = DP3_axes
 
         # right order vals
-        axes_vals = [v[1] for v in sorted(axes_vals.items(), key=lambda pair: self.axes_final.index(pair[0]))]
+        axes_vals = [
+            v[1]
+            for v in sorted(
+                axes_vals.items(), key=lambda pair: self.axes_final.index(pair[0])
+            )
+        ]
         shape_axes_vals = tuple(len(s) for s in axes_vals)
 
         # make new solution table
-        if 'phase' in soltab:
-            self.phases = self.remove_invalid_values('phase', self.phases, self.axes_final)
+        if "phase" in soltab:
+            self.phases = remove_invalid_values("phase", self.phases, self.axes_final)
             if shape_axes_vals != self.phases.shape:
-                self.phases = reorderAxes(self.phases, self.axes_current, self.axes_final)
-            weights = ones(self.phases.shape)
-            print('Value shape after --> {values}'.format(values=weights.shape))
-            solsetout.makeSoltab('phase', axesNames=self.axes_final, axesVals=axes_vals, vals=self.phases,
-                                 weights=weights)
-        elif 'amplitude' in soltab:
-            self.amplitudes = self.remove_invalid_values('amplitude', self.amplitudes, self.axes_final)
+                self.phases = reorderAxes(
+                    self.phases, self.axes_current, self.axes_final
+                )
+            weights = np.ones(self.phases.shape)
+            print("Value shape after --> {values}".format(values=weights.shape))
+            solsetout.makeSoltab(
+                "phase",
+                axesNames=self.axes_final,
+                axesVals=axes_vals,
+                vals=self.phases,
+                weights=weights,
+            )
+        elif "amplitude" in soltab:
+            self.amplitudes = remove_invalid_values(
+                "amplitude", self.amplitudes, self.axes_final
+            )
             if shape_axes_vals != self.amplitudes.shape:
-                self.amplitudes = reorderAxes(self.amplitudes, self.axes_current, self.axes_final)
-            weights = ones(self.amplitudes.shape)
-            print('Value shape after --> {values}'.format(values=weights.shape))
-            solsetout.makeSoltab('amplitude', axesNames=self.axes_final, axesVals=axes_vals, vals=self.amplitudes,
-                                 weights=weights)
-        elif 'tec' in soltab and not self.convert_tec:
-            self.tec = self.remove_invalid_values('tec', self.tec, self.axes_final)
+                self.amplitudes = reorderAxes(
+                    self.amplitudes, self.axes_current, self.axes_final
+                )
+            weights = np.ones(self.amplitudes.shape)
+            print("Value shape after --> {values}".format(values=weights.shape))
+            solsetout.makeSoltab(
+                "amplitude",
+                axesNames=self.axes_final,
+                axesVals=axes_vals,
+                vals=self.amplitudes,
+                weights=weights,
+            )
+        elif "tec" in soltab and not self.convert_tec:
+            self.tec = remove_invalid_values("tec", self.tec, self.axes_final)
             if shape_axes_vals != self.tec.shape:
                 self.tec = reorderAxes(self.tec, self.axes_current, self.axes_final)
-            weights = ones(self.tec.shape)
-            print('Value shape after --> {values}'.format(values=weights.shape))
-            solsetout.makeSoltab('tec', axesNames=self.axes_final,
-                                 axesVals=axes_vals,
-                                 vals=self.tec, weights=weights)
-        elif 'error' in soltab:
-            self.error = self.remove_invalid_values('error', self.error, self.axes_final)
+            weights = np.ones(self.tec.shape)
+            print("Value shape after --> {values}".format(values=weights.shape))
+            solsetout.makeSoltab(
+                "tec",
+                axesNames=self.axes_final,
+                axesVals=axes_vals,
+                vals=self.tec,
+                weights=weights,
+            )
+        elif "error" in soltab:
+            self.error = remove_invalid_values("error", self.error, self.axes_final)
             if shape_axes_vals != self.error.shape:
                 self.error = reorderAxes(self.error, self.axes_current, self.axes_final)
-            weights = ones(self.error.shape)
-            print('Value shape after --> {values}'.format(values=weights.shape))
-            solsetout.makeSoltab('error', axesNames=self.axes_final,
-                                 axesVals=axes_vals,
-                                 vals=self.error, weights=weights)
+            weights = np.ones(self.error.shape)
+            print("Value shape after --> {values}".format(values=weights.shape))
+            solsetout.makeSoltab(
+                "error",
+                axesNames=self.axes_final,
+                axesVals=axes_vals,
+                vals=self.error,
+                weights=weights,
+            )
 
-        print('DONE: {solset}/{soltab}'.format(solset=solset, soltab=soltab))
+        print("DONE: {solset}/{soltab}".format(solset=solset, soltab=soltab))
 
         self.h5_out.close()
 
@@ -1490,18 +1824,28 @@ class MergeH5:
             return self
 
         h5 = h5parm(self.h5name_out, readonly=True)
-        filetemp = self.h5name_out.replace('.h5', '_temph5merger.h5')
+        filetemp = self.h5name_out.replace(".h5", "_temph5merger.h5")
         h5_temp = h5parm(filetemp, readonly=False)
         solset = h5.getSolset(self.solset)
         solsettemp = h5_temp.makeSolset(self.solset)
         if type(add_directions[0]) == list:
-            sources = list([source[1] for source in solset.obj.source[:]]) + add_directions
+            sources = (
+                list([source[1] for source in solset.obj.source[:]]) + add_directions
+            )
         else:
-            sources = list([source[1] for source in solset.obj.source[:]]) + [add_directions]
+            sources = list([source[1] for source in solset.obj.source[:]]) + [
+                add_directions
+            ]
         if sys.version_info.major > 2:
-            sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), list(ns)) for n, ns in enumerate(sources)]
+            sources = [
+                (bytes("Dir" + str(n).zfill(2), "utf-8"), list(ns))
+                for n, ns in enumerate(sources)
+            ]
         else:
-            sources = [(bytes('Dir' + str(n).zfill(2)), list(ns)) for n, ns in enumerate(sources)]
+            sources = [
+                (bytes("Dir" + str(n).zfill(2)), list(ns))
+                for n, ns in enumerate(sources)
+            ]
         if len(sources) > 0:
             solsettemp.obj.source.append(sources)
 
@@ -1509,19 +1853,19 @@ class MergeH5:
             solutiontable = h5.getSolset(self.solset).getSoltab(st)
             axes = solutiontable.getValues()[1]
             values = solutiontable.getValues()[0]
-            axes['dir'] = [ns[0] for ns in sources]
-            dir_index = solutiontable.getAxesNames().index('dir')
+            axes["dir"] = [ns[0] for ns in sources]
+            dir_index = solutiontable.getAxesNames().index("dir")
             new_shape = list(values.shape)
             last_idx = new_shape[dir_index]
             new_idx = last_idx + len(add_directions) - 1
             new_shape[dir_index] = new_idx
 
-            if 'phase' in st:
-                values_new = zeros(tuple(new_shape))
-            elif 'amplitude' in st:
-                values_new = ones(tuple(new_shape))
+            if "phase" in st:
+                values_new = np.zeros(tuple(new_shape))
+            elif "amplitude" in st:
+                values_new = np.ones(tuple(new_shape))
             else:
-                values_new = zeros(tuple(new_shape))
+                values_new = np.zeros(tuple(new_shape))
 
             if dir_index == 0:
                 values_new[0:last_idx, ...] = values
@@ -1534,18 +1878,26 @@ class MergeH5:
             elif dir_index == 4:
                 values_new[:, :, :, :, 0:last_idx, ...] = values
 
-            weights = ones(values_new.shape)
-            solsettemp.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()),
-                                  vals=values_new,
-                                  weights=weights)
+            weights = np.ones(values_new.shape)
+            solsettemp.makeSoltab(
+                remove_numbers(st),
+                axesNames=list(axes.keys()),
+                axesVals=list(axes.values()),
+                vals=values_new,
+                weights=weights,
+            )
 
-            print('Default directions added for ' + self.solset + '/' + st)
-            print('Shape change: ' + str(values.shape) + ' ---> ' + str(values_new.shape))
+            print("Default directions added for " + self.solset + "/" + st)
+            print(
+                "Shape change: " + str(values.shape) + " ---> " + str(values_new.shape)
+            )
 
         h5.close()
         h5_temp.close()
 
-        os.system('rm ' + self.h5name_out + ' && mv ' + filetemp + ' ' + self.h5name_out)
+        os.system(
+            "rm " + self.h5name_out + " && mv " + filetemp + " " + self.h5name_out
+        )
 
         return self
 
@@ -1558,13 +1910,13 @@ class MergeH5:
         :param nopol: if True --> no polarization in output
         """
 
-        T = tables.open_file(self.h5name_out, 'r+')
+        T = tables.open_file(self.h5name_out, "r+")
 
         # DP3 axes order
         if self.poldim == 5 or single:
-            output_axes = ['time', 'freq', 'ant', 'dir', 'pol']
+            output_axes = ["time", "freq", "ant", "dir", "pol"]
         else:
-            output_axes = ['time', 'ant', 'dir', 'freq']
+            output_axes = ["time", "ant", "dir", "freq"]
 
         for solset in T.root._v_groups.keys():
             ss = T.root._f_get_child(solset)
@@ -1572,29 +1924,33 @@ class MergeH5:
                 st = ss._f_get_child(soltab)
 
                 if self.poldim == 0:
-                    print('No polarization in ' + solset + '/' + soltab)
+                    print("No polarization in " + solset + "/" + soltab)
                     if nopol:
                         continue
                     elif single:
-                        T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
+                        T.create_array(st, "pol", np.array([b"I"], dtype="|S2"))
 
                 elif self.poldim == 1:
                     st.pol._f_remove()
-                    T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
+                    T.create_array(st, "pol", np.array([b"I"], dtype="|S2"))
                 elif self.poldim > 1 and (single or nopol):
-                    for axes in ['val', 'weight']:
-                        if not all(st._f_get_child(axes)[..., 0] == \
-                                   st._f_get_child(axes)[..., -1]):
-                            sys.exit('WARNING: ' + '/'.join([soltab, axes]) +
-                                     ' does not have the same values for XX and YY polarization.'
-                                     '\nERROR: No polarization reduction will be done.'
-                                     '\nERROR: Do not use --no_pol or --single_pol.')
+                    for axes in ["val", "weight"]:
+                        if not np.all(
+                            st._f_get_child(axes)[..., 0] == st._f_get_child(axes)[..., -1]
+                        ):
+                            sys.exit(
+                                "WARNING: "
+                                + "/".join([soltab, axes])
+                                + " does not have the same values for XX and YY polarization."
+                                "\nERROR: No polarization reduction will be done."
+                                "\nERROR: Do not use --no_pol or --single_pol."
+                            )
 
-                for axes in ['val', 'weight']:
+                for axes in ["val", "weight"]:
                     if self.poldim > 0 and single:
                         newval = st._f_get_child(axes)[:, :, :, :, 0:1]
                         st.pol._f_remove()
-                        T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
+                        T.create_array(st, "pol", np.array([b"I"], dtype="|S2"))
                     elif nopol and self.poldim > 0:
                         newval = st._f_get_child(axes)[:, :, :, :, 0]
                         try:
@@ -1602,38 +1958,54 @@ class MergeH5:
                         except:
                             pass
                     elif self.poldim == 0 and single:
-                        newval = expand_dims(st._f_get_child(axes)[:], len(st._f_get_child(axes).shape))
+                        newval = np.expand_dims(
+                            st._f_get_child(axes)[:], len(st._f_get_child(axes).shape)
+                        )
                         try:
                             st.pol._f_remove()
                         except:
                             pass
-                        T.create_array(st, 'pol', array([b'I'], dtype='|S2'))
+                        T.create_array(st, "pol", np.array([b"I"], dtype="|S2"))
                     else:
                         continue
 
                     valtype = str(st._f_get_child(axes).dtype)
-                    if '16' in valtype:
+                    if "16" in valtype:
                         atomtype = tables.Float16Atom()
-                    elif '32' in valtype:
+                    elif "32" in valtype:
                         atomtype = tables.Float32Atom()
-                    elif '64' in valtype:
+                    elif "64" in valtype:
                         atomtype = tables.Float64Atom()
                     else:
                         atomtype = tables.Float64Atom()
 
-                    old_axes = [ax for ax in st._f_get_child(axes).attrs['AXES'].decode('utf8').split(',') + ['pol']
-                                if ax in output_axes]
+                    old_axes = [
+                        ax
+                        for ax in st._f_get_child(axes)
+                        .attrs["AXES"]
+                        .decode("utf8")
+                        .split(",")
+                        + ["pol"]
+                        if ax in output_axes
+                    ]
                     idx = [old_axes.index(ax) for ax in output_axes]
-                    newval = transpose(newval, idx)
+                    newval = np.transpose(newval, idx)
                     st._f_get_child(axes)._f_remove()
                     T.create_array(st, axes, newval.astype(valtype), atom=atomtype)
                     if sys.version_info.major > 2:
-                        st._f_get_child(axes).attrs['AXES'] = bytes(','.join(output_axes), 'utf-8')
+                        st._f_get_child(axes).attrs["AXES"] = bytes(
+                            ",".join(output_axes), "utf-8"
+                        )
                     else:
-                        st._f_get_child(axes).attrs['AXES'] = bytes(','.join(output_axes))
+                        st._f_get_child(axes).attrs["AXES"] = bytes(
+                            ",".join(output_axes)
+                        )
 
-                print('Value shape after changing poldim --> ' + str(st._f_get_child('val')[:].shape))
-                print('Polarization --> '+str(st.pol[:]))
+                print(
+                    "Value shape after changing poldim --> "
+                    + str(st._f_get_child("val")[:].shape)
+                )
+                print("Polarization --> " + str(st.pol[:]))
 
         T.close()
 
@@ -1644,13 +2016,13 @@ class MergeH5:
         Add antennas to output table from H5 list.
         """
 
-        print('Add antenna table from ' + self.h5_tables[0])
+        print("Add antenna table from " + self.h5_tables[0])
         T = tables.open_file(self.h5_tables[0])
         antennas = T.root.sol000.antenna[:]
         T.close()
-        H = tables.open_file(self.h5name_out, 'r+')
+        H = tables.open_file(self.h5name_out, "r+")
         for solset in H.root._v_groups.keys():
-            overwrite_table(H, solset, 'antenna', antennas)
+            overwrite_table(H, solset, "antenna", antennas)
         H.close()
 
         return self
@@ -1662,20 +2034,23 @@ class MergeH5:
         :param keep_h5_interstations: keep h5 international stations
         """
 
-        print('Add antenna table from ' + self.ms[0])
+        print("Add antenna table from " + self.ms[0])
         if len(self.ms) == 0:
             sys.exit("ERROR: Measurement set needed to add antennas. Use --ms.")
 
         t = ct.table(self.ms[0] + "::ANTENNA", ack=False)
         try:
-            ms_antlist = [n.decode('utf8') for n in t.getcol('NAME')]
+            ms_antlist = [n.decode("utf8") for n in t.getcol("NAME")]
         except AttributeError:
-            ms_antlist = t.getcol('NAME')
-        ms_antpos = t.getcol('POSITION')
-        ms_antennas = array([list(zip(*(ms_antlist, ms_antpos)))], dtype=[('name', 'S16'), ('position', '<f4', (3,))])
+            ms_antlist = t.getcol("NAME")
+        ms_antpos = t.getcol("POSITION")
+        ms_antennas = np.array(
+            [list(zip(*(ms_antlist, ms_antpos)))],
+            dtype=[("name", "S16"), ("position", "<f4", (3,))],
+        )
         t.close()
 
-        H = tables.open_file(self.h5name_out, 'r+')
+        H = tables.open_file(self.h5name_out, "r+")
 
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
@@ -1687,38 +2062,55 @@ class MergeH5:
             for soltab in ss._v_groups.keys():
                 print(soltab)
                 st = ss._f_get_child(soltab)
-                attrsaxes = st.val.attrs['AXES']
-                antenna_index = attrsaxes.decode('utf8').split(',').index('ant')
-                h5_antlist = [v.decode('utf8') for v in list(st.ant[:])]
+                attrsaxes = st.val.attrs["AXES"]
+                antenna_index = attrsaxes.decode("utf8").split(",").index("ant")
+                h5_antlist = [v.decode("utf8") for v in list(st.ant[:])]
 
-                if keep_h5_interstations:  # keep international stations if these are not in MS
-                    new_antlist = [station for station in ms_antlist if 'CS' in station] + \
-                                  [station for station in h5_antlist if 'ST' not in station]
-                    all_antennas = [a for a in unique(append(ms_antennas, h5_antennas), axis=0) if a[0] != 'ST001']
-                    antennas_new = [all_antennas[[a[0].decode('utf8') for a in all_antennas].index(na)] for na in
-                                    new_antlist]  # sorting
+                if (
+                    keep_h5_interstations
+                ):  # keep international stations if these are not in MS
+                    new_antlist = [
+                        station for station in ms_antlist if "CS" in station
+                    ] + [station for station in h5_antlist if "ST" not in station]
+                    all_antennas = [
+                        a
+                        for a in np.unique(np.append(ms_antennas, h5_antennas), axis=0)
+                        if a[0] != "ST001"
+                    ]
+                    antennas_new = [
+                        all_antennas[
+                            [a[0].decode("utf8") for a in all_antennas].index(na)
+                        ]
+                        for na in new_antlist
+                    ]  # sorting
                 else:
                     new_antlist = ms_antlist
                     antennas_new = ms_antennas
 
                 st.ant._f_remove()
-                overwrite_table(H, solset, 'antenna', antennas_new)
-                H.create_array(st, 'ant', array(list(new_antlist), dtype='|S16'))
+                overwrite_table(H, solset, "antenna", antennas_new)
+                H.create_array(st, "ant", np.array(list(new_antlist), dtype="|S16"))
 
-                try:
-                    superstation_index = h5_antlist.index('ST001')
+                if "ST001" in h5_antlist:
+                    superstation_index = h5_antlist.index("ST001")
                     superstation = True
-                except ValueError:
+                else:
                     superstation = False
-                    print('No super station (ST001) in antennas.')
+                    print("No super station (ST001) in antennas.")
 
-                for axes in ['val', 'weight']:
-                    assert axes in list(
-                        st._v_children.keys()), axes + ' not in .root.' + solset + '.' + soltab + ' (not in axes)'
+                for axes in ["val", "weight"]:
+                    assert axes in list(st._v_children.keys()), (
+                        axes
+                        + " not in .root."
+                        + solset
+                        + "."
+                        + soltab
+                        + " (not in axes)"
+                    )
                     h5_values = st._f_get_child(axes)[:]
                     shape = list(h5_values.shape)
                     shape[antenna_index] = len(new_antlist)
-                    ms_values = zeros(shape)
+                    ms_values = np.zeros(shape)
 
                     for idx, antenna in enumerate(new_antlist):
                         if antenna in h5_antlist:
@@ -1728,26 +2120,46 @@ class MergeH5:
                             elif antenna_index == 1:
                                 ms_values[:, idx, ...] += h5_values[:, idx_h5, ...]
                             elif antenna_index == 2:
-                                ms_values[:, :, idx, ...] += h5_values[:, :, idx_h5, ...]
+                                ms_values[:, :, idx, ...] += h5_values[
+                                    :, :, idx_h5, ...
+                                ]
                             elif antenna_index == 3:
-                                ms_values[:, :, :, idx, ...] += h5_values[:, :, :, idx_h5, ...]
+                                ms_values[:, :, :, idx, ...] += h5_values[
+                                    :, :, :, idx_h5, ...
+                                ]
                             elif antenna_index == 4:
-                                ms_values[:, :, :, :, idx, ...] += h5_values[:, :, :, :, idx_h5, ...]
-                        elif 'CS' in antenna and superstation:  # core stations
+                                ms_values[:, :, :, :, idx, ...] += h5_values[
+                                    :, :, :, :, idx_h5, ...
+                                ]
+                        elif "CS" in antenna and superstation:  # core stations
                             if antenna_index == 0:
-                                ms_values[idx, ...] += h5_values[superstation_index, ...]
+                                ms_values[idx, ...] += h5_values[
+                                    superstation_index, ...
+                                ]
                             elif antenna_index == 1:
-                                ms_values[:, idx, ...] += h5_values[:, superstation_index, ...]
+                                ms_values[:, idx, ...] += h5_values[
+                                    :, superstation_index, ...
+                                ]
                             elif antenna_index == 2:
-                                ms_values[:, :, idx, ...] += h5_values[:, :, superstation_index, ...]
+                                ms_values[:, :, idx, ...] += h5_values[
+                                    :, :, superstation_index, ...
+                                ]
                             elif antenna_index == 3:
-                                ms_values[:, :, :, idx, ...] += h5_values[:, :, :, superstation_index, ...]
+                                ms_values[:, :, :, idx, ...] += h5_values[
+                                    :, :, :, superstation_index, ...
+                                ]
                             elif antenna_index == 4:
-                                ms_values[:, :, :, :, idx, ...] += h5_values[:, :, :, :, superstation_index, ...]
-                        elif antenna not in h5_antlist and ('amplitude' in soltab or axes == 'weight') \
-                                and 'RS' not in antenna and 'CS' not in antenna:
-                            if axes == 'val':
-                                print('Add ' + antenna + ' to output H5 from MS')
+                                ms_values[:, :, :, :, idx, ...] += h5_values[
+                                    :, :, :, :, superstation_index, ...
+                                ]
+                        elif (
+                            antenna not in h5_antlist
+                            and ("amplitude" in soltab or axes == "weight")
+                            and "RS" not in antenna
+                            and "CS" not in antenna
+                        ):
+                            if axes == "val":
+                                print("Add " + antenna + " to output H5 from MS")
                             if antenna_index == 0:
                                 ms_values[idx, ...] = 1
                             elif antenna_index == 1:
@@ -1760,19 +2172,19 @@ class MergeH5:
                                 ms_values[:, :, :, :, idx, ...] = 1
 
                     valtype = str(st._f_get_child(axes).dtype)
-                    if '16' in valtype:
+                    if "16" in valtype:
                         atomtype = tables.Float16Atom()
-                    elif '32' in valtype:
+                    elif "32" in valtype:
                         atomtype = tables.Float32Atom()
-                    elif '64' in valtype:
+                    elif "64" in valtype:
                         atomtype = tables.Float64Atom()
                     else:
                         atomtype = tables.Float64Atom()
 
                     st._f_get_child(axes)._f_remove()
                     H.create_array(st, axes, ms_values.astype(valtype), atom=atomtype)
-                    st._f_get_child(axes).attrs['AXES'] = attrsaxes
-                print('Value shape after --> ' + str(st.val.shape))
+                    st._f_get_child(axes).attrs["AXES"] = attrsaxes
+                print("Value shape after --> " + str(st.val.shape))
 
         H.close()
 
@@ -1783,19 +2195,19 @@ class MergeH5:
         Make template for phase000 and/or amplitude000 if missing.
         """
 
-        H = tables.open_file(self.h5name_out, 'r+')
+        H = tables.open_file(self.h5name_out, "r+")
         soltabs = list(H.root.sol000._v_groups.keys())
-        if 'amplitude000' not in soltabs:
-            if 'phase000' in soltabs:
-                self.amplitudes = ones(H.root.sol000.phase000.val.shape)
+        if "amplitude000" not in soltabs:
+            if "phase000" in soltabs:
+                self.amplitudes = np.ones(H.root.sol000.phase000.val.shape)
                 if len(self.polarizations) == 4:
-                    self.amplitudes[..., 1] = 0.
-                    self.amplitudes[..., 2] = 0.
-                self.create_new_dataset('sol000', 'amplitude')
-        if 'phase000' not in soltabs:
-            if 'amplitude000' in soltabs:
-                self.phases = zeros(H.root.sol000.amplitude000.val.shape)
-                self.create_new_dataset('sol000', 'phase')
+                    self.amplitudes[..., 1] = 0.0
+                    self.amplitudes[..., 2] = 0.0
+                self.create_new_dataset("sol000", "amplitude")
+        if "phase000" not in soltabs:
+            if "amplitude000" in soltabs:
+                self.phases = np.zeros(H.root.sol000.amplitude000.val.shape)
+                self.create_new_dataset("sol000", "phase")
         H.close()
 
         return self
@@ -1805,7 +2217,7 @@ class MergeH5:
         Propagate flagged station input to output.
         """
 
-        H = tables.open_file(self.h5name_out, 'r+')
+        H = tables.open_file(self.h5name_out, "r+")
         for input_h5 in self.h5_tables:
             T = tables.open_file(input_h5)
             for solset in T.root._v_groups.keys():
@@ -1814,29 +2226,38 @@ class MergeH5:
                     st = ss._f_get_child(soltab)
                     weight = st.weight
                     antennas_in = list(st.ant[:])
-                    axes = make_utf8(weight.attrs['AXES']).split(',')
-                    if 'tec' in soltab:
-                        soltab = 'phase' + soltab[-3:]
+                    axes = make_utf8(weight.attrs["AXES"]).split(",")
+                    if "tec" in soltab:
+                        soltab = "phase" + soltab[-3:]
                     axes_output = make_utf8(
-                        H.root._f_get_child(solset)._f_get_child(soltab).weight.attrs['AXES']).split(',')
-                    ant_index = axes.index('ant')
-                    weight = reorderAxes(weight, axes, [i for i in axes_output if i in axes])
+                        H.root._f_get_child(solset)
+                        ._f_get_child(soltab)
+                        .weight.attrs["AXES"]
+                    ).split(",")
+                    ant_index = axes.index("ant")
+                    weight = reorderAxes(
+                        weight, axes, [i for i in axes_output if i in axes]
+                    )
                     for a in range(weight.shape[ant_index]):
                         antenna = antennas_in[a]
-                        if sum(take(weight, [a], ant_index)) == 0.:
-                            if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
-                                st_out = H.root._f_get_child(solset)._f_get_child(soltab)
+                        if np.sum(np.take(weight, [a], ant_index)) == 0.0:
+                            if soltab in list(
+                                H.root._f_get_child(solset)._v_groups.keys()
+                            ):
+                                st_out = H.root._f_get_child(solset)._f_get_child(
+                                    soltab
+                                )
                                 if antenna in list(st_out.ant[:]):
                                     if ant_index == 0:
-                                        st_out.weight[a, ...] = 0.
+                                        st_out.weight[a, ...] = 0.0
                                     elif ant_index == 1:
-                                        st_out.weight[:, a, ...] = 0.
+                                        st_out.weight[:, a, ...] = 0.0
                                     elif ant_index == 2:
-                                        st_out.weight[:, :, a, ...] = 0.
+                                        st_out.weight[:, :, a, ...] = 0.0
                                     elif ant_index == 3:
-                                        st_out.weight[:, :, :, a, ...] = 0.
+                                        st_out.weight[:, :, :, a, ...] = 0.0
                                     elif ant_index == 4:
-                                        st_out.weight[:, :, :, :, a, ...] = 0.
+                                        st_out.weight[:, :, :, :, a, ...] = 0.0
 
             T.close()
         H.close()
@@ -1850,15 +2271,15 @@ class MergeH5:
 
         print("\nPropagating weights in:")
 
-        H = tables.open_file(self.h5name_out, 'r+')
+        H = tables.open_file(self.h5name_out, "r+")
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
             for n, soltab in enumerate(ss._v_groups.keys()):
-                print(soltab + ', from:')
+                print(soltab + ", from:")
                 st = ss._f_get_child(soltab)
                 shape = st.val.shape
-                weight_out = ones(shape)
-                axes_new = make_utf8(st.val.attrs["AXES"]).split(',')
+                weight_out = np.ones(shape)
+                axes_new = make_utf8(st.val.attrs["AXES"]).split(",")
                 for m, input_h5 in enumerate(self.h5_tables):
 
                     print(input_h5)
@@ -1867,80 +2288,128 @@ class MergeH5:
                         T.close()
                         continue
                     st2 = T.root._f_get_child(solset)._f_get_child(soltab)
-                    axes = make_utf8(st2.val.attrs["AXES"]).split(',')
+                    axes = make_utf8(st2.val.attrs["AXES"]).split(",")
                     weight = st2.weight[:]
-                    weight = reorderAxes(weight, axes, [a for a in axes_new if a in axes])
+                    weight = reorderAxes(
+                        weight, axes, [a for a in axes_new if a in axes]
+                    )
 
                     # important to do the following in case the input tables are not all different directions
-                    m = min(weight_out.shape[axes.index('dir')] - 1, m)
+                    m = min(weight_out.shape[axes.index("dir")] - 1, m)
                     if self.merge_all_in_one:
                         m = 0
 
-                    newvals = self._interp_along_axis(weight, st2.time[:], st.time[:], axes_new.index('time'))
-                    newvals = self._interp_along_axis(newvals, st2.freq[:], st.freq[:], axes_new.index('freq'))
+                    newvals = interp_along_axis(
+                        weight, st2.time[:], st.time[:], axes_new.index("time")
+                    )
+                    newvals = interp_along_axis(
+                        newvals, st2.freq[:], st.freq[:], axes_new.index("freq")
+                    )
 
                     if weight.ndim != weight_out.ndim:  # not the same value shape
-                        if 'pol' not in axes and 'pol' in axes_new:
-                            newvals = expand_dims(newvals, axis=axes_new.index('pol'))
+                        if "pol" not in axes and "pol" in axes_new:
+                            newvals = np.expand_dims(
+                                newvals, axis=axes_new.index("pol")
+                            )
                             if newvals.shape[-1] != weight_out.shape[-1]:
-                                temp = ones(shape)
+                                temp = np.ones(shape)
                                 for n in range(temp.shape[-1]):
                                     temp[..., m, n] *= newvals[..., 0, 0]
                                 newvals = temp
                             weight_out *= newvals
                         else:
-                            sys.exit('ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from '
-                                     + input_h5 + ': ' + str(axes) + '\n axes from '
-                                     + self.h5name_out + ': ' + str(axes_new) + '.\n'
-                                     + debug_message)
-                    elif set(axes) == set(axes_new) and 'pol' in axes:  # same axes
+                            sys.exit(
+                                "ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from "
+                                + input_h5
+                                + ": "
+                                + str(axes)
+                                + "\n axes from "
+                                + self.h5name_out
+                                + ": "
+                                + str(axes_new)
+                                + ".\n"
+                                + debug_message
+                            )
+                    elif set(axes) == set(axes_new) and "pol" in axes:  # same axes
 
-                        pol_index = axes_new.index('pol')
-                        if weight_out.shape[pol_index] == newvals.shape[pol_index]:  # same pol numbers
+                        pol_index = axes_new.index("pol")
+                        if (
+                            weight_out.shape[pol_index] == newvals.shape[pol_index]
+                        ):  # same pol numbers
                             weight_out[:, :, :, m, ...] *= newvals[:, :, :, 0, ...]
                         else:  # not the same polarization axis
                             if newvals.shape[pol_index] != newvals.shape[-1]:
-                                sys.exit('ERROR: Upsampling of weights bug due to polarization axis mismatch.\n'
-                                         + debug_message)
-                            if newvals.shape[pol_index] == 1:  # new values have only 1 pol axis
+                                sys.exit(
+                                    "ERROR: Upsampling of weights bug due to polarization axis mismatch.\n"
+                                    + debug_message
+                                )
+                            if (
+                                newvals.shape[pol_index] == 1
+                            ):  # new values have only 1 pol axis
                                 for i in range(weight_out.shape[pol_index]):
                                     weight_out[:, :, :, m, i] *= newvals[:, :, :, 0, 0]
-                            elif newvals.shape[pol_index] == 2 and weight_out.shape[pol_index] == 1:
+                            elif (
+                                newvals.shape[pol_index] == 2
+                                and weight_out.shape[pol_index] == 1
+                            ):
                                 for i in range(newvals.shape[pol_index]):
                                     weight_out[:, :, :, m, 0] *= newvals[:, :, :, 0, i]
-                            elif newvals.shape[pol_index] == 2 and weight_out.shape[pol_index] == 4:
+                            elif (
+                                newvals.shape[pol_index] == 2
+                                and weight_out.shape[pol_index] == 4
+                            ):
                                 weight_out[:, :, :, m, 0] *= newvals[:, :, :, 0, 0]
-                                weight_out[:, :, :, m, 1] *= newvals[:, :, :, 0, 0] * newvals[:, :, :, 0, -1]
-                                weight_out[:, :, :, m, 2] *= newvals[:, :, :, 0, 0] * newvals[:, :, :, 0, -1]
+                                weight_out[:, :, :, m, 1] *= (
+                                    newvals[:, :, :, 0, 0] * newvals[:, :, :, 0, -1]
+                                )
+                                weight_out[:, :, :, m, 2] *= (
+                                    newvals[:, :, :, 0, 0] * newvals[:, :, :, 0, -1]
+                                )
                                 weight_out[:, :, :, m, -1] *= newvals[:, :, :, 0, -1]
                             else:
-                                sys.exit('ERROR: Upsampling of weights bug due to unexpected polarization mismatch.\n'
-                                         + debug_message)
-                    elif set(axes) == set(axes_new) and 'pol' not in axes:  # same axes but no pol
-                        dirind = axes_new.index('dir')
-                        if weight_out.shape[dirind] != newvals.shape[dirind] and newvals.shape[dirind] == 1:
+                                sys.exit(
+                                    "ERROR: Upsampling of weights bug due to unexpected polarization mismatch.\n"
+                                    + debug_message
+                                )
+                    elif (
+                        set(axes) == set(axes_new) and "pol" not in axes
+                    ):  # same axes but no pol
+                        dirind = axes_new.index("dir")
+                        if (
+                            weight_out.shape[dirind] != newvals.shape[dirind]
+                            and newvals.shape[dirind] == 1
+                        ):
                             if len(weight_out.shape) == 4:
                                 weight_out[:, :, m, :] *= newvals[:, :, 0, :]
                             elif len(weight_out.shape) == 5:
                                 weight_out[:, :, :, m, :] *= newvals[:, :, :, 0, :]
                         elif weight_out.shape[dirind] != newvals.shape[dirind]:
                             sys.exit(
-                                'ERROR: Upsampling of weights because same direction exists multiple times in input h5 (verify and/or remove --propagate_flags)')
+                                "ERROR: Upsampling of weights because same direction exists multiple times in input h5 (verify and/or remove --propagate_flags)"
+                            )
                         else:
                             weight_out *= newvals
 
                     else:
-                        sys.exit('ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from '
-                                 + input_h5 + ': ' + str(axes) + '\n axes from '
-                                 + self.h5name_out + ': ' + str(axes_new) + '.\n'
-                                 + debug_message)
+                        sys.exit(
+                            "ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from "
+                            + input_h5
+                            + ": "
+                            + str(axes)
+                            + "\n axes from "
+                            + self.h5name_out
+                            + ": "
+                            + str(axes_new)
+                            + ".\n"
+                            + debug_message
+                        )
 
                     T.close()
                 st.weight[:] = weight_out
 
         H.close()
 
-        print('\n')
+        print("\n")
         return self
 
     def format_tables(self):
@@ -1948,49 +2417,51 @@ class MergeH5:
         Format direction tables (making sure dir and sources are the same).
         """
 
-        H = tables.open_file(self.h5name_out, 'r+')
+        H = tables.open_file(self.h5name_out, "r+")
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
-            sources = ss.source[:]['name']
+            sources = ss.source[:]["name"]
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
-                dirs = st._f_get_child('dir')[:]
+                dirs = st._f_get_child("dir")[:]
                 if len(sources[:]) > len(dirs):
                     difference = list(set(sources) - set(dirs))
 
-                    newdir = list(st._f_get_child('dir')[:]) + difference
-                    st._f_get_child('dir')._f_remove()
-                    H.create_array(st, 'dir', array(newdir).astype('|S5'))
+                    newdir = list(st._f_get_child("dir")[:]) + difference
+                    st._f_get_child("dir")._f_remove()
+                    H.create_array(st, "dir", np.array(newdir).astype("|S5"))
 
-                    dir_ind = st.val.attrs['AXES'].decode('utf8').split(',').index('dir')
+                    dir_ind = (
+                        st.val.attrs["AXES"].decode("utf8").split(",").index("dir")
+                    )
 
-                    for axes in ['val', 'weight']:
-                        axs = st._f_get_child(axes).attrs['AXES']
+                    for axes in ["val", "weight"]:
+                        axs = st._f_get_child(axes).attrs["AXES"]
                         newval = st._f_get_child(axes)[:]
 
                         shape = list(newval.shape)
                         for _ in difference:
                             shape[dir_ind] = 1
-                            if 'amplitude' in soltab or axes == 'weight':
-                                newval = append(newval, ones(shape),
-                                                axis=dir_ind)
+                            if "amplitude" in soltab or axes == "weight":
+                                newval = np.append(newval, np.ones(shape), axis=dir_ind)
                             else:
-                                newval = append(newval, zeros(shape),
-                                                axis=dir_ind)
+                                newval = np.append(
+                                    newval, np.zeros(shape), axis=dir_ind
+                                )
 
                         valtype = str(st._f_get_child(axes).dtype)
-                        if '16' in valtype:
+                        if "16" in valtype:
                             atomtype = tables.Float16Atom()
-                        elif '32' in valtype:
+                        elif "32" in valtype:
                             atomtype = tables.Float32Atom()
-                        elif '64' in valtype:
+                        elif "64" in valtype:
                             atomtype = tables.Float64Atom()
                         else:
                             atomtype = tables.Float64Atom()
 
                         st._f_get_child(axes)._f_remove()
                         H.create_array(st, axes, newval.astype(valtype), atom=atomtype)
-                        st._f_get_child(axes).attrs['AXES'] = axs
+                        st._f_get_child(axes).attrs["AXES"] = axs
                 elif len(sources[:]) < len(dirs):
                     output_check(self.h5name_out)
         H.close()
@@ -2007,8 +2478,8 @@ def _create_h5_name(h5_name):
     :return: h5 corrected name with .h5 extension
     """
 
-    if '.h5' != h5_name[-3:]:
-        h5_name += '.h5'
+    if ".h5" != h5_name[-3:]:
+        h5_name += ".h5"
     return h5_name
 
 
@@ -2026,12 +2497,14 @@ def _change_solset(h5, solset_in, solset_out, delete=True, overwrite=True):
     2) Delete solset_in if delete==True
     """
 
-    H = tables.open_file(h5, 'r+')
-    H.root._f_get_child(solset_in)._f_copy(H.root, newname=solset_out, overwrite=overwrite, recursive=True)
-    print('Succesfully copied ' + solset_in + ' to ' + solset_out)
+    H = tables.open_file(h5, "r+")
+    H.root._f_get_child(solset_in)._f_copy(
+        H.root, newname=solset_out, overwrite=overwrite, recursive=True
+    )
+    print("Succesfully copied " + solset_in + " to " + solset_out)
     if delete:
         H.root._f_get_child(solset_in)._f_remove(recursive=True)
-        print('Removed ' + solset_in + ' in output')
+        print("Removed " + solset_in + " in output")
     H.close()
 
     return
@@ -2046,78 +2519,115 @@ def output_check(h5):
     :return: True if output passed
     """
 
-    print('\nChecking output...')
+    print("\nChecking output...")
 
     H = tables.open_file(h5)
 
     # check number of solset
-    assert len(list(H.root._v_groups.keys())) == 1, \
-        'More than 1 solset in ' + str(list(H.root._v_groups.keys())) + '. Only 1 is allowed for h5_merger.py.'
+    assert len(list(H.root._v_groups.keys())) == 1, (
+        "More than 1 solset in "
+        + str(list(H.root._v_groups.keys()))
+        + ". Only 1 is allowed for h5_merger.py."
+    )
 
     for solset in H.root._v_groups.keys():
 
         # check sol00.. name
-        assert 'sol' in solset, solset + ' is a wrong solset name, should be sol***'
+        assert "sol" in solset, solset + " is a wrong solset name, should be sol***"
         ss = H.root._f_get_child(solset)
 
         # check antennas
         antennas = ss.antenna
-        assert antennas.attrs.FIELD_0_NAME == 'name', 'No name in ' + '/'.join([solset, 'antenna'])
-        assert antennas.attrs.FIELD_1_NAME == 'position', 'No coordinate in ' + '/'.join([solset, 'antenna'])
+        assert antennas.attrs.FIELD_0_NAME == "name", "No name in " + "/".join(
+            [solset, "antenna"]
+        )
+        assert (
+            antennas.attrs.FIELD_1_NAME == "position"
+        ), "No coordinate in " + "/".join([solset, "antenna"])
 
         # check sources
         sources = ss.source
-        assert sources.attrs.FIELD_0_NAME == 'name', 'No name in ' + '/'.join([solset, 'source'])
-        assert sources.attrs.FIELD_1_NAME == 'dir', 'No coordinate in ' + '/'.join([solset, 'source'])
+        assert sources.attrs.FIELD_0_NAME == "name", "No name in " + "/".join(
+            [solset, "source"]
+        )
+        assert sources.attrs.FIELD_1_NAME == "dir", "No coordinate in " + "/".join(
+            [solset, "source"]
+        )
 
         for soltab in ss._v_groups.keys():
             st = ss._f_get_child(soltab)
-            assert st.val.shape == st.weight.shape, \
-                'weight ' + str(st.weight.shape) + ' and values ' + str(st.val.shape) + ' do not have same shape'
+            assert st.val.shape == st.weight.shape, (
+                "weight "
+                + str(st.weight.shape)
+                + " and values "
+                + str(st.val.shape)
+                + " do not have same shape"
+            )
 
             # check if pol and/or dir are missing
-            for pd in ['pol', 'dir']:
-                assert not (st.val.ndim == 5 and pd not in list(st._v_children.keys())), \
-                    '/'.join([solset, soltab, pd]) + ' is missing'
+            for pd in ["pol", "dir"]:
+                assert not (
+                    st.val.ndim == 5 and pd not in list(st._v_children.keys())
+                ), ("/".join([solset, soltab, pd]) + " is missing")
 
             # check if freq, time, and ant arrays are missing
-            for fta in ['freq', 'time', 'ant']:
-                assert fta in list(st._v_children.keys()), \
-                    '/'.join([solset, soltab, fta]) + ' is missing'
+            for fta in ["freq", "time", "ant"]:
+                assert fta in list(st._v_children.keys()), (
+                    "/".join([solset, soltab, fta]) + " is missing"
+                )
 
             # check if val and weight have AXES
-            for vw in ['val', 'weight']:
-                assert 'AXES' in st._f_get_child(vw).attrs._f_list("user"), \
-                    'AXES missing in ' + '/'.join([solset, soltab, vw])
+            for vw in ["val", "weight"]:
+                assert "AXES" in st._f_get_child(vw).attrs._f_list(
+                    "user"
+                ), "AXES missing in " + "/".join([solset, soltab, vw])
 
             # check if dimensions of values match with length of arrays
-            for ax_index, ax in enumerate(st.val.attrs['AXES'].decode('utf8').split(',')):
-                assert st.val.shape[ax_index] == len(st._f_get_child(ax)[:]), \
-                    ax + ' length is not matching with dimension from val in ' + '/'.join([solset, soltab, ax])
+            for ax_index, ax in enumerate(
+                st.val.attrs["AXES"].decode("utf8").split(",")
+            ):
+                assert st.val.shape[ax_index] == len(st._f_get_child(ax)[:]), (
+                    ax
+                    + " length is not matching with dimension from val in "
+                    + "/".join([solset, soltab, ax])
+                )
 
                 # check if ant and antennas have equal sizes
-                if ax == 'ant':
-                    assert len(antennas[:]) == len(st._f_get_child(ax)[:]), \
-                        '/'.join([solset, 'antenna']) + ' and ' + '/'.join(
-                            [solset, soltab, ax]) + ' do not have same length'
+                if ax == "ant":
+                    assert len(antennas[:]) == len(st._f_get_child(ax)[:]), (
+                        "/".join([solset, "antenna"])
+                        + " and "
+                        + "/".join([solset, soltab, ax])
+                        + " do not have same length"
+                    )
 
                 # check if dir and sources have equal sizes
-                if ax == 'dir':
-                    assert len(sources[:]) == len(st._f_get_child(ax)[:]), \
-                        '/'.join([solset, 'source']) + ' and ' + '/'.join(
-                            [solset, soltab, ax]) + ' do not have same length'
+                if ax == "dir":
+                    assert len(sources[:]) == len(st._f_get_child(ax)[:]), (
+                        "/".join([solset, "source"])
+                        + " and "
+                        + "/".join([solset, soltab, ax])
+                        + " do not have same length"
+                    )
 
             # check if phase and amplitude have same shapes
             for soltab1 in ss._v_groups.keys():
-                if ('phase' in soltab or 'amplitude' in soltab) and ('phase' in soltab1 or 'amplitude' in soltab1):
+                if ("phase" in soltab or "amplitude" in soltab) and (
+                    "phase" in soltab1 or "amplitude" in soltab1
+                ):
                     st1 = ss._f_get_child(soltab1)
-                    assert st.val.shape == st1.val.shape, \
-                        '/'.join([solset, soltab, 'val']) + ' shape: ' + str(st.weight.shape) + \
-                        '/'.join([solset, soltab1, 'val']) + ' shape: ' + str(st1.weight.shape)
+                    assert st.val.shape == st1.val.shape, (
+                        "/".join([solset, soltab, "val"])
+                        + " shape: "
+                        + str(st.weight.shape)
+                        + "/".join([solset, soltab1, "val"])
+                        + " shape: "
+                        + str(st1.weight.shape)
+                    )
 
     H.close()
 
-    print('Awesome! Output has all necessary information and correct dimensions.')
+    print("Awesome! Output has all necessary information and correct dimensions.")
 
     return True
 
@@ -2137,7 +2647,7 @@ class PolChange:
         self.h5out_name = h5_out
         self.h5_in = h5parm(h5_in, readonly=True)
         self.h5_out = h5parm(h5_out, readonly=False)
-        self.axes_names = ['time', 'freq', 'ant', 'dir', 'pol']
+        self.axes_names = ["time", "freq", "ant", "dir", "pol"]
 
     @staticmethod
     def lin2circ(G):
@@ -2154,10 +2664,10 @@ class PolChange:
         :return: Circular polarized Gain
         """
 
-        RR = (G[..., 0] + G[..., -1])
-        RL = (G[..., 0] - G[..., -1])
-        LR = (G[..., 0] - G[..., -1])
-        LL = (G[..., 0] + G[..., -1])
+        RR = G[..., 0] + G[..., -1]
+        RL = G[..., 0] - G[..., -1]
+        LR = G[..., 0] - G[..., -1]
+        LL = G[..., 0] + G[..., -1]
 
         if G.shape[-1] == 4:
             RR += 1j * (G[..., 2] - G[..., 1])
@@ -2170,14 +2680,14 @@ class PolChange:
         LR /= 2
         LL /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
+        G_new = np.zeros(G.shape[0:-1] + (4,)).astype(np.complex128)
 
         G_new[..., 0] += RR
         G_new[..., 1] += RL
         G_new[..., 2] += LR
         G_new[..., 3] += LL
 
-        G_new = where(abs(G_new) < 10 * finfo(float).eps, 0, G_new)
+        G_new = np.where(abs(G_new) < 10 * np.finfo(float).eps, 0, G_new)
 
         return G_new
 
@@ -2196,30 +2706,30 @@ class PolChange:
         :return: linear polarized Gain
         """
 
-        XX = (G[..., 0] + G[..., -1])
+        XX = G[..., 0] + G[..., -1]
         XY = 1j * (G[..., 0] - G[..., -1])
         YX = 1j * (G[..., -1] - G[..., 0])
-        YY = (G[..., 0] + G[..., -1])
+        YY = G[..., 0] + G[..., -1]
 
         if G.shape[-1] == 4:
-            XX += (G[..., 2] + G[..., 1])
+            XX += G[..., 2] + G[..., 1]
             XY += 1j * (G[..., 2] - G[..., 1])
             YX += 1j * (G[..., 2] - G[..., 1])
-            YY -= (G[..., 1] + G[..., 2])
+            YY -= G[..., 1] + G[..., 2]
 
         XX /= 2
         XY /= 2
         YX /= 2
         YY /= 2
 
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
+        G_new = np.zeros(G.shape[0:-1] + (4,)).astype(np.complex128)
 
         G_new[..., 0] += XX
         G_new[..., 1] += XY
         G_new[..., 2] += YX
         G_new[..., 3] += YY
 
-        G_new = where(abs(G_new) < 10 * finfo(float).eps, 0, G_new)
+        G_new = np.where(abs(G_new) < 10 * np.finfo(float).eps, 0, G_new)
 
         return G_new
 
@@ -2234,7 +2744,7 @@ class PolChange:
         :return: input values with extra polarization axis
         """
 
-        values_new = ones(values.shape + (dim_pol,))
+        values_new = np.ones(values.shape + (dim_pol,))
         for i in range(dim_pol):
             values_new[..., i] = values
 
@@ -2247,34 +2757,47 @@ class PolChange:
         :param soltab: solution table (phase, amplitude)
         """
 
-        self.G, self.axes_vals = array([]), OrderedDict()
+        self.G, self.axes_vals = np.array([]), OrderedDict()
         for ss in self.h5_in.getSolsetNames():
             for st in self.h5_in.getSolset(ss).getSoltabNames():
                 solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
                 if soltab in st:
                     try:
-                        if 'pol' in solutiontable.getAxesNames():
-                            values = reorderAxes(solutiontable.getValues()[0],
-                                                 solutiontable.getAxesNames(),
-                                                 self.axes_names)
-                            self.G = ones(values.shape).astype(complex128)
+                        if "pol" in solutiontable.getAxesNames():
+                            values = reorderAxes(
+                                solutiontable.getValues()[0],
+                                solutiontable.getAxesNames(),
+                                self.axes_names,
+                            )
+                            self.G = np.ones(values.shape).astype(np.complex128)
                         else:
-                            values = reorderAxes(solutiontable.getValues()[0],
-                                                 solutiontable.getAxesNames(),
-                                                 self.axes_names[0:-1])
-                            self.G = ones(values.shape + (2,)).astype(complex128)
+                            values = reorderAxes(
+                                solutiontable.getValues()[0],
+                                solutiontable.getAxesNames(),
+                                self.axes_names[0:-1],
+                            )
+                            self.G = np.ones(values.shape + (2,)).astype(np.complex128)
                     except:
-                        sys.exit('ERROR: Received ' + str(solutiontable.getAxesNames()) +
-                                 ', but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]')
+                        sys.exit(
+                            "ERROR: Received "
+                            + str(solutiontable.getAxesNames())
+                            + ", but expect at least [time, freq, ant, dir] or [time, freq, ant, dir, pol]"
+                        )
 
-                    self.axes_vals = {'time': solutiontable.getAxisValues('time'),
-                                      'freq': solutiontable.getAxisValues('freq'),
-                                      'ant': solutiontable.getAxisValues('ant'),
-                                      'dir': solutiontable.getAxisValues('dir'),
-                                      'pol': ['XX', 'XY', 'YX', 'YY']}
+                    self.axes_vals = {
+                        "time": solutiontable.getAxisValues("time"),
+                        "freq": solutiontable.getAxisValues("freq"),
+                        "ant": solutiontable.getAxisValues("ant"),
+                        "dir": solutiontable.getAxisValues("dir"),
+                        "pol": ["XX", "XY", "YX", "YY"],
+                    }
                     break
 
-        print('Value shape {soltab} before --> {shape}'.format(soltab=soltab, shape=self.G.shape))
+        print(
+            "Value shape {soltab} before --> {shape}".format(
+                soltab=soltab, shape=self.G.shape
+            )
+        )
 
         return self
 
@@ -2286,25 +2809,40 @@ class PolChange:
         """
 
         tec_axes_names = [ax for ax in self.axes_names if solutiontable.getAxesNames()]
-        tec = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(), tec_axes_names)
-        if 'freq' in solutiontable.getAxesNames():
-            axes_vals_tec = {'time': solutiontable.getAxisValues('time'),
-                             'freq': solutiontable.getAxisValues('freq'),
-                             'ant': solutiontable.getAxisValues('ant'),
-                             'dir': solutiontable.getAxisValues('dir')}
+        tec = reorderAxes(
+            solutiontable.getValues()[0], solutiontable.getAxesNames(), tec_axes_names
+        )
+        if "freq" in solutiontable.getAxesNames():
+            axes_vals_tec = {
+                "time": solutiontable.getAxisValues("time"),
+                "freq": solutiontable.getAxisValues("freq"),
+                "ant": solutiontable.getAxisValues("ant"),
+                "dir": solutiontable.getAxisValues("dir"),
+            }
         else:
-            axes_vals_tec = {'dir': solutiontable.getAxisValues('dir'),
-                             'ant': solutiontable.getAxisValues('ant'),
-                             'time': solutiontable.getAxisValues('time')}
-        if 'pol' in solutiontable.getAxesNames():
+            axes_vals_tec = {
+                "dir": solutiontable.getAxisValues("dir"),
+                "ant": solutiontable.getAxisValues("ant"),
+                "time": solutiontable.getAxisValues("time"),
+            }
+        if "pol" in solutiontable.getAxesNames():
             if tec.shape[-1] == 2:
-                axes_vals_tec.update({'pol': ['XX', 'YY']})
+                axes_vals_tec.update({"pol": ["XX", "YY"]})
             elif tec.shape[-1] == 4:
-                axes_vals_tec.update({'pol': ['XX', 'XY', 'YX', 'YY']})
-        axes_vals_tec = [v[1] for v in
-                         sorted(axes_vals_tec.items(), key=lambda pair: self.axes_names.index(pair[0]))]
-        self.solsetout.makeSoltab('tec', axesNames=tec_axes_names, axesVals=axes_vals_tec, vals=tec,
-                                  weights=ones(tec.shape))
+                axes_vals_tec.update({"pol": ["XX", "XY", "YX", "YY"]})
+        axes_vals_tec = [
+            v[1]
+            for v in sorted(
+                axes_vals_tec.items(), key=lambda pair: self.axes_names.index(pair[0])
+            )
+        ]
+        self.solsetout.makeSoltab(
+            "tec",
+            axesNames=tec_axes_names,
+            axesVals=axes_vals_tec,
+            vals=tec,
+            weights=np.ones(tec.shape),
+        )
 
         return self
 
@@ -2323,40 +2861,60 @@ class PolChange:
             for n, st in enumerate(self.h5_in.getSolset(ss).getSoltabNames()):
                 solutiontable = self.h5_in.getSolset(ss).getSoltab(st)
 
-                print('{ss}/{st} from {h5}'.format(ss=ss, st=st, h5=self.h5in_name))
-                if 'phase' in st:
-                    if 'pol' in solutiontable.getAxesNames():
-                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(),
-                                             self.axes_names)
-                        self.G *= exp(values * 1j)
+                print("{ss}/{st} from {h5}".format(ss=ss, st=st, h5=self.h5in_name))
+                if "phase" in st:
+                    if "pol" in solutiontable.getAxesNames():
+                        values = reorderAxes(
+                            solutiontable.getValues()[0],
+                            solutiontable.getAxesNames(),
+                            self.axes_names,
+                        )
+                        self.G *= np.exp(values * 1j)
                     else:
-                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(),
-                                             self.axes_names[0:-1])
-                        self.G *= exp(self.add_polarization(values, 2) * 1j)
+                        values = reorderAxes(
+                            solutiontable.getValues()[0],
+                            solutiontable.getAxesNames(),
+                            self.axes_names[0:-1],
+                        )
+                        self.G *= np.exp(self.add_polarization(values, 2) * 1j)
 
-                elif 'amplitude' in st:
-                    if 'pol' in solutiontable.getAxesNames():
-                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(),
-                                             self.axes_names)
+                elif "amplitude" in st:
+                    if "pol" in solutiontable.getAxesNames():
+                        values = reorderAxes(
+                            solutiontable.getValues()[0],
+                            solutiontable.getAxesNames(),
+                            self.axes_names,
+                        )
                         self.G *= values
                     else:
-                        values = reorderAxes(solutiontable.getValues()[0], solutiontable.getAxesNames(),
-                                             self.axes_names[0:-1])
+                        values = reorderAxes(
+                            solutiontable.getValues()[0],
+                            solutiontable.getAxesNames(),
+                            self.axes_names[0:-1],
+                        )
                         self.G *= self.add_polarization(values, 2)
 
-                elif 'tec' in st:
+                elif "tec" in st:
                     self.add_tec(solutiontable)
                 else:
-                    print("WARNING: didn't include {st} in this h5_merger.py version yet".format(st=st) +
-                          "\nPlease create a ticket on github if this needs to be changed")
+                    print(
+                        "WARNING: didn't include {st} in this h5_merger.py version yet".format(
+                            st=st
+                        )
+                        + "\nPlease create a ticket on github if this needs to be changed"
+                    )
 
                 if n == 0:
-                    weights = ones(values.shape)
+                    weights = np.ones(values.shape)
                 weight = solutiontable.getValues(weight=True, retAxesVals=False)
-                if 'pol' in solutiontable.getAxesNames():
-                    weight = reorderAxes(weight, solutiontable.getAxesNames(), self.axes_names)
+                if "pol" in solutiontable.getAxesNames():
+                    weight = reorderAxes(
+                        weight, solutiontable.getAxesNames(), self.axes_names
+                    )
                 else:
-                    weight = reorderAxes(weight, solutiontable.getAxesNames(), self.axes_names[0:-1])
+                    weight = reorderAxes(
+                        weight, solutiontable.getAxesNames(), self.axes_names[0:-1]
+                    )
                 weights *= weight
 
             if lin2circ:
@@ -2366,15 +2924,15 @@ class PolChange:
                 print(circ2lin_math)
                 G_new = self.circ2lin(self.G)
             else:
-                sys.exit('ERROR: No conversion given.')
-            print('Value shape after --> {shape}'.format(shape=G_new.shape))
+                sys.exit("ERROR: No conversion given.")
+            print("Value shape after --> {shape}".format(shape=G_new.shape))
 
-            phase = angle(G_new)
+            phase = np.angle(G_new)
             amplitude = abs(G_new)
 
             # upsample weights
             if phase.shape != weights.shape:
-                new_weights = ones(phase.shape)
+                new_weights = np.ones(phase.shape)
                 for s in range(new_weights.shape[-1]):
                     if len(weights.shape) == 4:
                         new_weights[..., s] *= weights[:]
@@ -2382,34 +2940,49 @@ class PolChange:
                         new_weights[..., s] *= weights[..., 0]
                 weights = new_weights
 
-            self.axes_vals = [v[1] for v in
-                              sorted(self.axes_vals.items(), key=lambda pair: self.axes_names.index(pair[0]))]
+            self.axes_vals = [
+                v[1]
+                for v in sorted(
+                    self.axes_vals.items(),
+                    key=lambda pair: self.axes_names.index(pair[0]),
+                )
+            ]
 
-            self.solsetout.makeSoltab('phase', axesNames=self.axes_names, axesVals=self.axes_vals, vals=phase,
-                                      weights=weights)
-            print('Created new phase solutions')
+            self.solsetout.makeSoltab(
+                "phase",
+                axesNames=self.axes_names,
+                axesVals=self.axes_vals,
+                vals=phase,
+                weights=weights,
+            )
+            print("Created new phase solutions")
 
-            self.solsetout.makeSoltab('amplitude', axesNames=self.axes_names, axesVals=self.axes_vals, vals=amplitude,
-                                      weights=weights)
-            print('Created new amplitude solutions')
+            self.solsetout.makeSoltab(
+                "amplitude",
+                axesNames=self.axes_names,
+                axesVals=self.axes_vals,
+                vals=amplitude,
+                weights=weights,
+            )
+            print("Created new amplitude solutions")
 
             # convert the polarization names, such that it is clear if the h5 is in circular or linear polarization
             for solset in self.h5_out.getSolsetNames():
                 ss = self.h5_out.getSolset(solset)
                 for soltab in ss.getSoltabNames():
                     st = ss.getSoltab(soltab)
-                    if 'pol' in st.getAxesNames():
-                        pols = st.getAxisValues('pol')
+                    if "pol" in st.getAxesNames():
+                        pols = st.getAxisValues("pol")
                         if len(pols) == 2:
                             if lin2circ:
-                                st.setAxisValues('pol', ['RR', 'LL'])
+                                st.setAxisValues("pol", ["RR", "LL"])
                             elif circ2lin:
-                                st.setAxisValues('pol', ['XX', 'YY'])
+                                st.setAxisValues("pol", ["XX", "YY"])
                         if len(pols) == 4:
                             if lin2circ:
-                                st.setAxisValues('pol', ['RR', 'RL', 'LR', 'LL'])
+                                st.setAxisValues("pol", ["RR", "RL", "LR", "LL"])
                             elif circ2lin:
-                                st.setAxisValues('pol', ['XX', 'XY', 'YX', 'YY'])
+                                st.setAxisValues("pol", ["XX", "XY", "YX", "YY"])
 
         self.h5_in.close()
         self.h5_out.close()
@@ -2422,12 +2995,12 @@ class PolChange:
         """
 
         T = tables.open_file(self.h5in_name)
-        H = tables.open_file(self.h5out_name, 'r+')
+        H = tables.open_file(self.h5out_name, "r+")
 
         for solset in T.root._v_groups.keys():
             ss = T.root._f_get_child(solset)
-            overwrite_table(H, solset, 'antenna', ss.antenna[:])
-            overwrite_table(H, solset, 'source', ss.source[:])
+            overwrite_table(H, solset, "antenna", ss.antenna[:])
+            overwrite_table(H, solset, "source", ss.source[:])
 
         T.close()
         H.close()
@@ -2443,52 +3016,89 @@ def h5_check(h5):
     """
 
     print(
-        '%%%%%%%%%%%%%%%%%%%%%%%%%\nSOLUTION FILE CHECK START\n%%%%%%%%%%%%%%%%%%%%%%%%%\n\nSolution file name:\n' + h5)
+        "%%%%%%%%%%%%%%%%%%%%%%%%%\nSOLUTION FILE CHECK START\n%%%%%%%%%%%%%%%%%%%%%%%%%\n\nSolution file name:\n"
+        + h5
+    )
     H = tables.open_file(h5)
     solsets = list(H.root._v_groups.keys())
-    print('\nFollowing solution sets in ' + h5 + ':\n' + '\n'.join(solsets))
+    print("\nFollowing solution sets in " + h5 + ":\n" + "\n".join(solsets))
     for solset in solsets:
         ss = H.root._f_get_child(solset)
         soltabs = list(ss._v_groups.keys())
-        print('\nFollowing solution tables in ' + solset + ':\n' + '\n'.join(soltabs))
-        print('\nFollowing stations in ' + solset + ':\n' + ', '.join(
-            [make_utf8(a) for a in list(ss.antenna[:]['name'])]))
-        print('\nFollowing sources in ' + solset + ':\n' + '\n'.join(
-            [make_utf8(a['name']) + '-->' + str([a['dir'][0], a['dir'][1]]) for a in list(ss.source[:])]))
+        print("\nFollowing solution tables in " + solset + ":\n" + "\n".join(soltabs))
+        print(
+            "\nFollowing stations in "
+            + solset
+            + ":\n"
+            + ", ".join([make_utf8(a) for a in list(ss.antenna[:]["name"])])
+        )
+        print(
+            "\nFollowing sources in "
+            + solset
+            + ":\n"
+            + "\n".join(
+                [
+                    make_utf8(a["name"]) + "-->" + str([a["dir"][0], a["dir"][1]])
+                    for a in list(ss.source[:])
+                ]
+            )
+        )
         for soltab in soltabs:
             st = ss._f_get_child(soltab)
-            for table in ['val', 'weight']:
+            for table in ["val", "weight"]:
                 axes = make_utf8(st._f_get_child(table).attrs["AXES"])
-                print('\n' + '/'.join([solset, soltab, table]) + ' axes:\n' +
-                      axes)
-                print('/'.join([solset, soltab, table]) + ' shape:\n' +
-                      str(st._f_get_child(table).shape))
-                if table == 'weight':
+                print("\n" + "/".join([solset, soltab, table]) + " axes:\n" + axes)
+                print(
+                    "/".join([solset, soltab, table])
+                    + " shape:\n"
+                    + str(st._f_get_child(table).shape)
+                )
+                if table == "weight":
                     weights = st._f_get_child(table)[:]
                     element_sum = 1
-                    for w in weights.shape: element_sum *= w
-                    flagged = round(sum(weights == 0.) / element_sum * 100, 2)
-                    print('/'.join([solset, soltab, table]) + ' flagged:\n' + str(flagged) + '%')
-                if 'pol' in axes:
-                    print('/'.join([solset, soltab, 'pol']) + ':\n' + ','.join(
-                        [make_utf8(p) for p in list(st._f_get_child('pol')[:])]))
-                if 'time' in axes:
-                    time = st._f_get_child('time')[:]
+                    for w in weights.shape:
+                        element_sum *= w
+
+                    flagged = round(np.sum((np.array(weights) == 0.0).astype(int)) / element_sum * 100, 2)
+                    print(
+                        "/".join([solset, soltab, table])
+                        + " flagged:\n"
+                        + str(flagged)
+                        + "%"
+                    )
+                if "pol" in axes:
+                    print(
+                        "/".join([solset, soltab, "pol"])
+                        + ":\n"
+                        + ",".join(
+                            [make_utf8(p) for p in list(st._f_get_child("pol")[:])]
+                        )
+                    )
+                if "time" in axes:
+                    time = st._f_get_child("time")[:]
                     # print('/'.join([solset, soltab, 'time']) + ' start:\n' + str(time[0]))
                     # print('/'.join([solset, soltab, 'time']) + ' end:\n' + str(time[-1]))
-                    if len(st._f_get_child('time')[:]) > 1:
-                        print('/'.join([solset, soltab, 'time']) + ' time resolution:\n' + str(
-                            diff(st._f_get_child('time')[:])[0]))
-                if 'freq' in axes:
-                    freq = st._f_get_child('freq')[:]
+                    if len(st._f_get_child("time")[:]) > 1:
+                        print(
+                            "/".join([solset, soltab, "time"])
+                            + " time resolution:\n"
+                            + str(np.diff(st._f_get_child("time")[:])[0])
+                        )
+                if "freq" in axes:
+                    freq = st._f_get_child("freq")[:]
                     # print('/'.join([solset, soltab, 'freq']) + ' start:\n' + str(freq[0]))
                     # print('/'.join([solset, soltab, 'freq']) + ' end:\n' + str(freq[-1]))
-                    if len(st._f_get_child('freq')[:]) > 1:
-                        print('/'.join([solset, soltab, 'freq']) + ' resolution:\n' + str(
-                            diff(st._f_get_child('freq')[:])[0]))
+                    if len(st._f_get_child("freq")[:]) > 1:
+                        print(
+                            "/".join([solset, soltab, "freq"])
+                            + " resolution:\n"
+                            + str(np.diff(st._f_get_child("freq")[:])[0])
+                        )
 
     H.close()
-    print('\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%\nSOLUTION FILE CHECK FINISHED\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n')
+    print(
+        "\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%\nSOLUTION FILE CHECK FINISHED\n%%%%%%%%%%%%%%%%%%%%%%%%%%%%\n"
+    )
 
     return
 
@@ -2504,19 +3114,19 @@ def _checknan_input(h5):
 
     try:
         amp = H.root.sol000.amplitude000.val[:]
-        print('Amplitude:')
-        print(amp[(~isfinite(amp)) | (amp == 0.)])
+        print("Amplitude:")
+        print(amp[(~np.isfinite(amp)) | (amp == 0.0)])
         del amp
     except:
-        print('H.root.amplitude000 does not exist')
+        print("H.root.amplitude000 does not exist")
 
     try:
         phase = H.root.sol000.phase000.val[:]
-        print('Phase:')
-        print(phase[(~isfinite(phase)) | (phase == 0.)])
+        print("Phase:")
+        print(phase[(~np.isfinite(phase)) | (phase == 0.0)])
         del phase
     except:
-        print('H.root.sol000.phase000 does not exist')
+        print("H.root.sol000.phase000 does not exist")
 
     H.close()
 
@@ -2532,10 +3142,12 @@ def _degree_to_radian(d):
     :return: return value in radian
     """
 
-    return pi * d / 180
+    return np.pi * d / 180
 
 
-def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0, ddec_degrees=0):
+def move_source_in_sourcetable(
+    h5, overwrite=False, dir_idx=None, dra_degrees=0, ddec_degrees=0
+):
     """
     Change source table for specific direction
 
@@ -2546,13 +3158,13 @@ def move_source_in_sourcetable(h5, overwrite=False, dir_idx=None, dra_degrees=0,
     """
 
     if not overwrite:
-        os.system('cp ' + h5 + ' ' + h5.replace('.h5', '_upd.h5'))
-        h5 = h5.replace('.h5', '_upd.h5')
-    H = tables.open_file(h5, 'r+')
+        os.system("cp " + h5 + " " + h5.replace(".h5", "_upd.h5"))
+        h5 = h5.replace(".h5", "_upd.h5")
+    H = tables.open_file(h5, "r+")
     sources = H.root.sol000.source[:]
     sources[dir_idx][1][0] += _degree_to_radian(dra_degrees)
     sources[dir_idx][1][1] += _degree_to_radian(ddec_degrees)
-    overwrite_table(H, 'sol000', 'source', sources)
+    overwrite_table(H, "sol000", "source", sources)
     H.close()
 
     return
@@ -2568,15 +3180,34 @@ def check_freq_overlap(h5_tables):
         for h52 in h5_tables:
             F = tables.open_file(h52)
             try:
-                if h51 != h52 and F.root.sol000.phase000.freq[:].max() < H.root.sol000.phase000.freq[:].min():
-                    print("WARNING: frequency bands between "+h51+" and "+h52+" do not overlap, you might want to use "
-                          "--merge_diff_freq to merge over different frequency bands")
+                if (
+                    h51 != h52
+                    and F.root.sol000.phase000.freq[:].max()
+                    < H.root.sol000.phase000.freq[:].min()
+                ):
+                    print(
+                        "WARNING: frequency bands between "
+                        + h51
+                        + " and "
+                        + h52
+                        + " do not overlap, you might want to use "
+                        "--merge_diff_freq to merge over different frequency bands"
+                    )
             except:
                 try:
-                    if h51 != h52 and F.root.sol000.amplitude000.freq[:].max() < H.root.sol000.amplitude000.freq[
-                                                                                 :].min():
-                        print("WARNING: frequency bands between "+h51+" and "+h52+" do not overlap, you might want to use "
-                              "--merge_diff_freq to merge over different frequency bands")
+                    if (
+                        h51 != h52
+                        and F.root.sol000.amplitude000.freq[:].max()
+                        < H.root.sol000.amplitude000.freq[:].min()
+                    ):
+                        print(
+                            "WARNING: frequency bands between "
+                            + h51
+                            + " and "
+                            + h52
+                            + " do not overlap, you might want to use "
+                            "--merge_diff_freq to merge over different frequency bands"
+                        )
                 except:
                     pass
             F.close()
@@ -2595,15 +3226,32 @@ def check_time_overlap(h5_tables):
         for h52 in h5_tables:
             F = tables.open_file(h52)
             try:
-                if h51 != h52 and F.root.sol000.phase000.time[:].max() < H.root.sol000.phase000.time[:].min():
+                if (
+                    h51 != h52
+                    and F.root.sol000.phase000.time[:].max()
+                    < H.root.sol000.phase000.time[:].min()
+                ):
                     print(
-                        "WARNING: time slots between "+h51+" and "+h52+" do not overlap, might result in interpolation issues")
+                        "WARNING: time slots between "
+                        + h51
+                        + " and "
+                        + h52
+                        + " do not overlap, might result in interpolation issues"
+                    )
             except:
                 try:
-                    if h51 != h52 and F.root.sol000.amplitude000.time[:].max() < H.root.sol000.amplitude000.time[
-                                                                                 :].min():
+                    if (
+                        h51 != h52
+                        and F.root.sol000.amplitude000.time[:].max()
+                        < H.root.sol000.amplitude000.time[:].min()
+                    ):
                         print(
-                            "WARNING: time slots between "+h51+" and "+h52+" do not overlap, might result in interpolation issues")
+                            "WARNING: time slots between "
+                            + h51
+                            + " and "
+                            + h52
+                            + " do not overlap, might result in interpolation issues"
+                        )
                 except:
                     pass
             F.close()
@@ -2620,16 +3268,37 @@ def running_mean(nparray, avgfactor):
 
     :return: running mean
     """
-    cs = cumsum(insert(nparray, 0, 0))
+    cs = np.cumsum(np.insert(nparray, 0, 0))
 
     return (cs[avgfactor:] - cs[:-avgfactor]) / float(avgfactor)
 
 
-def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
-             lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
-             filtered_dir=None, add_cs=None, add_ms_stations=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_crash=None,
-             output_summary=None, min_distance=0.):
+def merge_h5(
+    h5_out=None,
+    h5_tables=None,
+    ms_files=None,
+    h5_time_freq=None,
+    convert_tec=True,
+    merge_all_in_one=False,
+    lin2circ=False,
+    circ2lin=False,
+    add_directions=None,
+    single_pol=None,
+    no_pol=None,
+    use_solset="sol000",
+    filtered_dir=None,
+    add_cs=None,
+    add_ms_stations=None,
+    check_output=None,
+    freq_av=None,
+    time_av=None,
+    check_flagged_station=True,
+    propagate_flags=None,
+    merge_diff_freq=None,
+    no_antenna_crash=None,
+    output_summary=None,
+    min_distance=0.0,
+):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
 
@@ -2668,23 +3337,27 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             h5_check(h5check)
         return
 
-    print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################'
-          '\n\nMerging the following tables:\n' + '\n'.join(h5_tables) + '\n')
+    print(
+        "\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################"
+        "\n\nMerging the following tables:\n" + "\n".join(h5_tables) + "\n"
+    )
 
     # Make sure that the h5 output file is not in the input list (as that will cause conflicts)
     if h5_out in h5_tables:
-        sys.exit('ERROR: output h5 file cannot be in your input h5 files.\n'
-                 'Change your --h5_out and --h5_tables input.')
-    elif h5_out.split('/')[-1] in [f.split('/')[-1] for f in glob(h5_out)]:
-        os.system('rm {}'.format(h5_out))
+        sys.exit(
+            "ERROR: output h5 file cannot be in your input h5 files.\n"
+            "Change your --h5_out and --h5_tables input."
+        )
+    elif h5_out.split("/")[-1] in [f.split("/")[-1] for f in glob(h5_out)]:
+        os.system("rm {}".format(h5_out))
 
     # If alternative solset number is given, we will make a temp h5 file that has the alternative solset number because the code runs on sol000 (will be cleaned up in the end)
-    if use_solset != 'sol000':
+    if use_solset != "sol000":
         for h5_ind, h5 in enumerate(h5_tables):
-            temph5 = h5.replace('.h5', '_temph5merger.h5')
-            print('Using different solset. Make temporary h5 file: ' + temph5)
-            os.system('cp ' + h5 + ' ' + temph5)
-            _change_solset(temph5, use_solset, 'sol000')
+            temph5 = h5.replace(".h5", "_temph5merger.h5")
+            print("Using different solset. Make temporary h5 file: " + temph5)
+            os.system("cp " + h5 + " " + temph5)
+            _change_solset(temph5, use_solset, "sol000")
             h5_tables[h5_ind] = temph5
 
     #################################################
@@ -2697,15 +3370,23 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     check_time_overlap(h5_tables)
 
     # Merge class setup
-    merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
-                    merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir,
-                    no_antenna_crash=no_antenna_crash, merge_diff_freq=merge_diff_freq)
+    merge = MergeH5(
+        h5_out=h5_out,
+        h5_tables=h5_tables,
+        ms_files=ms_files,
+        convert_tec=convert_tec,
+        merge_all_in_one=merge_all_in_one,
+        h5_time_freq=h5_time_freq,
+        filtered_dir=filtered_dir,
+        no_antenna_crash=no_antenna_crash,
+        merge_diff_freq=merge_diff_freq,
+    )
 
     # Time averaging
     if time_av:
         print("Time averaging with factor " + str(time_av))
         if len(merge.ax_time) >= time_av:
-            merge.ax_time = running_mean(merge.ax_time, time_av)[::int(time_av)]
+            merge.ax_time = running_mean(merge.ax_time, time_av)[:: int(time_av)]
         else:
             print("WARNING: Time averaging factor larger than time axis, no averaging applied")
 
@@ -2713,29 +3394,29 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     if freq_av:
         print("Frequency averaging with factor " + str(freq_av))
         if len(merge.ax_freq) >= freq_av:
-            merge.ax_freq = running_mean(merge.ax_freq, freq_av)[::int(freq_av)]
+            merge.ax_freq = running_mean(merge.ax_freq, freq_av)[:: int(freq_av)]
         else:
             print("WARNING: Frequency averaging factor larger than frequency axis, no averaging applied")
 
     # Get all keynames
-    merge.get_allkeys()
+    merge._get_allkeys()
 
     # Merging
     for st_group in merge.all_soltabs:
         if len(st_group) > 0:
             for st in st_group:
-                merge.get_model_h5('sol000', st)
-                merge.merge_tables('sol000', st, min_distance)
+                merge.get_model_h5("sol000", st)
+                merge.merge_tables("sol000", st, min_distance)
             if not merge.doublefulljones:
-                if merge.convert_tec and (('phase' in st_group[0]) or ('tec' in st_group[0])):
+                if merge.convert_tec and (("phase" in st_group[0]) or ("tec" in st_group[0])):
                     # make sure tec is merged in phase only (if convert_tec==True)
-                    merge.create_new_dataset('sol000', 'phase')
+                    merge.create_new_dataset("sol000", "phase")
                 else:
-                    merge.create_new_dataset('sol000', st)
+                    merge.create_new_dataset("sol000", st)
     if merge.doublefulljones:
         merge.matrix_multiplication()
-        merge.create_new_dataset('sol000', 'phase')
-        merge.create_new_dataset('sol000', 'amplitude')
+        merge.create_new_dataset("sol000", "phase")
+        merge.create_new_dataset("sol000", "amplitude")
 
     # Make sure direction tables are in the same format
     merge.format_tables()
@@ -2746,7 +3427,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     # Add antennas
     if (add_cs or add_ms_stations) and len(merge.ms) == 0:
-        sys.exit('ERROR: --add_cs and --add_ms_stations need an MS, given with --ms.')
+        sys.exit("ERROR: --add_cs and --add_ms_stations need an MS, given with --ms.")
     if add_cs:
         merge.add_ms_antennas(keep_h5_interstations=True)
     elif add_ms_stations:
@@ -2777,10 +3458,10 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     # Change polarization axis if necessary
     if no_pol:
-        print('Remove polarization')
+        print("Remove polarization")
         merge.change_pol(nopol=True)
     elif single_pol or merge.poldim == 0:
-        print('Make a single polarization')
+        print("Make a single polarization")
         merge.change_pol(single=True)
 
     #################################################
@@ -2788,39 +3469,52 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     #################################################
 
     if lin2circ and circ2lin:
-        sys.exit('Both polarization conversions are given, please choose 1.')
+        sys.exit("Both polarization conversions are given, please choose 1.")
 
     elif lin2circ or circ2lin:
 
         if lin2circ:
-            h5_polchange = h5_out[0:-3] + '_circ.h5'
-            print('\nPolarization will be converted from linear to circular')
+            h5_polchange = h5_out[0:-3] + "_circ.h5"
+            print("\nPolarization will be converted from linear to circular")
         else:
-            h5_polchange = h5_out[0:-3] + '_lin.h5'
-            print('\nPolarization will be converted from circular to linear')
+            h5_polchange = h5_out[0:-3] + "_lin.h5"
+            print("\nPolarization will be converted from circular to linear")
 
         # Polarization conversion
         Pol = PolChange(h5_in=h5_out, h5_out=h5_polchange)
 
-        Pol.create_template('phase')
+        Pol.create_template("phase")
         if Pol.G.ndim > 1:
-            Pol.create_template('amplitude')
+            Pol.create_template("amplitude")
 
         Pol.create_new_gain_table(lin2circ, circ2lin)
         Pol.add_antenna_source_tables()
 
-        os.system('rm ' + h5_out + ' && cp ' + h5_polchange + ' ' + h5_out + ' && rm ' + h5_polchange)
+        os.system(
+            "rm "
+            + h5_out
+            + " && cp "
+            + h5_polchange
+            + " "
+            + h5_out
+            + " && rm "
+            + h5_polchange
+        )
 
     # Cleanup temp files
     for h5 in h5_tables:
-        if '_temph5merger.h5' in h5:
-            os.system('rm ' + h5)
+        if "_temph5merger.h5" in h5:
+            os.system("rm " + h5)
 
     # Validate output
     if check_output:
         output_check(h5_out)
 
-    print('\nSee output file --> ' + h5_out + '\n\n###################\nEND MERGE H5 TABLES \n###################\n')
+    print(
+        "\nSee output file --> "
+        + h5_out
+        + "\n\n###################\nEND MERGE H5 TABLES \n###################\n"
+    )
 
     try:
         # Close all tables that are still open
@@ -2842,58 +3536,182 @@ def parse_input():
     :return: arguments in correct format
     """
 
-    parser = ArgumentParser(description='h5parm merger script for merging h5parms containing phase and/or amplitude solutions for calibrating LOFAR observations')
-    parser.add_argument('-out', '--h5_out', type=str, help='Solution file output name. This name cannot be in the list of input solution files.')
-    parser.add_argument('-in', '--h5_tables', type=str, nargs='+', help='Solution files to merge (can be both given as list with wildcard or string).', required=True)
-    parser.add_argument('-ms', '--ms', type=str, help='Measurement Set input files (can be both given as list with wildcard or string).')
-    parser.add_argument('--h5_time_freq', type=str, help='Solution file to use time and frequency arrays from. This is useful if the input solution files do not have the preferred time/freq resolution. '
-                             'Input can be boolean (true/fals or 1/0) to use all h5 files or input can be 1 specific h5 file (<H5.h5>).')
-    parser.add_argument('--time_av', type=int, help='Time averaging factor.')
-    parser.add_argument('--freq_av', type=int, help='Frequency averaging factor.')
-    parser.add_argument('--keep_tec', action='store_true', help='Do not convert TEC to phase.')
-    parser.add_argument('--merge_all_in_one', action='store_true', help='Merge all solutions into one direction.')
-    parser.add_argument('--lin2circ', action='store_true', help='Transform linear polarization to circular.')
-    parser.add_argument('--circ2lin', action='store_true', help='Transform circular polarization to linear.')
-    parser.add_argument('--add_direction', default=None, help='Add direction with amplitude 1 and phase 0 (example: --add_direction [0.73,0.12]).')
-    parser.add_argument('--single_pol', action='store_true', default=None, help='Return only a single polarization axis if both polarizations are the same.')
-    parser.add_argument('--no_pol', action='store_true', default=None, help='Remove polarization axis if both polarizations are the same.')
+    parser = ArgumentParser(
+        description="h5parm merger script for merging h5parms containing phase and/or amplitude solutions for calibrating LOFAR observations"
+    )
+    parser.add_argument(
+        "-out",
+        "--h5_out",
+        type=str,
+        help="Solution file output name. This name cannot be in the list of input solution files.",
+    )
+    parser.add_argument(
+        "-in",
+        "--h5_tables",
+        type=str,
+        nargs="+",
+        help="Solution files to merge (can be both given as list with wildcard or string).",
+        required=True,
+    )
+    parser.add_argument(
+        "-ms",
+        "--ms",
+        type=str,
+        help="Measurement Set input files (can be both given as list with wildcard or string).",
+    )
+    parser.add_argument(
+        "--h5_time_freq",
+        type=str,
+        help="Solution file to use time and frequency arrays from. This is useful if the input solution files do not have the preferred time/freq resolution. "
+        "Input can be boolean (true/fals or 1/0) to use all h5 files or input can be 1 specific h5 file (<H5.h5>).",
+    )
+    parser.add_argument("--time_av", type=int, help="Time averaging factor.")
+    parser.add_argument("--freq_av", type=int, help="Frequency averaging factor.")
+    parser.add_argument(
+        "--keep_tec", action="store_true", help="Do not convert TEC to phase."
+    )
+    parser.add_argument(
+        "--merge_all_in_one",
+        action="store_true",
+        help="Merge all solutions into one direction.",
+    )
+    parser.add_argument(
+        "--lin2circ",
+        action="store_true",
+        help="Transform linear polarization to circular.",
+    )
+    parser.add_argument(
+        "--circ2lin",
+        action="store_true",
+        help="Transform circular polarization to linear.",
+    )
+    parser.add_argument(
+        "--add_direction",
+        default=None,
+        help="Add direction with amplitude 1 and phase 0 (example: --add_direction [0.73,0.12]).",
+    )
+    parser.add_argument(
+        "--single_pol",
+        action="store_true",
+        default=None,
+        help="Return only a single polarization axis if both polarizations are the same.",
+    )
+    parser.add_argument(
+        "--no_pol",
+        action="store_true",
+        default=None,
+        help="Remove polarization axis if both polarizations are the same.",
+    )
     # parser.add_argument('--combine_h5', action='store_true', default=None, help='Merge H5 files with different time axis into 1.')
-    parser.add_argument('--usesolset', type=str, default='sol000', help='Choose a solset to merge from your input solution files (only necessary if not sol000 is used).')
-    parser.add_argument('--filter_directions', type=str, default=None, help='Filter out a list of indexed directions from your output solution file. Only lists allowed (example: --filter_directions [2, 3]).')
-    parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output from MS (needs --ms).')
-    parser.add_argument('--add_ms_stations', action='store_true', default=None, help='Use only antenna stations from measurement set (needs --ms). Note that this is different from --add_cs, as it does not keep the international stations if these are not in the MS.')
-    parser.add_argument('--no_stationflag_check', action='store_true', default=None, help='Do not flag complete station (for all directions) if entire station is flagged somewhere in input solution file.')
-    parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and return in output file.')
-    parser.add_argument('--no_antenna_crash', action='store_true', default=None, help='Do not check if antennas are in h5.')
-    parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
-    parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
-    parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables over different frequency bands')
-    parser.add_argument('--min_distance', type=float, help='(ONLY PYTHON 3) Minimal coordinate distance between sources for merging directions (in degrees). If smaller, directions will be merged together.', default=0.)
+    parser.add_argument(
+        "--usesolset",
+        type=str,
+        default="sol000",
+        help="Choose a solset to merge from your input solution files.",
+    )
+    parser.add_argument(
+        "--filter_directions",
+        type=str,
+        default=None,
+        help="Filter out a list of indexed directions from your output solution file. Only lists allowed (example: --filter_directions [2, 3]).",
+    )
+    parser.add_argument(
+        "--add_cs",
+        action="store_true",
+        default=None,
+        help="Add core stations to antenna output from MS (needs --ms).",
+    )
+    parser.add_argument(
+        "--add_ms_stations",
+        action="store_true",
+        default=None,
+        help="Use only antenna stations from measurement set (needs --ms). Note that this is different from --add_cs, as it does not keep the international stations if these are not in the MS.",
+    )
+    parser.add_argument(
+        "--no_stationflag_check",
+        action="store_true",
+        default=None,
+        help="Do not flag complete station (for all directions) if entire station is flagged somewhere in input solution file.",
+    )
+    parser.add_argument(
+        "--propagate_flags",
+        action="store_true",
+        default=None,
+        help="Interpolate weights and return in output file.",
+    )
+    parser.add_argument(
+        "--no_antenna_crash",
+        action="store_true",
+        default=None,
+        help="Do not check if antennas are in h5.",
+    )
+    parser.add_argument(
+        "--output_summary",
+        action="store_true",
+        default=None,
+        help="Give output summary.",
+    )
+    parser.add_argument(
+        "--check_output",
+        action="store_true",
+        default=None,
+        help="Check if the output has all the correct output information.",
+    )
+    parser.add_argument(
+        "--merge_diff_freq",
+        action="store_true",
+        default=None,
+        help="Merging tables over different frequency bands",
+    )
+    parser.add_argument(
+        "--min_distance",
+        type=float,
+        default=0.0,
+        help="(ONLY PYTHON 3) Minimal coordinate distance between sources for merging directions (in degrees). If smaller, directions will be merged together.",
+    )
 
     args = parser.parse_args()
 
     # check if solset name is accepted
-    if 'sol' not in args.usesolset or sum([c.isdigit() for c in args.usesolset]) != 3:
-        sys.exit(args.usesolse + ' not an accepted name. Only sol000, sol001, sol002, ... are accepted names for solsets.')
+    if "sol" not in args.usesolset or np.sum([c.isdigit() for c in args.usesolset]) != 3:
+        sys.exit(
+            args.usesolse
+            + " not an accepted name. Only sol000, sol001, sol002, ... are accepted names for solsets."
+        )
 
     if args.filter_directions:
-        if (args.filter_directions.startswith("[") and args.filter_directions.endswith("]")):
-            filtered_dir = args.filter_directions.replace(' ', '').replace('[', '').replace(']', '').split(',')
+        if args.filter_directions.startswith("[") and args.filter_directions.endswith(
+            "]"
+        ):
+            filtered_dir = (
+                args.filter_directions.replace(" ", "")
+                .replace("[", "")
+                .replace("]", "")
+                .split(",")
+            )
             for n, v in enumerate(filtered_dir):
                 if not v.isdigit():
-                    sys.exit('--filter_directions can only have integers in the list.')
+                    sys.exit("--filter_directions can only have integers in the list.")
                 else:
                     filtered_dir[n] = int(v)
             args.filter_directions = filtered_dir
         else:
-            sys.exit('--filter_directions given but no list format. Please pass a list to --filter_directions.')
+            sys.exit(
+                "--filter_directions given but no list format. Please pass a list to --filter_directions."
+            )
     else:
         args.filter_directions = []
 
     # make sure h5 tables in right format
-    if '[' in args.h5_tables[0]:
-        args.h5_tables = args.h5_tables[0].replace('[', '').replace(']', '').replace(' ', '').split(',')
-    elif ' ' in args.h5_tables:
+    if "[" in args.h5_tables[0]:
+        args.h5_tables = (
+            args.h5_tables[0]
+            .replace("[", "")
+            .replace("]", "")
+            .replace(" ", "")
+            .split(",")
+        )
+    elif " " in args.h5_tables:
         args.h5_tables = args.h5_tables[0].split()
 
     if type(args.h5_tables) == str:
@@ -2907,15 +3725,20 @@ def parse_input():
         args.h5_tables = h5tablestemp
 
     if args.add_direction:
-        args.add_direction = args.add_direction.replace('[', '').replace(']', '').split(',')
-        args.add_direction = [float(args.add_direction[0]), float(args.add_direction[1])]
-        if args.add_direction[0] > pi * 6 or args.add_direction[1] > pi * 6:
-            sys.exit('ERROR: Please give --add_direction values in radian.')
+        args.add_direction = (
+            args.add_direction.replace("[", "").replace("]", "").split(",")
+        )
+        args.add_direction = [
+            float(args.add_direction[0]),
+            float(args.add_direction[1]),
+        ]
+        if args.add_direction[0] > np.pi * 6 or args.add_direction[1] > np.pi * 6:
+            sys.exit("ERROR: Please give --add_direction values in radian.")
 
     if args.h5_time_freq is not None:
-        if args.h5_time_freq.lower() == 'true' or str(args.h5_time_freq) == '1':
+        if args.h5_time_freq.lower() == "true" or str(args.h5_time_freq) == "1":
             args.h5_time_freq = True
-        elif args.h5_time_freq.lower() == 'false' or str(args.h5_time_freq) == '0':
+        elif args.h5_time_freq.lower() == "false" or str(args.h5_time_freq) == "0":
             args.h5_time_freq = False
     else:
         args.h5_time_freq = False
@@ -2928,35 +3751,39 @@ def main():
     Main function
     """
     if sys.version_info.major == 2:
-        print('WARNING: This code is optimized for Python 3. Please switch to Python 3 if possible.')
+        print(
+            "WARNING: This code is optimized for Python 3. Please switch to Python 3 if possible."
+        )
 
     args = parse_input()
 
-    merge_h5(h5_out=args.h5_out,
-             h5_tables=args.h5_tables,
-             ms_files=args.ms,
-             h5_time_freq=args.h5_time_freq,
-             convert_tec=not args.keep_tec,
-             merge_all_in_one=args.merge_all_in_one,
-             lin2circ=args.lin2circ,
-             circ2lin=args.circ2lin,
-             add_directions=args.add_direction,
-             single_pol=args.single_pol,
-             no_pol=args.no_pol,
-             use_solset=args.usesolset,
-             filtered_dir=args.filter_directions,
-             add_cs=args.add_cs,
-             add_ms_stations=args.add_ms_stations,
-             check_output=args.check_output,
-             time_av=args.time_av,
-             freq_av=args.freq_av,
-             check_flagged_station=not args.no_stationflag_check,
-             propagate_flags=args.propagate_flags,
-             merge_diff_freq=args.merge_diff_freq,
-             no_antenna_crash=args.no_antenna_crash,
-             output_summary=args.output_summary,
-             min_distance=args.min_distance)
+    merge_h5(
+        h5_out=args.h5_out,
+        h5_tables=args.h5_tables,
+        ms_files=args.ms,
+        h5_time_freq=args.h5_time_freq,
+        convert_tec=not args.keep_tec,
+        merge_all_in_one=args.merge_all_in_one,
+        lin2circ=args.lin2circ,
+        circ2lin=args.circ2lin,
+        add_directions=args.add_direction,
+        single_pol=args.single_pol,
+        no_pol=args.no_pol,
+        use_solset=args.usesolset,
+        filtered_dir=args.filter_directions,
+        add_cs=args.add_cs,
+        add_ms_stations=args.add_ms_stations,
+        check_output=args.check_output,
+        time_av=args.time_av,
+        freq_av=args.freq_av,
+        check_flagged_station=not args.no_stationflag_check,
+        propagate_flags=args.propagate_flags,
+        merge_diff_freq=args.merge_diff_freq,
+        no_antenna_crash=args.no_antenna_crash,
+        output_summary=args.output_summary,
+        min_distance=args.min_distance,
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
