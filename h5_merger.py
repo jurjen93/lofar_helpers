@@ -328,7 +328,7 @@ class MergeH5:
                             freq = st._f_get_child('freq')[:]
                             self.ax_freq = sort(unique(append(self.ax_freq, freq)))
                         else:
-                            print('No freq axes in ' + h5 + '/' + solset + '/' + soltab)
+                            print('No freq axes in ' + h5_name + '/' + solset + '/' + soltab)
                 h5.close()
         elif type(h5_time_freq) == str:
             if len(self.ms) > 0:
