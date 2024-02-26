@@ -308,6 +308,8 @@ def parse_source_from_h5(h5):
     """
     if 'ILTJ' in h5:
         matches = re.findall(r'ILTJ\d+\..\d+\+\d+.\d+_L\d+', h5)
+        if len(matches)==0:
+            matches = re.findall(r'ILTJ\d+\..\d+\+\d+.\d+', h5)
     else:
         matches = re.findall(r'selfcalcyle\d+_(.*?)\.', h5)
     assert len(matches) == 1
