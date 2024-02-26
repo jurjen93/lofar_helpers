@@ -1,7 +1,9 @@
+import itertools
 import random
 from pathlib import Path
 
 import torch
+from joblib import Parallel, delayed
 from torch.utils.data import Dataset
 import os
 from astropy.io import fits
@@ -69,6 +71,47 @@ def crop(data):
     return cutout
 
 
+def normalize_fits(image_data: np.ndarray):
+    image_data = image_data.squeeze()
+
+    # Pre-processing
+    rms = get_rms(image_data)
+    norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms * 50000, base=10)
+
+    image_data = norm(image_data)
+    image_data = np.clip(image_data - image_data.min(), a_min=0, a_max=1)
+
+    # make RGB image
+    cmap = plt.get_cmap('RdBu_r')
+    image_data = cmap(image_data)
+    image_data = np.delete(image_data, 3, 2)
+
+    image_data = -image_data + 1  # make the peak exist at zero
+
+    return image_data
+
+
+def transform_data(root_dir, classes=('continue', 'stop'), modes=('', '_val')):
+
+    def process_fits(fits_path):
+        with fits.open(fits_path) as hdul:
+            image_data = hdul[0].data
+
+        transformed = normalize_fits(image_data)
+
+        np.save(fits_path.with_suffix('.npy'), transformed)
+
+    root_dir = Path(root_dir)
+    assert root_dir.exists()
+
+    Parallel(n_jobs=len(os.sched_getaffinity(0)))(
+        delayed(process_fits)(fits_path)
+        for cls, mode in itertools.product(classes, modes)
+        for fits_path in (root_dir / (cls + mode)).glob('*.fits')
+    )
+
+
+
 class FitsDataset(Dataset):
     def __init__(self, root_dir, mode='train'):
         """
@@ -83,9 +126,11 @@ class FitsDataset(Dataset):
         root_dir = Path(root_dir)
         assert root_dir.exists()
 
+        ext = '*.npy'
+
         for folder in (root_dir / (cls + ('' if mode == 'train' else '_val')) for cls in classes):
             assert folder.exists()
-            assert len(list(folder.glob('*.fits'))) > 0
+            assert len(list(folder.glob(ext))) > 0
 
         # Yes this code is way overengineered. Yes I also derive pleasure from writing it :) - RJS
         #
@@ -95,7 +140,7 @@ class FitsDataset(Dataset):
         self.data_paths, self.labels = map(np.asarray, list(zip(*(
             (str(file), val)
             for cls, val in classes.items()
-            for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob('*.fits')
+            for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(ext)
         ))))
 
         assert len(self.data_paths) > 0
@@ -122,34 +167,33 @@ class FitsDataset(Dataset):
         #
         # self.data_paths, self.labels = map(np.concatenate, (filtered_paths, filtered_labels))
 
-        sources = ", ".join(sorted([str(elem).split('/')[-1].strip('.fits') for elem in self.data_paths]))
+        sources = ", ".join(sorted([str(elem).split('/')[-1].strip('.npy') for elem in self.data_paths]))
         print(f'{mode}: using the following sources: {sources}')
-
 
     @staticmethod
     def transform_data(image_data):
         """
         Transform data for preprocessing
         """
-        while image_data.ndim > 2:
-            image_data = image_data[0]
+        # while image_data.ndim > 2:
+        #     image_data = image_data[0]
+        #
+        # # crop data (half data size)
+        # # image_data = crop(image_data)
+        #
+        # # re-normalize data (such that values are between 0 and 1)
+        # rms = get_rms(image_data)
+        # norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms * 50000, base=10)
+        #
+        # image_data = norm(image_data)
+        # image_data = np.clip(image_data - image_data.min(), a_min=0, a_max=1)
+        #
+        # # make RGB image
+        # cmap = plt.get_cmap('RdBu_r')
+        # image_data = cmap(image_data)
+        # image_data = np.delete(image_data, 3, 2)
 
-        # crop data (half data size)
-        image_data = crop(image_data)
-
-        # re-normalize data (such that values are between 0 and 1)
-        rms = get_rms(image_data)
-        norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms * 50000, base=10)
-
-        image_data = norm(image_data)
-        image_data = np.clip(image_data - image_data.min(), a_min=0, a_max=1)
-
-        # make RGB image
-        cmap = plt.get_cmap('RdBu_r')
-        image_data = cmap(image_data)
-        image_data = np.delete(image_data, 3, 2)
-
-        image_data = -image_data + 1  # make the peak exist at zero
+        # image_data = -image_data + 1  # make the peak exist at zero
         # image_data = np.e ** image_data
         #
         # image_data = image_data - np.array([1.34517796, 1.2179354 , 1.15546612])
@@ -157,7 +201,7 @@ class FitsDataset(Dataset):
 
         # if random.randint(0, 1):
         #     image_data = -image_data
-
+        #
         image_data = torch.from_numpy(image_data).to(dtype=torch.float32)
         image_data = torch.movedim(image_data, -1, 0)
         # image_data = T.Resize((256, 256))(image_data)
@@ -171,12 +215,11 @@ class FitsDataset(Dataset):
         return len(self.data_paths)
 
     def __getitem__(self, idx):
-        fits_path = self.data_paths[idx]
-        with fits.open(fits_path) as hdul:
-            image_data = hdul[0].data
+        npy_path = self.data_paths[idx]
+        image_data = np.load(npy_path)
 
         # Pre-processing
-        image_data = self.transform_data(image_data.astype(np.float32))
+        image_data = self.transform_data(image_data)
 
         label = self.labels[idx]
 
@@ -184,9 +227,11 @@ class FitsDataset(Dataset):
 
 
 if __name__ == '__main__':
-    root = '/project/lofarvwf/Public/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data'
+    root = '/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data'
 
-    Idat = FitsDataset(root)
-    for n in range(Idat.__len__()):
-        imdat, label = Idat.__getitem__(n)
-        make_image(imdat, f'{label}_{Idat.data[n].split("/")[-1].replace(".fits", "")}.png')
+    # transform_data(root)
+    # images = np.concatenate([image.flatten() for image, label in Idat])
+    # print("creating hist")
+    # plt.hist(images)
+    # plt.savefig('preselect_fig.png')
+    # make_image(imdat, f'{label}_{Idat.data[n].split("/")[-1].replace(".fits", "")}.png')

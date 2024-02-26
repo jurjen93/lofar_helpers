@@ -103,6 +103,7 @@ def main(root: str):
 
     num_workers = len(os.sched_getaffinity(0))
     # num_workers = 0
+    # num_workers = 5
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else
         (None, False)
@@ -111,13 +112,13 @@ def main(root: str):
     train_dataloader, val_dataloader = (
         torch.utils.data.DataLoader(
             dataset=FitsDataset(root, mode=mode),
-            batch_size=128,
+            batch_size=32,
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,
             persistent_workers=persistent_workers,
-            pin_memory=False,
+            pin_memory=True,
             drop_last=(True if mode == 'train' else False),  # needed for torch.compile,
-            shuffle=True,
+            shuffle=True,  # needed so that val AP is non nan
         )
         for mode in ('train', 'validation')
     )
@@ -137,6 +138,6 @@ def plot_marginal(root):
 
 
 if __name__ == '__main__':
-    root = '/dev/shm/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
+    root = '/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
 
     main(root)
