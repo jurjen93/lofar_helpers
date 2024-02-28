@@ -39,7 +39,8 @@ class ApplyCal:
         steps.append('beam_dir')
         T = tables.open_file(h5)
         dir = (T.root.sol000.source[:]['dir'][0] * 360 / 2 / pi) % 360  # convert to degree
-        self.cmd += ['beam_dir.type=applybeam', f'beam_dir.direction=[{round(dir[0], 5)}deg,{round(dir[1], 5)}deg]']
+        self.cmd += ['beam_dir.type=applybeam', f'beam_dir.direction=[{round(dir[0], 5)}deg,{round(dir[1], 5)}deg]',
+                     'beam_dir.updateweights=True']
         T.close()
 
         if self.isfulljones(h5):
@@ -62,7 +63,8 @@ class ApplyCal:
 
         # this step inverts the beam at the infield and corrects beam at phase center
         steps.append('beam_center')
-        self.cmd += ['beam_center.type=applybeam', 'beam_center.direction=[]']
+        self.cmd += ['beam_center.type=applybeam', 'beam_center.direction=[]',
+                     'beam_center.updateweights=True']
         self.cmd += ['steps=' + str(steps).replace(" ", "").replace("\'", "")]
 
     @staticmethod
