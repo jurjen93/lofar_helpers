@@ -306,6 +306,7 @@ def parse_source_from_h5(h5):
     """
     Parse sensible output names
     """
+    h5 = h5.split("/")[-1]
     if 'ILTJ' in h5:
         matches = re.findall(r'ILTJ\d+\..\d+\+\d+.\d+_L\d+', h5)
         if len(matches)==0:
@@ -324,7 +325,8 @@ def parse_source_from_h5(h5):
               replace('.ms',  '').
               replace('.copy','').
               replace('.phaseup','').
-              replace('.h5',''))
+              replace('.h5','').
+              replace('.dp3', ''))
         print('Parsed into '+h5)
 
     return output
@@ -602,7 +604,7 @@ def main(h5s: list = None, fitsfiles: list = None, station: str = 'international
         csv_writer.writerow(['rms'] + rmss + [np.nan])
 
     make_figure(finalphase, finalamp, 'Phase stability', 'Amplitude stability', f'./selection_output/solution_stability_{sq.main_source}.png', best_cycle)
-    make_figure(rmss, minmaxs, 'RMS (mJy/beam)', '$|min/max|$', f'./selection_output/image_stability_{sq.main_source}.png', best_cycle+1)
+    make_figure(rmss, minmaxs, 'RMS (mJy/beam)', '$|min/max|$', f'./selection_output/image_stability_{sq.main_source}.png', best_cycle)
 
     df = pd.read_csv(fname).set_index('solutions').T
     df.to_csv(fname, index=False)
@@ -638,7 +640,7 @@ def calc_all_scores(sources_root, stations='international'):
     with open(fname, 'w') as textfile:
         csv_writer = csv.writer(textfile)
         csv_writer.writerow(
-            ['source', 'accept', 'bestcycle', 'accept_solutions', 'bestcycle_solutions', 'accept_images', 'bestcycle_images']
+            ['source', 'accept', 'bestcycle', 'accept_solutions', 'bestcycle_solutions', 'accept_images', 'bestcycle_images', 'best_h5']
         )
 
         for res in results:
