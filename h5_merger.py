@@ -537,7 +537,7 @@ class MergeH5:
         if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1]:
             sys.exit("ERROR: Time axes of h5 and MS are not overlapping.\n"
                      "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
-        if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1]:
+        if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1] and not self.merge_diff_freq:
             sys.exit("ERROR: Frequency axes of h5 and MS are not overlapping.\n"
                      "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
         if float(soltab[-3:]) > 0:
