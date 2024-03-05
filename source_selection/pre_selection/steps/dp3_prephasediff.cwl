@@ -2,7 +2,7 @@ class: CommandLineTool
 cwlVersion: v1.2
 id: pre_averaging_dp3
 label: DP3 Pre-averaging
-doc: This tool prepares measurement set for pulling phasediff scores from facetselfcal
+doc: This step pre-averages measurement set for pulling phasediff scores from facetselfcal
 
 
 baseCommand: DP3

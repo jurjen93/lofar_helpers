@@ -455,7 +455,7 @@ def make_plots_compare(cats, outputfolder=''):
             subcat = cat[(cat['dist']>bi)
                          & (cat['dist']<bin_edges[i])
                          & (cat['S_Code']=='S')
-                         & (cat['Peak_flux']>10*cat['Isl_rms'])]
+                         & (cat['Peak_flux']>20*cat['Isl_rms'])]
             R = subcat['Peak_flux']/subcat['Total_flux']
             # mask = get_inliers(subcat['dist'], R)
             err.append(np.mean(ratio_err(subcat['Total_flux'], subcat['E_Total_flux'], subcat['Peak_flux'],

@@ -2,7 +2,7 @@ class: CommandLineTool
 cwlVersion: v1.2
 id: get_phasediff
 label: Polarization Phase Difference
-doc: This tool prepares measurement set for pulling phasediff scores from facetselfcal
+doc: This step makes scalarphasediff solution files, needed for collecting source selection scores
 
 baseCommand: python
 

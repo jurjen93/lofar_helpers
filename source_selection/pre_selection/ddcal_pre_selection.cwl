@@ -47,7 +47,7 @@ steps:
       scatter: phasediff_ms
       run: ./steps/get_phasediff.cwl
 
-    - id: get_source_scores
+    - id: get_selection_scores
       label: Calculate phase difference score
       in:
         - id: phasediff_h5
@@ -56,9 +56,9 @@ steps:
           source: h5merger
       out:
         - phasediff_score_csv
-      run: ./steps/get_source_scores.cwl
+      run: ./steps/get_selection_scores.cwl
 
 outputs:
     - id: phasediff_score_csv
       type: File
-      outputSource: get_source_scores/phasediff_score_csv
+      outputSource: get_selection_scores/phasediff_score_csv
