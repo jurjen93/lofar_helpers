@@ -5,6 +5,12 @@ From the source table, it makes cut out images of all sources (fits and png imag
 This has been used for catalogue reduction of the ELAIS-N1 field.
 Feel free to adapt to your own needs. (Watch out for hardcoded parameters or paths)
 
+The output contains the following folders:
+- bright_sources --> sources considered to be bright and probably compact
+- weak_sources --> fainter sources
+- cluster_sources --> sources clustered together (important for source association)
+
+
 """
 
 import bdsf

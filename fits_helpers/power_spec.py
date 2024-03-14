@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 from scipy.fft import fft2, fftshift
 from astropy.io import fits
 
+
 def spectrum(fts):
     """Make power spectrum"""
     f = fits.open(fts)

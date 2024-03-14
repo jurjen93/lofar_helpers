@@ -25,9 +25,8 @@ import numpy as np
 from astropy.wcs import WCS
 from astropy.io import fits
 import matplotlib.pyplot as plt
-from matplotlib.colors import SymLogNorm, PowerNorm
+from matplotlib.colors import PowerNorm
 import pyregion
-from astropy.visualization.wcsaxes import WCSAxes
 import astropy.units as u
 from astropy.coordinates import SkyCoord
 from past.utils import old_div
@@ -95,21 +94,6 @@ def get_polygon_center(regionfile):
     polyp = [float(p) for p in polygon.replace('polygon(', '').replace(')', '').replace('\n', '').split(',')]
     poly_geo = geometry.Polygon(tuple(zip(polyp[0::2], polyp[1::2])))
     return SkyCoord(f'{poly_geo.centroid.x}deg', f'{poly_geo.centroid.y}deg', frame='icrs')
-
-
-def get_array_coordinates(pix_array, wcsheader):
-    """
-    Get coordinates from pixel
-
-    :param pix_array: array with pixel coordinates
-    :param wcsheader: wcs header
-    :return: array with coordinates from pixel array
-    """
-    return np.array([[wcsheader.pixel_to_world(j,i,0,0)[0]
-                      for j in range(pix_array.shape[0])]
-                     for i in range(pix_array.shape[1])])
-    # pixarray = np.argwhere(pix_array)
-    # return wcsheader.pixel_to_world(pixarray[:, 0], pixarray[:, 1], 0, 0)[0]
 
 
 def get_distance_weights(center, arr, wcsheader):
@@ -249,10 +233,11 @@ def main():
 
         hdu = fits.open(facet)
         hduflatten = flatten(hdu)
-        wcsheader = WCS(hdu[0].header)
 
         imagedata, _ = reproject_interp_chunk_2d(hduflatten, header_new, hdu_in=0, parallel=True)
         imagedata = imagedata.astype(np.float32)
+
+        # trying to clear cache? Not sure if it works..
         hduflatten = None
         del hduflatten
 
@@ -271,9 +256,13 @@ def main():
         imagedata *= facetweight
         imagedata[~np.isfinite(imagedata)] = 0  # so we can add
         isum += imagedata
+
+        # trying to clear cache? Not sure if it works..
         imagedata = None
         del imagedata
         weights += facetweight
+
+        # trying to clear cache? Not sure if it works..
         facetweight = None
         del facetweight
         gc.collect()
@@ -294,7 +283,7 @@ def main():
 
 
 if __name__ == '__main__':
-    #ELAIS-N1
+    #ELAIS-N1 --> UPDATE THIS FOR OWN USE
     CRVAL1=-117.25
     CRVAL2=54.95
     OBJECT_NAME='ELAIS-N1'

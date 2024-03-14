@@ -7,7 +7,7 @@ and an estimate for how many times you can average based on the measurement sets
 Example:
     python split_polygon_facets.py --reg all_facets.reg --h5 merged.h5 --extra_boundary 0.1
 
-    This example takes a region file 'all_facets.reg' with X-amount of polygons and splits into X separate polygon files
+    This example takes a region file 'all_facets.reg' with X-number of polygons and splits into X separate polygon files.
     It loops over the directions from the corresponding h5 solution file with all solution per facet.
 
 IMPORTANT: The script assumes that the polygons and h5 solutions are sorted in the same order and the coordinates

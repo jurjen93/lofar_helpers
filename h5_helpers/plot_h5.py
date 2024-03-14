@@ -1,3 +1,9 @@
+"""
+This script has been written to plot h5 solutions similar to was done in de Jong et al. 2024
+The matrix plotting style is similar to LoSoTo (https://github.com/revoltek/losoto/tree/master/losoto)
+"""
+
+
 import matplotlib.pyplot as plt
 import tables
 import numpy as np
@@ -16,6 +22,9 @@ def make_utf8(s):
     return s.decode('utf-8') if isinstance(s, bytes) else s
 
 def wrap_phase(phase):
+    """
+    Wrap phases (stolen from https://github.com/tikk3r/lofar-h5plot/blob/master/h5plot#L1528)
+    """
     wphase = (phase + np.pi) % (2 * np.pi) - np.pi
     return wphase
 
@@ -138,6 +147,9 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
     plt.savefig(outputname, dpi=200)
 
 def main():
+
+    # UPDATE FOR OWN NEED
+
     stations = [b'CS002HBA1', b'RS208HBA', b'DE604HBA', b'PL611HBA', b'IE613HBA']
     h5s = ['/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarcomplexgain4_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',

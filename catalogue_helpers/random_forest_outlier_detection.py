@@ -1,6 +1,7 @@
 """
 This is an experimental script to use Random Forest classifiers to separate spurious detections from real detections.
 
+Has not been used for anything yet.
 Use it for your own needs. Be aware of hardcoded paths.
 """
 

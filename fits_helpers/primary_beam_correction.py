@@ -54,8 +54,6 @@ def make_beam_images(cmd):
             cmd = cmd.replace('-name ' + hist_split[idx + 1], '-name beam')
         if element=='-baseline-averaging':
             cmd = cmd.replace('-baseline-averaging ' + hist_split[idx + 1], '')
-        # if '/imaging/' in element and 'split_facets2' in element:
-        #     cmd = cmd.replace(element, element.split('/imaging/')[-1])
         if element=='-':
             cmd = cmd.replace(' - -', ' -')
         if has_char(element) and has_num(element) and '.ms' not in element and '-' in element \
@@ -65,28 +63,6 @@ def make_beam_images(cmd):
             cmd = cmd.replace(element, '')
     cmd = cmd.replace('- ', ' ').replace('  ', ' ').strip()
     cmd += ' *.ms'
-
-    if 'facet_14-scale' in hist_split:
-        cmd = 'wsclean -gridder wgridder -no-update-model-required -minuv-l 80.0 -size 45000 45000 -weighting-rank-filter 3 '\
-              '-reorder -weight briggs -1.5 -parallel-reordering 4 -mgain 0.75 -data-column DATA -auto-mask 2.5 '\
-              '-auto-threshold 1.0 -pol i -name beam -scale 0.1arcsec -niter 0 -multiscale-scale-bias 0.6'\
-              ' -parallel-deconvolution 2600 -multiscale -multiscale-max-scales 9 -nmiter 0 -no-reorder -no-dirty '\
-              '-apply-primary-beam -use-differential-lofar-beam -mem 75 -channels-out 6 -join-channels -fit-spectral-pol 3 '\
-              '-local-rms -local-rms-window 50 -taper-gaussian 0.3asec *.ms'
-    if 'facet_20-scale' in hist_split:
-        cmd = ('wsclean -gridder wgridder -no-update-model-required -minuv-l 80.0 -size 45000 45000 -weighting-rank-filter 3 '
-               '-reorder -weight briggs -1.5 -parallel-reordering 2 -mgain 0.75 -data-column DATA -auto-mask 2.5 '
-               '-auto-threshold 1.0 -pol i -name beam -scale 0.1arcsec -niter 0 -multiscale-scale-bias 0.6 '
-               '-parallel-deconvolution 2600 -multiscale -multiscale-max-scales 9 -nmiter 0 -no-reorder -no-dirty '
-               '-apply-primary-beam -use-differential-lofar-beam -mem 30 -channels-out 6 -join-channels -fit-spectral-pol 3 '
-               '-local-rms -local-rms-window 50 -taper-gaussian 0.3asec *.ms')
-    if 'facet_29' in hist_split:
-        cmd = ('wsclean -gridder wgridder -no-update-model-required -minuv-l 80.0 -size 43500 43500 -weighting-rank-filter 3 '
-               '-reorder -parallel-reordering 2 -weight briggs -1.5 -mgain 0.75 -data-column DATA -auto-mask 2.5 '
-               '-auto-threshold 1.0 -pol i -name beam -scale 0.1arcsec -niter 0 -multiscale-scale-bias 0.6 '
-               '-parallel-deconvolution 2600 -multiscale -multiscale-max-scales 9 -nmiter 0 -no-reorder -no-dirty '
-               '-apply-primary-beam -use-differential-lofar-beam -parallel-gridding 2 -channels-out 6 -mem 30 -join-channels -fit-spectral-pol 3 '
-               '-local-rms -local-rms-window 50 -taper-gaussian 0.3asec -mem 50 *.ms')
 
     print(cmd)
     if len(glob('apply*.ms'))>0:

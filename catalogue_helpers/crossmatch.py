@@ -358,14 +358,14 @@ def main():
         totalcat = remove_snr(totalcat, snr=5)
 
         # add 6asec columns
-        DR1 = '/home/jurjen/Documents/ELAIS/catalogues/en1_final_cross_match_catalogue-v1.0.fits'
-        DR2 = '/home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits'
-        totalcat = merge_with_table(totalcat, Table.read(DR1, format='fits'), sep=args.separation_asec, res=args.resolution)
+        # DR1 = '/home/jurjen/Documents/ELAIS/catalogues/en1_final_cross_match_catalogue-v1.0.fits'
+        # DR2 = '/home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits'
+        # totalcat = merge_with_table(totalcat, Table.read(DR1, format='fits'), sep=args.separation_asec, res=args.resolution)
 
         totalcat.write(args.out_table, format='fits', overwrite=True)
-        totalcat[outcols].write('publication_'+args.out_table, format='fits', overwrite=True)
 
     print(len(totalcat))
+    # WATCH OUT FOR HARDCODED STUFF IN THIS FUNCTION
     make_plots(totalcat, res=args.resolution, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
 
 

@@ -1,3 +1,25 @@
+"""
+This tool helps to associate M sources with multiple components and calculate:
+- the integrated flux density
+- source position
+- peak flux
+- source size estimate
+
+Useful for high resolution cases where pybdsf fails to correctly associate sources.
+
+You need:
+- fits astropy table (output from pybdsf)
+- fits image (corresponding to catalogue/table)
+
+It returns 2 folders:
+- ok --> images with polygon fitting considered ok by the script
+- issues --> images with polygon fitting considered to be incorrect (need additional visual inspection)
+
+Value thresholds are changed by trial and error.
+For ELAIS-N1 at 0.3" we found by visual inspection 85% accuracy for M sources (see de Jong et al. 2024)
+"""
+
+
 import numpy as np
 from shapely.geometry import Polygon, Point, MultiPolygon
 import warnings
@@ -419,33 +441,6 @@ class MeasureSource:
         return self
 
 
-def get_region_mask(image, idx):
-    regionmask = None
-    if 'facet_0' in image:
-        if ('0.3' in image and idx == 26) or ('0.6' in image and idx == 15):
-            regionmask = 'regionmasks/mask1.reg'
-        elif '0.3' in image and idx==27:
-            regionmask = 'regionmasks/mask2.reg'
-    if 'facet_7' in image:
-        if '0.6' in image and idx==2:
-            regionmask = 'regionmasks/mask3.reg'
-    if 'facet_8' in image:
-        if '0.6' in image and idx==24:
-            regionmask = 'regionmasks/mask4.reg'
-    if 'facet_10' in image:
-        if '0.3' in image and idx==14:
-            regionmask = 'regionmasks/mask5.reg'
-    if 'facet_23' in image:
-        if '0.3' in image and idx==31:
-            regionmask = 'regionmasks/mask6.reg'
-    if 'facet_27' in image:
-        if ('0.3' in image and idx==32) or ('0.6' in image and idx==15):
-            regionmask = 'regionmasks/mask7.reg'
-
-
-    return regionmask
-
-
 def get_source_information(table, image, makeplot, debug_idx=None):
     """
     Get information of source
@@ -492,9 +487,8 @@ def get_source_information(table, image, makeplot, debug_idx=None):
                 and imsize < 1500 \
                 and trys < 100:
 
-                regionmask = get_region_mask(image, idx)
                 S = MeasureSource(fitsfile=image, rms=T[idx]['Isl_rms'], rms_peak_threshold=peakthresh,
-                                  rms_island_threshold=islandthresh, region_mask=regionmask)
+                                  rms_island_threshold=islandthresh, region_mask=None)
                 S.make_cutout((ra, dec), (imsize, imsize))
                 peakflux = S.peak_flux
                 if ignoreradec:

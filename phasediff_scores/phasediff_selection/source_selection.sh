@@ -30,4 +30,4 @@ while read -r MS; do
 done <$MSLIST
 
 #RETURN SCORES
-singularity exec -B $BIND $SIMG python ${SCRIPT_DIR}/phasediff_output.py --h5 phasediff_h5s/*.h5
+singularity exec -B $BIND $SIMG python ${LOFAR_HELPERS}/source_selection/phasediff_output.py --h5 phasediff_h5s/*.h5
