@@ -329,8 +329,9 @@ def parse_args():
 def main():
     """Main"""
 
-    outcols = ['Cat_id', 'Isl_id', 'RA', 'E_RA', 'DEC','E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
-               'Maj', 'E_Maj', 'Min', 'E_Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms']
+
+    outcols = ['Cat_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
+                     'Maj', 'E_Maj', 'Min', 'E_Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms']
 
     args = parse_args()
 
@@ -362,6 +363,7 @@ def main():
         totalcat = merge_with_table(totalcat, Table.read(DR1, format='fits'), sep=args.separation_asec, res=args.resolution)
 
         totalcat.write(args.out_table, format='fits', overwrite=True)
+        totalcat[outcols].write('publication_'+args.out_table, format='fits', overwrite=True)
 
     print(len(totalcat))
     make_plots(totalcat, res=args.resolution, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
@@ -400,4 +402,6 @@ if __name__ == '__main__':
                'facet_9': 0.21153599999999956}
     main()
 
-# python catalogue_helpers/crossmatch_multiple_tables.py --cat1 final_merged_03.fits --cat2 final_merged_06.fits --cat3 final_merged_12.fits
+# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat03/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_03.fits
+# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat06/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_06.fits --resolution 0.6
+# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat12/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_12.fits --resolution 1.2

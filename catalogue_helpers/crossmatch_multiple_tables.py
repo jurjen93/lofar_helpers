@@ -324,17 +324,29 @@ def make_plots_combine(subcat, outputfolder=None):
     plt.close()
 
 
-    # plt.plot(xdist, bws, color='red', label='$\Delta$t', linestyle='dashed')
-    # plt.plot(xdist, ts, color='red', label='$\Delta$t', linestyle='dashed')
+    centralhz = 140232849.121094
+    bandwidth = 12207
+    inttime = 1
+    xdist = np.linspace(0, 1.25, 100)
+    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime, 0.2232305194805194, xdist)
+    plt.plot(xdist, ts, color='black', label='$\Delta$t=1s (0.2")', linestyle='-')
+    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime*2, 0.2232305194805194, xdist)
+    plt.plot(xdist, ts, color='black', label='$\Delta$t=2s (0.2")', linestyle='--')
 
+    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime, 0.3, xdist)
+    plt.plot(xdist, ts, color='black', label='$\Delta$t=1s (0.3")', linestyle='-.')
+    ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime*2, 0.3, xdist)
+    plt.plot(xdist, ts, color='black', label='$\Delta$t=2s (0.3")', linestyle=':')
 
-    # plt.ylim(0, 1)
-    # plt.xlim(0, 1.25)
-    # plt.xlabel("Distance from pointing center (degrees)")
-    # plt.ylabel("I / I$_{0}$")
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.savefig(f'{outputfolder}/theoretical_smearing.png', dpi=150)
+    plt.ylim(0, 1)
+    plt.xlim(0, 1.25)
+    plt.xlabel("Distance from pointing center (degrees)", size=14)
+    plt.ylabel("I / I$_{0}$", size=14)
+    plt.xticks(size=14)
+    plt.yticks(size=14)
+    plt.legend(fontsize=14)
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/theoretical_smearing.png', dpi=150)
 
 def circ_size(dist):
     return dist**2*np.pi
@@ -560,6 +572,4 @@ def main():
 if __name__ == '__main__':
     main()
 
-# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat03/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_03.fits
-# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat06/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_06.fits --resolution 0.6
-# python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat12/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_12.fits --resolution 1.2
+# python catalogue_helpers/crossmatch_multiple_tables.py --cat1 final_merged_03.fits --cat2 final_merged_06.fits --cat3 final_merged_12.fits
