@@ -91,18 +91,12 @@ def separation_match(cat1, cat2, separation_asec):
     return catalog1_corrected, catalog1_removed
 
 
-def remove_snr(catalog, snr=5, cat=None):
+def remove_snr(catalog, snr=5):
     """Remove sources based on Signal-To-Noise"""
 
     print(f"Source count before SNR cut {len(catalog)}")
     newcat = catalog[catalog['Peak_flux'] > snr * catalog['Isl_rms']]
     print(f'Source count after SNR cut {len(newcat)} ({int(abs(1-len(catalog)/len(newcat))*100)}% removed)')
-    if cat is not None:
-        for name, dens in density.items():
-            if name in cat:
-                print(name, cat)
-                print(f'Density: {len(newcat)/dens} sources/arcsec**2')
-
     return newcat
 
 
@@ -342,7 +336,7 @@ def main():
         for n, cat in enumerate(args.cat1):
             print(cat)
             catalog1_new, _ = separation_match(cat, args.cat2, args.separation_asec)
-            remove_snr(catalog1_new, snr=5, cat=cat)
+            remove_snr(catalog1_new, snr=5)
             if args.source_id_prefix is not None:
                 catalog1_new['Cat_id'] = [f'{args.source_id_prefix}_{id}' for id in list(catalog1_new['Source_id'])]
             else:
@@ -358,48 +352,18 @@ def main():
         totalcat = remove_snr(totalcat, snr=5)
 
         # add 6asec columns
-        DR1 = '/home/jurjen/Documents/ELAIS/catalogues/en1_final_cross_match_catalogue-v1.0.fits'
-        DR2 = '/home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits'
-        totalcat = merge_with_table(totalcat, Table.read(DR1, format='fits'), sep=args.separation_asec, res=args.resolution)
+        # DR1 = '/home/jurjen/Documents/ELAIS/catalogues/en1_final_cross_match_catalogue-v1.0.fits'
+        # DR2 = '/home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits'
+        # totalcat = merge_with_table(totalcat, Table.read(DR1, format='fits'), sep=args.separation_asec, res=args.resolution)
 
         totalcat.write(args.out_table, format='fits', overwrite=True)
-        totalcat[outcols].write('publication_'+args.out_table, format='fits', overwrite=True)
 
     print(len(totalcat))
-    make_plots(totalcat, res=args.resolution, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    # LOOK OUT FOR HARDCODED STUFF IN THIS FUNCTION
+    make_plots(totalcat, res=args.resolution, outputfolder='.')
 
 
 if __name__ == '__main__':
-    density = {'facet_0': 0.24143183950617234,
-               'facet_1': 0.13690175308641947,
-               'facet_10': 0.20427424691357982,
-               'facet_11': 0.2855608888888883,
-               'facet_12': 0.22253392592592544,
-               'facet_13': 0.19539255555555515,
-               'facet_14': 0.16753998765432063,
-               'facet_15': 0.10965179012345656,
-               'facet_16': 0.12828291358024665,
-               'facet_17': 0.34949097530864126,
-               'facet_18': 0.26597167901234514,
-               'facet_19': 0.09615233333333313,
-               'facet_2': 0.12172407407407382,
-               'facet_20': 0.11137129629629607,
-               'facet_21': 0.14146774074074045,
-               'facet_22': 0.20576508641975266,
-               'facet_23': 0.4636706543209867,
-               'facet_24': 0.07083577777777762,
-               'facet_25': 0.23814687654320937,
-               'facet_26': 0.47480614814814714,
-               'facet_27': 0.219969469135802,
-               'facet_28': 0.22957644444444394,
-               'facet_29': 0.23002959259259212,
-               'facet_3': 0.23208735802469085,
-               'facet_4': 0.19441218518518477,
-               'facet_5': 0.22606349382716,
-               'facet_6': 0.12530912345678985,
-               'facet_7': 0.1945322962962959,
-               'facet_8': 0.15238839506172808,
-               'facet_9': 0.21153599999999956}
     main()
 
 # python catalogue_helpers/crossmatch.py --cat1 /home/jurjen/Documents/ELAIS/catalogues/finalcat03/*.fits --cat2 /home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits --out_table final_merged_03.fits
