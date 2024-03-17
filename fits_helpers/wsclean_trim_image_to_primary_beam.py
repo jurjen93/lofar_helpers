@@ -5,7 +5,7 @@ import os
 from astropy.io import fits # type: ignore
 import numpy as np
 
-def trim_image(imname: str, beamlvl: float, MFS: bool) -> str:
+def blank_image(imname: str, beamlvl: float, MFS: bool) -> str:
     """ Blanks images created by WSClean beyond a specified level of the primary beam.
 
     Args:
@@ -16,7 +16,7 @@ def trim_image(imname: str, beamlvl: float, MFS: bool) -> str:
         MFS : bool
 
     Returns:
-        imname_trimmed : str
+        imname_blanked : str
             Base name of the blanked images.
     """
     if MFS:
@@ -43,18 +43,18 @@ def trim_image(imname: str, beamlvl: float, MFS: bool) -> str:
     im_app_masked = np.where(mask, data_app, np.nan)
     im_pb_masked = np.where(mask, data_pb, np.nan)
 
-    print(f'Writing primary-beam-trimmed images for {imname}...')
-    fits.writeto(f"{imname}.pbtrimmed-MFS-image.fits", data=im_app_masked, header=fits.getheader(im_app))
-    fits.writeto(f"{imname}.pbtrimmed-MFS-image-pb.fits", data=im_pb_masked, header=fits.getheader(im_pb))
+    print(f'Writing primary-beam-blanked images for {imname}...')
+    fits.writeto(f"{imname}.pbblanked-MFS-image.fits", data=im_app_masked, header=fits.getheader(im_app))
+    fits.writeto(f"{imname}.pbblanked-MFS-image-pb.fits", data=im_pb_masked, header=fits.getheader(im_pb))
     print('Done')
-    return imname + ".pbtrimmed"
+    return imname + ".pbblanked"
 
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser("Trim a WSClean image to a certain value of the primary beam.")
+    parser = argparse.ArgumentParser("Blank a WSClean image to a certain value of the primary beam.")
     parser.add_argument("--imagename", type=str, help="Image name as passed to WSClean.")
-    parser.add_argument("--beam_cut", type=float, help="Fractional value of the primary beam to trim to relative to the centre of the image.")
+    parser.add_argument("--beam_cut", type=float, help="Fractional value of the primary beam to blank to relative to the centre of the image.")
     parser.add_argument("--no-MFS", action="store_true", required=False, help="Set if image was made using a single output channel (i.e. -channels-out=1 or not given).")
     args = parser.parse_args()
 
-    trim_image(args.imagename, args.beam_cut, not args.no_MFS)
+    blank_image(args.imagename, args.beam_cut, not args.no_MFS)
