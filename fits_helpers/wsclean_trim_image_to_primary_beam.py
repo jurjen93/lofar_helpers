@@ -14,6 +14,7 @@ def blank_image(imname: str, beamlvl: float, MFS: bool) -> str:
         beamlvl : float
             Level of the primary beam to blank below.
         MFS : bool
+            Set to True if the image was made in MFS mode (i.e. channels-out > 1).
 
     Returns:
         imname_blanked : str
