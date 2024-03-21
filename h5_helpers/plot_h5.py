@@ -78,18 +78,20 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
 
             if 'amplitude' in soltab:
                 vals_im = np.clip(vals_im, 0, 2)
-
+                cmap = 'RdBu_r'
             if 'phase' in soltab:
                 vals_im = wrap_phase(vals_im-ref)
                 # vals_im = wrap_phase(vals_im)
                 vmin, vmax = -np.pi, np.pi
+                cmap = 'twilight_shifted'
             else:
                 vmin, vmax = 0, 2
                 vals_im = vals_im
-            im = axs[i, j].imshow(vals_im.T, aspect='auto', origin='lower', vmin=vmin, vmax=vmax, cmap='RdBu_r')
+
+            im = axs[i, j].imshow(vals_im.T, aspect='auto', origin='lower', vmin=vmin, vmax=vmax, cmap=cmap)
 
             if i == 0:
-                axs[i, j].set_title(make_utf8(station), size=26)
+                axs[i, j].set_title(make_utf8(station), size=23)
             # if j == 2:
             #     if names is not None:
             #         bbox_props = dict(boxstyle='round', facecolor='white', edgecolor='white', alpha=0.75)
@@ -99,12 +101,12 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
                 if names is not None:
                     bbox_props = dict(boxstyle='round', facecolor='white', edgecolor='white', alpha=0.75)
                     axs[i, j].text(vals_im.shape[0] // 22, vals_im.shape[1] //2, names[i], color='black',
-                                  fontsize=16, ha='left', va='bottom', bbox=bbox_props)
+                                  fontsize=15, ha='left', va='bottom', bbox=bbox_props)
                 # if i%2==0:
                 #     axs[i, j].set_ylabel('Freq. [MHz]', size=16)
                 if i%2!=0:
                     y_ticks = np.divide(np.linspace(freqs.min(), freqs.max(), num=3), 1000000).astype(int)
-                    axs[i, j].set_yticks(ticks=np.linspace(axs[i, j].get_ylim()[0], axs[i, j].get_ylim()[1], num=3).astype(int), labels=y_ticks, fontsize=22)
+                    axs[i, j].set_yticks(ticks=np.linspace(axs[i, j].get_ylim()[0], axs[i, j].get_ylim()[1], num=3).astype(int), labels=y_ticks, fontsize=18)
                 else:
                     axs[i, j].set_yticks([])
             else:
@@ -113,7 +115,7 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
                 # axs[i, j].set_xlabel('Time [hrs]', size=16)
                 if j%2==0:
                     x_ticks = np.linspace(0, 8, num=3).round(0).astype(int)
-                    axs[i, j].set_xticks(ticks=np.linspace(axs[i, j].get_xlim()[0], axs[i, j].get_xlim()[1], num=3).astype(int), labels=x_ticks, fontsize=22)
+                    axs[i, j].set_xticks(ticks=np.linspace(axs[i, j].get_xlim()[0], axs[i, j].get_xlim()[1], num=3).astype(int), labels=x_ticks, fontsize=18)
                 else:
                     axs[i, j].set_xticks([])
 
@@ -130,18 +132,18 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
     cbar = fig.colorbar(im, ax=axs.ravel().tolist(), cax=cbar_ax)
     if 'phase' in soltab:
         cbar.set_ticks(ticks=[-3.1415, -1.57075, 0, 1.57075, 3.1415], labels=['$-\pi$', '$-\pi$/2', '0', '$\pi$/2', '$\pi$'],
-                       size=25)
+                       size=22)
     else:
         cbar.set_ticks([0, 0.5, 1, 1.5, 2], labels=['0', '0.5', '1', '1.5', '$\geq 2$'], size=22)
 
 
     if 'phase' in soltab:
-        cbar.set_label('Phase correction', fontsize=24)
+        cbar.set_label('Phase correction', fontsize=22)
     if 'amplitude' in soltab:
-        cbar.set_label('Amplitude correction', fontsize=24)
+        cbar.set_label('Amplitude correction', fontsize=22)
 
-    fig.text(0.05, 0.5, 'Frequency [MHz]', va='center', rotation='vertical', fontsize=24)  # Adjust position (0.04, 0.5) and fontsize as needed
-    fig.text(0.5, 0.03, 'Time [hrs]', va='center', rotation='horizontal', fontsize=24)  # Adjust position (0.04, 0.5) and fontsize as needed
+    fig.text(0.05, 0.5, 'Frequency [MHz]', va='center', rotation='vertical', fontsize=23)  # Adjust position (0.04, 0.5) and fontsize as needed
+    fig.text(0.5, 0.022, 'Time [hrs]', va='center', rotation='horizontal', fontsize=23)  # Adjust position (0.04, 0.5) and fontsize as needed
 
     # fig.tight_layout()  # Adjust the layout to not overlap
     plt.savefig(outputname, dpi=200)
@@ -153,12 +155,12 @@ def main():
     stations = [b'CS002HBA1', b'RS208HBA', b'DE604HBA', b'PL611HBA', b'IE613HBA']
     h5s = ['/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarcomplexgain4_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
+           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarcomplexgain6_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/merged_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/merged_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5']
-    names = ['scalarcomplexgain 1 (RR)',
-             'fulljones (RR)', 'scalarcomplexgain 2 (RR)', 'merged solutions (RR)', 'fulljones (RL)',
+    names = ['scalarcomplexgain 1',
+             'fulljones (RR)', 'fulljones (RL)', 'scalarcomplexgain 2', 'merged solutions (RR)',
              'merged solutions (RL)']
 
     make_plot(h5s, stations, 'amplitude000', names, 'delay_amplitude_solutions.png')
@@ -170,37 +172,41 @@ def main():
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarphase3_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarcomplexgain4_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
+           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarcomplexgain6_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/merged_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/merged_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5']
-    names = ['scalarphasediff (RR-LL)', 'scalarphase 1 (RR)', 'scalarphase 2 (RR)', 'scalarphase 3 (RR)',
-             'scalarcomplexgain 1 (RR)',
-             'fulljones (RR)', 'scalarcomplexgain 2 (RR)', 'merged solutions (RR)', 'fulljones (RL)',
+    names = ['scalarphasediff (RR-LL)', 'scalarphase 1', 'scalarphase 2', 'scalarphase 3',
+             'scalarcomplexgain 1', 'fulljones (RR)', 'fulljones (RL)', 'scalarcomplexgain 2', 'merged solutions (RR)',
              'merged solutions (RL)']
 
     make_plot(h5s, stations, 'phase000', names, 'delay_phase_solutions.png')
 
     stations = [b'RS208HBA', b'RS503HBA', b'DE604HBA', b'PL611HBA', b'IE613HBA']
-    h5s = ['/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/new_ddcal/allselfcals/P35307/merged_selfcalcyle011_flagged_L686962_P35307.ms.copy.phaseup.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/new_ddcal/allselfcals/P22459/merged_selfcalcyle011_flagged_L686962_P22459.ms.copy.phaseup.h5',
+    h5s = [ '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/new_ddcal/allselfcals/P22459/merged_selfcalcyle011_flagged_L686962_P22459.ms.copy.phaseup.h5',
+            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/new_ddcal/allselfcals/P35307/merged_selfcalcyle011_flagged_L686962_P35307.ms.copy.phaseup.h5',
            '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/new_ddcal/allselfcals/P19951/merged_selfcalcyle011_flagged_L686962_P19951.ms.copy.phaseup.h5']
 
-    names = None
+    names = ['Facet 10', 'Facet 11', 'Facet 20']
 
     make_plot(h5s, stations, 'phase000', names, 'dd1_phase_solutions.png')
     make_plot(h5s, stations, 'amplitude000', names, 'dd1_amplitude_solutions.png')
 
     stations = [b'CS032HBA0', b'CS103HBA0', b'RS208HBA', b'RS307HBA', b'RS509HBA']
     h5s = ['/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/imaging/split_facets2/facet_0/1.2imaging/selfcaloutput/merged_selfcalcyle009_concat_L68.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/imaging/split_facets2/facet_29/1.2imaging/selfcaloutput/merged_selfcalcyle009_concat_L68.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/imaging/split_facets2/facet_26/1.2imaging/selfcaloutput/merged_selfcalcyle009_concat_L68.ms.avg.h5']
+           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/imaging/split_facets2/facet_26/1.2imaging/selfcaloutput/merged_selfcalcyle009_concat_L68.ms.avg.h5',
+           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/imaging/split_facets2/facet_29/1.2imaging/selfcaloutput/merged_selfcalcyle009_concat_L68.ms.avg.h5']
     # names = ['merged solutions 1',
     #          'merged solutions 4',
     #          'merged solutions 7',
     #          'merged solutions 10']
 
+    names = ['Facet 13', 'Facet 21', 'Facet 23']
+
     make_plot(h5s, stations, 'phase000', names, 'dd_dutch1_phase_solutions.png')
+
+    names = ['Facet 13', 'Facet 23', 'Facet 21']
+
     make_plot(h5s, stations, 'amplitude000', names, 'dd_dutch1_amplitude_solutions.png')
 
 

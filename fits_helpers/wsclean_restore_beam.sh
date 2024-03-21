@@ -1,12 +1,13 @@
 #!/bin/bash
 
 BIND=$PWD,/home/lofarvwf-jdejong/scripts,/project/lofarvwf/Share/jdejong,/project/lotss/Public/jdejong,/project/lofarvwf
-SIMG=/project/lofarvwf/Software/singularity/flo4.6.0_znver2_znver2.sif
+SIMG=/project/lofarvwf/Software/singularity/flocs_v5.0.0_znver2_znver2_aocl4_cuda.sif
 
 FACET=$1
 
-MAJOR=0.6
-MINOR=0.65
+MAJOR=1.51
+MINOR=1.00
+PA=108.85
 
 singularity exec -B $BIND $SIMG \
-wsclean -beam-shape 0.42 0.35 0 -restore facet_${FACET}-MFS-residual.fits facet_${FACET}-MFS-model.fits facet_${FACET}-MFS-image.restored.fits
+wsclean -beam-shape $MAJOR $MINOR $PA -restore facet_${FACET}-MFS-residual.fits facet_${FACET}-MFS-model.fits facet_${FACET}-MFS-image.restored.fits

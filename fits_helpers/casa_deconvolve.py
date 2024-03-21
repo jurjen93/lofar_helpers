@@ -2,6 +2,8 @@
 IN CASA:
 
 PATH=path_to_fits_files
+targetres = True/False
+
 execfile("casa_deconvolve.py")
 """
 
@@ -10,7 +12,7 @@ from numpy import mean, sqrt
 import os
 
 # path to fits files
-# PATH='0.3asec'
+PATH='.'
 
 def calc_conv_beam(fwhm_orig_major, fwhm_orig_minor, fwhm_new_major, fwhm_new_minor):
     """
@@ -62,15 +64,16 @@ print('Final beam pa: '+str(final_beam_pa))
 
 for fts in glob(PATH+'/*.fits'):
     print('Smooth '+fts)
-    b_maj, b_min = calc_conv_beam(imhead(fts, mode='get', hdkey='beammajor')['value'],
-                                  imhead(fts, mode='get', hdkey='beamminor')['value'],
-                                  final_beam_major,
-                                  final_beam_minor)
-    print('Smooth with '+str(round(b_maj, 3))+' X '+str(round(b_min, 3)))
+    # b_maj, b_min = calc_conv_beam(imhead(fts, mode='get', hdkey='beammajor')['value'],
+    #                               imhead(fts, mode='get', hdkey='beamminor')['value'],
+    #                               final_beam_major,
+    #                               final_beam_minor)
+    # print('Smooth with '+str(round(b_maj, 3))+' X '+str(round(b_min, 3)))
     imsmooth(imagename=fts,
              kernel='gauss',
-             major=str(b_maj)+'arcsec',
-             minor=str(b_min)+'arcsec',
+             major=str(final_beam_major)+'arcsec',
+             minor=str(final_beam_minor)+'arcsec',
+             targetres=True,
              pa=str(final_beam_pa)+'deg',
              outfile=fts.replace('.fits', '')+'_newbeam.tmp')
     exportfits(imagename=fts.replace('.fits', '')+'_newbeam.tmp',
