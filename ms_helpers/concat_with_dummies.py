@@ -106,9 +106,8 @@ def parse_args():
 
     parser = argparse.ArgumentParser(
         description='Concattenate measurement sets, while taking into account frequency gaps')
-    parser.add_argument('--ms', nargs='+', help='MS', required=True)
-    parser.add_argument('--concat_name', help='Concat name', type=str, default='concat.ms')
-    parser.add_argument('--parset_name', help='Parset_name', type=str, default='concat.parset')
+    parser.add_argument('--msin', nargs='+', help='MS', required=True)
+    parser.add_argument('--msout', help='Concat name', type=str, default='concat.ms')
     parser.add_argument('--data_column', help='Data column', type=str, default='DATA')
     parser.add_argument('--phase_center', help='Phase shift to new center', type=str)
     parser.add_argument('--time_avg', help='Time averaging factor', type=int)
@@ -189,7 +188,7 @@ def main():
     Main script
     """
     args = parse_args()
-    make_parset(args.parset_name, args.ms, args.concat_name, args.data_column,
+    make_parset('concat.parset', args.msin, args.msout, args.data_column,
                 args.time_avg, args.freq_avg, args.time_res, args.freq_res, args.phase_center)
     os.system('DP3 ' + args.parset_name)
 
