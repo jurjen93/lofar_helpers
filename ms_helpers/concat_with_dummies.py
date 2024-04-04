@@ -110,13 +110,15 @@ def parse_args():
     parser.add_argument('--concat_name', help='Concat name', type=str, default='concat.ms')
     parser.add_argument('--parset_name', help='Parset_name', type=str, default='concat.parset')
     parser.add_argument('--data_column', help='Data column', type=str, default='DATA')
-    parser.add_argument('--time_avg', help='Time averaging', type=int)
-    parser.add_argument('--freq_avg', help='Frequency averaging', type=int)
-
+    parser.add_argument('--phase_center', help='Phase shift to new center', type=str)
+    parser.add_argument('--time_avg', help='Time averaging factor', type=int)
+    parser.add_argument('--freq_avg', help='Frequency averaging factor', type=int)
+    parser.add_argument('--time_res', help='Time resolution (in seconds)', type=int)
+    parser.add_argument('--freq_res', help='Frequency resolution', type=str)
     return parser.parse_args()
 
 
-def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg):
+def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg, time_res, freq_res, phase_center):
     """
     Make parset for DP3
 
@@ -145,11 +147,25 @@ def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg):
               '\nmsin.orderms=False' \
               '\nmsout.storagemanager=dysco' \
               '\nmsout.writefullresflag=False'
-    if time_avg is not None or freq_avg is not None:
-        parset += '\nsteps=[avg]' \
-                  '\navg.type=averager'
+    steps = []
+
+    if phase_center is not None:
+        steps.append('ps')
+        parset += '\nps.type=phaseshifter'
+        parset += f'\nps.phasecenter={phase_center}'
+
+    if time_avg is not None or freq_avg is not None or freq_res is not None or time_res is not None:
+        steps.append('avg')
+        parset += '\navg.type=averager'
+        if time_avg is not None and time_res is not None:
+            sys.exit("ERROR: choose time averaging or time resolution")
+        if freq_avg is not None and freq_res is not None:
+            sys.exit("ERROR: choose frequency averaging or frequency resolution")
+
         if time_avg is not None:
             parset += f'\navg.timestep={time_avg}'
+        if time_res is not None:
+            parset += f'\navg.timeresolution={time_res}'
         if freq_avg is not None:
             t = ct.table(ms[0] + "::SPECTRAL_WINDOW")
             channum = len(t.getcol("CHAN_FREQ")[0])
@@ -158,8 +174,10 @@ def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg):
             if freqavg!=freq_avg:
                 print(f"WARNING: {channum} Channels can only be divded by {freqavg} and not by {freq_avg}")
             parset += f'\navg.freqstep={freqavg}'
-    else:
-        parset += '\nsteps=[]'
+        if freq_res is not None:
+            parset += f'\navg.freqresolution={freq_res}'
+
+    parset += f'\nsteps={str(steps).replace(" ", "")}'
     with open(parset_name, 'w') as f:
         f.write(parset)
 
@@ -171,7 +189,8 @@ def main():
     Main script
     """
     args = parse_args()
-    make_parset(args.parset_name, args.ms, args.concat_name, args.data_column, args.time_avg, args.freq_avg)
+    make_parset(args.parset_name, args.ms, args.concat_name, args.data_column,
+                args.time_avg, args.freq_avg, args.time_res, args.freq_res, args.phase_center)
     os.system('DP3 ' + args.parset_name)
 
 if __name__ == '__main__':
