@@ -11,6 +11,9 @@ import numpy as np
 import os
 import shutil
 import sys
+from astropy.time import Time
+from astropy.coordinates import EarthLocation
+import astropy.units as u
 
 
 def decompress(ms):
@@ -23,9 +26,9 @@ def decompress(ms):
 
     print('\n----------\nREMOVE DYSCO COMPRESSION (if dysco compressed)\n----------\n')
 
-    if os.path.exists(f'{ms}_tmp'):
-        shutil.rmtree(f'{ms}_tmp')
-    os.system(f"DP3 msin={ms} msout={ms}_tmp steps=[]")
+    if os.path.exists(f'{ms}.tmp'):
+        shutil.rmtree(f'{ms}.tmp')
+    os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[]")
     print('----------')
 
 
@@ -70,6 +73,8 @@ def get_ms_content(ms):
     chan_num = F.getcol("NUM_CHAN")[0]
     channels = F.getcol("CHAN_FREQ")[0]
     time = sorted(np.unique(T.getcol("TIME")))
+    time_lst = T.getcol("TIME")#mjd_seconds_to_lst_seconds(T.getcol("TIME"))
+    time_min_lst, time_max_lst = time_lst.min(), time_lst.max()
     total_time_seconds = int(round(max(time)-min(time), 0))
     dt = int(round(np.diff(sorted(set(time)))[0], 0))
 
@@ -87,7 +92,35 @@ def get_ms_content(ms):
     F.close()
     A.close()
 
-    return stations, lofar_stations, channels, total_time_seconds, dt
+    return stations, lofar_stations, channels, total_time_seconds, dt, time_min_lst, time_max_lst
+
+
+def mjd_seconds_to_lst_seconds(mjd_seconds, longitude_deg=52.909):
+    """
+    Convert time in modified Julian Date time to LST
+
+    :param mjd_seconds: modified Julian date time in seconds
+    :param longitde_deg: longitude telescope in degrees (52.909 for LOFAR)
+
+    :return: LST
+    """
+
+    # Convert seconds to days for MJD
+    mjd_days = mjd_seconds / 86400.0
+
+    # Create an astropy Time object
+    time_utc = Time(mjd_days, format='mjd', scale='utc')
+
+    # Define the observer's location using longitude (latitude doesn't affect LST)
+    location = EarthLocation(lon=longitude_deg * u.deg, lat=0*u.deg)
+
+    # Calculate LST in hours
+    lst_hours = time_utc.sidereal_time('mean', longitude=location.lon).hour
+
+    # Convert LST from hours to seconds
+    lst_seconds = lst_hours * 3600.0
+
+    return lst_seconds
 
 
 def same_phasedir(mslist: list = None):
@@ -333,10 +366,15 @@ def make_template(mslist: list = None, template_name: str = 'template.ms'):
     unique_lofar_stations = []
     unique_channels = []
     max_dt = 0
-    max_total_time_seconds = 0
-    for ms in mslist:
-        stations, lofar_stations, channels, total_time_seconds, dt = get_ms_content(ms)
-        max_total_time_seconds = max(max_total_time_seconds, total_time_seconds)
+    max_t_lst = 0
+    min_t_lst = 0
+    for k, ms in enumerate(mslist):
+        stations, lofar_stations, channels, total_time_seconds, dt, min_t, max_t = get_ms_content(ms)
+        if k == 0:
+            min_t_lst = min_t
+        else:
+            min_t_lst = min(min_t_lst, min_t)
+        max_t_lst = max(max_t_lst, max_t)
         max_dt = max(max_dt, dt)
         unique_stations += list(stations)
         unique_channels += list(channels)
@@ -346,7 +384,7 @@ def make_template(mslist: list = None, template_name: str = 'template.ms'):
 
     channels = np.expand_dims(np.array(list(set(unique_channels))), 0)
     chan_num = channels.shape[-1]
-    time_range = np.arange(0, max_total_time_seconds, max_dt)
+    time_range = np.arange(min_t_lst, max_t_lst, max_dt)
     baseline_count = n_baselines(len(station_info))
     nrows = baseline_count*len(time_range)
 
@@ -357,8 +395,9 @@ def make_template(mslist: list = None, template_name: str = 'template.ms'):
     decompress(tmp_ms)
 
     # Make empty copy
-    tablecopy(tmp_ms+"_tmp", 'empty.ms', valuecopy=True, copynorows=True)
-    ref_table = table('empty.ms')
+    tablecopy(tmp_ms+".tmp", 'empty.ms', valuecopy=True, copynorows=True)
+    refname = 'empty.ms'
+    ref_table = table(refname)
 
     newdesc_data = ref_table.getdesc()
 
@@ -397,7 +436,7 @@ def make_template(mslist: list = None, template_name: str = 'template.ms'):
     # SET QUALITY_XXX_STATISTIC
     for subt in ['QUALITY_BASELINE_STATISTIC', 'QUALITY_FREQUENCY_STATISTIC',
                  'QUALITY_TIME_STATISTIC', 'QUALITY_KIND_NAME']:
-        tablecopy(ref_table+'/'+subt, template_name+'/'+subt)
+        tablecopy(refname+'/'+subt, template_name+'/'+subt)
 
     # SET OTHER TABLES
     for subtbl in ['FIELD', 'HISTORY', 'FLAG_CMD', 'DATA_DESCRIPTION',
@@ -405,11 +444,11 @@ def make_template(mslist: list = None, template_name: str = 'template.ms'):
                    'POLARIZATION', 'PROCESSOR', 'STATE']:
         print("----------\nADD " + template_name + "/" + subtbl + "\n----------")
 
-        tsub = table(tmp_ms+"_tmp/"+subtbl, ack=False)
+        tsub = table(tmp_ms+".tmp/"+subtbl, ack=False)
         tsub.copy(template_name + '/' + subtbl, deep=True)
         tsub.flush(True)
         tsub.close()
 
     shutil.rmtree('empty.ms')
-    shutil.rmtree(tmp_ms+"_tmp")
+    shutil.rmtree(tmp_ms+".tmp")
     ref_table.close()
