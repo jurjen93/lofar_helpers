@@ -14,6 +14,7 @@ import sys
 from astropy.time import Time
 from astropy.coordinates import EarthLocation
 import astropy.units as u
+from pprint import pprint
 
 
 def decompress(ms):
@@ -73,7 +74,7 @@ def get_ms_content(ms):
     chan_num = F.getcol("NUM_CHAN")[0]
     channels = F.getcol("CHAN_FREQ")[0]
     time = sorted(np.unique(T.getcol("TIME")))
-    time_lst = T.getcol("TIME")#mjd_seconds_to_lst_seconds(T.getcol("TIME"))
+    time_lst = mjd_seconds_to_lst_seconds(T.getcol("TIME"))
     time_min_lst, time_max_lst = time_lst.min(), time_lst.max()
     total_time_seconds = int(round(max(time)-min(time), 0))
     dt = int(round(np.diff(sorted(set(time)))[0], 0))
@@ -349,7 +350,7 @@ def add_stations(ref_table, template_name, station_info, lofar_stations_info):
     tnew_station.close()
 
 
-def make_template(mslist: list = None, template_name: str = 'template.ms'):
+def make_template(mslist: list = None):
     """
     Make template MS based on existing MS
 
@@ -367,7 +368,6 @@ def make_template(mslist: list = None, template_name: str = 'template.ms'):
     unique_channels = []
     max_dt = 0
     max_t_lst = 0
-    min_t_lst = 0
     for k, ms in enumerate(mslist):
         stations, lofar_stations, channels, total_time_seconds, dt, min_t, max_t = get_ms_content(ms)
         if k == 0:
@@ -394,22 +394,27 @@ def make_template(mslist: list = None, template_name: str = 'template.ms'):
     # Remove dysco compression
     decompress(tmp_ms)
 
-    # Make empty copy
-    tablecopy(tmp_ms+".tmp", 'empty.ms', valuecopy=True, copynorows=True)
-    refname = 'empty.ms'
-    ref_table = table(refname)
+    # Make empty copy (which later becomes the empty template output)
+    outname = 'empty.ms'
+    tablecopy(tmp_ms+".tmp", outname, valuecopy=True, copynorows=True)
+    ref_table = table(outname)
 
+    # Data description
     newdesc_data = ref_table.getdesc()
 
+    # Reshape
     for col in ['DATA', 'FLAG', 'WEIGHT_SPECTRUM']:
         newdesc_data[col]['shape'] = np.array([chan_num, 4])
 
-    for key in newdesc_data['_keywords_'].keys():
-        if key != 'MS_VERSION' and "QUALITY" not in key:
-            newdesc_data['_keywords_'][key] = newdesc_data['_keywords_'][key].replace('empty.ms', template_name)
+    # for key in newdesc_data['_keywords_'].keys():
+    #     if key != 'MS_VERSION':
+    #         newdesc_data['_keywords_'][key] = newdesc_data['_keywords_'][key].replace('empty.ms', template_name)
+
+    print(pprint(newdesc_data))
 
     # MAKE MAIN TABLE
-    tnew = table(template_name, newdesc_data, nrow=nrows)
+    tmp_name = 'tmp.ms'
+    tnew = table(tmp_name, newdesc_data, nrow=nrows, _columnnames=ref_table.colnames())
     ant1, ant2 = make_ant_pairs(len(station_info), len(time_range))
     t = repeat_elements(time_range, baseline_count)
     tnew.putcol("TIME", t)
@@ -428,27 +433,33 @@ def make_template(mslist: list = None, template_name: str = 'template.ms'):
     tnew.close()
 
     # SET SPECTRAL WINDOW INFO
-    add_spectral_window(ref_table, template_name, channels)
+    add_spectral_window(ref_table, tmp_name, channels)
 
     # SET ANTENNA INFO
-    add_stations(ref_table, template_name, station_info, lofar_stations_info)
+    add_stations(ref_table, tmp_name, station_info, lofar_stations_info)
 
     # SET QUALITY_XXX_STATISTIC
     for subt in ['QUALITY_BASELINE_STATISTIC', 'QUALITY_FREQUENCY_STATISTIC',
                  'QUALITY_TIME_STATISTIC', 'QUALITY_KIND_NAME']:
-        tablecopy(refname+'/'+subt, template_name+'/'+subt)
+        tablecopy(outname+'/'+subt, tmp_name+'/'+subt)
 
     # SET OTHER TABLES
     for subtbl in ['FIELD', 'HISTORY', 'FLAG_CMD', 'DATA_DESCRIPTION',
                    'LOFAR_ELEMENT_FAILURE', 'OBSERVATION', 'POINTING',
                    'POLARIZATION', 'PROCESSOR', 'STATE']:
-        print("----------\nADD " + template_name + "/" + subtbl + "\n----------")
+        print("----------\nADD " + tmp_name + "/" + subtbl + "\n----------")
 
         tsub = table(tmp_ms+".tmp/"+subtbl, ack=False)
-        tsub.copy(template_name + '/' + subtbl, deep=True)
+        tsub.copy(tmp_name + '/' + subtbl, deep=True)
         tsub.flush(True)
         tsub.close()
 
-    shutil.rmtree('empty.ms')
-    shutil.rmtree(tmp_ms+".tmp")
     ref_table.close()
+
+    # CLEANUP
+    shutil.rmtree(outname)
+    shutil.rmtree(tmp_ms+".tmp")
+    shutil.move(tmp_name, outname)
+
+
+#TODO: 1) TEST MULTIPLE STACK 2) ADD MISSING BASELINES 3) ADDING UVW DATA
