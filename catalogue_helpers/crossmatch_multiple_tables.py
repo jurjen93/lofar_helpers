@@ -25,8 +25,6 @@ plt.style.use('science')
 # Disable all warnings temporarily
 warnings.filterwarnings("ignore")
 
-
-
 def merge_with_table(catalog1, catalog2, res_2=0.6):
     """Merge with other table"""
 
@@ -563,7 +561,7 @@ def main():
     # total = merge_with_table(total, catalog3, res_2=1.2)[0]
     # compact = get_compact(total)
     # detectibility([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
-    # make_plots_combine(compact, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    make_plots_combine(compact, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
     make_plots_compare([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
 
 

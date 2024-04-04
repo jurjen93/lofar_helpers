@@ -94,25 +94,57 @@ def separation_match(cat1, cat2, separation_asec):
 def remove_snr(catalog, snr=5, cat=None):
     """Remove sources based on Signal-To-Noise"""
 
-    print(f"Source count before SNR cut {len(catalog)}")
+    # print(f"Source count before SNR cut {len(catalog)}")
     newcat = catalog[catalog['Peak_flux'] > snr * catalog['Isl_rms']]
-    print(f'Source count after SNR cut {len(newcat)} ({int(abs(1-len(catalog)/len(newcat))*100)}% removed)')
+    # print(f'Source count after SNR cut {len(newcat)} ({int(abs(1-len(catalog)/len(newcat))*100)}% removed)')
     if cat is not None:
         for name, dens in density.items():
-            if name in cat:
+            if name+"_" in cat+"_":
                 print(name, cat)
                 print(f'Density: {len(newcat)/dens} sources/arcsec**2')
+                print(f'RMS: {newcat["Isl_rms"].mean()}')
 
     return newcat
 
 
-def crossmatch_itself(catalog, min_sep=0.15):
-    """Crossmatch with itself to find nearest neighbour"""
+def get_neighbour(catalog, min_sep=0.3):
+    """
+    Get neighbour
+
+    :param catalog: Astropy table
+    :param min_sep: minimal separation
+
+    :return: list with [idx1, idx2, separation]
+    """
 
     coords = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'], unit=(u.deg, u.deg))
-    idx_catalog, separation, _ = match_coordinates_sky(coords, coords, nthneighbor=2)
+    idx_catalog = np.array(range(0,len(catalog)))
+    idx_catalog_cross, separation, _ = match_coordinates_sky(coords, coords, nthneighbor=2)
     nearest_neighbour = separation<min_sep*u.arcsec
-    print(catalog[nearest_neighbour]['Cat_id'])
+    return list(zip(idx_catalog[nearest_neighbour], np.array(idx_catalog_cross)[nearest_neighbour], separation[nearest_neighbour]))
+
+
+
+def remove_duplicates(catalog, min_sep=0.3):
+    """Crossmatch with itself to find nearest neighbour"""
+
+    delete = []
+    notdelete = []
+    catalog.sort('Total_flux')
+    coords = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'], unit=(u.deg, u.deg))
+    idx_catalog = np.array(range(0,len(catalog)))
+    idx_catalog_cross, separation, _ = match_coordinates_sky(coords, coords, nthneighbor=2)
+    nearest_neighbour = separation<min_sep*u.arcsec
+    for i in zip(idx_catalog[nearest_neighbour], np.array(idx_catalog_cross)[nearest_neighbour]):
+        if i[0] not in notdelete:
+            delete.append(i[0])
+            notdelete.append(i[1])
+    catalog.remove_rows(delete)
+    catalog.sort('Cat_id')
+    print(f'Removed {len(delete)} sources')
+    return catalog
+    # print(catalog[nearest_neighbour]['Total_flux'], catalog[idx_catalog][nearest_neighbour]['Total_flux'])
+    # print(catalog[nearest_neighbour]['Cat_id'], catalog[idx_catalog][nearest_neighbour]['Cat_id'])
 
 
 def fluxration_smearing(central_freq_hz, bandwidth_hz, integration_time_s, resolution,
@@ -166,8 +198,8 @@ def make_plots(cat, res=0.3, outputfolder=None):
     subcat = cat[(cat[f'dRA_{res}'] == cat[f'dRA_{res}'])
                  & (cat['S_Code'] == 'S')
                  & (cat['S_Code_6'] == 'S')
-                 & (cat['Total_flux_6']*1000 > 0.5)
-                 & (cat['Total_flux']*1000 > 0.5)]
+                 & (cat['Peak_flux'] > 15*cat['Isl_rms'])
+                 & (cat['Peak_flux_6'] > 15*cat['Isl_rms_6'])]
     print(f"Number of sources for hist2d plot: {len(subcat)}")
 
     plt.hexbin(subcat[f'dRA_{res}'] * 3600,
@@ -195,10 +227,11 @@ def make_plots(cat, res=0.3, outputfolder=None):
     plt.close()
 
     ############# Flux ratio 6" ##############
-    subcat = cat[(cat['S_Code'] == 'S')
+    subcat = cat[(cat[f'dRA_{res}'] == cat[f'dRA_{res}'])
+                 & (cat['S_Code'] == 'S')
                  & (cat['S_Code_6'] == 'S')
-                 & (cat['Peak_flux'] * 1000 > 0.5)
-                 & (cat['Peak_flux_6'] * 1000 > 0.5)]
+                 & (cat['Peak_flux'] > 15*cat['Isl_rms'])
+                 & (cat['Peak_flux_6'] > 15*cat['Isl_rms_6'])]
     subcat = subcat[(subcat[f'dDEC_{res}']*3600 < res/2) & (subcat[f'dRA_{res}']*3600 < res/2)]
     # random_index = np.random.choice(len(subcat), size=50)
     # subcat = subcat[random_index]
@@ -331,6 +364,11 @@ def main():
 
 
     outcols = ['Cat_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
+                     'Maj', 'E_Maj', 'Min', 'E_Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms', 'DC_Maj','E_DC_Maj','DC_Min','E_DC_Min',
+               'DC_PA','E_DC_PA','DC_Maj_img_plane','E_DC_Maj_img_plane','DC_Min_img_plane','E_DC_Min_img_plane','DC_PA_img_plane',
+               'E_DC_PA_img_plane']
+
+    outcols_publication = ['Cat_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
                      'Maj', 'E_Maj', 'Min', 'E_Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms']
 
     args = parse_args()
@@ -361,9 +399,10 @@ def main():
         DR1 = '/home/jurjen/Documents/ELAIS/catalogues/en1_final_cross_match_catalogue-v1.0.fits'
         DR2 = '/home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits'
         totalcat = merge_with_table(totalcat, Table.read(DR1, format='fits'), sep=args.separation_asec, res=args.resolution)
+        totalcat = remove_duplicates(totalcat, args.resolution)
 
-        totalcat.write(args.out_table, format='fits', overwrite=True)
-        totalcat[outcols].write('publication_'+args.out_table, format='fits', overwrite=True)
+        totalcat[outcols].write(args.out_table, format='fits', overwrite=True)
+        totalcat[outcols_publication].write('publication_'+args.out_table, format='fits', overwrite=True)
 
     print(len(totalcat))
     make_plots(totalcat, res=args.resolution, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')

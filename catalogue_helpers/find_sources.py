@@ -1,33 +1,26 @@
-"""
-This script runs pybdsf on a fits file image to extract sources and components.
-From the source table, it makes cut out images of all sources (fits and png images) for inspection.
-
-This has been used for catalogue reduction of the ELAIS-N1 field.
-Feel free to adapt to your own needs. (Watch out for hardcoded parameters or paths)
-
-"""
-
-import bdsf
-import argparse
-from astropy.nddata import Cutout2D
 import numpy as np
+from shapely.geometry import Polygon, Point, MultiPolygon
+import warnings
 import astropy.units as u
-from astropy.io import fits
-from astropy.wcs.utils import skycoord_to_pixel
-from astropy.coordinates import SkyCoord
-from astropy.wcs import WCS
 import matplotlib.pyplot as plt
-from matplotlib.colors import SymLogNorm, PowerNorm
-from astropy.visualization.wcsaxes import WCSAxes
-import matplotlib.path as mpath
-import matplotlib.patches as patches
-from matplotlib import ticker
-import os
-from astropy.table import Table
+import numpy as np
+from astropy import coordinates
+from astropy.io import fits
+from astropy.nddata import Cutout2D
+from astropy.wcs import WCS
+from matplotlib.colors import LogNorm, SymLogNorm, PowerNorm
 import pyregion
-from scipy.cluster.hierarchy import linkage, fcluster
-from scipy.spatial import distance
-from glob import glob
+import sys
+from shapely.ops import cascaded_union
+from matplotlib.path import Path
+from itertools import combinations
+from astropy.table import Table
+from past.utils import old_div
+import argparse
+from astropy.visualization.wcsaxes import WCSAxes
+import os
+
+warnings.filterwarnings("ignore")
 
 
 def get_rms(image_data):
@@ -37,7 +30,6 @@ def get_rms(image_data):
     :param image_data: image data array
     :return: rms (noise measure)
     """
-    from past.utils import old_div
 
     maskSup = 1e-7
     m = image_data[np.abs(image_data) > maskSup]
@@ -50,372 +42,557 @@ def get_rms(image_data):
         rms = np.std(m[ind])
         if np.abs(old_div((rms - rmsold), rmsold)) < diff: break
         rmsold = rms
-    print(f'Noise : {str(round(rms * 1000, 4))} {u.mJy / u.beam}')
     return rms
 
 
-def get_beamarea(hdu):
-    """
-    Get beam area in pixels
-    """
+class MeasureSource:
 
-    bmaj = hdu[0].header['BMAJ']
-    bmin = hdu[0].header['BMIN']
+    def __init__(self, fitsfile=None, region_mask=None, rms=None, rms_peak_threshold=3,
+                 rms_island_threshold=1, max_n_polygons=None):
+        """
+        Measure properties from a source
+        ----------------------------------------
+        :param fitsfile: Fits file
+        :param region_mask: ds9 region mask
+        :param rms: RMS noise (default: calculated by code)
+        :param rms_max_threshold: RMS threshold above which flux is fitted for islands
+        :param max_n_polygons: set a maximum number of polygons. For example 1 for compact sources
+        """
 
-    beammaj = bmaj / (2.0 * (2 * np.log(2)) ** 0.5)  # Convert to sigma
-    beammin = bmin / (2.0 * (2 * np.log(2)) ** 0.5)  # Convert to sigma
-    pixarea = abs(hdu[0].header['CDELT1'] * hdu[0].header['CDELT2'])
+        self.hdu = fits.open(fitsfile)
+        self.image_data = self.hdu[0].data
+        while self.image_data.ndim > 2:
+            self.image_data = self.image_data[0]
+        self.header = self.hdu[0].header
+        self.wcs = WCS(self.header, naxis=2)
 
-    beamarea = 2 * np.pi * 1.0 * beammaj * beammin  # Note that the volume of a two dimensional gaus$
-    beamarea_pix = beamarea / pixarea
+        self.poly_list = []
+        self.max_n_polygons = max_n_polygons
 
-    return beamarea_pix
+        self.region_mask = region_mask
 
+        if rms is None:
+            self.rms = get_rms(self.image_data)
+            self.rms_peak_threshold = rms_peak_threshold * self.rms
+            self.rms_island_threshold = rms_island_threshold * self.rms
+        else:
+            self.rms = rms
+            self.rms_peak_threshold = rms_peak_threshold * rms
+            self.rms_island_threshold = rms_island_threshold * rms
 
-def make_cutout(fitsfile=None, pos: tuple = None, size: tuple = (1000, 1000), savefits=None):
-    """
-    Make cutout from your image with this method.
-    pos (tuple) -> position in pixels
-    size (tuple) -> size of your image in pixel size, default=(1000,1000)
-    """
-    fts = fits.open(fitsfile)
-    image_data = fts[0].data
-    wcs = WCS(fts[0].header, naxis=2)
+        self.beam_pixels = self.beamarea
+        self.peak = 0
+        self.peak_flux_pos = [0, 0]
+        self.cut_image_data = None
+        self.cut_header = None
 
-    while image_data.ndim>2:
-        image_data = image_data[0]
+    @property
+    def beamarea(self):
+        """
+        Calculate beam area in pixels
+        -----------------------------
+        :param bmaj: beam major axis
+        :param bmin: beam minor axis
+        :return:
+        """
 
-    out = Cutout2D(
-        data=image_data,
-        position=pos,
-        size=size,
-        wcs=wcs,
-        mode='partial'
-    )
+        bmaj = self.hdu[0].header['BMAJ']
+        bmin = self.hdu[0].header['BMIN']
 
-    wcs = out.wcs
-    header = wcs.to_header()
+        beammaj = bmaj / (2.0 * (2 * np.log(2)) ** 0.5)  # Convert to sigma
+        beammin = bmin / (2.0 * (2 * np.log(2)) ** 0.5)  # Convert to sigma
+        pixarea = abs(self.hdu[0].header['CDELT1'] * self.hdu[0].header['CDELT2'])
 
-    image_data = out.data
-    # rms = get_rms(image_data)
-    # hdu = [fits.PrimaryHDU(image_data, header=header)]
+        beamarea = 2 * np.pi * 1.0 * beammaj * beammin  # Note that the volume of a two dimensional gaus$
+        beamarea_pix = beamarea / pixarea
 
-    if savefits:
-        image_data = out.data
-        image_data = np.expand_dims(np.expand_dims(image_data, axis=0), axis=0)
-        fits.writeto(savefits, image_data, header, overwrite=True)
+        return beamarea_pix
 
-    return image_data, header
+    def _to_pixel(self, ra: float = None, dec: float = None):
+        """
+        To pixel position from RA and DEC in degrees
+        --------------------------------------------
+        :param ra: Right ascension (degrees)
+        :param dec: Declination (degrees)
+        :return: Pixel of position
+        """
 
-
-def make_image(fitsfiles, cmap: str = 'RdBu_r', components: str = None):
-    """
-    Image your data with this method.
-    fitsfiles -> list with fits file
-    cmap -> choose your preferred cmap
-    """
-
-    def fixed_color(shape, saved_attrs):
-        from pyregion.mpl_helper import properties_func_default
-        attr_list, attr_dict = saved_attrs
-        attr_dict["color"] = 'green'
-        kwargs = properties_func_default(shape, (attr_list, attr_dict))
-        return kwargs
-
-    if len(fitsfiles)==1:
-        fitsfile = fitsfiles[0]
-
-        hdu = fits.open(fitsfile)
-        image_data = hdu[0].data
-        while image_data.ndim > 2:
-            image_data = image_data[0]
-        header = hdu[0].header
-
-        rms = get_rms(image_data)
-        vmin = rms
-        vmax = rms * 9
-
-        wcs = WCS(header, naxis=2)
-
-        fig = plt.figure(figsize=(7, 10), dpi=200)
-        plt.subplot(projection=wcs)
-        WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=wcs)
-        im = plt.imshow(image_data, origin='lower', cmap=cmap)
-        im.set_norm(PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
-        plt.xlabel('Right Ascension (J2000)', size=14)
-        plt.ylabel('Declination (J2000)', size=14)
-        plt.tick_params(axis='both', which='major', labelsize=12)
-
-
-        if components is not None:
-            r = pyregion.open(components).as_imagecoord(header=hdu[0].header)
-            patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
-
-            # fig.add_axes(ax)
-            for patch in patch_list:
-                plt.gcf().gca().add_patch(patch)
-            for artist in artist_list:
-                plt.gca().add_artist(artist)
-
-        orientation = 'horizontal'
-        ax_cbar1 = fig.add_axes([0.22, 0.15, 0.73, 0.02])
-        cb = plt.colorbar(im, cax=ax_cbar1, orientation=orientation)
-        cb.set_label('Surface brightness [mJy/beam]', size=16)
-        cb.ax.tick_params(labelsize=16)
-
-        cb.outline.set_visible(False)
-
-        # Extend colorbar
-        bot = -0.05
-        top = 1.05
-
-        # Upper bound
-        xy = np.array([[0, 1], [0, top], [1, top], [1, 1]])
-        if orientation == "horizontal":
-            xy = xy[:, ::-1]
-
-        Path = mpath.Path
-
-        # Make Bezier curve
-        curve = [
-            Path.MOVETO,
-            Path.CURVE4,
-            Path.CURVE4,
-            Path.CURVE4,
-        ]
-
-        color = cb.cmap(cb.norm(cb._values[-1]))
-        patch = patches.PathPatch(
-            mpath.Path(xy, curve),
-            facecolor=color,
-            linewidth=0,
-            antialiased=False,
-            transform=cb.ax.transAxes,
-            clip_on=False,
+        from astropy import wcs
+        position = coordinates.SkyCoord(
+            ra, dec, frame=wcs.utils.wcs_to_celestial_frame(self.wcs).name, unit=(u.degree, u.degree)
         )
-        cb.ax.add_patch(patch)
+        position = np.array(position.to_pixel(self.wcs)).astype(int)
 
-        # Lower bound
-        xy = np.array([[0, 0], [0, bot], [1, bot], [1, 0]])
-        if orientation == "horizontal":
-            xy = xy[:, ::-1]
+        return position
 
-        color = cb.cmap(cb.norm(cb._values[0]))
-        patch = patches.PathPatch(
-            mpath.Path(xy, curve),
-            facecolor=color,
-            linewidth=0,
-            antialiased=False,
-            transform=cb.ax.transAxes,
-            clip_on=False,
-        )
-        cb.ax.add_patch(patch)
+    def make_cutout(self, pos: tuple = None, size: tuple = (1000, 1000)):
+        """
+        Make cutout from your image.
+        ------------------------------------------------------------
+        :param pos: position in pixel size or degrees (RA, DEC)
+        :param size: size of your image in pixels
+        """
 
-        # Outline
-        xy = np.array(
-            [[0, 0], [0, bot], [1, bot], [1, 0], [1, 1], [1, top], [0, top], [0, 1], [0, 0]]
-        )
-        if orientation == "horizontal":
-            xy = xy[:, ::-1]
+        if type(pos[0]) != int and type(pos[1]) != int:
+            pos = self._to_pixel(pos[0], pos[1])
+        cutout = Cutout2D(data=self.image_data,
+                          position=pos,
+                          size=size,
+                          wcs=self.wcs,
+                          mode="partial")
 
-        Path = mpath.Path
+        self.image_data = cutout.data
+        self.header = cutout.wcs.to_header()
+        self.wcs = WCS(self.header, naxis=2)
 
-        curve = [
-            Path.MOVETO,
-            Path.CURVE4,
-            Path.CURVE4,
-            Path.CURVE4,
-            Path.LINETO,
-            Path.CURVE4,
-            Path.CURVE4,
-            Path.CURVE4,
-            Path.LINETO,
-        ]
-        path = mpath.Path(xy, curve, closed=True)
+        return self
 
-        patch = patches.PathPatch(
-            path, facecolor="None", lw=1, transform=cb.ax.transAxes, clip_on=False
-        )
-        cb.ax.add_patch(patch)
-        tick_locator = ticker.MaxNLocator(nbins=3)
-        cb.locator = tick_locator
-        cb.update_ticks()
 
-        fig.tight_layout(pad=1.0)
-        plt.grid(False)
-        plt.grid('off')
-        plt.savefig(fitsfile.replace('.fits', '.png'), dpi=250, bbox_inches='tight')
+    def mask_region(self, region_mask):
+        """
+        Mask region with a ds9 region file
+        -----------------------------------
+        :param region_mask: ds9 region mask
+        """
+
+        r = pyregion.open(region_mask).as_imagecoord(header=self.header)
+        mask = np.logical_not(r.get_mask(hdu=self.hdu[0], shape=self.image_data.shape))
+        self.image_data *= mask
+        return self
+
+
+    def _get_polylist(self, buff=0, ignore_ra=None, ignore_dec=None):
+        """
+        Get list with polygons
+        --------------------------------------------------------
+        :param buff: buffer to enlarge merged polygons in pixels
+        :return: list with polygons (source components)
+        """
+
+        if self.region_mask is not None:
+            self.mask_region(self.region_mask)
+
+        # keep only surface brightness above noise level
+        image = np.where((self.image_data > self.rms_island_threshold), self.image_data, 0)
+
+        cs = plt.contour(image, [self.rms_island_threshold], colors='white', linewidths=1)
+        cs_list = cs.collections[0].get_paths()
+
+        if ignore_ra is not None and ignore_dec is not None:
+            self.sources_to_ignore = self._to_pixel(ignore_ra, ignore_dec).T
+            self.sources_to_ignore = np.array(self.sources_to_ignore)
+            self.sources_to_ignore = self.sources_to_ignore[np.all((self.sources_to_ignore > 0)
+                                                                   & (self.sources_to_ignore < self.image_data.shape[
+                0]), axis=1)]
+        else:
+            self.sources_to_ignore = []
+
+        i = 1
+        while len(self.poly_list) == 0 and i < 10:
+            if len(self.poly_list) == 0:
+                self.poly_list = [Polygon(cs.vertices) for cs in cs_list if (len(cs.vertices) >= 4
+                                                             and Polygon(cs.vertices).is_valid == True
+                                                             and Polygon(cs.vertices).area > self.beam_pixels / i)]
+            i += 1
+
+        self.poly_list = [polygon for polygon in self.poly_list if not any([polygon.contains(Point(p))
+                                                                            for p in self.sources_to_ignore])]
+
+        # filter on peak flux
+        remove_idx = []
+        for k, poly in enumerate(self.poly_list):
+            x, y = np.meshgrid(np.arange(len(self.image_data)), np.arange(len(self.image_data)))
+            x, y = x.flatten(), y.flatten()
+            points = np.vstack((x, y)).T
+            grid = Path(poly.exterior.coords).contains_points(points)
+            submask = grid.reshape(self.image_data.shape)
+            if self.image_data[submask].max() < self.rms_peak_threshold:
+                remove_idx.append(k)
+        for idx in list(set(remove_idx))[::-1]:
+            del self.poly_list[idx]
+
+        if i > 8:
+            self.max_n_polygons = 1
+
+        # select max number of polygons based on distance from peak flux
+        if self.max_n_polygons is not None:
+            if self.peak == 0:
+                self.peak = self.peak_flux
+
+            def calc_distance(p1, p2):
+                """
+                Calculate distance between two points
+                :param p1: point 1
+                :param p2: point 2
+                :return: euclidean distance
+                """
+                return np.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+            self.poly_list.sort(key=lambda x: calc_distance(list(x.centroid.coords)[0], self.peak_flux_pos),
+                                reverse=False)
+            self.poly_list = self.poly_list[0:self.max_n_polygons]
+
+        self.merged_geometry = cascaded_union(self.poly_list)
+        if buff > 0:
+            self.merged_geometry = self.merged_geometry.buffer(buff)
+        return self
+
+    @property
+    def _get_polygon_data(self):
+        """
+        Get image data corresponding to polygons
+        ----------------------------------------
+        :param image: image data
+        :return: mask data outside polygon
+        """
+
+
+        mask = np.zeros(self.image_data.shape)
+        for poly in self.poly_list:
+            x, y = np.meshgrid(np.arange(len(self.image_data)), np.arange(len(self.image_data)))
+            x, y = x.flatten(), y.flatten()
+            points = np.vstack((x, y)).T
+            grid = Path(poly.exterior.coords).contains_points(points)
+            submask = grid.reshape(self.image_data.shape)
+            if self.image_data[submask].max() > self.rms_peak_threshold:
+                mask += submask
+        mask = np.where(mask >= 1, np.ones(mask.shape), 0)
+        image = self.image_data * mask
+        return image
+
+    @property
+    def largest_dist(self):
+        """
+        Calculate largest distance in convex hull
+        -----------------------------------------
+        :return: largest distance
+        """
+
+        # Function to extract all boundary points from the polygons
+        def extract_boundary_points(polygons):
+            points = []
+            for poly in polygons:
+                # Extracting the x, y coordinates of the boundary points
+                xs, ys = poly.boundary.xy
+                points.extend(zip(xs, ys))
+            return points
+
+        def find_max_distance_between_points(points):
+            max_distance = 0
+            pos = []
+            for point1, point2 in combinations(points, 2):
+                distance = np.linalg.norm(np.array(point1) - np.array(point2))
+                if distance > max_distance:
+                    max_distance = distance
+                    pos = [point1, point2]
+            return max_distance, pos
+
+        # Extract boundary points from all polygons
+        boundary_points = extract_boundary_points(self.poly_list)
+
+        # Calculate the maximum distance between boundary points
+        max_distance, self.distance_points = find_max_distance_between_points(boundary_points)
+
+        return max_distance * self.header['CDELT2'] * 3600 * u.arcsec
+
+    @property
+    def s_code(self):
+        """Return s_code similar to pybdsf"""
+        if self.peak_flux/self.total_flux.value>0.7 and len(self.poly_list)==1:
+            print('S')
+            return 'S'
+        else:
+            return 'M'
+
+    @property
+    def total_flux(self):
+        """Return total flux"""
+        return np.nansum(self._get_convex_hull_data) / self.beam_pixels * u.Jy
+
+    @property
+    def _get_convex_hull_data(self):
+        """
+        :param image: image data
+        :return: mask data outside polygon
+        """
+
+        polygon = self.merged_geometry.boundary.convex_hull.exterior.coords
+        x, y = np.meshgrid(np.arange(len(self.image_data)), np.arange(len(self.image_data)))
+        x, y = x.flatten(), y.flatten()
+        points = np.vstack((x, y)).T
+        grid = Path(polygon).contains_points(points)
+        mask = grid.reshape(self.image_data.shape)
+        mask = np.where(mask >= 1, np.ones(mask.shape), 0)
+        image = self.image_data * mask
+        return image
+
+    @property
+    def peak_flux(self):
+        """
+        Peak flux in polygons
+        :return: maximum from polygon data
+        """
+
+        # if len(self.poly_list) == 0:
+        #     self._get_polylist()
+        peakflux = np.nanmax(self._get_polygon_data)
+        self.peak_flux_pos = np.where(self.image_data == peakflux)
+        return peakflux
+
+    @property
+    def image_moments(self):
+        """
+        Calculate the raw image moments up to the second order
+        https://en.wikipedia.org/wiki/Image_moment
+        """
+
+        image = self._get_polygon_data
+        # Create grids of x and y coordinates
+        y_indices, x_indices = np.indices(image.shape)
+
+        # Calculate the raw moments
+        m00 = np.nansum(image)
+        m10 = np.nansum(x_indices * image)
+        m01 = np.nansum(y_indices * image)
+        # m11 = np.sum(x_indices * y_indices * image)
+        # m20 = np.sum(x_indices ** 2 * image)
+        # m02 = np.sum(y_indices ** 2 * image)
+
+        cx = m10 / m00
+        cy = m01 / m00
+        return cx, cy
+
+    @property
+    def ra_dec(self):
+        """Get ra/dec based on image moment"""
+
+        px, py = self.image_moments
+        sky = self.wcs.pixel_to_world(px, py)
+        return sky.ra.degree, sky.dec.degree
+
+    def make_plot(self, savefig: str = None):
+        """
+        Make plot with contour
+        ---------------------
+        """
+
+        if self.peak == 0:
+            self.peak = self.peak_flux
+
+        plt.close()
+        imdat = self._get_polygon_data
+        fig = plt.figure(figsize=(7, 10))
+        plt.subplot(projection=self.wcs)
+
+        plt.contour(imdat, [self.rms_island_threshold], colors='white', linewidths=1)
+
+        if self.merged_geometry.boundary is not None:
+            polygon = self.merged_geometry.boundary.convex_hull
+            x, y = polygon.exterior.xy
+
+            plt.plot(x, y, label="Merged Polygon", color='lightgreen')
+
+        plt.imshow(self.image_data,
+                   norm=PowerNorm(gamma=0.5, vmin=self.rms, vmax=self.rms*9),
+                   cmap='RdBu_r')
+        plt.scatter(self.peak_flux_pos[1], self.peak_flux_pos[0], color='black', marker='*', zorder=2, s=180)
+        WCSAxes(fig, [0.1, 0.1, 0.8, 0.8], wcs=self.wcs)
+        ax = plt.gca()
+        lon = ax.coords[0]
+        lat = ax.coords[1]
+        lon.set_ticks_visible(False)
+        lon.set_ticklabel_visible(False)
+        lat.set_ticks_visible(False)
+        lat.set_ticklabel_visible(False)
+        lon.set_axislabel('')
+        lat.set_axislabel('')
+
+        #plt.xlabel('Right Ascension (J2000)', size=15)
+        #plt.ylabel('Declination (J2000)', size=15)
+        # plt.xticks([])
+        # plt.yticks([])
+        if len(self.sources_to_ignore) > 0:
+            plt.scatter(self.sources_to_ignore[:, 0], self.sources_to_ignore[:, 1], color='red')
+        im_moments = self.image_moments
+        plt.scatter(im_moments[0], im_moments[1], marker='*', color='red', s=180, zorder=2)
+        print(f'Largest distance {self.largest_dist}')
+        #if len(self.distance_points) > 0:
+        #    plt.plot(np.array(self.distance_points)[:, 0], np.array(self.distance_points)[:, 1], marker='o',
+        #             linestyle='--', color='darkgreen')
+        plt.tight_layout()
+        if savefig is not None:
+            plt.savefig(savefig, dpi=200)
+        else:
+            plt.show()
         plt.close()
 
-        hdu.close()
-
-    else:
-
-        for n, fitsfile in enumerate(fitsfiles):
-
-            hdu = fits.open(fitsfile)
-            header = hdu[0].header
+        return self
 
 
-            if n==0:
-                cdelt = abs(header['CDELT2'])
-                w = WCS(header, naxis=2)
-
-                fig, axs = plt.subplots(2, 2,
-                                        figsize=(10, 8),
-                                        subplot_kw={'projection': w})
-
-                imdat = hdu[0].data
-                while imdat.ndim > 2:
-                    imdat = imdat[0]
-                or_shape = imdat.shape
-                skycenter = w.pixel_to_world(header['NAXIS1']//2, header['NAXIS2']//2)
-                rms = get_rms(imdat)
-                ax = plt.subplot(220 + n+1, projection=w)
-
-                if components is not None:
-                    r = pyregion.open(components).as_imagecoord(header=header)
-                    patch_list, artist_list = r.get_mpl_patches_texts(fixed_color)
-
-                    # fig.add_axes(ax)
-                    for patch in patch_list:
-                        ax.add_patch(patch)
-                    for artist in artist_list:
-                        ax.add_artist(artist)
-
-            else:
-                pixfact = cdelt/abs(header['CDELT2'])
-                shape = np.array(or_shape) * pixfact
-                center_sky = SkyCoord(f'{skycenter.ra.value}deg', f'{skycenter.dec.value}deg', frame='icrs')
-
-                w = WCS(header, naxis=2)
-                pix_coord = skycoord_to_pixel(center_sky, w, 0, 'all')
-                imdat, h = make_cutout(fitsfile=fitsfile,
-                                    pos=tuple([int(p) for p in pix_coord]),
-                                    size=tuple([int(p) for p in shape]))
-                w = WCS(h, naxis=2)
-                ax = plt.subplot(220 + n+1, projection=w)
-
-            while imdat.ndim > 2:
-                imdat = imdat[0]
-
-            imdat *= 1000
-
-            rms = get_rms(imdat)
-            vmin = rms
-            vmax = rms * 9
+def get_region_mask(image, idx):
+    regionmask = None
+    if 'facet_0' in image:
+        if ('0.3' in image and idx == 26) or ('0.6' in image and idx == 15):
+            regionmask = 'regionmasks/mask1.reg'
+        elif '0.3' in image and idx==27:
+            regionmask = 'regionmasks/mask2.reg'
+    if 'facet_7' in image:
+        if '0.6' in image and idx==2:
+            regionmask = 'regionmasks/mask3.reg'
+    if 'facet_8' in image:
+        if '0.6' in image and idx==24:
+            regionmask = 'regionmasks/mask4.reg'
+    if 'facet_10' in image:
+        if '0.3' in image and idx==14:
+            regionmask = 'regionmasks/mask5.reg'
+    if 'facet_23' in image:
+        if '0.3' in image and idx==31:
+            regionmask = 'regionmasks/mask6.reg'
+    if 'facet_27' in image:
+        if ('0.3' in image and idx==32) or ('0.6' in image and idx==15):
+            regionmask = 'regionmasks/mask7.reg'
 
 
-            im = ax.imshow(imdat, origin='lower', cmap=cmap, norm=PowerNorm(gamma=0.5, vmin=vmin, vmax=vmax))
-            ax.set_xlabel('Right Ascension (J2000)', size=12)
-            ax.set_ylabel('Declination (J2000)', size=12)
-            if n!=0:
-                ax.set_title(fitsfile.split('/')[-2].replace('_', ' '))
-
-            cb = fig.colorbar(im, ax=ax, orientation='horizontal', shrink=0.65, pad=0.15)
-            cb.set_label('Surface brightness [mJy/beam]', size=12)
-            cb.ax.tick_params(labelsize=12)
-
-        fig.tight_layout(pad=1.0)
-        plt.grid(False)
-        plt.grid('off')
-        plt.savefig(fitsfiles[0].replace('.fits', '.png'), dpi=250, bbox_inches='tight')
+    return regionmask
 
 
-def run_pybdsf(fitsfile, rmsbox):
+def get_source_information(table, image, makeplot, debug_idx=None):
     """
-    Run pybdsf
-
-    :param fitsfile: fits file
-    :param rmsbox: rms box first parameter
-
-    :return: source catalogue
+    Get information of source
+    :param table: Astropy table
+    :param image: image
+    :param makeplot: make plot
+    :return:
     """
 
-    prefix = fitsfile.replace('.fits', '')
-    img = bdsf.process_image(fitsfile,
-                             thresh_isl=3,
-                             thresh_pix=5,
-                             atrous_do=True,
-                             rms_box=(int(rmsbox), int(rmsbox // 8)),
-                             rms_box_bright=(int(rmsbox//3), int(rmsbox//12)),
-                             adaptive_rms_box=True,
-                             group_tol=10.0)  # , rms_map=True, rms_box = (160,40))
+    T = Table.read(table)
+    RA, DEC = T["RA"], T['DEC']
 
-    img.write_catalog(clobber=True, outfile=prefix + '_source_catalog.fits', format='fits', catalog_type='srl')
-    img.write_catalog(clobber=True, outfile=prefix + '_gaussian_catalog.fits', format='fits', catalog_type='gaul')
-    for type in ['island_mask', 'gaus_model', 'gaus_resid', 'mean', 'rms']:
-        img.export_image(clobber=True, img_type=type, outfile=prefix + f'_{type}.fits')
-    return prefix + '_source_catalog.fits'
+    T = T[(T['Peak_flux'] > 5 * T['Isl_rms']) & (T['S_Code'] == 'M')]
+
+    peak_flux = []
+    total_flux = []
+    largest_dist = []
+    s_code = []
+    ra_decs = []
+    source_ids = []
 
 
-def get_pix_coord(table):
-    """
-    Get pixel coordiantes from table RA/DEC
-    :param table: fits table
-    :return: pixel coordinates
-    """
+    for idx in range(len(T)):
 
-    f = fits.open(table)
-    t = f[1].data
-    # res = t[t['S_Code'] != 'S']
-    pos = list(zip(t['RA'], t['DEC'], t['Source_id']))
-    pos = [[SkyCoord(f'{c[0]}deg', f'{c[1]}deg', frame='icrs'), c[2]] for c in pos]
-    fts = fits.open(table.replace("_source_catalog", ""))
-    w = WCS(fts[0].header, naxis=2)
-    pix_coord = [([int(c) for c in skycoord_to_pixel(sky[0], w, 0, 'all')], sky[1]) for sky in pos]
-    return pix_coord
+        try:
+
+            if debug_idx is not None:
+                if int(idx)!=int(debug_idx):
+                    continue
+                elif int(idx)>int(debug_idx):
+                    break
+
+            ra, dec = T[idx]['RA', 'DEC']
+            RA = RA[RA != ra]
+            DEC = DEC[DEC != dec]
+
+            imsize = 100
+            cont = True
+            ignoreradec = True
+
+            peakthresh, islandthresh = 5, 1.5
+            trys = 0
+            while cont \
+                and imsize < 1500 \
+                and trys < 100:
+
+                regionmask = get_region_mask(image, idx)
+                S = MeasureSource(fitsfile=image, rms=T[idx]['Isl_rms'], rms_peak_threshold=peakthresh,
+                                  rms_island_threshold=islandthresh, region_mask=regionmask)
+                S.make_cutout((ra, dec), (imsize, imsize))
+                peakflux = S.peak_flux
+                if ignoreradec:
+                    S._get_polylist(buff=min(peakflux/S.rms_island_threshold, 10), ignore_ra=RA, ignore_dec=DEC)
+                else:
+                    S._get_polylist(buff=min(peakflux/S.rms_island_threshold, 10))
+                if S.merged_geometry.boundary is None:
+                    if islandthresh < 4:
+                        islandthresh += 0.2
+                        islandthresh = min(4., max(1.5, islandthresh))
+                        imsize *= 1.1
+                    else:
+                        imsize *= 1.05
+                        islandthresh -= 0.2
+                        islandthresh = min(4., max(1.5, islandthresh))
+                        ignoreradec = False
+                else:
+                    x, y = S.merged_geometry.boundary.convex_hull.boundary.coords.xy
+                    if (np.max(x) * 2.5 < imsize and np.max(y) * 2.5 < imsize and np.min(x) > 0 and np.min(y) > 0):
+                        cont = False
+                    elif (np.max(x) > imsize/1.5 or np.max(y) > imsize/1.5 or np.min(x) < 0 or np.min(y) < 0)\
+                            or S.total_flux.value/T[idx]['Total_flux'] > 10:
+                        imsize *= 1.1
+                    elif S.total_flux.value/T[idx]['Total_flux'] < 10 and (imsize > 100 or trys<10):
+                        imsize /= 1.1
+                        islandthresh -= 0.2
+                        islandthresh = max(1.5, islandthresh)
+                        imsize = max(100, imsize)
+                    else:
+                        cont = False
+                try:
+                    if S.total_flux.value * 5 < T[idx]['Total_flux']:
+                        imsize *= 1.05
+                        islandthresh -= 0.2
+                        islandthresh = max(1.5, islandthresh)
+                    elif S.total_flux.value > T[idx]['Total_flux'] * 5:
+                        islandthresh += 0.2
+                        islandthresh = min(4, islandthresh)
+                        imsize /= 1.05
+                        imsize = max(100, imsize)
+                except AttributeError:
+                    imsize *= 1.05
+
+                trys += 1
 
 
-def make_point_file(t):
-    """
-    Make ds9 file with ID in it
-    """
+            if makeplot:
+                if (S.peak_flux/T[idx]['Peak_flux'] > 1.8 \
+                    or T[idx]['Peak_flux']/S.peak_flux > 1.8 \
+                    or S.total_flux.value/T[idx]['Total_flux'] > 2.5 \
+                    or T[idx]['Total_flux']/S.total_flux.value > 2.5) and not verify_acceptance(f'test_resolved_{idx}_{image.split("/")[-1].replace(".fits", "")}_{T["Source_id"][idx]}_{table.split("/")[-2]}.png'):
+                    if debug_idx is not None:
+                        imname = 'test.png'
+                    else:
+                        imname = f'issues/test_resolved_{idx}_{image.split("/")[-1].replace(".fits", "")}_{T["Source_id"][idx]}_{table.split("/")[-2]}.png'
+                    print(imname)
+                    S.make_plot(
+                        savefig=imname)
+                    accept = False
+                else:
+                    if debug_idx is not None:
+                        imname = 'test.png'
+                    else:
+                        imname = f'ok/test_resolved_{idx}_{image.split("/")[-1].replace(".fits", "")}_{T["Source_id"][idx]}_{table.split("/")[-2]}.png'
+                    print(imname)
+                    S.make_plot(savefig=imname)
+                    accept = True
 
-    header = """# Region file format: DS9 version 4.1
-global color=green dashlist=8 3 width=1 font="helvetica 10 normal roman" select=1 highlite=1 dash=0 fixed=0 edit=1 move=1 delete=1 include=1 source=1
-fk5
-"""
-    t = Table.read(t, format='fits')
-    file = open('components.reg', 'w')
-    file.write(header)
-    for n, c in enumerate(zip(t['RA'], t['DEC'])):
-        file.write(f'\n# text({c[0]},{c[1]}) text=' + '{' + f'{t["Source_id"][n]}' + '}')
-    return
+            print('Peak flux image:', str(S.peak_flux), 'Jy/beam')
+            print('Peak flux table:', str(T[idx]['Peak_flux']), 'Jy/beam')
 
+            print('Total flux image:', str(S.total_flux))
+            print('Total flux table:', str(T[idx]['Total_flux']), 'Jy')
+
+            if accept:
+                peak_flux.append(S.peak_flux)
+                total_flux.append(S.total_flux)
+                largest_dist.append(S.largest_dist)
+                s_code.append(S.s_code)
+                ra_decs.append(S.ra_dec)
+                source_ids.append(T[idx]['Source_id'])
+        except:
+            pass
+
+    return source_ids, peak_flux, total_flux, largest_dist, s_code, ra_decs
 
 def get_table_index(t, source_id):
     return int(np.argwhere(t['Source_id'] == source_id).squeeze())
-
-
-def get_clusters_ra_dec(t, deg_dist=0.003):
-    """
-    Get clusters of sources based on euclidean distance
-    """
-    ra_dec = np.stack((list(t['RA']),list(t['DEC'])),axis=1)
-    Z = linkage(ra_dec, method='complete', metric='euclidean')
-    return fcluster(Z, deg_dist, criterion='distance')
-
-def get_clusters_pix(pixcoor, pix_dist=100):
-    """
-    Get clusters of sources based on euclidean distance
-    """
-    pixpos = np.stack((pixcoor[:,0],pixcoor[:,1]),axis=1)
-    Z = linkage(pixpos, method='complete', metric='euclidean')
-    return fcluster(Z, pix_dist, criterion='distance')
-
-
-def cluster_idx(clusters, idx):
-    return np.argwhere(clusters==clusters[idx]).squeeze(axis=1)
-
-
-def max_dist(coordinates):
-    """
-    Get the longest distance between coordinates
-
-    :param coordinates: indices from table
-    """
-    return np.max(distance.cdist(coordinates, coordinates, 'euclidean'))
 
 
 def parse_args():
@@ -423,12 +600,10 @@ def parse_args():
     Parse input arguments
     """
 
-    parser = argparse.ArgumentParser(description='Source detection')
-    parser.add_argument('--rmsbox', type=int, help='rms box pybdsf', default=120)
-    parser.add_argument('--no_pybdsf', action='store_true', help='Skip pybdsf')
-    parser.add_argument('--comparison_plots', nargs='+', help='Add fits files to compare with, '
-                                                              'with same field coverage', default=[])
-    parser.add_argument('fits', nargs='+', help='fits files')
+    parser = argparse.ArgumentParser(description='Find flux density, peak flux, and size for resolved sources based on pybdsf table and image')
+    parser.add_argument('--table', type=str, help='astropy table')
+    parser.add_argument('--image', type=str, help='fits image')
+    parser.add_argument('--debug_idx', type=int)
     return parser.parse_args()
 
 
@@ -438,72 +613,36 @@ def main():
     """
 
     args = parse_args()
-    for m, fts in enumerate(args.fits):
-        if not args.no_pybdsf:
-            tbl = run_pybdsf(fts, args.rmsbox)
-        else:
-            tbl = fts.replace('.fits', '') + '_source_catalog.fits'
+    ids, peakflux, totalflux, largestidst, scode, radecs = get_source_information(args.table, args.image, True, args.debug_idx)
+    T = Table.read(args.table)
+    source_ids = [get_table_index(T, id) for id in ids]
+    for n, id in enumerate(source_ids):
+        T[id]['Peak_flux'] = peakflux[n]
+        T[id]['Total_flux'] = totalflux[n].value
+        T[id]['RA'] = float(radecs[n][0])
+        T[id]['DEC'] = float(radecs[n][1])
+        T[id]['S_Code'] = scode[n]
 
-        # make ds9 region file with sources in it
-        make_point_file(tbl)
-        # loop through resolved sources and make images
-        coord = get_pix_coord(tbl)
-
-        T = Table.read(tbl, format='fits')
-        T['Peak_flux_min'] = T['Peak_flux'] - T['E_Peak_flux']
-        T['Total_flux_min'] = T['Total_flux'] - T['E_Total_flux']
-        T['Total_flux_over_peak_flux'] = T['Total_flux'] / T['Peak_flux']
-
-        f = fits.open(fts)
-        pixscale = np.sqrt(abs(f[0].header['CDELT2']*f[0].header['CDELT1']))
-        beamarea = get_beamarea(f)
-        f.close()
-
-        clusters_small = get_clusters_ra_dec(T, pixscale*100)
-        clusters_large = get_clusters_ra_dec(T, max(0.01, pixscale*100))
-
-        os.system('mkdir -p bright_sources')
-        os.system('mkdir -p weak_sources')
-        os.system('mkdir -p cluster_sources')
-
-        to_ignore = []
-
-        for c, n in coord:
-            table_idx = get_table_index(T, n)
-            if table_idx in to_ignore:
-                continue
-
-            rms = T[T['Source_id'] == n]['Isl_rms'][0]
-            cluster_indices_large = cluster_idx(clusters_large, table_idx)
-            clusters_indices_small = cluster_idx(clusters_small, table_idx)
-
-            if len(cluster_indices_large) > 3:
-                cluster_indices = cluster_indices_large
-            else:
-                cluster_indices = clusters_indices_small
-            cluster_indices = [idx for idx in cluster_indices if idx not in to_ignore]
-
-            if len(cluster_indices) > 1:
-                pix_coord = np.array([p[0] for p in coord])[cluster_indices]
-                imsize = max(int(max_dist(pix_coord)*3), 150)
-                idxs = '-'.join([str(p) for p in cluster_indices])
-                make_cutout(fitsfile=fts, pos=tuple(c), size=(imsize, imsize), savefits=f'cluster_sources/source_{m}_{idxs}.fits')
-                make_image([f'cluster_sources/source_{m}_{idxs}.fits']+args.comparison_plots, 'RdBu_r', 'components.reg')
-                for i in cluster_indices:
-                    to_ignore.append(i)
-
-            elif T[T['Source_id'] == n]['Peak_flux_min'][0] < 1.5*rms or \
-                  T[T['Source_id'] == n]['Peak_flux'][0] < 5.5*rms or \
-                    T[T['Source_id'] == n]['Total_flux'] < 7*rms:
-
-                make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'weak_sources/source_{m}_{n}.fits')
-                make_image([f'weak_sources/source_{m}_{n}.fits']+args.comparison_plots, 'RdBu_r', 'components.reg')
-
-            else:
-                make_cutout(fitsfile=fts, pos=tuple(c), size=(300, 300), savefits=f'bright_sources/source_{m}_{n}.fits')
-                make_image([f'bright_sources/source_{m}_{n}.fits']+args.comparison_plots, 'RdBu_r', 'components.reg')
+    os.system('mkdir -p outcat')
+    T['RA'] %= 360
+    T.write('outcat/'+args.table.replace('_final.fits', '_final_updated.fits').split('/')[-1], format='fits', overwrite=True)
 
 
+def parse_accept_cases():
+    with open('acceptsources.txt', 'r') as file:
+        # Read all lines in the file
+        lines = file.readlines()
+
+        # Strip newline characters from each line
+        lines = [line.strip() for line in lines]
+    return lines
+
+def verify_acceptance(name):
+    acceptthese=parse_accept_cases()
+    for a in acceptthese:
+        if a in name:
+           return True
+    return False
 
 if __name__ == '__main__':
     main()
