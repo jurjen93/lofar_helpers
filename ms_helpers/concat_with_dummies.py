@@ -176,7 +176,7 @@ def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg, t
         if freq_res is not None:
             parset += f'\navg.freqresolution={freq_res}'
 
-    parset += f'\nsteps={str(steps).replace(" ", "")}'
+    parset += '\nsteps='+str(steps).replace(" ", "").replace("'", "")
     with open(parset_name, 'w') as f:
         f.write(parset)
 
@@ -188,9 +188,10 @@ def main():
     Main script
     """
     args = parse_args()
-    make_parset('concat.parset', args.msin, args.msout, args.data_column,
+    parsetname = 'concat.parset'
+    make_parset(parsetname, args.msin, args.msout, args.data_column,
                 args.time_avg, args.freq_avg, args.time_res, args.freq_res, args.phase_center)
-    os.system('DP3 ' + args.parset_name)
+    os.system('DP3 ' + parsetname)
 
 if __name__ == '__main__':
     main()
