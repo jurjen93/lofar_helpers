@@ -1689,6 +1689,10 @@ class MergeH5:
                 st = ss._f_get_child(soltab)
                 attrsaxes = st.val.attrs['AXES']
                 antenna_index = attrsaxes.decode('utf8').split(',').index('ant')
+                try:
+                    pol_index = attrsaxes.decode('utf8').split(',').index('pol')
+                except:
+                    pol_index = None
                 h5_antlist = [v.decode('utf8') for v in list(st.ant[:])]
 
                 if keep_h5_interstations:  # keep international stations if these are not in MS
@@ -1758,6 +1762,19 @@ class MergeH5:
                                 ms_values[:, :, :, idx, ...] = 1
                             elif antenna_index == 4:
                                 ms_values[:, :, :, :, idx, ...] = 1
+
+                            if pol_index is not None:
+                                if ms_values.shape[pol_index] == 4:
+                                    if pol_index == 0:
+                                        ms_values[[1, 2], ...] = 0
+                                    elif pol_index == 1:
+                                        ms_values[:, [1, 2], ...] = 0
+                                    elif pol_index == 2:
+                                        ms_values[:, :, [1, 2], ...] = 0
+                                    elif pol_index == 3:
+                                        ms_values[:, :, :, [1, 2], ...] = 0
+                                    elif pol_index == 4:
+                                        ms_values[:, :, :, :, [1, 2], ...] = 0
 
                     valtype = str(st._f_get_child(axes).dtype)
                     if '16' in valtype:
