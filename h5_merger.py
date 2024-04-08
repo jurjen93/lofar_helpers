@@ -1754,27 +1754,64 @@ class MergeH5:
                                 print('Add ' + antenna + ' to output H5 from MS')
                             if antenna_index == 0:
                                 ms_values[idx, ...] = 1
+                                if pol_index is not None and axes != 'weight':
+                                    if ms_values.shape[pol_index] == 4:
+                                        if pol_index == 1:
+                                            ms_values[idx, [1, 2], ...] = 0
+                                        elif pol_index == 2:
+                                            ms_values[idx, :, [1, 2], ...] = 0
+                                        elif pol_index == 3:
+                                            ms_values[idx, :, :, [1, 2], ...] = 0
+                                        elif pol_index == 4:
+                                            ms_values[idx, :, :, :, [1, 2], ...] = 0
                             elif antenna_index == 1:
                                 ms_values[:, idx, ...] = 1
+                                if pol_index is not None and axes != 'weight':
+                                    if ms_values.shape[pol_index] == 4:
+                                        if pol_index == 0:
+                                            ms_values[[1, 2], idx, ...] = 0
+                                        elif pol_index == 2:
+                                            ms_values[:, idx, [1, 2], ...] = 0
+                                        elif pol_index == 3:
+                                            ms_values[:, idx, :, [1, 2], ...] = 0
+                                        elif pol_index == 4:
+                                            ms_values[:, idx, :, :, [1, 2], ...] = 0
                             elif antenna_index == 2:
                                 ms_values[:, :, idx, ...] = 1
+                                if pol_index is not None and axes != 'weight':
+                                    if ms_values.shape[pol_index] == 4:
+                                        if pol_index == 0:
+                                            ms_values[[1, 2], :, idx, ...] = 0
+                                        elif pol_index == 1:
+                                            ms_values[:, [1, 2], idx, ...] = 0
+                                        elif pol_index == 3:
+                                            ms_values[:, :, idx, [1, 2], ...] = 0
+                                        elif pol_index == 4:
+                                            ms_values[:, :, idx, :, [1, 2], ...] = 0
                             elif antenna_index == 3:
                                 ms_values[:, :, :, idx, ...] = 1
+                                if pol_index is not None and axes != 'weight':
+                                    if ms_values.shape[pol_index] == 4:
+                                        if pol_index == 0:
+                                            ms_values[[1, 2], :, :, idx, ...] = 0
+                                        elif pol_index == 1:
+                                            ms_values[:, [1, 2], :, idx, ...] = 0
+                                        elif pol_index == 2:
+                                            ms_values[:, :, [1, 2], idx, ...] = 0
+                                        elif pol_index == 4:
+                                            ms_values[:, :, :, idx, [1, 2], ...] = 0
                             elif antenna_index == 4:
                                 ms_values[:, :, :, :, idx, ...] = 1
-
-                            if pol_index is not None and axes != 'weight':
-                                if ms_values.shape[pol_index] == 4:
-                                    if pol_index == 0:
-                                        ms_values[[1, 2], ...] = 0
-                                    elif pol_index == 1:
-                                        ms_values[:, [1, 2], ...] = 0
-                                    elif pol_index == 2:
-                                        ms_values[:, :, [1, 2], ...] = 0
-                                    elif pol_index == 3:
-                                        ms_values[:, :, :, [1, 2], ...] = 0
-                                    elif pol_index == 4:
-                                        ms_values[:, :, :, :, [1, 2], ...] = 0
+                                if pol_index is not None and axes != 'weight':
+                                    if ms_values.shape[pol_index] == 4:
+                                        if pol_index == 0:
+                                            ms_values[[1, 2], :, :, :, idx, ...] = 0
+                                        elif pol_index == 1:
+                                            ms_values[:, [1, 2], :, :, idx, ...] = 0
+                                        elif pol_index == 2:
+                                            ms_values[:, :, [1, 2], :, idx, ...] = 0
+                                        elif pol_index == 3:
+                                            ms_values[:, :, :, [1, 2], idx, ...] = 0
 
                     valtype = str(st._f_get_child(axes).dtype)
                     if '16' in valtype:
