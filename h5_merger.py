@@ -1763,7 +1763,7 @@ class MergeH5:
                             elif antenna_index == 4:
                                 ms_values[:, :, :, :, idx, ...] = 1
 
-                            if pol_index is not None and axes!='weight':
+                            if pol_index is not None and axes != 'weight':
                                 if ms_values.shape[pol_index] == 4:
                                     if pol_index == 0:
                                         ms_values[[1, 2], ...] = 0
