@@ -1,8 +1,6 @@
 """
 LOFAR UV STACKER
 
-#TODO: Work in progress!
-
 Strategy:
     1) Make a template using the 'default_ms' option from casacore.tables (Template class).
        The template inclues all baselines, frequency, and smallest time spacing from all input MS.
@@ -11,6 +9,12 @@ Strategy:
     2) Stack measurement sets on the template (Stack class).
         The stacking function maps baseline numbers from the input MS to the template MS and fills
         the template according to this mapping and in LST time.
+
+#TODO: Work in progress!
+1) Test on bigger MS
+2) Validate issues at sub-arcsecond
+3) Improve speed
+
 """
 
 from casacore.tables import table, tablecopy, default_ms
