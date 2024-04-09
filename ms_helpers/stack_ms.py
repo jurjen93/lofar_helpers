@@ -1,20 +1,19 @@
 """
 LOFAR UV STACKER
 
-#TODO: 1) ADDING UVW DATA
-#TODO: 2) Verify no corruption
-#TODO: 3) Test on image
-#TODO: 4) Figure out how to move measurement set
+#TODO: Work in progress!
 
 Strategy:
-    1) Make a template with all baselines, frequency, and smallest time spacing (Template class)
-        return: empty.ms (dysco decompressed)
-    2) Stack measurement sets on the template (Stack class)
-        return: empty.ms
+    1) Make a template using the 'default_ms' option from casacore.tables (Template class).
+       The template inclues all baselines, frequency, and smallest time spacing from all input MS.
+       Time is converted to Local Sidereal Time (LST).
 
+    2) Stack measurement sets on the template (Stack class).
+        The stacking function maps baseline numbers from the input MS to the template MS and fills
+        the template according to this mapping and in LST time.
 """
 
-from casacore.tables import table, tablecopy
+from casacore.tables import table, tablecopy, default_ms
 import numpy as np
 import os
 import shutil
@@ -47,6 +46,24 @@ def print_progress_bar(index, total, bar_length=50):
         print()
 
 
+def is_dysco_compressed(ms):
+    """
+    Check if MS is dysco compressed
+
+    :input:
+        - ms: measurement set
+    """
+
+    t = table(ms, readonly=True)
+    dysco = t.getdesc()["DATA"]['dataManagerGroup'] == 'DyscoData'
+    t.close()
+
+    if dysco:
+        return True
+    else:
+        return False
+
+
 def decompress(ms):
     """
     running DP3 to remove dysco compression
@@ -55,12 +72,37 @@ def decompress(ms):
         - ms: measurement set
     """
 
-    print('\n----------\nREMOVE DYSCO COMPRESSION (if dysco compressed)\n----------\n')
+    if is_dysco_compressed(ms):
 
-    if os.path.exists(f'{ms}.tmp'):
-        shutil.rmtree(f'{ms}.tmp')
-    os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[]")
-    print('----------')
+        print('\n----------\nREMOVE DYSCO COMPRESSION\n----------\n')
+
+        if os.path.exists(f'{ms}.tmp'):
+            shutil.rmtree(f'{ms}.tmp')
+        os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[]")
+        print('----------')
+        return ms + '.tmp'
+
+    else:
+        return ms
+
+
+def compress(ms):
+    """
+    running DP3 to apply dysco compression
+
+    :input:
+        - ms: measurement set
+    """
+
+    if not is_dysco_compressed(ms):
+
+        print('\n----------\nDYSCO COMPRESSION\n----------\n')
+        os.system(f"DP3 msin={ms} msout={ms} steps=[] msout.overwrite=true")
+        print('----------')
+        return ms
+
+    else:
+        return ms
 
 
 def get_ms_content(ms):
@@ -77,11 +119,11 @@ def get_ms_content(ms):
         - delta time
     """
 
-    T = table(ms)
-    F = table(ms+"::SPECTRAL_WINDOW")
-    A = table(ms+"::ANTENNA")
-    L = table(ms+"::LOFAR_ANTENNA_FIELD")
-    S = table(ms+"::LOFAR_STATION")
+    T = table(ms, ack=False)
+    F = table(ms+"::SPECTRAL_WINDOW", ack=False)
+    A = table(ms+"::ANTENNA", ack=False)
+    L = table(ms+"::LOFAR_ANTENNA_FIELD", ack=False)
+    S = table(ms+"::LOFAR_STATION", ack=False)
 
     # Get all lofar antenna info
     lofar_stations = list(zip(
@@ -106,6 +148,7 @@ def get_ms_content(ms):
     dfreq = np.diff(sorted(set(channels)))[0]
     time = sorted(np.unique(T.getcol("TIME")))
     time_lst = mjd_seconds_to_lst_seconds(T.getcol("TIME"))
+    # time_lst = T.getcol("TIME")
     time_min_lst, time_max_lst = time_lst.min(), time_lst.max()
     total_time_seconds = max(time)-min(time)
     dt = np.diff(sorted(set(time)))[0]
@@ -139,11 +182,11 @@ def get_station_id(ms):
         - antenna names, IDs
     """
 
-    t = table(ms+'/ANTENNA')
+    t = table(ms+'/ANTENNA', ack=False)
     ants = t.getcol("NAME")
     t.close()
 
-    t = table(ms+'/FEED')
+    t = table(ms+'/FEED', ack=False)
     ids = t.getcol("ANTENNA_ID")
     t.close()
 
@@ -189,7 +232,7 @@ def same_phasedir(mslist: list = None):
     """
 
     for n, ms in enumerate(mslist):
-        t = table(ms+'/FIELD')
+        t = table(ms+'/FIELD', ack=False)
         if n==0:
             phasedir = t.getcol("PHASE_DIR")
         else:
@@ -322,24 +365,25 @@ def map_array_dict(arr, dct):
 
 
 class Template:
-    def __init__(self, msin: list = None):
+    """Make template measurement set based on input measurement sets"""
+    def __init__(self, msin: list = None, outname: str = 'empty.ms'):
         self.mslist = msin
+        self.outname = outname
 
     def add_spectral_window(self):
         """
         Add SPECTRAL_WINDOW as sub table
         """
 
-        print("\n----------\nADD " + self.tmp_name + "/SPECTRAL_WINDOW\n----------\n")
+        print("\n----------\nADD " + self.outname + "/SPECTRAL_WINDOW\n----------\n")
 
-        tnew_spw_tmp = table(self.ref_table.getkeyword('SPECTRAL_WINDOW'))
+        tnew_spw_tmp = table(self.ref_table.getkeyword('SPECTRAL_WINDOW'), ack=False)
         newdesc = tnew_spw_tmp.getdesc()
         for col in ['CHAN_WIDTH', 'CHAN_FREQ', 'RESOLUTION', 'EFFECTIVE_BW']:
             newdesc[col]['shape'] = np.array([self.channels.shape[-1]])
-        tnew_spw_tmp.close()
         pprint(newdesc)
 
-        tnew_spw = table(self.tmp_name + '/SPECTRAL_WINDOW', newdesc, readonly=False)
+        tnew_spw = table(self.outname + '/SPECTRAL_WINDOW', newdesc, readonly=False, ack=False)
         tnew_spw.addrows(1)
         chanwidth = np.expand_dims([np.squeeze(np.diff(self.channels))[0]]*self.chan_num, 0)
         tnew_spw.putcol("NUM_CHAN", np.array([self.chan_num]))
@@ -348,18 +392,19 @@ class Template:
         tnew_spw.putcol("RESOLUTION", chanwidth)
         tnew_spw.putcol("EFFECTIVE_BW", chanwidth)
         tnew_spw.putcol("REF_FREQUENCY", np.mean(self.channels))
-        tnew_spw.putcol("MEAS_FREQ_REF", np.array([self.chan_num]))
-        tnew_spw.putcol("TOTAL_BANDWIDTH", [np.max(self.channels)-np.min(self.channels)+chanwidth[0][0]])
+        tnew_spw.putcol("MEAS_FREQ_REF", np.array([5])) #TODO: Why always 5?
+        tnew_spw.putcol("TOTAL_BANDWIDTH", [np.max(self.channels)-np.min(self.channels)-chanwidth[0][0]])
+        tnew_spw.putcol("NAME", 'Stacked_MS_'+str(int(np.mean(self.channels)//1000000))+"MHz")
         tnew_spw.flush(True)
         tnew_spw.close()
-
+        tnew_spw_tmp.close()
 
     def add_stations(self):
         """
         Add ANTENNA and FEED tables
         """
 
-        print("\n----------\nADD " + self.tmp_name + "/ANTENNA\n----------\n")
+        print("\n----------\nADD " + self.outname + "/ANTENNA\n----------\n")
 
         stations = [sp[0] for sp in self.station_info]
         st_id = dict(zip(set(
@@ -376,12 +421,12 @@ class Template:
         lofar_names = np.array([sp[0] for sp in self.lofar_stations_info])
         clock = np.array([sp[1] for sp in self.lofar_stations_info])
 
-        tnew_ant_tmp = table(self.ref_table.getkeyword('ANTENNA'))
+        tnew_ant_tmp = table(self.ref_table.getkeyword('ANTENNA'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
         pprint(newdesc)
         tnew_ant_tmp.close()
 
-        tnew_ant = table(self.tmp_name + '/ANTENNA', newdesc, readonly=False)
+        tnew_ant = table(self.outname + '/ANTENNA', newdesc, readonly=False, ack=False)
         tnew_ant.addrows(len(stations))
         print(len(stations))
         print('Number of stations: ' + str(tnew_ant.nrows()))
@@ -398,14 +443,14 @@ class Template:
         tnew_ant.flush(True)
         tnew_ant.close()
 
-        print("\n----------\nADD " + self.tmp_name + "/FEED\n----------\n")
+        print("\n----------\nADD " + self.outname + "/FEED\n----------\n")
 
-        tnew_ant_tmp = table(self.ref_table.getkeyword('FEED'))
+        tnew_ant_tmp = table(self.ref_table.getkeyword('FEED'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
         pprint(newdesc)
         tnew_ant_tmp.close()
 
-        tnew_feed = table(self.tmp_name + '/FEED', newdesc, readonly=False)
+        tnew_feed = table(self.outname + '/FEED', newdesc, readonly=False, ack=False)
         tnew_feed.addrows(len(stations))
         tnew_feed.putcol("POSITION", np.array([[0., 0., 0.]] * len(stations)))
         tnew_feed.putcol("BEAM_OFFSET", np.array([[[0, 0], [0, 0]]] * len(stations)))
@@ -421,14 +466,14 @@ class Template:
         tnew_feed.flush(True)
         tnew_feed.close()
 
-        print("\n----------\nADD " + self.tmp_name + "/LOFAR_ANTENNA_FIELD\n----------\n")
+        print("\n----------\nADD " + self.outname + "/LOFAR_ANTENNA_FIELD\n----------\n")
 
-        tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_ANTENNA_FIELD'))
+        tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_ANTENNA_FIELD'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
         pprint(newdesc)
         tnew_ant_tmp.close()
 
-        tnew_field = table(self.tmp_name + '/LOFAR_ANTENNA_FIELD', newdesc, readonly=False)
+        tnew_field = table(self.outname + '/LOFAR_ANTENNA_FIELD', newdesc, readonly=False, ack=False)
         tnew_field.addrows(len(stations))
         tnew_field.putcol("ANTENNA_ID", np.array(range(len(stations))))
         tnew_field.putcol("NAME", names)
@@ -438,14 +483,14 @@ class Template:
         tnew_field.flush(True)
         tnew_field.close()
 
-        print("\n----------\nADD " + self.tmp_name + "/LOFAR_STATION\n----------\n")
+        print("\n----------\nADD " + self.outname + "/LOFAR_STATION\n----------\n")
 
-        tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_STATION'))
+        tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_STATION'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
         pprint(newdesc)
         tnew_ant_tmp.close()
 
-        tnew_station = table(self.tmp_name + '/LOFAR_STATION', newdesc, readonly=False)
+        tnew_station = table(self.outname + '/LOFAR_STATION', newdesc, readonly=False, ack=False)
         tnew_station.addrows(len(lofar_names))
         tnew_station.putcol("NAME", lofar_names)
         tnew_station.putcol("FLAG_ROW", np.array([False] * len(lofar_names)))
@@ -453,15 +498,14 @@ class Template:
         tnew_station.flush(True)
         tnew_station.close()
 
-
     def make_template(self, overwrite: bool =True):
         """
         Make template MS based on existing MS
         """
 
         if overwrite:
-            if os.path.exists(f'empty.ms'):
-                shutil.rmtree(f'empty.ms')
+            if os.path.exists(self.outname):
+                shutil.rmtree(self.outname)
 
         same_phasedir(self.mslist)
 
@@ -499,12 +543,8 @@ class Template:
         tmp_ms = self.mslist[0]
 
         # Remove dysco compression
-        decompress(tmp_ms)
-
-        # Make empty copy (which later becomes the empty template output)
-        outname = 'empty.ms'
-        tablecopy(tmp_ms+".tmp", outname, valuecopy=True, copynorows=True)
-        self.ref_table = table(outname)
+        self.tmpfile = decompress(tmp_ms)
+        self.ref_table = table(self.tmpfile, ack=False)
 
         # Data description
         newdesc_data = self.ref_table.getdesc()
@@ -512,16 +552,14 @@ class Template:
         # Reshape
         for col in ['DATA', 'FLAG', 'WEIGHT_SPECTRUM']:
             newdesc_data[col]['shape'] = np.array([self.chan_num, 4])
-
-        # for key in newdesc_data['_keywords_'].keys():
-        #     if key != 'MS_VERSION':
-        #         newdesc_data['_keywords_'][key] = newdesc_data['_keywords_'][key].replace('empty.ms', template_name)
+        newdesc_data.pop("_keywords_")
 
         pprint(newdesc_data)
 
         # Make main table
-        self.tmp_name = 'tmp.ms'
-        tnew = table(self.tmp_name, newdesc_data, nrow=nrows, _columnnames=self.ref_table.colnames())
+        default_ms(self.outname, newdesc_data)
+        tnew = table(self.outname, readonly=False, ack=False)
+        tnew.addrows(nrows)
         ant1, ant2 = make_ant_pairs(len(self.station_info), len(time_range))
         t = repeat_elements(time_range, baseline_count)
         tnew.putcol("TIME", t)
@@ -545,39 +583,35 @@ class Template:
         # Set ANTENNA/STATION info
         self.add_stations()
 
-        # Set QUALITY_XXX_STATISTIC
-        for subt in ['QUALITY_BASELINE_STATISTIC', 'QUALITY_FREQUENCY_STATISTIC',
-                     'QUALITY_TIME_STATISTIC', 'QUALITY_KIND_NAME']:
-            tablecopy(outname+'/'+subt, self.tmp_name+'/'+subt)
-
         # Set other tables
         for subtbl in ['FIELD', 'HISTORY', 'FLAG_CMD', 'DATA_DESCRIPTION',
                        'LOFAR_ELEMENT_FAILURE', 'OBSERVATION', 'POINTING',
                        'POLARIZATION', 'PROCESSOR', 'STATE']:
-            print("----------\nADD " + self.tmp_name + "/" + subtbl + "\n----------")
+            print("----------\nADD " + self.outname + "/" + subtbl + "\n----------")
 
-            tsub = table(tmp_ms+".tmp/"+subtbl, ack=False)
-            tsub.copy(self.tmp_name + '/' + subtbl, deep=True)
+            tsub = table(self.tmpfile+"/"+subtbl, ack=False, readonly=False)
+            tsub.copy(self.outname + '/' + subtbl, deep=True)
             tsub.flush(True)
             tsub.close()
 
         self.ref_table.close()
 
         # Cleanup
-        shutil.rmtree(outname)
-        shutil.rmtree(tmp_ms+".tmp")
-        shutil.move(self.tmp_name, outname)
+        if 'tmp' in self.tmpfile:
+            shutil.rmtree(self.tmpfile)
 
 
 class Stack:
     """
     Stack measurement sets in template empty.ms
     """
-    def __init__(self, msin: list = None):
-        if not os.path.exists(f'empty.ms'):
-            sys.exit("ERROR: Template empty.ms has not been created or is deleted")
-        self.template = table('empty.ms', readonly=False)
+    def __init__(self, msin: list = None, outname: str = 'empty.ms'):
+        if not os.path.exists(outname):
+            sys.exit(f"ERROR: Template {outname} has not been created or is deleted")
+        self.template = table(outname, readonly=False, ack=False)
         self.mslist = msin
+        self.outname = outname
+        self.ant_map = None
 
     def stack_all(self, column: str = 'DATA'):
         """
@@ -587,9 +621,11 @@ class Stack:
             - type: DATA, WEIGHT, WEIGHT_SPECTRUM, WEIGHT
         """
 
-        ref_stats, ref_ids = get_station_id('empty.ms')
-        T = table('empty.ms')
-        F = table('empty.ms/SPECTRAL_WINDOW')
+        print(column)
+
+        ref_stats, ref_ids = get_station_id(self.outname)
+        T = table(self.outname, ack=False)
+        F = table(self.outname+'/SPECTRAL_WINDOW', ack=False)
         ref_freqs = F.getcol("CHAN_FREQ")[0]
         F.close()
 
@@ -597,8 +633,13 @@ class Stack:
         ref_uniq_time = np.unique(ref_time)
         ref_antennas = np.c_[T.getcol("ANTENNA1"), T.getcol("ANTENNA2")]
 
-        if column in ['DATA', 'WEIGHT_SPECTRUM']:
+        # Initialize data
+        if column in ['DATA', 'WEIGHT_SPECTRUM', 'FLAG', 'WEIGHT']:
             weights = np.zeros((len(ref_time), len(ref_freqs)))
+        elif column in ['UVW']:
+            weights = np.zeros((len(ref_time)))
+
+        if column in ['DATA', 'WEIGHT_SPECTRUM']:
             if column == 'DATA':
                 dtp = np.complex128
             elif column == 'WEIGHT_SPECTRUM':
@@ -612,14 +653,17 @@ class Stack:
         elif column == 'WEIGHT':
             new_data = np.zeros((len(ref_time), len(ref_freqs)), dtype=np.float32)
 
+        elif column == 'UVW':
+            new_data = np.zeros((len(ref_time), 3), dtype=np.float32)
+
         # Remove ref_time
         ref_time = None
 
         for ms in self.mslist:
             new_stats, new_ids = get_station_id(ms)
             id_map = dict(zip(new_ids, [ref_stats.index(a) for a in new_stats]))
-            t = table(ms)
-            f = table(ms+'/SPECTRAL_WINDOW')
+            t = table(ms, ack=False)
+            f = table(ms+'/SPECTRAL_WINDOW', ack=False)
             freqs = f.getcol("CHAN_FREQ")[0]
             f.close()
 
@@ -639,9 +683,6 @@ class Stack:
 
             # Loop over frequency
             print('\nStacking: '+ms)
-            # for n, freq in enumerate(freqs[0:2]):
-            #     print(f'\n{int(round(freq / 1000000,0))} MHz')
-            #     f_ind = find_closest_index(ref_freqs, freq)
 
             # Loop over antenna pairs
             for m, antpair in enumerate(uniq_ant_pairs):
@@ -656,14 +697,24 @@ class Stack:
                     new_data[ref_pair_idx[0:idx_len], freq_offset:freq_offset+len(freqs), :] *= t.getcol(column)[pair_idx[0:idx_len], :, :]
                 elif column == 'WEIGHT':
                     new_data[ref_pair_idx[0:idx_len], :] *= t.getcol(column)[pair_idx[0:idx_len], :]
+                elif column == 'UVW':
+                    new_data[ref_pair_idx[0:idx_len], :] += t.getcol(column)[pair_idx[0:idx_len], :]
+                    weights[ref_pair_idx[0:idx_len]] += 1
 
             t.close()
 
+        # Average
+        weights = weights.astype(np.float16)
+        weights[weights == 0.] = np.inf
         if column in ['DATA', 'WEIGHT_SPECTRUM']:
             for p in range(4):
                 new_data[:, :, p] /= weights
+        if column == 'UVW':
+            new_data /= np.repeat(weights, 3).reshape(-1, 3)
 
         T.putcol(column, new_data)
+
+        print("----------\n")
 
         T.close()
 
@@ -673,23 +724,32 @@ def parse_args():
     Parse input arguments
     """
     parser = ArgumentParser(description='MS stacking')
+    parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
     parser.add_argument('msin', nargs='+', help='Measurement sets to stack')
     return parser.parse_args()
 
 
 def main():
+    """
+    Main function
+    """
 
     # Make template
     args = parse_args()
-    t = Template(args.msin)
+    t = Template(args.msin, args.msout)
     t.make_template()
+    print("############\nTemplate creation completed\n############")
 
-    s = Stack(args.msin)
+    # Stack MS
+    s = Stack(args.msin, args.msout)
+    s.stack_all('UVW')
     s.stack_all('DATA')
     s.stack_all('FLAG')
     s.stack_all('WEIGHT_SPECTRUM')
 
+    # Apply dysco compression
+    compress(args.msout)
+
 
 if __name__ == '__main__':
     main()
-
