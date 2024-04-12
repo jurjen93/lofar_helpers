@@ -179,7 +179,10 @@ class GetSolint:
                     sys.exit('ERROR: This solution file should only contain one direction, but it has ' +
                              str(phasemod.shape[ax[1]]) + ' directions')
             elif ax[0] == 'freq':  # faraday corrected
-                phasemod = np.diff(phasemod, axis=ax[1])
+                if phasemod.shape[ax[1]] == 1:
+                    print("WARNING: only 1 frequency --> Skip frequency diff for Faraday correction (score will be less accurate)")
+                else:
+                    phasemod = np.diff(phasemod, axis=ax[1])
             elif ax[0] == 'ant':  # take only international stations
                 phasemod = phasemod.take(indices=stations_idx, axis=ax[1])
 
