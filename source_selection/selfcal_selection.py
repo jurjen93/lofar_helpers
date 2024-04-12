@@ -311,6 +311,20 @@ def parse_source_from_h5(h5):
         matches = re.findall(r'ILTJ\d+\..\d+\+\d+.\d+_L\d+', h5)
         if len(matches)==0:
             matches = re.findall(r'ILTJ\d+\..\d+\+\d+.\d+', h5)
+            if len(matches)==0:
+                print("WARNING: Difficulty with parsing the source name form " + h5)
+                output = (re.sub('(\D)\d{3}\_', '', h5).
+                          replace("merged_", "").
+                          replace('addCS_', '').
+                          replace('selfcalcyl', '').
+                          replace('selfcalcyle', '').
+                          replace('.ms', '').
+                          replace('.copy', '').
+                          replace('.phaseup', '').
+                          replace('.h5', '').
+                          replace('.dp3', ''))
+                print('Parsed into ' + h5)
+                return output
         output = matches[0]
     elif 'selfcalcyle' in h5:
         matches = re.findall(r'selfcalcyle\d+_(.*?)\.', h5)
