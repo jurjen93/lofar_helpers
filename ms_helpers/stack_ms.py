@@ -14,10 +14,11 @@ Strategy:
 1) Test on bigger MS
 2) Validate issues at sub-arcsecond
 3) Improve speed
+4) Correct flagging (now everything gets flagged from all MS if something is flagged)
 
 """
 
-from casacore.tables import table, tablecopy, default_ms
+from casacore.tables import table, default_ms, taql
 import numpy as np
 import os
 import shutil
@@ -82,7 +83,7 @@ def decompress(ms):
 
         if os.path.exists(f'{ms}.tmp'):
             shutil.rmtree(f'{ms}.tmp')
-        os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[]")
+        os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[] msout.storagemanager=dysco")
         print('----------')
         return ms + '.tmp'
 
@@ -638,7 +639,7 @@ class Stack:
         ref_antennas = np.c_[T.getcol("ANTENNA1"), T.getcol("ANTENNA2")]
 
         # Initialize data
-        if column in ['DATA', 'WEIGHT_SPECTRUM', 'FLAG', 'WEIGHT']:
+        if column in ['DATA', 'WEIGHT_SPECTRUM', 'WEIGHT']:
             weights = np.zeros((len(ref_time), len(ref_freqs)))
         elif column in ['UVW']:
             weights = np.zeros((len(ref_time)))
@@ -651,8 +652,6 @@ class Stack:
             else:
                 dtp = np.float32
             new_data = np.zeros((len(ref_time), len(ref_freqs), 4), dtype=dtp)
-        elif column == 'FLAG':
-            new_data = np.ones((len(ref_time), len(ref_freqs), 4), dtype=bool)
 
         elif column == 'WEIGHT':
             new_data = np.zeros((len(ref_time), len(ref_freqs)), dtype=np.float32)
@@ -666,12 +665,18 @@ class Stack:
         for ms in self.mslist:
             new_stats, new_ids = get_station_id(ms)
             id_map = dict(zip(new_ids, [ref_stats.index(a) for a in new_stats]))
-            t = table(ms, ack=False)
+
+            # Get freqs offset
             f = table(ms+'/SPECTRAL_WINDOW', ack=False)
             freqs = f.getcol("CHAN_FREQ")[0]
+            freq_offset = find_closest_index(ref_freqs, freqs[0])
+            freqs = None
             f.close()
 
-            # Mapped antenna pairs to same as ref (template) table
+            # Open MS table
+            t = table(ms, ack=False)
+
+            # Map antenna pairs to same as ref (template) table
             antennas = np.c_[map_array_dict(t.getcol("ANTENNA1"), id_map), map_array_dict(t.getcol("ANTENNA2"), id_map)]
 
             # Unique antenna pairs
@@ -681,9 +686,7 @@ class Stack:
             time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
             uniq_time = np.unique(time)
             time_offset = find_closest_index(ref_uniq_time, uniq_time[0])
-            # time_offset_last = find_closest_index(ref_uniq_time, uniq_time[-1])
-
-            freq_offset = find_closest_index(ref_freqs, freqs[0])
+            time = None
 
             # Loop over frequency
             print('\nStacking: '+ms)
@@ -694,17 +697,16 @@ class Stack:
                 pair_idx = np.squeeze(np.argwhere(np.all(antennas == antpair, axis=1)))
                 ref_pair_idx = np.squeeze(np.argwhere(np.all(ref_antennas == antpair, axis=1))[time_offset:len(pair_idx)])
                 idx_len = min(len(pair_idx), len(ref_pair_idx))
+                taql_table = taql(f"SELECT FLAG,{column} FROM data1.ms WHERE ANTENNA1={antpair[0]} AND ANTENNA2={antpair[1]} ORDER BY TIME")
                 if column in ['DATA', 'WEIGHT_SPECTRUM']:
-                    new_data[ref_pair_idx[0:idx_len], freq_offset:freq_offset+len(freqs), :] += t.getcol(column)[pair_idx[0:idx_len], :, :]
-                    weights[ref_pair_idx[0:idx_len], freq_offset:freq_offset + len(freqs)] += 1
-                elif column == 'FLAG':
-                    new_data[ref_pair_idx[0:idx_len], freq_offset:freq_offset+len(freqs), :] *= t.getcol(column)[pair_idx[0:idx_len], :, :]
+                    flag = taql_table.getcol("FLAG")
+                    new_data[ref_pair_idx[0:idx_len], freq_offset:freq_offset+len(freqs), :] += taql_table.getcol(column) * flag
+                    weights[ref_pair_idx[0:idx_len], freq_offset:freq_offset + len(freqs)] += flag
                 elif column == 'WEIGHT':
-                    new_data[ref_pair_idx[0:idx_len], :] *= t.getcol(column)[pair_idx[0:idx_len], :]
+                    new_data[ref_pair_idx[0:idx_len], :] *= taql_table.getcol(column)
                 elif column == 'UVW':
-                    new_data[ref_pair_idx[0:idx_len], :] += t.getcol(column)[pair_idx[0:idx_len], :]
+                    new_data[ref_pair_idx[0:idx_len], :] += taql_table.getcol(column)
                     weights[ref_pair_idx[0:idx_len]] += 1
-
             t.close()
 
         # Average
@@ -713,6 +715,7 @@ class Stack:
         if column in ['DATA', 'WEIGHT_SPECTRUM']:
             for p in range(4):
                 new_data[:, :, p] /= weights
+            T.putcol('FLAG', weights > 0)
         if column == 'UVW':
             new_data /= np.repeat(weights, 3).reshape(-1, 3)
 
@@ -748,7 +751,6 @@ def main():
     s = Stack(args.msin, args.msout)
     s.stack_all('UVW')
     s.stack_all('DATA')
-    s.stack_all('FLAG')
     s.stack_all('WEIGHT_SPECTRUM')
 
     # Apply dysco compression
