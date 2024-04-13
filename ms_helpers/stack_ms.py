@@ -83,7 +83,7 @@ def decompress(ms):
 
         if os.path.exists(f'{ms}.tmp'):
             shutil.rmtree(f'{ms}.tmp')
-        os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[] msout.storagemanager=dysco")
+        os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[]")
         print('----------')
         return ms + '.tmp'
 
@@ -102,7 +102,7 @@ def compress(ms):
     if not is_dysco_compressed(ms):
 
         print('\n----------\nDYSCO COMPRESSION\n----------\n')
-        os.system(f"DP3 msin={ms} msout={ms} steps=[] msout.overwrite=true")
+        os.system(f"DP3 msin={ms} msout={ms} steps=[] msout.overwrite=true msout.storagemanager=dysco")
         print('----------')
         return ms
 
@@ -697,7 +697,7 @@ class Stack:
                 pair_idx = np.squeeze(np.argwhere(np.all(antennas == antpair, axis=1)))
                 ref_pair_idx = np.squeeze(np.argwhere(np.all(ref_antennas == antpair, axis=1))[time_offset:len(pair_idx)])
                 idx_len = min(len(pair_idx), len(ref_pair_idx))
-                taql_table = taql(f"SELECT FLAG,{column} FROM data1.ms WHERE ANTENNA1={antpair[0]} AND ANTENNA2={antpair[1]} ORDER BY TIME")
+                taql_table = taql(f"SELECT FLAG,{column} FROM {os.path.abspath(ms)} WHERE ANTENNA1={antpair[0]} AND ANTENNA2={antpair[1]} ORDER BY TIME")
                 if column in ['DATA', 'WEIGHT_SPECTRUM']:
                     flag = taql_table.getcol("FLAG")
                     new_data[ref_pair_idx[0:idx_len], freq_offset:freq_offset+len(freqs), :] += taql_table.getcol(column) * flag
