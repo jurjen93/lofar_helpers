@@ -629,7 +629,7 @@ class Stack:
         print(column)
 
         ref_stats, ref_ids = get_station_id(self.outname)
-        T = table(self.outname, ack=False)
+        T = taql(f"SELECT FLAG,{column},TIME,ANTENNA1,ANTENNA2,WEIGHT FROM {os.path.abspath(self.outname)} ORDER BY TIME")
         F = table(self.outname+'/SPECTRAL_WINDOW', ack=False)
         ref_freqs = F.getcol("CHAN_FREQ")[0]
         F.close()
@@ -670,7 +670,6 @@ class Stack:
             f = table(ms+'/SPECTRAL_WINDOW', ack=False)
             freqs = f.getcol("CHAN_FREQ")[0]
             freq_offset = find_closest_index(ref_freqs, freqs[0])
-            freqs = None
             f.close()
 
             # Open MS table
@@ -684,6 +683,7 @@ class Stack:
 
             # Time in LST
             time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
+            t.close()
             uniq_time = np.unique(time)
             time_offset = find_closest_index(ref_uniq_time, uniq_time[0])
             time = None
@@ -695,13 +695,13 @@ class Stack:
             for m, antpair in enumerate(uniq_ant_pairs):
                 print_progress_bar(m, len(uniq_ant_pairs))
                 pair_idx = np.squeeze(np.argwhere(np.all(antennas == antpair, axis=1)))
-                ref_pair_idx = np.squeeze(np.argwhere(np.all(ref_antennas == antpair, axis=1))[time_offset:len(pair_idx)])
+                ref_pair_idx = np.squeeze(np.argwhere(np.all(ref_antennas == antpair, axis=1))[time_offset:len(pair_idx)+time_offset])
                 idx_len = min(len(pair_idx), len(ref_pair_idx))
                 taql_table = taql(f"SELECT FLAG,{column} FROM {os.path.abspath(ms)} WHERE ANTENNA1={antpair[0]} AND ANTENNA2={antpair[1]} ORDER BY TIME")
                 if column in ['DATA', 'WEIGHT_SPECTRUM']:
                     flag = taql_table.getcol("FLAG")
                     new_data[ref_pair_idx[0:idx_len], freq_offset:freq_offset+len(freqs), :] += taql_table.getcol(column) * flag
-                    weights[ref_pair_idx[0:idx_len], freq_offset:freq_offset + len(freqs)] += flag
+                    weights[ref_pair_idx[0:idx_len], freq_offset:freq_offset+len(freqs)] += flag[:, :, 0]
                 elif column == 'WEIGHT':
                     new_data[ref_pair_idx[0:idx_len], :] *= taql_table.getcol(column)
                 elif column == 'UVW':
