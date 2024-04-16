@@ -8,13 +8,13 @@ Strategy:
 
     2) Stack measurement sets on the template (Stack class).
         The stacking function maps baseline numbers from the input MS to the template MS and fills
-        the template according to this mapping and in LST time.
+        the template according to this mapping in LST time.
 
 #TODO: Work in progress!
-1) Test on bigger MS
-2) Validate issues at sub-arcsecond
-3) Improve speed
-4) Correct flagging (now everything gets flagged from all MS if something is flagged)
+1) Investigate why bad quality
+2) Test on bigger MS
+3) Validate issues at sub-arcsecond
+4) Improve speed
 
 """
 
@@ -28,6 +28,9 @@ from astropy.coordinates import EarthLocation
 import astropy.units as u
 from pprint import pprint
 from argparse import ArgumentParser
+import json
+from glob import glob
+from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 
 
 def print_progress_bar(index, total, bar_length=50):
@@ -176,6 +179,21 @@ def get_ms_content(ms):
     return stations, lofar_stations, channels, dfreq, total_time_seconds, dt, time_min_lst, time_max_lst
 
 
+def get_largest_divider(inp, max=1000):
+    """
+    Get largest divider
+
+    :param inp: input number
+    :param max: max divider
+
+    :return: largest divider from inp bound by max
+    """
+    for r in range(max)[::-1]:
+        if inp % r == 0:
+            return r
+    sys.exit("ERROR: code should not arrive here.")
+
+
 def get_station_id(ms):
     """
     Get station with corresponding id number
@@ -217,7 +235,7 @@ def mjd_seconds_to_lst_seconds(mjd_seconds, longitude_deg=52.909):
     time_utc = Time(mjd_days, format='mjd', scale='utc')
 
     # Define the observer's location using longitude (latitude doesn't affect LST)
-    location = EarthLocation(lon=longitude_deg * u.deg, lat=0 * u.deg)
+    location = EarthLocation(lon=longitude_deg * u.deg, lat=0. * u.deg)
 
     # Calculate LST in hours
     lst_hours = time_utc.sidereal_time('mean', longitude=location.lon).hour
@@ -352,8 +370,8 @@ def map_array_dict(arr, dct):
     Maps elements of the input_array to new values using a mapping_dict
 
     :input:
-        - input_array: numpy array of integers that need to be mapped.
-        - mapping_dict: dictionary where each key-value pair represents an original value and its corresponding new value.
+        - arr: numpy array of integers that need to be mapped.
+        - dct: dictionary where each key-value pair represents an original value and its corresponding new value.
 
     :return:
         - An array where each element has been mapped according to the mapping_dict.
@@ -367,6 +385,22 @@ def map_array_dict(arr, dct):
     output_array = lookup(arr)
 
     return output_array
+
+
+def add_axis(arr, ax_size):
+    """
+    Add ax dimension with a specific size
+
+    :input:
+        - arr: numpy array
+        - ax_size: axis size
+
+    :return:
+        - output with new axis dimension with a particular size
+    """
+    or_shape = arr.shape
+    new_shape = list(or_shape) + [ax_size]
+    return np.repeat(arr, ax_size).reshape(new_shape)
 
 
 class Template:
@@ -618,31 +652,26 @@ class Stack:
         self.outname = outname
         self.ant_map = None
 
-    def stack_all(self, column: str = 'DATA'):
+    @staticmethod
+    def get_data_arrays(column: str = 'DATA', time_len: int = None, freq_len: int = None):
         """
-        Stack all MS
+        Get data arrays (new data and weights)
 
-        :input:
-            - type: DATA, WEIGHT, WEIGHT_SPECTRUM, WEIGHT
+        :param:
+            - column: column name (DATA, WEIGHT_SPECTRUM, WEIGHT, OR UVW)
+            - time_len: time axis length
+            - freq_len: frequency axis length
+
+        :return:
+            - new_data: new data array (empty array with correct shape)
+            - weights: weights corresponding to new data array (empty array with correct shape)
         """
-
-        print(column)
-
-        ref_stats, ref_ids = get_station_id(self.outname)
-        T = taql(f"SELECT FLAG,{column},TIME,ANTENNA1,ANTENNA2,WEIGHT FROM {os.path.abspath(self.outname)} ORDER BY TIME")
-        F = table(self.outname+'/SPECTRAL_WINDOW', ack=False)
-        ref_freqs = F.getcol("CHAN_FREQ")[0]
-        F.close()
-
-        ref_time = T.getcol("TIME")
-        ref_uniq_time = np.unique(ref_time)
-        ref_antennas = np.c_[T.getcol("ANTENNA1"), T.getcol("ANTENNA2")]
 
         # Initialize data
         if column in ['DATA', 'WEIGHT_SPECTRUM', 'WEIGHT']:
-            weights = np.zeros((len(ref_time), len(ref_freqs)))
+            weights = np.zeros((time_len, freq_len))
         elif column in ['UVW']:
-            weights = np.zeros((len(ref_time)))
+            weights = np.zeros((time_len))
 
         if column in ['DATA', 'WEIGHT_SPECTRUM']:
             if column == 'DATA':
@@ -651,78 +680,191 @@ class Stack:
                 dtp = np.float32
             else:
                 dtp = np.float32
-            new_data = np.zeros((len(ref_time), len(ref_freqs), 4), dtype=dtp)
+            new_data = np.zeros((time_len, freq_len, 4), dtype=dtp)
 
         elif column == 'WEIGHT':
-            new_data = np.zeros((len(ref_time), len(ref_freqs)), dtype=np.float32)
+            new_data = np.zeros((time_len, freq_len), dtype=np.float32)
 
         elif column == 'UVW':
-            new_data = np.zeros((len(ref_time), 3), dtype=np.float32)
+            new_data = np.zeros((time_len, 3), dtype=np.float32)
+
+        else:
+            sys.exit("ERROR: Choose only DATA, WEIGHT_SPECTRUM, WEIGHT, or UVW")
+
+        return new_data, weights
+
+    def stack_all(self, column: str = 'DATA'):
+        """
+        Stack all MS
+
+        :input:
+            - column: column name (currently only DATA)
+        """
+
+        if column == 'DATA':
+            columns = ['UVW', column, 'WEIGHT_SPECTRUM']
+        else:
+            sys.exit("ERROR: Only column 'DATA' allowed (for now)")
+
+        def process_antpair(antpair):
+            """
+            Making json files with antenna pair mappings.
+            Mapping INPUT MS idx --> OUTPUT MS idx
+
+            :input:
+                - antpair: antenna pair
+
+            """
+
+            # Get idx
+            pair_idx = np.squeeze(np.argwhere(np.all(antennas == antpair, axis=1))).astype(int)
+            ref_pair_idx = np.squeeze(np.argwhere(np.all(ref_antennas == antpair, axis=1))
+                                      [time_offset:len(pair_idx) + time_offset]).astype(int)
+
+            # Make mapping dict
+            mapping = {int(pair_idx[i]): int(ref_pair_idx[i]) for i in range(min(pair_idx.__len__(), ref_pair_idx.__len__()))}
+
+            # Ensure the mapping folder exists
+            os.makedirs(mapping_folder, exist_ok=True)
+            # Define file path
+            file_path = os.path.join(mapping_folder, '-'.join(antpair.astype(str)) + '.json')
+
+            # Write to file
+            with open(file_path, 'w') as f:
+                json.dump(mapping, f)
+
+        def run_parallel_mapping(uniq_ant_pairs):
+            """
+            Parallel processing of mapping with unique antenna pairs
+
+            :input:
+                - uniq_ant_pairs: unique antenna pairs to loop over in parallel
+            """
+
+            # Number of threads in the pool (adjust based on available resources)
+            with ThreadPoolExecutor(max_workers=max(os.cpu_count()-3, 1)) as executor:
+                # Submit tasks to the executor
+                futures = [
+                    executor.submit(process_antpair, antpair)
+                    for antpair in uniq_ant_pairs]
+
+                # Optionally, gather results or handle exceptions
+                for future in futures:
+                    try:
+                        future.result()  # This will raise exceptions if any occurred during the execution
+                    except Exception as exc:
+                        print(f"Generated an exception: {exc}")
+
+
+        ref_stats, ref_ids = get_station_id(self.outname)
+
+        # Freq
+        F = table(self.outname+'/SPECTRAL_WINDOW', ack=False)
+        ref_freqs = F.getcol("CHAN_FREQ")[0]
+        freq_len = ref_freqs.__len__()
+        F.close()
+
+        # Time
+        T = taql(f"SELECT FLAG,TIME,ANTENNA1,ANTENNA2,WEIGHT,UVW,WEIGHT_SPECTRUM,DATA FROM "
+                 f"{os.path.abspath(self.outname)} ORDER BY TIME")
+        ref_time = T.getcol("TIME")
+        time_len = ref_time.__len__()
+        ref_uniq_time = np.unique(ref_time)
+        ref_antennas = np.c_[T.getcol("ANTENNA1"), T.getcol("ANTENNA2")]
 
         # Remove ref_time
         ref_time = None
 
-        for ms in self.mslist:
-            new_stats, new_ids = get_station_id(ms)
-            id_map = dict(zip(new_ids, [ref_stats.index(a) for a in new_stats]))
+        # Loop over columns
+        for n, col in enumerate(columns):
 
-            # Get freqs offset
-            f = table(ms+'/SPECTRAL_WINDOW', ack=False)
-            freqs = f.getcol("CHAN_FREQ")[0]
-            freq_offset = find_closest_index(ref_freqs, freqs[0])
-            f.close()
+            new_data, weights = self.get_data_arrays(col, time_len, freq_len)
 
-            # Open MS table
-            t = table(ms, ack=False)
+            # Loop over measurement sets
+            for ms in self.mslist:
 
-            # Map antenna pairs to same as ref (template) table
-            antennas = np.c_[map_array_dict(t.getcol("ANTENNA1"), id_map), map_array_dict(t.getcol("ANTENNA2"), id_map)]
+                # Do only for first column
+                if n == 0:
+                    # Get MS info
+                    new_stats, new_ids = get_station_id(ms)
+                    id_map = dict(zip(new_ids, [ref_stats.index(a) for a in new_stats]))
 
-            # Unique antenna pairs
-            uniq_ant_pairs = np.array(make_ant_pairs(len(np.unique(t.getcol("ANTENNA1")))+1, 1)).T
+                    # Get freqs offset
+                    f = table(ms+'/SPECTRAL_WINDOW', ack=False)
+                    freqs = f.getcol("CHAN_FREQ")[0]
+                    freq_offset = find_closest_index(ref_freqs, freqs[0])
+                    f.close()
 
-            # Time in LST
-            time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
+                    # Open MS table
+                    t = taql(f"SELECT TIME,ANTENNA1,ANTENNA2,FLAG,{','.join(columns)} FROM {os.path.abspath(ms)} ORDER BY TIME")
+
+                    # Map antenna pairs to same as ref (template) table
+                    antennas = np.c_[map_array_dict(t.getcol("ANTENNA1"), id_map), map_array_dict(t.getcol("ANTENNA2"), id_map)]
+
+                    # Unique antenna pairs
+                    uniq_ant_pairs = np.unique(antennas, axis=0)
+
+                    # Time in LST
+                    time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
+                    uniq_time = np.unique(time)
+                    time_offset = find_closest_index(ref_uniq_time, uniq_time[0])
+                    time = None
+
+                    # Make antenna mapping in parallel
+                    mapping_folder = ms.replace('.ms', '').replace('.MS', '') + '_mapping'
+                    try:
+                        os.makedirs(mapping_folder, exist_ok=False)
+                        run_parallel_mapping(uniq_ant_pairs)
+                    except FileExistsError:
+                        print(f'Skip mapping --> {mapping_folder} already exists')
+
+                    indices = []
+                    ref_indices = []
+                    print('Read mapping')
+                    for m, ant_map_json in enumerate(glob(mapping_folder + "/*.json")):
+                        print_progress_bar(m, len(glob(mapping_folder+"/*.json")))
+                        with open(ant_map_json, 'r') as file:
+                            # Load its content and convert it into a dictionary
+                            maps = json.load(file)
+                        indices.extend(list(map(int, maps.keys())))
+                        ref_indices.extend(list(map(int, maps.values())))
+
+                # Get data
+                if col in ['DATA', 'WEIGHT_SPECTRUM']:
+                    flag = np.invert(t.getcol("FLAG"))
+                data = t.getcol(col)
+                print(f'\nStacking {col}: {ms}')
+
+                #TODO: PARALLEL CHUNKING --> FASTER?
+
+                if col in ['DATA', 'WEIGHT_SPECTRUM']:
+                    new_data[ref_indices, freq_offset:freq_offset+len(freqs), :] += data[indices, :, :] * flag
+                    weights[ref_indices, freq_offset:freq_offset+len(freqs)] += flag[indices, :, 0]
+                    # np.multiply(data[indices, :, :], flag, out=data)
+                    # np.add.at(new_data, (ref_indices, slice(freq_offset, freq_offset + len(freqs), None)), data)
+                    # np.add.at(weights, (ref_indices, slice(freq_offset, freq_offset + len(freqs), None)), flag)
+                elif col == 'WEIGHT':
+                    new_data[ref_indices, :] *= data[indices, :]
+                elif col == 'UVW':
+                    new_data[ref_indices, :] += data[indices, :]
+                    weights[ref_indices] += 1
+
+            # Average
+            weights = weights.astype(np.float16)
+            weights[weights == 0.] = np.inf
+            if col in ['DATA', 'WEIGHT_SPECTRUM']:
+                for p in range(4):
+                    new_data[:, :, p] /= weights
+                T.putcol('FLAG', add_axis(np.invert(weights > 0), 4))
+            if col == 'UVW':
+                new_data /= add_axis(weights, 3)
+
+            print(f'Put column {col}')
+            # print(new_data)
+            T.putcol(col, new_data)
+
             t.close()
-            uniq_time = np.unique(time)
-            time_offset = find_closest_index(ref_uniq_time, uniq_time[0])
-            time = None
-
-            # Loop over frequency
-            print('\nStacking: '+ms)
-
-            # Loop over antenna pairs
-            for m, antpair in enumerate(uniq_ant_pairs):
-                print_progress_bar(m, len(uniq_ant_pairs))
-                pair_idx = np.squeeze(np.argwhere(np.all(antennas == antpair, axis=1)))
-                ref_pair_idx = np.squeeze(np.argwhere(np.all(ref_antennas == antpair, axis=1))[time_offset:len(pair_idx)+time_offset])
-                idx_len = min(len(pair_idx), len(ref_pair_idx))
-                taql_table = taql(f"SELECT FLAG,{column} FROM {os.path.abspath(ms)} WHERE ANTENNA1={antpair[0]} AND ANTENNA2={antpair[1]} ORDER BY TIME")
-                if column in ['DATA', 'WEIGHT_SPECTRUM']:
-                    flag = taql_table.getcol("FLAG")
-                    new_data[ref_pair_idx[0:idx_len], freq_offset:freq_offset+len(freqs), :] += taql_table.getcol(column) * flag
-                    weights[ref_pair_idx[0:idx_len], freq_offset:freq_offset+len(freqs)] += flag[:, :, 0]
-                elif column == 'WEIGHT':
-                    new_data[ref_pair_idx[0:idx_len], :] *= taql_table.getcol(column)
-                elif column == 'UVW':
-                    new_data[ref_pair_idx[0:idx_len], :] += taql_table.getcol(column)
-                    weights[ref_pair_idx[0:idx_len]] += 1
-            t.close()
-
-        # Average
-        weights = weights.astype(np.float16)
-        weights[weights == 0.] = np.inf
-        if column in ['DATA', 'WEIGHT_SPECTRUM']:
-            for p in range(4):
-                new_data[:, :, p] /= weights
-            T.putcol('FLAG', weights > 0)
-        if column == 'UVW':
-            new_data /= np.repeat(weights, 3).reshape(-1, 3)
-
-        T.putcol(column, new_data)
-
         print("----------\n")
-
         T.close()
 
 
@@ -736,7 +878,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
+def ms_merger():
     """
     Main function
     """
@@ -749,13 +891,11 @@ def main():
 
     # Stack MS
     s = Stack(args.msin, args.msout)
-    s.stack_all('UVW')
-    s.stack_all('DATA')
-    s.stack_all('WEIGHT_SPECTRUM')
+    s.stack_all()
 
     # Apply dysco compression
     compress(args.msout)
 
 
 if __name__ == '__main__':
-    main()
+    ms_merger()
