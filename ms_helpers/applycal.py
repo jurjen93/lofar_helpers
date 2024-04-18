@@ -23,9 +23,6 @@ class ApplyCal:
         :param dysco: compress with dysco
         """
 
-        if len(msin) > 1 and msout != '.':
-            sys.exit("ERROR: --msout necessary and unequal to '.' if more than one --msin")
-
         self.cmd = ['DP3', 'msin=' + msin]
         self.cmd += ['msout=' + msout]
         self.cmd += ['msin.datacolumn=' + msincol]
