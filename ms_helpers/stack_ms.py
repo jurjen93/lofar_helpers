@@ -755,7 +755,6 @@ class Stack:
                     except Exception as exc:
                         print(f"Generated an exception: {exc}")
 
-
         ref_stats, ref_ids = get_station_id(self.outname)
 
         # Freq
@@ -776,33 +775,33 @@ class Stack:
         ref_time = None
 
         # Loop over columns
-        for n, col in enumerate(columns):
+        for col in columns:
 
             new_data, weights = self.get_data_arrays(col, time_len, freq_len)
 
             # Loop over measurement sets
             for ms in self.mslist:
 
-                # Do only for first column
-                if n == 0:
+                print(f'\nStacking {col}: {ms}')
+
+                # Open MS table
+                t = taql(f"SELECT TIME,ANTENNA1,ANTENNA2,FLAG,{','.join(columns)} FROM {os.path.abspath(ms)} ORDER BY TIME")
+
+                # Get freqs offset
+                f = table(ms+'/SPECTRAL_WINDOW', ack=False)
+                freqs = f.getcol("CHAN_FREQ")[0]
+                freq_offset = find_closest_index(ref_freqs, freqs[0])
+                f.close()
+
+                # Make antenna mapping in parallel
+                mapping_folder = ms.replace('.ms', '').replace('.MS', '') + '_mapping'
+                try:
+                    # Verify if folder exists
+                    os.makedirs(mapping_folder, exist_ok=False)
+
                     # Get MS info
                     new_stats, new_ids = get_station_id(ms)
                     id_map = dict(zip(new_ids, [ref_stats.index(a) for a in new_stats]))
-
-                    # Get freqs offset
-                    f = table(ms+'/SPECTRAL_WINDOW', ack=False)
-                    freqs = f.getcol("CHAN_FREQ")[0]
-                    freq_offset = find_closest_index(ref_freqs, freqs[0])
-                    f.close()
-
-                    # Open MS table
-                    t = taql(f"SELECT TIME,ANTENNA1,ANTENNA2,FLAG,{','.join(columns)} FROM {os.path.abspath(ms)} ORDER BY TIME")
-
-                    # Map antenna pairs to same as ref (template) table
-                    antennas = np.c_[map_array_dict(t.getcol("ANTENNA1"), id_map), map_array_dict(t.getcol("ANTENNA2"), id_map)]
-
-                    # Unique antenna pairs
-                    uniq_ant_pairs = np.unique(antennas, axis=0)
 
                     # Time in LST
                     time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
@@ -810,35 +809,36 @@ class Stack:
                     time_offset = find_closest_index(ref_uniq_time, uniq_time[0])
                     time = None
 
-                    # Make antenna mapping in parallel
-                    mapping_folder = ms.replace('.ms', '').replace('.MS', '') + '_mapping'
-                    try:
-                        os.makedirs(mapping_folder, exist_ok=False)
-                        run_parallel_mapping(uniq_ant_pairs)
-                    except FileExistsError:
-                        print(f'Skip mapping --> {mapping_folder} already exists')
+                    # Map antenna pairs to same as ref (template) table
+                    antennas = np.c_[map_array_dict(t.getcol("ANTENNA1"), id_map), map_array_dict(t.getcol("ANTENNA2"), id_map)]
 
-                    indices = []
-                    ref_indices = []
-                    print('Read mapping')
-                    for m, ant_map_json in enumerate(glob(mapping_folder + "/*.json")):
-                        print_progress_bar(m, len(glob(mapping_folder+"/*.json")))
-                        with open(ant_map_json, 'r') as file:
-                            # Load its content and convert it into a dictionary
-                            maps = json.load(file)
-                        indices.extend(list(map(int, maps.keys())))
-                        ref_indices.extend(list(map(int, maps.values())))
+                    # Unique antenna pairs
+                    uniq_ant_pairs = np.unique(antennas, axis=0)
+
+                    run_parallel_mapping(uniq_ant_pairs)
+                except FileExistsError:
+                    print(f'Skip mapping --> {mapping_folder} already exists')
+
+                indices = []
+                ref_indices = []
+                print('Read mapping')
+                for m, ant_map_json in enumerate(glob(mapping_folder + "/*.json")):
+                    print_progress_bar(m, len(glob(mapping_folder+"/*.json")))
+                    with open(ant_map_json, 'r') as file:
+                        # Load its content and convert it into a dictionary
+                        maps = json.load(file)
+                    indices.extend(list(map(int, maps.keys())))
+                    ref_indices.extend(list(map(int, maps.values())))
 
                 # Get data
                 if col in ['DATA', 'WEIGHT_SPECTRUM']:
                     flag = np.invert(t.getcol("FLAG"))
                 data = t.getcol(col)
-                print(f'\nStacking {col}: {ms}')
 
                 #TODO: PARALLEL CHUNKING --> FASTER?
 
                 if col in ['DATA', 'WEIGHT_SPECTRUM']:
-                    new_data[ref_indices, freq_offset:freq_offset+len(freqs), :] += data[indices, :, :] * flag
+                    new_data[ref_indices, freq_offset:freq_offset+len(freqs), :] += np.multiply(data[indices, :, :], flag)
                     weights[ref_indices, freq_offset:freq_offset+len(freqs)] += flag[indices, :, 0]
                     # np.multiply(data[indices, :, :], flag, out=data)
                     # np.add.at(new_data, (ref_indices, slice(freq_offset, freq_offset + len(freqs), None)), data)
@@ -848,6 +848,8 @@ class Stack:
                 elif col == 'UVW':
                     new_data[ref_indices, :] += data[indices, :]
                     weights[ref_indices] += 1
+
+                t.close()
 
             # Average
             weights = weights.astype(np.float16)
@@ -863,7 +865,6 @@ class Stack:
             # print(new_data)
             T.putcol(col, new_data)
 
-            t.close()
         print("----------\n")
         T.close()
 
