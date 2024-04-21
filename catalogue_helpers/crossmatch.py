@@ -18,6 +18,7 @@ import warnings
 import scienceplots
 import math
 from scipy.special import erf
+from matplotlib.ticker import MaxNLocator
 
 plt.style.use('science')
 
@@ -50,7 +51,7 @@ def find_matches(cat1, cat2, separation_asec):
     return matched_sources_catalog1, matched_sources_catalog2
 
 
-def separation_match(cat1, cat2, separation_asec):
+def separation_match(catalog1, cat2, separation_asec):
     """
     Find non-crossmatches between two catalogues and remove those from catalogue 1 based on distance in arcsec
 
@@ -61,8 +62,11 @@ def separation_match(cat1, cat2, separation_asec):
     :return: corrected catalogue 1, removed sources from catalogue 1
     """
 
-    catalog1 = Table.read(cat1, format='fits')
+    # catalog1 = Table.read(cat1, format='fits')
     catalog2 = Table.read(cat2, format='fits')
+
+
+    print(f'Source count before cross-match deep field DR2: {len(catalog1)}')
 
     # Define the celestial coordinates for each catalog
     coords1 = SkyCoord(ra=catalog1['RA'], dec=catalog1['DEC'], unit=(u.deg, u.deg))
@@ -72,18 +76,9 @@ def separation_match(cat1, cat2, separation_asec):
     idx_catalog2, separation, _ = match_coordinates_sky(coords1, coords2)
     catalog1['separation_cat2'] = separation
 
-    # Define a maximum separation threshold (adjustplots as needed)
-    max_sep_threshold_large = separation_asec * u.arcsec
-
     # Sources below RMS threshold and above separation threshold
-    non_matches_large = catalog1[(catalog1['separation_cat2'] > max_sep_threshold_large)]
-
-    non_match_mask_large = np.sum([non_matches_large['Source_id'] == i for i in catalog1['Source_id']], axis=1).astype(bool)
-
-    non_match_mask = non_match_mask_large
-
-    catalog1_corrected = catalog1[~non_match_mask]
-    catalog1_removed = catalog1[non_match_mask]
+    catalog1_removed = catalog1[(catalog1['separation_cat2'] > separation_asec*u.arcsec)]
+    catalog1_corrected = catalog1[(catalog1['separation_cat2'] <= separation_asec *u.arcsec)]
 
     print(f'Source count after cross-match deep field DR2: {len(catalog1_corrected)} '
           f'({int(round(1 - len(catalog1_corrected) / len(catalog1),2)*100)}% removed)')
@@ -172,6 +167,59 @@ def fluxration_smearing(central_freq_hz, bandwidth_hz, integration_time_s, resol
 
     return time_smearing, bw_smearing, total_smearing
 
+def weighted_average(values, errors):
+    """
+    Calculate the weighted average and standard error of the weighted average.
+
+    Parameters:
+    - values (np.array): An array of measured values.
+    - errors (np.array): An array of standard deviations corresponding to the values.
+
+    Returns:
+    - tuple: (weighted average, standard error of the weighted average)
+    """
+    # Convert errors to weights, where weight is 1 divided by the square of the error
+    weights = 1 / (errors ** 2)
+
+    # Calculate weighted average
+    weighted_avg = np.sum(weights * values) / np.sum(weights)
+
+    # Calculate standard error of the weighted average
+    std_error = np.sqrt(1 / np.sum(weights))
+
+    return weighted_avg, std_error
+
+
+def weighted_median(data, weights):
+    """
+    Compute the weighted median of given data.
+
+    Parameters:
+    - data (np.array): An array of data points.
+    - weights (np.array): An array of weights corresponding to the data points.
+
+    Returns:
+    - float: The weighted median.
+    """
+    # Combine the data and weights into a single structured array
+    data_with_weights = np.array(list(zip(data, weights)), dtype=[('data', float), ('weights', float)])
+
+    # Sort data based on the data values
+    data_sorted = np.sort(data_with_weights, order='data')
+
+    # Extract the sorted data and weights
+    sorted_data = data_sorted['data']
+    sorted_weights = data_sorted['weights']
+
+    # Compute the cumulative sum of weights
+    cumulative_weights = np.cumsum(sorted_weights)
+
+    # Find the index where the cumulative weight exceeds half the total weight
+    half_total_weight = np.sum(sorted_weights) / 2
+    median_idx = np.where(cumulative_weights >= half_total_weight)[0][0]
+
+    return sorted_data[median_idx]
+
 
 def make_plots(cat, res=0.3, outputfolder=None):
     """Make plots"""
@@ -198,31 +246,36 @@ def make_plots(cat, res=0.3, outputfolder=None):
     subcat = cat[(cat[f'dRA_{res}'] == cat[f'dRA_{res}'])
                  & (cat['S_Code'] == 'S')
                  & (cat['S_Code_6'] == 'S')
-                 & (cat['Peak_flux'] > 15*cat['Isl_rms'])
-                 & (cat['Peak_flux_6'] > 15*cat['Isl_rms_6'])]
+                 & (cat['Peak_flux'] > 10*cat['Isl_rms'])
+                 & (cat['Peak_flux_6'] > 10*cat['Isl_rms_6'])]
     print(f"Number of sources for hist2d plot: {len(subcat)}")
 
     plt.hexbin(subcat[f'dRA_{res}'] * 3600,
                subcat[f'dDEC_{res}'] * 3600,
-               gridsize=30, cmap='viridis', norm=LogNorm())
+               gridsize=30, cmap='Blues', mincnt=1)
     plt.xlabel("dRA (arcsec)")
     plt.ylabel("dDEC (arcsec)")
-    plt.colorbar(label='Source count')
+    cbar = plt.colorbar(label='Source count')
+    cbar.locator = MaxNLocator(integer=True)
+    cbar.update_ticks()
+
+    mediandRA = weighted_median(subcat[f'dRA_{res}'] * 3600, subcat[f'E_dRA_{res}'] * 3600)
+    mediandDEC = weighted_median(subcat[f'dDEC_{res}'] * 3600, subcat[f'E_dDEC_{res}'] * 3600)
 
     medianedRA = round(np.mean(subcat[f'E_dRA_{res}']) * 3600, 4)
     medianedDEC = round(np.mean(subcat[f'E_dDEC_{res}']) * 3600, 4)
     print(f"Mean E_dRA: {medianedRA} "
               f"Mean E_dDEC: {medianedDEC}")
-    mediandRA = round(np.median(subcat[f'dRA_{res}']) * 3600, 4)
-    mediandDEC = round(np.median(subcat[f'dDEC_{res}']) * 3600, 4)
+    # mediandRA = round(np.median(subcat[f'dRA_{res}']) * 3600, 4)
+    # mediandDEC = round(np.median(subcat[f'dDEC_{res}']) * 3600, 4)
     print(f"Mean dRA: {mediandRA} "
               f"Mean dDEC: {mediandDEC}")
 
     axs = np.arange(-16, 17)
     plt.plot(axs, [mediandDEC]*len(axs), color='black', linestyle='--')
     plt.plot([mediandRA]*len(axs), axs, color='black', linestyle='--')
-    plt.xlim(-4, 4)
-    plt.ylim(-4, 4)
+    plt.xlim(-1, 1)
+    plt.ylim(-1, 1)
     plt.savefig(f'{outputfolder}/dRA_dDEC_{res}.png', dpi=150)
     plt.close()
 
@@ -230,9 +283,9 @@ def make_plots(cat, res=0.3, outputfolder=None):
     subcat = cat[(cat[f'dRA_{res}'] == cat[f'dRA_{res}'])
                  & (cat['S_Code'] == 'S')
                  & (cat['S_Code_6'] == 'S')
-                 & (cat['Peak_flux'] > 15*cat['Isl_rms'])
-                 & (cat['Peak_flux_6'] > 15*cat['Isl_rms_6'])]
-    subcat = subcat[(subcat[f'dDEC_{res}']*3600 < res/2) & (subcat[f'dRA_{res}']*3600 < res/2)]
+                 & (cat['Peak_flux'] > 20*cat['Isl_rms'])
+                 & (cat['Peak_flux_6'] > 20*cat['Isl_rms_6'])]
+    # subcat = subcat[(subcat[f'dDEC_{res}']*3600 < res/2) & (subcat[f'dRA_{res}']*3600 < res/2)]
     # random_index = np.random.choice(len(subcat), size=50)
     # subcat = subcat[random_index]
     print(f"Number of sources for flux ratio 6'': {len(subcat)}")
@@ -330,10 +383,10 @@ def merge_with_table(catalog1, catalog2, sep=6, res=0.3):
     catalog1[f'E_dRA_{res}'] = np.nan
     catalog1[f'E_dDEC_{res}'] = np.nan
 
-    catalog1[f'dRA_{res}'][match_idxs] = catalog1[match_idxs] ['RA'] % 360 - catalog2['RA'] % 360
-    catalog1[f'dDEC_{res}'][match_idxs] = catalog1[match_idxs] ['DEC'] % 360 - catalog2['DEC'] % 360
-    catalog1[f'E_dRA_{res}'][match_idxs] = np.sqrt(catalog1[match_idxs] ['E_RA'] ** 2 + catalog2['E_RA'] ** 2)
-    catalog1[f'E_dDEC_{res}'][match_idxs] = np.sqrt(catalog1[match_idxs] ['E_DEC'] ** 2 + catalog2['E_DEC'] ** 2)
+    catalog1[f'dRA_{res}'][match_idxs] = catalog1[match_idxs]['RA'] % 360 - catalog2['optRA'] % 360
+    catalog1[f'dDEC_{res}'][match_idxs] = catalog1[match_idxs]['DEC'] % 360 - catalog2['optDec'] % 360
+    catalog1[f'E_dRA_{res}'][match_idxs] = np.sqrt(catalog1[match_idxs]['E_RA'] ** 2 + catalog2['E_RA'] ** 2)
+    catalog1[f'E_dDEC_{res}'][match_idxs] = np.sqrt(catalog1[match_idxs]['E_DEC'] ** 2 + catalog2['E_DEC'] ** 2)
 
     print(f"Number of cross-matches between two catalogs {len(match_idxs)} ({int(len(match_idxs)/len(catalog1)*100)}% matched)")
 
@@ -366,7 +419,7 @@ def main():
     outcols = ['Cat_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
                      'Maj', 'E_Maj', 'Min', 'E_Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms', 'DC_Maj','E_DC_Maj','DC_Min','E_DC_Min',
                'DC_PA','E_DC_PA','DC_Maj_img_plane','E_DC_Maj_img_plane','DC_Min_img_plane','E_DC_Min_img_plane','DC_PA_img_plane',
-               'E_DC_PA_img_plane']
+               'E_DC_PA_img_plane', 'Total_flux_6']
 
     outcols_publication = ['Cat_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
                      'Maj', 'E_Maj', 'Min', 'E_Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms']
@@ -379,8 +432,9 @@ def main():
     else:
         for n, cat in enumerate(args.cat1):
             print(cat)
-            catalog1_new, _ = separation_match(cat, args.cat2, args.separation_asec)
-            remove_snr(catalog1_new, snr=5, cat=cat)
+            # catalog1_new, _ = separation_match(cat, args.cat2, args.separation_asec)
+            # remove_snr(catalog1_new, snr=5, cat=cat)
+            catalog1_new = Table.read(cat, format='fits')
             if args.source_id_prefix is not None:
                 catalog1_new['Cat_id'] = [f'{args.source_id_prefix}_{id}' for id in list(catalog1_new['Source_id'])]
             else:
@@ -389,16 +443,35 @@ def main():
                 totalcat = catalog1_new
             else:
                 totalcat = vstack([totalcat, catalog1_new], join_type='exact')
-
-        totalcat = totalcat[outcols]
+        print(len(totalcat))
+        totalcat = remove_snr(totalcat, snr=5)
+        print(len(totalcat))
+        totalcat, _ = separation_match(totalcat, args.cat2, args.separation_asec)
+        print(len(totalcat))
+        # totalcat = totalcat[outcols]
 
         # signal to noise cut
-        totalcat = remove_snr(totalcat, snr=5)
+        # totalcat = remove_snr(totalcat, snr=5)
 
         # add 6asec columns
         DR1 = '/home/jurjen/Documents/ELAIS/catalogues/en1_final_cross_match_catalogue-v1.0.fits'
         DR2 = '/home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits'
-        totalcat = merge_with_table(totalcat, Table.read(DR1, format='fits'), sep=args.separation_asec, res=args.resolution)
+
+        DR1_table = Table.read(DR1, format='fits')
+        # DR1_table = DR1_table[(DR1_table['Prefilter'] == 0)
+        #                       & (DR1_table['Separation']==0)
+        #                       # & (DR1_table['flag_clean']==1)
+        #                       # & (DR1_table['flag_clean_radio']==1)
+        #                       # & (DR1_table['FLAG_OVERLAP']==7)
+        #                       # & (DR1_table['FLAG_OVERLAP_RADIO'] == 7)
+        #                       & (DR1_table['lr_fin']>250)]
+        print(f"NUMBER OF SOURCES AFTER FILTERING 6'': {len(DR1_table)}")
+        # coords1 = SkyCoord(ra=DR1_table['RA'], dec=DR1_table['DEC'], unit=(u.deg, u.deg))
+        # coords2 = SkyCoord(ra=DR1_table['optRA'], dec=DR1_table['optDec'], unit=(u.deg, u.deg))
+        # idx_catalog2, separation, _ = match_coordinates_sky(coords1, coords2)
+        # DR1_table = DR1_table[separation.to(u.arcsec).value < 6]
+
+        totalcat = merge_with_table(totalcat, DR1_table, sep=6, res=args.resolution)
         totalcat = remove_duplicates(totalcat, args.resolution)
 
         totalcat[outcols].write(args.out_table, format='fits', overwrite=True)

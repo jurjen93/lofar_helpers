@@ -290,7 +290,7 @@ def make_plots_combine(subcat, outputfolder=None):
     y_fit_12_upper = model(x_fit, a_fit_12_lower, m_fit_12_upper, b_fit_12_upper)
     y_fit_12_lower = model(x_fit, a_fit_12_lower, m_fit_12_lower, b_fit_12_lower)
 
-    # plt.figure(figsize=(5,4))
+    plt.figure(figsize=(10,8))
     # plt.plot(x_fit, totals, color='darkblue', label='Theoretical peak response', linestyle='-.')
     plt.plot(x_fit, y_fit_03, color='darkred', label='0.3"', linestyle='-.')
     plt.fill_between(x_fit, y_fit_03_lower, y_fit_03_upper,
@@ -321,20 +321,21 @@ def make_plots_combine(subcat, outputfolder=None):
     plt.savefig(f'{outputfolder}/peak_total_total_dist.png', dpi=150)
     plt.close()
 
+    plt.figure(figsize=(5,4))
 
     centralhz = 140232849.121094
     bandwidth = 12207
     inttime = 1
     xdist = np.linspace(0, 1.25, 100)
     ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime, 0.2232305194805194, xdist)
-    plt.plot(xdist, ts, color='black', label='$\Delta$t=1s (0.2")', linestyle='-')
+    plt.plot(xdist, ts, color='darkred', label='$\Delta$t=1s (0.2")', linestyle='-')
     ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime*2, 0.2232305194805194, xdist)
-    plt.plot(xdist, ts, color='black', label='$\Delta$t=2s (0.2")', linestyle='--')
+    plt.plot(xdist, ts, color='darkred', label='$\Delta$t=2s (0.2")', linestyle='--')
 
     ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime, 0.3, xdist)
-    plt.plot(xdist, ts, color='black', label='$\Delta$t=1s (0.3")', linestyle='-.')
+    plt.plot(xdist, ts, color='darkblue', label='$\Delta$t=1s (0.3")', linestyle='-.')
     ts, bws, totals = fluxration_smearing(centralhz, bandwidth, inttime*2, 0.3, xdist)
-    plt.plot(xdist, ts, color='black', label='$\Delta$t=2s (0.3")', linestyle=':')
+    plt.plot(xdist, ts, color='darkblue', label='$\Delta$t=2s (0.3")', linestyle=':')
 
     plt.ylim(0, 1)
     plt.xlim(0, 1.25)
@@ -553,14 +554,14 @@ def main():
     catalog1 = Table.read(args.cat1)
     catalog2 = Table.read(args.cat2)
     catalog3 = Table.read(args.cat3)
-    # flux_ratios(catalog1)
-    # flux_ratios(catalog2)
-    # flux_ratios(catalog3)
-    # #
-    # total = merge_with_table(catalog1, catalog2, res_2=0.6)[0]
-    # total = merge_with_table(total, catalog3, res_2=1.2)[0]
-    # compact = get_compact(total)
-    # detectibility([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    flux_ratios(catalog1)
+    flux_ratios(catalog2)
+    flux_ratios(catalog3)
+    #
+    total = merge_with_table(catalog1, catalog2, res_2=0.6)[0]
+    total = merge_with_table(total, catalog3, res_2=1.2)[0]
+    compact = get_compact(total)
+    detectibility([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
     make_plots_combine(compact, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
     make_plots_compare([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
 
