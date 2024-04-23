@@ -321,6 +321,8 @@ def make_plots(cat, res=0.3, outputfolder=None):
 
     # subcat = cat[(cat['S_Code'] == 'S')
     #              & (cat['Peak_flux'] > cat['Isl_rms'] * 30)]
+    subcat = subcat[subcat['Peak_flux'] / subcat['Total_flux']>0.8]
+
     R = subcat['Peak_flux'] / subcat['Total_flux']
     subcat['dist'] = list(map(dist_pointing_center, subcat['RA', 'DEC']))
     plt.figure(figsize=(5,4))
@@ -329,6 +331,8 @@ def make_plots(cat, res=0.3, outputfolder=None):
     plt.xlabel("Right Ascension (degrees)")
     plt.ylabel("Declination (degrees)")
     plt.colorbar(label='Peak / integrated flux')
+    plt.xlim(240.45, 245)
+    plt.ylim(53.7, 56.1)
     plt.savefig(f'{outputfolder}/peak_total_{res}_im.png', dpi=150)
     plt.close()
 
@@ -458,18 +462,18 @@ def main():
         DR2 = '/home/jurjen/Documents/ELAIS/catalogues/pybdsf_sources_6asec.fits'
 
         DR1_table = Table.read(DR1, format='fits')
-        # DR1_table = DR1_table[(DR1_table['Prefilter'] == 0)
-        #                       & (DR1_table['Separation']==0)
-        #                       # & (DR1_table['flag_clean']==1)
-        #                       # & (DR1_table['flag_clean_radio']==1)
-        #                       # & (DR1_table['FLAG_OVERLAP']==7)
-        #                       # & (DR1_table['FLAG_OVERLAP_RADIO'] == 7)
-        #                       & (DR1_table['lr_fin']>250)]
+        DR1_table = DR1_table[(DR1_table['Prefilter'] == 0)
+                              & (DR1_table['Separation']==0)
+                              & (DR1_table['flag_clean']==1)
+                              & (DR1_table['flag_clean_radio']==1)
+                              & (DR1_table['FLAG_OVERLAP']==7)
+                              & (DR1_table['FLAG_OVERLAP_RADIO'] == 7)
+                              & (DR1_table['lr_fin']>250)]
         print(f"NUMBER OF SOURCES AFTER FILTERING 6'': {len(DR1_table)}")
-        # coords1 = SkyCoord(ra=DR1_table['RA'], dec=DR1_table['DEC'], unit=(u.deg, u.deg))
-        # coords2 = SkyCoord(ra=DR1_table['optRA'], dec=DR1_table['optDec'], unit=(u.deg, u.deg))
-        # idx_catalog2, separation, _ = match_coordinates_sky(coords1, coords2)
-        # DR1_table = DR1_table[separation.to(u.arcsec).value < 6]
+        coords1 = SkyCoord(ra=DR1_table['RA'], dec=DR1_table['DEC'], unit=(u.deg, u.deg))
+        coords2 = SkyCoord(ra=DR1_table['optRA'], dec=DR1_table['optDec'], unit=(u.deg, u.deg))
+        idx_catalog2, separation, _ = match_coordinates_sky(coords1, coords2)
+        DR1_table = DR1_table[separation.to(u.arcsec).value < 6]
 
         totalcat = merge_with_table(totalcat, DR1_table, sep=6, res=args.resolution)
         totalcat = remove_duplicates(totalcat, args.resolution)

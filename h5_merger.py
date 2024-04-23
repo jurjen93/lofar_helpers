@@ -18,7 +18,7 @@ from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
-    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose, cumsum, insert
+    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose, cumsum, insert, abs, asarray, newaxis, argmin
 import os
 import re
 from scipy.interpolate import interp1d
@@ -202,6 +202,32 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
     return
 
 
+def find_closest_indices(arr1, arr2):
+    """
+    Index mapping between two arrays where each index in arr1 corresponds to the index of the closest value in arr2.
+
+    Parameters:
+        arr1 (np.array): The first array.
+        arr2 (np.array): The second array, where we find the closest value to each element of arr1.
+
+    Returns:
+        np.array: An array of indices from arr2, corresponding to each element in arr1.
+    """
+    # Convert lists to NumPy arrays if not already
+    arr1 = asarray(arr1)
+    arr2 = asarray(arr2)
+
+    # Calculate the absolute differences between each element of arr1 and all elements in arr2
+    # The resulting matrix will have shape (len(arr1), len(arr2))
+    diff_matrix = abs(arr1[:, newaxis] - arr2)
+
+    # Find the index of the minimum value in arr2 for each element in arr1
+    # np.argmin will return the indices of the closest values along axis 1 (across columns)
+    closest_indices = argmin(diff_matrix, axis=1)
+
+    return closest_indices
+
+
 def take_numpy_axis(numpy_array, axis, idx):
     """
     Take specific axis from multidimensional array
@@ -268,8 +294,8 @@ class MergeH5:
     """Merge multiple h5 tables"""
 
     def __init__(self, h5_out, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True,
-                 merge_all_in_one=False,
-                 solset='sol000', filtered_dir=None, no_antenna_crash=None, merge_diff_freq=None):
+                 merge_all_in_one=False, solset='sol000', filtered_dir=None, no_antenna_crash=None,
+                 freq_concat=None, time_concat=None):
         """
         :param h5_out: name of merged output h5 table
         :param h5_tables: h5 tables to merge, can be both list and string
@@ -280,7 +306,7 @@ class MergeH5:
         :param solset: solset name
         :param filtered_dir: directions to filter (needs to be list with indices)
         :param no_antenna_crash: do not crash if antenna tables are not the same between h5s
-        :param merge_diff_freq: merging tables with different frequencies
+        :param freq_concat: merging tables with different frequencies
         """
 
         # output name
@@ -445,7 +471,8 @@ class MergeH5:
         if len(self.directions) > 1 and self.doublefulljones:
             sys.exit("ERROR: Merging not compatitable with multiple directions and double fuljones merge")  # TODO: update
 
-        self.merge_diff_freq = merge_diff_freq
+        self.freq_concat = freq_concat
+        self.time_concat = time_concat
 
     @property
     def have_same_antennas(self):
@@ -507,6 +534,65 @@ class MergeH5:
 
         return True
 
+
+    def concat(self, values, soltab, axes, ax_name):
+        """
+        Concat instead of interpolation
+
+        :param values: values (phase or amplitude)
+        :param soltab: amplitude or phase soltab
+        :param axes: h5 axes (to be concatted)
+        :param ax_name: over time or freq
+
+        :return: concattenated
+        """
+
+        if ax_name == 'freq':
+            axes_new = self.ax_freq
+        elif ax_name == 'time':
+            axes_new = self.ax_time
+        else:
+            sys.exit("ERROR: Should not arrive here")
+
+        shape = list(values.shape)
+        shape[self.axes_current.index(ax_name)] = len(axes_new)
+        values_tmp = zeros(shape)
+        if 'pol' in self.axes_current and 'amplitude' in soltab:
+            if self.axes_current.index('pol') == 0:
+                values_tmp[-1, ...] = 1
+                values_tmp[0, ...] = 1
+            elif self.axes_current.index('pol') == 1:
+                values_tmp[:, -1, ...] = 1
+                values_tmp[:, 0, ...] = 1
+            elif self.axes_current.index('pol') == 2:
+                values_tmp[:, :, -1, ...] = 1
+                values_tmp[:, :, 0, ...] = 1
+            elif self.axes_current.index('pol') == 3:
+                values_tmp[:, :, :, -1, ...] = 1
+                values_tmp[:, :, :, 0, ...] = 1
+            elif self.axes_current.index('pol') == 4:
+                values_tmp[:, :, :, :, -1, ...] = 1
+                values_tmp[:, :, :, :, 0, ...] = 1
+
+        idx = find_closest_indices(axes, axes_new)
+
+        if self.axes_current.index(ax_name) == 0:
+            values_tmp[idx, ...] = values[:]
+
+        elif self.axes_current.index(ax_name) == 1:
+            values_tmp[:, idx, ...] = values[:]
+
+        elif self.axes_current.index(ax_name) == 2:
+            values_tmp[:, :, idx, ...] = values[:]
+
+        elif self.axes_current.index(ax_name) == 3:
+            values_tmp[:, :, :, idx, ...] = values[:]
+
+        elif self.axes_current.index(ax_name) == 4:
+            values_tmp[:, :, :, :, idx, ...] = values[:]
+
+        return values_tmp
+
     def _unpack_h5(self, st, solset, soltab):
         """
         Unpack, check, and reorder the values from the h5 table to merge.
@@ -537,7 +623,7 @@ class MergeH5:
         if self.ax_time[0] > time_axes[-1] or time_axes[0] > self.ax_time[-1]:
             sys.exit("ERROR: Time axes of h5 and MS are not overlapping.\n"
                      "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
-        if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1] and not self.merge_diff_freq:
+        if self.ax_freq[0] > freq_axes[-1] or freq_axes[0] > self.ax_freq[-1] and not self.freq_concat:
             sys.exit("ERROR: Frequency axes of h5 and MS are not overlapping.\n"
                      "SUGGESTION: add --h5_time_freq=true if you want to use the input h5 files to construct the time and freq axis.")
         if float(soltab[-3:]) > 0:
@@ -623,55 +709,18 @@ class MergeH5:
             values = self._expand_poldim(values, len(self.polarizations), remove_numbers(soltab), False)
             self.axes_final.insert(0, 'pol')
 
-        # interpolate time axis
-        values = self._interp_along_axis(values, time_axes, self.ax_time,
+
+        # time interpolation
+        if self.time_concat:
+            values = self.concat(values, st.getType(), time_axes, 'time')
+        else:
+            values = self._interp_along_axis(values, time_axes, self.ax_time,
                                          self.axes_current.index('time'))
 
-        # make sure that the interpolation is performed well when merging tables with different frequencies
-        if self.merge_diff_freq:
-            ax = 'freq'
-            shape = list(values.shape)
-            shape[self.axes_current.index('freq')] = len(self.ax_freq)
-            values_tmp = zeros(shape)
-            if 'pol' in self.axes_current and 'amplitude' in st.getType():
-                if self.axes_current.index('pol') == 0:
-                    values_tmp[-1, ...] = 1
-                    values_tmp[0, ...] = 1
-                elif self.axes_current.index('pol') == 1:
-                    values_tmp[:, -1, ...] = 1
-                    values_tmp[:, 0, ...] = 1
-                elif self.axes_current.index('pol') == 2:
-                    values_tmp[:, :, -1, ...] = 1
-                    values_tmp[:, :, 0, ...] = 1
-                elif self.axes_current.index('pol') == 3:
-                    values_tmp[:, :, :, -1, ...] = 1
-                    values_tmp[:, :, :, 0, ...] = 1
-                elif self.axes_current.index('pol') == 4:
-                    values_tmp[:, :, :, :, -1, ...] = 1
-                    values_tmp[:, :, :, :, 0, ...] = 1
-            for idx_old, f_v in enumerate(freq_axes):
-                idx_new = list([round(i / 1000000, 1) for i in self.ax_freq]).index(round(f_v / 1000000, 1))
-
-                if self.axes_current.index(ax) == 0:
-                    values_tmp[idx_new, ...] = values[idx_old, ...]
-
-                elif self.axes_current.index(ax) == 1:
-                    values_tmp[:, idx_new, ...] = values[:, idx_old, ...]
-
-                elif self.axes_current.index(ax) == 2:
-                    values_tmp[:, :, idx_new, ...] = values[:, :, idx_old, ...]
-
-                elif self.axes_current.index(ax) == 3:
-                    values_tmp[:, :, :, idx_new, ...] = values[:, :, :, idx_old, ...]
-
-                elif self.axes_current.index(ax) == 4:
-                    values_tmp[:, :, :, :, idx_new, ...] = values[:, :, :, :, idx_old, ...]
-
-            values = values_tmp.copy()
-
+        # freq interpolation
+        if self.freq_concat:
+            values = self.concat(values, st.getType(), freq_axes, 'freq')
         elif remove_numbers(st.getType()) != 'tec' and remove_numbers(st.getType()) != 'error':
-
-            # interpolate freq axis
             values = self._interp_along_axis(values, freq_axes, self.ax_freq,
                                              self.axes_current.index('freq'))
 
@@ -805,7 +854,7 @@ class MergeH5:
         return -8.44797245e9 * tec / freqs
 
     @staticmethod
-    def _interp_along_axis(x, interp_from, interp_to, axis):
+    def _interp_along_axis(x, interp_from, interp_to, axis, fill_value='extrapolate'):
         """
         Interpolate along axis.
 
@@ -823,7 +872,7 @@ class MergeH5:
             for _ in range(len(interp_to) - 1):
                 new_vals = append(new_vals, x, axis=axis)
         else:
-            interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value='extrapolate')
+            interp_vals = interp1d(interp_from, x, axis=axis, kind='nearest', fill_value=fill_value, bounds_error=False)
             new_vals = interp_vals(interp_to)
         return new_vals
 
@@ -1876,10 +1925,22 @@ class MergeH5:
                     if self.merge_all_in_one:
                         m = 0
 
-                    newvals = self._interp_along_axis(weight, st2.time[:], st.time[:], axes_new.index('time'))
-                    newvals = self._interp_along_axis(newvals, st2.freq[:], st.freq[:], axes_new.index('freq'))
+                    newvals = self._interp_along_axis(weight, st2.time[:], st.time[:], axes_new.index('time'), fill_value=1.).astype(int)
+                    newvals = self._interp_along_axis(newvals, st2.freq[:], st.freq[:], axes_new.index('freq'), fill_value=1.).astype(int)
 
-                    if weight.ndim != weight_out.ndim:  # not the same value shape
+
+                    if weight.shape[-2] != 1 and len(weight.shape)==5:
+                        print("Merge multi-dir weights")
+                        if weight.shape[-2] != weight_out.shape[-2]:
+                            print(weight.shape, weight_out.shape)
+                            sys.exit("ERROR: multi-dirs do not have equal shape.")
+                        if 'pol' not in axes and 'pol' in axes_new:
+                            newvals = expand_dims(newvals, axis=axes_new.index('pol'))
+                        for n in range(weight_out.shape[-1]):
+                            print(weight_out.shape, newvals.shape)
+                            weight_out[..., n] *= newvals[..., -1]
+
+                    elif weight.ndim != weight_out.ndim:  # not the same value shape
                         if 'pol' not in axes and 'pol' in axes_new:
                             newvals = expand_dims(newvals, axis=axes_new.index('pol'))
                             if newvals.shape[-1] != weight_out.shape[-1]:
@@ -1894,7 +1955,6 @@ class MergeH5:
                                      + self.h5name_out + ': ' + str(axes_new) + '.\n'
                                      + debug_message)
                     elif set(axes) == set(axes_new) and 'pol' in axes:  # same axes
-
                         pol_index = axes_new.index('pol')
                         if weight_out.shape[pol_index] == newvals.shape[pol_index]:  # same pol numbers
                             weight_out[:, :, :, m, ...] *= newvals[:, :, :, 0, ...]
@@ -2570,13 +2630,13 @@ def check_freq_overlap(h5_tables):
             try:
                 if h51 != h52 and F.root.sol000.phase000.freq[:].max() < H.root.sol000.phase000.freq[:].min():
                     print("WARNING: frequency bands between "+h51+" and "+h52+" do not overlap, you might want to use "
-                          "--merge_diff_freq to merge over different frequency bands")
+                          "--freq_concat to merge over different frequency bands")
             except:
                 try:
                     if h51 != h52 and F.root.sol000.amplitude000.freq[:].max() < H.root.sol000.amplitude000.freq[
                                                                                  :].min():
                         print("WARNING: frequency bands between "+h51+" and "+h52+" do not overlap, you might want to use "
-                              "--merge_diff_freq to merge over different frequency bands")
+                              "--freq_concat to merge over different frequency bands")
                 except:
                     pass
             F.close()
@@ -2628,7 +2688,7 @@ def running_mean(nparray, avgfactor):
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, add_ms_stations=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=True, propagate_flags=None, merge_diff_freq=None, no_antenna_crash=None,
+             check_flagged_station=True, propagate_flags=None, freq_concat=None, time_concat=None, no_antenna_crash=None,
              output_summary=None, min_distance=0.):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
@@ -2653,6 +2713,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param check_output: check if output has all correct output information
     :param check_flagged_station: check if complete input stations are flagged, if so flag same stations in output
     :param propagate_flags: interpolate weights and return in output file
+    :param freq_concat: concat freq blocks
+    :param time_concat: concat time blocks
     :param no_antenna_crash: do not crash if antenna tables are not the same between h5s
     :param output_summary: print solution file output
     :param min_distance: Minimal coordinate distance between sources for merging directions (in degrees). If smaller, directions will be merged together.
@@ -2692,14 +2754,17 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     #################################################
 
     # Check if frequencies from h5_tables overlap
-    if not merge_diff_freq:
+    if not freq_concat:
         check_freq_overlap(h5_tables)
-    check_time_overlap(h5_tables)
+    if not time_concat:
+        check_time_overlap(h5_tables)
+    if freq_concat and time_concat:
+        sys.exit("ERROR: Cannot do both time and frequency concat (ask Jurjen for assistance to implement this feature)")
 
     # Merge class setup
     merge = MergeH5(h5_out=h5_out, h5_tables=h5_tables, ms_files=ms_files, convert_tec=convert_tec,
                     merge_all_in_one=merge_all_in_one, h5_time_freq=h5_time_freq, filtered_dir=filtered_dir,
-                    no_antenna_crash=no_antenna_crash, merge_diff_freq=merge_diff_freq)
+                    no_antenna_crash=no_antenna_crash, freq_concat=freq_concat, time_concat=time_concat)
 
     # Time averaging
     if time_av:
@@ -2867,7 +2932,9 @@ def parse_input():
     parser.add_argument('--no_antenna_crash', action='store_true', default=None, help='Do not check if antennas are in h5.')
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
-    parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables over different frequency bands')
+    parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables over different frequency bands --> same as old "freq_concat" setting')
+    parser.add_argument('--time_concat', action='store_true', default=None, help='Merging tables over different time slots (ensuring correct interpolation)')
+    parser.add_argument('--freq_concat', action='store_true', default=None, help='Merging tables over different frequency bands (ensuring correct interpolation) --> same as old "merge_diff_freq" setting')
     parser.add_argument('--min_distance', type=float, help='(ONLY PYTHON 3) Minimal coordinate distance between sources for merging directions (in degrees). If smaller, directions will be merged together.', default=0.)
 
     args = parser.parse_args()
@@ -2932,6 +2999,9 @@ def main():
 
     args = parse_input()
 
+    if args.merge_diff_freq:
+        print('WARNING: --merge_diff_freq given, please use --freq_concat.')
+
     merge_h5(h5_out=args.h5_out,
              h5_tables=args.h5_tables,
              ms_files=args.ms,
@@ -2952,7 +3022,8 @@ def main():
              freq_av=args.freq_av,
              check_flagged_station=not args.no_stationflag_check,
              propagate_flags=args.propagate_flags,
-             merge_diff_freq=args.merge_diff_freq,
+             freq_concat=args.merge_diff_freq or args.freq_concat,
+             time_concat=args.time_concat,
              no_antenna_crash=args.no_antenna_crash,
              output_summary=args.output_summary,
              min_distance=args.min_distance)

@@ -355,6 +355,7 @@ def make_plots_compare(cats, outputfolder=''):
     resolutions = ['0.3"', '0.6"', '1.2"', '6"']
     colors = ['darkred', 'darkblue', 'darkgreen', 'orange']
     linestyle = ['-.', ':', '-', '--']
+    markers = ['o', 's', 'd']
 
     for n in range(len(cats)):
         # cat = cat[(cat['Total_flux']*1000>10) & (cat['S_Code']=='S')]
@@ -373,6 +374,93 @@ def make_plots_compare(cats, outputfolder=''):
     # plt.ylim(0, 850)
     plt.xscale('log')
     plt.savefig(f'{outputfolder}/source_count_flux.png', dpi=150)
+    plt.close()
+
+
+
+    for n, cat in enumerate(cats):
+
+        # m = []
+        # for t in cat['Cat_id']:
+        #     if '27_' in t:
+        #         m.append(True)
+        #     else:
+        #         m.append(False)
+        # cat = cat[m]
+
+        _, bin_edges = np.histogram(cat['dist'], bins=15)
+        bin_centers = (bin_edges[:-1] + bin_edges[1:]) / 2
+        med = []
+        err = []
+        for i in range(len(bin_centers)):
+            if i == 0:
+                bi = 0
+            else:
+                bi = bin_edges[i - 1]
+            subcat = cat[(cat['dist'] > bi)
+                         & (cat['dist'] < bin_edges[i])
+                         & (cat['S_Code'] == 'S')
+                         & (cat['Peak_flux'] > 15 * cat['Isl_rms'])]
+            R = subcat['Peak_flux'] / subcat['Total_flux']
+            # mask = get_inliers(subcat['dist'], R)
+            err.append(np.mean(ratio_err(subcat['Total_flux'], subcat['E_Total_flux'], subcat['Peak_flux'],
+                                         subcat['E_Peak_flux'])))
+            # p = np.nanpercentile(R, 50)
+            # m = np.median(R[R<p])
+            med.append(np.median(R))
+        params = np.polyfit(bin_centers[1:], med[1:], 2, w=err[1:])
+        polynomial_function = np.poly1d(params)
+        # plt.plot(bin_edges[1:], rms, linestyle=linestyle[n], label=resolutions[n], color=colors[n])
+        xp = np.linspace(0, 1.75, 400)
+        data = polynomial_function(xp)
+        # data = [data[0]]+list(data[100:])
+        # data = [d if d>data[m-1] else  for m, d in enumerate(data)][1:]
+        plt.errorbar(bin_centers, med, yerr=err, color=colors[n], ecolor=colors[n], fmt='o', capsize=2, markersize=3,
+                     label=resolutions[n], marker=markers[n])
+        plt.plot(xp, data, linestyle=':', color=colors[n], linewidth=1)
+        # plt.fill_between(xp, np.array(data) - np.mean(err), np.array(data) + np.mean(err),
+        #                  color=colors[n], alpha=0.2)
+    plt.legend()
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("Peak/Total intensity")
+    plt.xlim(0, 1.5)
+    plt.ylim(0, 1)
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/peak_int.png', dpi=150)
+    plt.close()
+
+    for n, cat in enumerate(cats):
+        bin_centers = np.linspace(0, 1.5, 11)
+        bar_width = bin_centers[1] / 7  # Width of each bar, adjust as necessary
+        spacing = bin_centers[1] / 20
+        adjusted_bin_centers = bin_centers[1:-1] + (n - 1) * (bar_width + spacing)
+        med = []
+        s=0
+        for i in range(len(bin_centers[1:-1])):
+            if i == 0:
+                bi = 0
+            else:
+                bi = bin_centers[i - 1]
+            subcat = cat[(cat['dist'] > bi)
+                         & (cat['dist'] < bin_centers[i + 1])
+                         & (cat['S_Code'] == 'S')
+                         & (cat['Peak_flux'] > 15 * cat['Isl_rms'])]
+            R = subcat['Peak_flux'] / subcat['Total_flux']
+            print(np.max(R))
+            if len(R) != 0:
+                med.append(len(R[(R > 0.84)]) / len(R))
+            else:
+                med.append(np.nan)
+            s += len(med)
+        plt.bar(adjusted_bin_centers, med, color=colors[n], width=bar_width, label=resolutions[n])
+        print(f'{s} sources used')
+    plt.legend()
+    plt.xlabel("Distance from pointing center (degrees)")
+    plt.ylabel("Fraction$>0.85$")
+    plt.xlim(0, 1.5)
+    plt.ylim(0, 0.5)
+    plt.tight_layout()
+    plt.savefig(f'{outputfolder}/peak_int_perc.png', dpi=150)
     plt.close()
 
     # plt.figure(figsize=(5, 4))
@@ -561,8 +649,8 @@ def main():
     total = merge_with_table(catalog1, catalog2, res_2=0.6)[0]
     total = merge_with_table(total, catalog3, res_2=1.2)[0]
     compact = get_compact(total)
-    detectibility([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
-    make_plots_combine(compact, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    # detectibility([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
+    # make_plots_combine(compact, outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
     make_plots_compare([catalog1, catalog2, catalog3], outputfolder='/home/jurjen/Documents/ELAIS/paperplots/')
 
 
