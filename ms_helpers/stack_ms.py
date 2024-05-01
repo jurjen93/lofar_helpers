@@ -176,7 +176,14 @@ def get_ms_content(ms):
     F.close()
     A.close()
 
-    return stations, lofar_stations, channels, dfreq, total_time_seconds, dt, time_min_lst, time_max_lst
+    return {'stations': stations,
+            'lofar_stations': lofar_stations,
+            'channels': channels,
+            'dfreq': dfreq,
+            'total_time_seconds': total_time_seconds,
+            'dt': dt,
+            'time_min_lst': time_min_lst,
+            'time_max_lst': time_max_lst}
 
 
 def get_largest_divider(inp, max=1000):
@@ -553,7 +560,8 @@ class Template:
         unique_lofar_stations = []
         unique_channels = []
         for k, ms in enumerate(self.mslist):
-            stations, lofar_stations, channels, dfreq, total_time_seconds, dt, min_t, max_t = get_ms_content(ms)
+            mscontent = get_ms_content(ms)
+            stations, lofar_stations, channels, dfreq, total_time_seconds, dt, min_t, max_t = mscontent.values()
             if k == 0:
                 min_t_lst = min_t
                 min_dt = dt
