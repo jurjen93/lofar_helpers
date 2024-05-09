@@ -65,11 +65,7 @@ def is_dysco_compressed(ms):
     t = table(ms, readonly=True)
     dysco = t.getdesc()["DATA"]['dataManagerGroup'] == 'DyscoData'
     t.close()
-
-    if dysco:
-        return True
-    else:
-        return False
+    return dysco
 
 
 def decompress(ms):
@@ -105,7 +101,13 @@ def compress(ms):
     if not is_dysco_compressed(ms):
 
         print('\n----------\nDYSCO COMPRESSION\n----------\n')
-        os.system(f"DP3 msin={ms} msout={ms} steps=[] msout.overwrite=true msout.storagemanager=dysco")
+        os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[] msout.overwrite=true msout.storagemanager=dysco")
+        try:
+            table(f"{ms}.tmp")
+            shutil.rmtree(ms)
+            shutil.move(f"{ms}.tmp", ms)
+        except RuntimeError:
+            sys.exit(f"ERROR: dysco compression failed (please check {ms})")
         print('----------')
         return ms
 
@@ -438,7 +440,7 @@ class Template:
         tnew_spw.putcol("RESOLUTION", chanwidth)
         tnew_spw.putcol("EFFECTIVE_BW", chanwidth)
         tnew_spw.putcol("REF_FREQUENCY", np.mean(self.channels))
-        tnew_spw.putcol("MEAS_FREQ_REF", np.array([5])) #TODO: Why always 5?
+        tnew_spw.putcol("MEAS_FREQ_REF", np.array([5]))  # Why always 5?
         tnew_spw.putcol("TOTAL_BANDWIDTH", [np.max(self.channels)-np.min(self.channels)-chanwidth[0][0]])
         tnew_spw.putcol("NAME", 'Stacked_MS_'+str(int(np.mean(self.channels)//1000000))+"MHz")
         tnew_spw.flush(True)
@@ -846,7 +848,7 @@ class Stack:
                 #TODO: PARALLEL CHUNKING --> FASTER?
 
                 if col in ['DATA', 'WEIGHT_SPECTRUM']:
-                    new_data[ref_indices, freq_offset:freq_offset+len(freqs), :] += np.multiply(data[indices, :, :], flag)
+                    new_data[ref_indices, freq_offset:freq_offset+len(freqs), :] += np.multiply(data[indices, :, :], flag[indices, :, :])
                     weights[ref_indices, freq_offset:freq_offset+len(freqs)] += flag[indices, :, 0]
                     # np.multiply(data[indices, :, :], flag, out=data)
                     # np.add.at(new_data, (ref_indices, slice(freq_offset, freq_offset + len(freqs), None)), data)
