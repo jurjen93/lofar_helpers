@@ -11,9 +11,10 @@ You need:
 - fits astropy table (output from pybdsf)
 - fits image (corresponding to catalogue/table)
 
-It returns 2 folders:
-- ok --> images with polygon fitting considered ok by the script
-- issues --> images with polygon fitting considered to be incorrect (need additional visual inspection)
+It returns:
+- Folder with name 'ok' --> images with polygon fitting considered ok by the script
+- Folder with name 'issues' --> images with polygon fitting considered to be incorrect (need additional visual inspection)
+- outcat/<INPUT_CATALOGUE>_updated.fits
 
 Value thresholds are changed by trial and error.
 For ELAIS-N1 at 0.3" we found by visual inspection 85% accuracy for M sources (see de Jong et al. 2024)
@@ -587,7 +588,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Find flux density, peak flux, and size for resolved sources based on pybdsf table and image')
     parser.add_argument('--table', type=str, help='astropy table')
     parser.add_argument('--image', type=str, help='fits image')
-    parser.add_argument('--debug_idx', type=int)
+    parser.add_argument('--debug_idx', type=int, help='checkout single index (for debugging purposes)')
     return parser.parse_args()
 
 
@@ -597,8 +598,9 @@ def main():
     """
 
     args = parse_args()
-    ids, peakflux, totalflux, largestidst, scode, radecs = get_source_information(args.table, args.image, True, args.debug_idx)
+    ids, peakflux, totalflux, largestdist, scode, radecs = get_source_information(args.table, args.image, True, args.debug_idx)
     T = Table.read(args.table)
+    T['Size_est'] = np.nan
     source_ids = [get_table_index(T, id) for id in ids]
     for n, id in enumerate(source_ids):
         T[id]['Peak_flux'] = peakflux[n]
@@ -606,10 +608,11 @@ def main():
         T[id]['RA'] = float(radecs[n][0])
         T[id]['DEC'] = float(radecs[n][1])
         T[id]['S_Code'] = scode[n]
+        T['Size_est'] = largestdist
 
     os.system('mkdir -p outcat')
     T['RA'] %= 360
-    T.write('outcat/'+args.table.replace('_final.fits', '_final_updated.fits').split('/')[-1], format='fits', overwrite=True)
+    T.write('outcat/'+args.table.replace('.fits', '_updated.fits').split('/')[-1], format='fits', overwrite=True)
 
 
 
