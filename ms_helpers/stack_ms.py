@@ -9,13 +9,6 @@ Strategy:
     2) Stack measurement sets on the template (Stack class).
         The stacking function maps baseline numbers from the input MS to the template MS and fills
         the template according to this mapping in LST time.
-
-#TODO: Work in progress!
-1) Investigate why bad quality
-2) Test on bigger MS
-3) Validate issues at sub-arcsecond
-4) Improve speed
-
 """
 
 from casacore.tables import table, default_ms, taql
@@ -31,6 +24,8 @@ from argparse import ArgumentParser
 import json
 from glob import glob
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from itertools import compress
+import time
 
 
 def print_progress_bar(index, total, bar_length=50):
@@ -101,13 +96,18 @@ def compress(ms):
     if not is_dysco_compressed(ms):
 
         print('\n----------\nDYSCO COMPRESSION\n----------\n')
+
         os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[] msout.overwrite=true msout.storagemanager=dysco")
+
         try:
-            table(f"{ms}.tmp")
-            shutil.rmtree(ms)
-            shutil.move(f"{ms}.tmp", ms)
+            t = table(f"{ms}.tmp") # test if exists
+            t.close()
         except RuntimeError:
             sys.exit(f"ERROR: dysco compression failed (please check {ms})")
+
+        shutil.rmtree(ms)
+        shutil.move(f"{ms}.tmp", ms)
+
         print('----------')
         return ms
 
@@ -214,11 +214,11 @@ def get_station_id(ms):
         - antenna names, IDs
     """
 
-    t = table(ms+'/ANTENNA', ack=False)
+    t = table(ms+'::ANTENNA', ack=False)
     ants = t.getcol("NAME")
     t.close()
 
-    t = table(ms+'/FEED', ack=False)
+    t = table(ms+'::FEED', ack=False)
     ids = t.getcol("ANTENNA_ID")
     t.close()
 
@@ -264,7 +264,7 @@ def same_phasedir(mslist: list = None):
     """
 
     for n, ms in enumerate(mslist):
-        t = table(ms+'/FIELD', ack=False)
+        t = table(ms+'::FIELD', ack=False)
         if n==0:
             phasedir = t.getcol("PHASE_DIR")
         else:
@@ -374,6 +374,20 @@ def find_closest_index(arr, value):
     return closest_index
 
 
+def find_closest_index_list(a1, a2):
+    """
+    Find the indices of the closest values between two arrays.
+
+    :input:
+        - a1: first array
+        - a2: second array
+
+    :return:
+        - The indices of the closest value in the array.
+    """
+    return abs(np.array(a1)[:, None] - np.array(a2)).argmin(axis=1)
+
+
 def map_array_dict(arr, dct):
     """
     Maps elements of the input_array to new values using a mapping_dict
@@ -423,7 +437,7 @@ class Template:
         Add SPECTRAL_WINDOW as sub table
         """
 
-        print("\n----------\nADD " + self.outname + "/SPECTRAL_WINDOW\n----------\n")
+        print("\n----------\nADD " + self.outname + "::SPECTRAL_WINDOW\n----------\n")
 
         tnew_spw_tmp = table(self.ref_table.getkeyword('SPECTRAL_WINDOW'), ack=False)
         newdesc = tnew_spw_tmp.getdesc()
@@ -431,7 +445,7 @@ class Template:
             newdesc[col]['shape'] = np.array([self.channels.shape[-1]])
         pprint(newdesc)
 
-        tnew_spw = table(self.outname + '/SPECTRAL_WINDOW', newdesc, readonly=False, ack=False)
+        tnew_spw = table(self.outname + '::SPECTRAL_WINDOW', newdesc, readonly=False, ack=False)
         tnew_spw.addrows(1)
         chanwidth = np.expand_dims([np.squeeze(np.diff(self.channels))[0]]*self.chan_num, 0)
         tnew_spw.putcol("NUM_CHAN", np.array([self.chan_num]))
@@ -452,7 +466,7 @@ class Template:
         Add ANTENNA and FEED tables
         """
 
-        print("\n----------\nADD " + self.outname + "/ANTENNA\n----------\n")
+        print("\n----------\nADD " + self.outname + "::ANTENNA\n----------\n")
 
         stations = [sp[0] for sp in self.station_info]
         st_id = dict(zip(set(
@@ -474,7 +488,7 @@ class Template:
         pprint(newdesc)
         tnew_ant_tmp.close()
 
-        tnew_ant = table(self.outname + '/ANTENNA', newdesc, readonly=False, ack=False)
+        tnew_ant = table(self.outname + '::ANTENNA', newdesc, readonly=False, ack=False)
         tnew_ant.addrows(len(stations))
         print(len(stations))
         print('Number of stations: ' + str(tnew_ant.nrows()))
@@ -491,14 +505,14 @@ class Template:
         tnew_ant.flush(True)
         tnew_ant.close()
 
-        print("\n----------\nADD " + self.outname + "/FEED\n----------\n")
+        print("\n----------\nADD " + self.outname + "::FEED\n----------\n")
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('FEED'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
         pprint(newdesc)
         tnew_ant_tmp.close()
 
-        tnew_feed = table(self.outname + '/FEED', newdesc, readonly=False, ack=False)
+        tnew_feed = table(self.outname + '::FEED', newdesc, readonly=False, ack=False)
         tnew_feed.addrows(len(stations))
         tnew_feed.putcol("POSITION", np.array([[0., 0., 0.]] * len(stations)))
         tnew_feed.putcol("BEAM_OFFSET", np.array([[[0, 0], [0, 0]]] * len(stations)))
@@ -514,31 +528,34 @@ class Template:
         tnew_feed.flush(True)
         tnew_feed.close()
 
-        print("\n----------\nADD " + self.outname + "/LOFAR_ANTENNA_FIELD\n----------\n")
+        print("\n----------\nADD " + self.outname + "::LOFAR_ANTENNA_FIELD\n----------\n")
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_ANTENNA_FIELD'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
         pprint(newdesc)
         tnew_ant_tmp.close()
 
-        tnew_field = table(self.outname + '/LOFAR_ANTENNA_FIELD', newdesc, readonly=False, ack=False)
+        tnew_field = table(self.outname + '::LOFAR_ANTENNA_FIELD', newdesc, readonly=False, ack=False)
         tnew_field.addrows(len(stations))
         tnew_field.putcol("ANTENNA_ID", np.array(range(len(stations))))
         tnew_field.putcol("NAME", names)
         tnew_field.putcol("COORDINATE_AXES", np.array(coor_axes))
         tnew_field.putcol("TILE_ELEMENT_OFFSET", np.array(tile_element))
         tnew_field.putcol("TILE_ROTATION", np.array([0]*len(stations)))
+        # tnew_field.putcol("ELEMENT_OFFSET", ???) TODO: fix for primary beam construction
+        # tnew_field.putcol("ELEMENT_RCU", ???) TODO: fix for primary beam construction
+        # tnew_field.putcol("ELEMENT_FLAG", ???) TODO: fix for primary beam construction
         tnew_field.flush(True)
         tnew_field.close()
 
-        print("\n----------\nADD " + self.outname + "/LOFAR_STATION\n----------\n")
+        print("\n----------\nADD " + self.outname + "::LOFAR_STATION\n----------\n")
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_STATION'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
         pprint(newdesc)
         tnew_ant_tmp.close()
 
-        tnew_station = table(self.outname + '/LOFAR_STATION', newdesc, readonly=False, ack=False)
+        tnew_station = table(self.outname + '::LOFAR_STATION', newdesc, readonly=False, ack=False)
         tnew_station.addrows(len(lofar_names))
         tnew_station.putcol("NAME", lofar_names)
         tnew_station.putcol("FLAG_ROW", np.array([False] * len(lofar_names)))
@@ -571,7 +588,7 @@ class Template:
                 max_t_lst = max_t
             else:
                 min_t_lst = min(min_t_lst, min_t)
-                min_dt = max(min_dt, dt)
+                min_dt = min(min_dt, dt)
                 dfreq_min = min(dfreq_min, dfreq)
                 max_t_lst = max(max_t_lst, max_t)
 
@@ -601,7 +618,7 @@ class Template:
         # Reshape
         for col in ['DATA', 'FLAG', 'WEIGHT_SPECTRUM']:
             newdesc_data[col]['shape'] = np.array([self.chan_num, 4])
-        newdesc_data.pop("_keywords_")
+        newdesc_data.pop('_keywords_')
 
         pprint(newdesc_data)
 
@@ -636,9 +653,9 @@ class Template:
         for subtbl in ['FIELD', 'HISTORY', 'FLAG_CMD', 'DATA_DESCRIPTION',
                        'LOFAR_ELEMENT_FAILURE', 'OBSERVATION', 'POINTING',
                        'POLARIZATION', 'PROCESSOR', 'STATE']:
-            print("----------\nADD " + self.outname + "/" + subtbl + "\n----------")
+            print("----------\nADD " + self.outname + "::" + subtbl + "\n----------")
 
-            tsub = table(self.tmpfile+"/"+subtbl, ack=False, readonly=False)
+            tsub = table(self.tmpfile+"::"+subtbl, ack=False, readonly=False)
             tsub.copy(self.outname + '/' + subtbl, deep=True)
             tsub.flush(True)
             tsub.close()
@@ -678,10 +695,12 @@ class Stack:
         """
 
         # Initialize data
-        if column in ['DATA', 'WEIGHT_SPECTRUM', 'WEIGHT']:
+        if column in ['DATA']:
             weights = np.zeros((time_len, freq_len))
         elif column in ['UVW']:
-            weights = np.zeros((time_len))
+            weights = np.zeros((time_len, 3))
+        else:
+            weights = None
 
         if column in ['DATA', 'WEIGHT_SPECTRUM']:
             if column == 'DATA':
@@ -699,7 +718,7 @@ class Stack:
             new_data = np.zeros((time_len, 3), dtype=np.float32)
 
         else:
-            sys.exit("ERROR: Choose only DATA, WEIGHT_SPECTRUM, WEIGHT, or UVW")
+            sys.exit("ERROR: Use only DATA, WEIGHT_SPECTRUM, WEIGHT, or UVW")
 
         return new_data, weights
 
@@ -728,8 +747,7 @@ class Stack:
 
             # Get idx
             pair_idx = np.squeeze(np.argwhere(np.all(antennas == antpair, axis=1))).astype(int)
-            ref_pair_idx = np.squeeze(np.argwhere(np.all(ref_antennas == antpair, axis=1))
-                                      [time_offset:len(pair_idx) + time_offset]).astype(int)
+            ref_pair_idx = np.squeeze(np.argwhere(np.all(ref_antennas == antpair, axis=1))[time_idxs]).astype(int)
 
             # Make mapping dict
             mapping = {int(pair_idx[i]): int(ref_pair_idx[i]) for i in range(min(pair_idx.__len__(), ref_pair_idx.__len__()))}
@@ -768,7 +786,7 @@ class Stack:
         ref_stats, ref_ids = get_station_id(self.outname)
 
         # Freq
-        F = table(self.outname+'/SPECTRAL_WINDOW', ack=False)
+        F = table(self.outname+'::SPECTRAL_WINDOW', ack=False)
         ref_freqs = F.getcol("CHAN_FREQ")[0]
         freq_len = ref_freqs.__len__()
         F.close()
@@ -798,13 +816,14 @@ class Stack:
                 t = taql(f"SELECT TIME,ANTENNA1,ANTENNA2,FLAG,{','.join(columns)} FROM {os.path.abspath(ms)} ORDER BY TIME")
 
                 # Get freqs offset
-                f = table(ms+'/SPECTRAL_WINDOW', ack=False)
+                f = table(ms+'::SPECTRAL_WINDOW', ack=False)
                 freqs = f.getcol("CHAN_FREQ")[0]
-                freq_offset = find_closest_index(ref_freqs, freqs[0])
+                # freq_offset = find_closest_index(ref_freqs, freqs[0])
+                freq_idxs = find_closest_index_list(freqs, ref_freqs)
                 f.close()
 
                 # Make antenna mapping in parallel
-                mapping_folder = ms.replace('.ms', '').replace('.MS', '') + '_mapping'
+                mapping_folder = ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping'
                 try:
                     # Verify if folder exists
                     os.makedirs(mapping_folder, exist_ok=False)
@@ -816,7 +835,8 @@ class Stack:
                     # Time in LST
                     time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
                     uniq_time = np.unique(time)
-                    time_offset = find_closest_index(ref_uniq_time, uniq_time[0])
+                    # time_offset = find_closest_index(ref_uniq_time, uniq_time[0])
+                    time_idxs = find_closest_index_list(uniq_time, ref_uniq_time)
                     time = None
 
                     # Map antenna pairs to same as ref (template) table
@@ -841,42 +861,55 @@ class Stack:
                     ref_indices.extend(list(map(int, maps.values())))
 
                 # Get data
-                if col in ['DATA', 'WEIGHT_SPECTRUM']:
-                    flag = np.invert(t.getcol("FLAG"))
+                if col == 'DATA':
+                    weighted_flag = np.invert(t.getcol("FLAG")) * t.getcol("WEIGHT_SPECTRUM")
+                elif col == 'WEIGHT_SPECTRUM':
+                    weighted_flag = np.invert(t.getcol("FLAG"))
+                elif col =='UVW':
+                    weighted_flag = t.getcol("WEIGHT_SPECTRUM")
                 data = t.getcol(col)
 
-                #TODO: PARALLEL CHUNKING --> FASTER?
-
-                if col in ['DATA', 'WEIGHT_SPECTRUM']:
-                    new_data[ref_indices, freq_offset:freq_offset+len(freqs), :] += np.multiply(data[indices, :, :], flag[indices, :, :])
-                    weights[ref_indices, freq_offset:freq_offset+len(freqs)] += flag[indices, :, 0]
-                    # np.multiply(data[indices, :, :], flag, out=data)
-                    # np.add.at(new_data, (ref_indices, slice(freq_offset, freq_offset + len(freqs), None)), data)
-                    # np.add.at(weights, (ref_indices, slice(freq_offset, freq_offset + len(freqs), None)), flag)
+                if col == 'DATA':
+                    new_data[np.ix_(ref_indices, freq_idxs)] += np.multiply(data[indices, :, :], weighted_flag[indices, :, :])
+                    weights[np.ix_(ref_indices, freq_idxs)] += weighted_flag[indices, :, 0]
+                elif col == 'WEIGHT_SPECTRUM':  # --> https://casa.nrao.edu/Memos/CASA-data-weights.pdf
+                    new_data[np.ix_(ref_indices, freq_idxs)] += np.multiply(data[indices, :, :], weighted_flag[indices, :, :])
                 elif col == 'WEIGHT':
                     new_data[ref_indices, :] *= data[indices, :]
                 elif col == 'UVW':
-                    new_data[ref_indices, :] += data[indices, :]
-                    weights[ref_indices] += 1
+                    weighted_uvw = add_axis(np.mean(weighted_flag[indices, :, 0], axis=1), 3)
+                    new_data[ref_indices, :] += np.multiply(data[indices, :], weighted_uvw)
+                    weights[ref_indices] += weighted_uvw
 
                 t.close()
 
             # Average
-            weights = weights.astype(np.float16)
-            weights[weights == 0.] = np.inf
-            if col in ['DATA', 'WEIGHT_SPECTRUM']:
+            if col in ['DATA', 'UVW']:
+                weights = weights.astype(np.float16)
+                weights[weights == 0.] = np.inf
+            if col == 'DATA':
                 for p in range(4):
                     new_data[:, :, p] /= weights
                 T.putcol('FLAG', add_axis(np.invert(weights > 0), 4))
-            if col == 'UVW':
-                new_data /= add_axis(weights, 3)
+            elif col == 'UVW':
+                new_data /= weights
 
             print(f'Put column {col}')
-            # print(new_data)
             T.putcol(col, new_data)
 
         print("----------\n")
         T.close()
+
+
+def clean_mapping_files(msin):
+    """
+    Clean-up mapping files
+    """
+
+    for ms in msin:
+        shutil.rmtree(ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping')
+
+    return
 
 
 def parse_args():
@@ -884,8 +917,11 @@ def parse_args():
     Parse input arguments
     """
     parser = ArgumentParser(description='MS stacking')
-    parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
     parser.add_argument('msin', nargs='+', help='Measurement sets to stack')
+    parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
+    parser.add_argument('--no_cleanup', action='store_true', default=None, help='Do not remove mapping files')
+    parser.add_argument('--stack_time', action='store_true', default=None, help='Time stacking')
+
     return parser.parse_args()
 
 
@@ -901,11 +937,21 @@ def ms_merger():
     print("############\nTemplate creation completed\n############")
 
     # Stack MS
+    if args.stack_time:
+        start_time = time.time()
     s = Stack(args.msin, args.msout)
     s.stack_all()
+    if args.stack_time:
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+        print(f"Elapsed time for stacking: {elapsed_time//60} minutes")
 
     # Apply dysco compression
     compress(args.msout)
+
+    # Clean up mapping files
+    if not args.no_cleanup:
+        clean_mapping_files(args.msin)
 
 
 if __name__ == '__main__':
