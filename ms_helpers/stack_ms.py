@@ -6,9 +6,11 @@ Strategy:
        The template inclues all baselines, frequency, and smallest time spacing from all input MS.
        Time is converted to Local Sidereal Time (LST).
 
-    2) Stack measurement sets on the template (Stack class).
-        The stacking function maps baseline numbers from the input MS to the template MS and fills
-        the template according to this mapping in LST time.
+    2) Map baselines from input MS to template MS.
+        This step makes *baseline_mapping folders with the baseline mappings in json files.
+
+    3) Stack measurement sets on the template (Stack class).
+        The stacking is done with a weighted average, using the FLAG and WEIGHT_SPECTRUM columns.
 """
 
 from casacore.tables import table, default_ms, taql
