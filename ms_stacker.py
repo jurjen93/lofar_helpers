@@ -1,5 +1,9 @@
 """
 LOFAR UV STACKER
+This script can be used to stack measurement sets in the UV plane
+
+Example: python ms_stacker.py --msout <MS_NAME> *.ms
+The wildcard is in this example stacking a collection of measurement sets
 
 Strategy:
     1) Make a template using the 'default_ms' option from casacore.tables (Template class).
@@ -922,7 +926,7 @@ def parse_args():
     parser.add_argument('msin', nargs='+', help='Measurement sets to stack')
     parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
     parser.add_argument('--no_cleanup', action='store_true', default=None, help='Do not remove mapping files')
-    parser.add_argument('--stack_time', action='store_true', default=None, help='Time stacking')
+    parser.add_argument('--record_time', action='store_true', default=None, help='Time stacking')
 
     return parser.parse_args()
 
@@ -939,11 +943,11 @@ def ms_merger():
     print("############\nTemplate creation completed\n############")
 
     # Stack MS
-    if args.stack_time:
+    if args.record_time:
         start_time = time.time()
     s = Stack(args.msin, args.msout)
     s.stack_all()
-    if args.stack_time:
+    if args.record_time:
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f"Elapsed time for stacking: {elapsed_time//60} minutes")
