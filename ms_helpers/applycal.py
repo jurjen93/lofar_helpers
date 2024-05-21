@@ -45,7 +45,8 @@ class ApplyCal:
             self.cmd += ['ac.type=applycal',
                          'ac.parmdb=' + h5,
                          'ac.correction=fulljones',
-                         'ac.soltab=[amplitude000,phase000]']
+                         'ac.soltab=[amplitude000,phase000]',
+                         'ac.updateweights=True']
 
         # add non-fulljones solutions apply
         else:

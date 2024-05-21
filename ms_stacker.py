@@ -728,7 +728,7 @@ class Stack:
 
         return new_data, weights
 
-    def stack_all(self, column: str = 'DATA'):
+    def stack_all(self, column: str = 'DATA', less_memory: bool = False):
         """
         Stack all MS
 
@@ -875,6 +875,8 @@ class Stack:
                     weighted_flag = t.getcol("WEIGHT_SPECTRUM")
                 data = t.getcol(col)
 
+                # Stack columns
+                #TODO: https://docs.dask.org/en/stable/array.html
                 if col == 'DATA':
                     new_data[np.ix_(ref_indices, freq_idxs)] += np.multiply(data[indices, :, :], weighted_flag[indices, :, :])
                     weights[np.ix_(ref_indices, freq_idxs)] += weighted_flag[indices, :, 0]
@@ -922,12 +924,14 @@ def parse_args():
     """
     Parse input arguments
     """
+
     parser = ArgumentParser(description='MS stacking')
     parser.add_argument('msin', nargs='+', help='Measurement sets to stack')
     parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
     parser.add_argument('--no_cleanup', action='store_true', default=None, help='Do not remove mapping files')
     parser.add_argument('--record_time', action='store_true', default=None, help='Time stacking')
-
+    parser.add_argument('--use_less_memory', action='store_true', default=None, help='Use less memory (generally slower option)')
+    
     return parser.parse_args()
 
 
@@ -946,7 +950,7 @@ def ms_merger():
     if args.record_time:
         start_time = time.time()
     s = Stack(args.msin, args.msout)
-    s.stack_all()
+    s.stack_all(less_memory=args.use_less_memory)
     if args.record_time:
         end_time = time.time()
         elapsed_time = end_time - start_time

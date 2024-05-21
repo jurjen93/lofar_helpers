@@ -84,13 +84,13 @@ def main():
                     freqs = st.freq[:]
                     freq_indices = np.where((freqs >= min_freq) & (freqs <= max_freq))[0]
                 else:
-                    freq_indices = list(range(len(st.freq[:])))
+                    freq_indices = list(range(len(st.freq[:])+1))
 
                 if args.timerange is not None:
                     time = st.time[:]
                     time_indices = np.where((time-time.min() >= min_time) & (time-time.min() <= max_time))[0]
                 else:
-                    time_indices = list(range(len(st.time[:])))
+                    time_indices = list(range(len(st.time[:])+1))
 
                 for ant_idx in ant_idxs:
                     print(f"Flag for: {ants[ant_idx]}")
