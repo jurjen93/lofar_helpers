@@ -1,3 +1,4 @@
+import bisect
 import itertools
 import random
 from pathlib import Path
@@ -99,7 +100,7 @@ def transform_data(root_dir, classes=('continue', 'stop'), modes=('', '_val')):
 
         transformed = normalize_fits(image_data)
 
-        np.save(fits_path.with_suffix('.npy'), transformed)
+        np.savez_compressed(fits_path.with_suffix('.npz'), transformed.astype(np.float32))
 
     root_dir = Path(root_dir)
     assert root_dir.exists()
@@ -124,13 +125,14 @@ class FitsDataset(Dataset):
         classes = {'stop': 0, 'continue': 1}
 
         root_dir = Path(root_dir)
-        assert root_dir.exists()
+        assert root_dir.exists(), f"'{root_dir}' doesn't exist!"
 
-        ext = '*.npy'
+        ext = '.npz'
+        glob_ext = '*' + ext
 
         for folder in (root_dir / (cls + ('' if mode == 'train' else '_val')) for cls in classes):
-            assert folder.exists()
-            assert len(list(folder.glob(ext))) > 0
+            assert folder.exists(), f"root folder doesn't exist, got: '{str(folder.resolve())}'"
+            assert len(list(folder.glob(glob_ext))) > 0, f"no '{ext}' files were found in '{str(folder.resolve())}'"
 
         # Yes this code is way overengineered. Yes I also derive pleasure from writing it :) - RJS
         #
@@ -140,34 +142,12 @@ class FitsDataset(Dataset):
         self.data_paths, self.labels = map(np.asarray, list(zip(*(
             (str(file), val)
             for cls, val in classes.items()
-            for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(ext)
+            for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(glob_ext)
         ))))
 
         assert len(self.data_paths) > 0
 
-        # TODO: make this a bit cleaner
-        # Filter found data_paths and labels on train/val splits
-        # First randomly permute so that the train/val splits are randomly distributed
-        # rng = np.random.default_rng(42)
-        # p = rng.permutation(len(labels))
-        # data_paths, labels = data_paths[p], labels[p]
-
-        # filtered_paths, filtered_labels = [], []
-        # for val in classes.values():
-        #     indices = np.nonzero(labels == val)[0]
-        #     split = train_split if mode == 'train' else 1 - train_split
-        #     num_examples = np.int32((np.floor if mode == 'train' else np.ceil)(split * len(indices)))
-        #
-        #     if num_examples == 0:
-        #         print(f"Warning: num remaining examples is 0 for class {val} and split {split}")
-        #
-        #     filtered_idx = (indices[:num_examples] if mode == 'train' else indices[-num_examples:],)
-        #     filtered_paths.append(data_paths[filtered_idx])
-        #     filtered_labels.append(labels[filtered_idx])
-        #
-        # self.data_paths, self.labels = map(np.concatenate, (filtered_paths, filtered_labels))
-
-        sources = ", ".join(sorted([str(elem).split('/')[-1].strip('.npy') for elem in self.data_paths]))
+        sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.data_paths]))
         print(f'{mode}: using the following sources: {sources}')
 
     @staticmethod
@@ -175,39 +155,9 @@ class FitsDataset(Dataset):
         """
         Transform data for preprocessing
         """
-        # while image_data.ndim > 2:
-        #     image_data = image_data[0]
-        #
-        # # crop data (half data size)
-        # # image_data = crop(image_data)
-        #
-        # # re-normalize data (such that values are between 0 and 1)
-        # rms = get_rms(image_data)
-        # norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms * 50000, base=10)
-        #
-        # image_data = norm(image_data)
-        # image_data = np.clip(image_data - image_data.min(), a_min=0, a_max=1)
-        #
-        # # make RGB image
-        # cmap = plt.get_cmap('RdBu_r')
-        # image_data = cmap(image_data)
-        # image_data = np.delete(image_data, 3, 2)
 
-        # image_data = -image_data + 1  # make the peak exist at zero
-        # image_data = np.e ** image_data
-        #
-        # image_data = image_data - np.array([1.34517796, 1.2179354 , 1.15546612])
-        # image_data = image_data / np.array([0.37540418, 0.18891336, 0.13838379])
-
-        # if random.randint(0, 1):
-        #     image_data = -image_data
-        #
-        image_data = torch.from_numpy(image_data).to(dtype=torch.float32)
+        image_data = torch.from_numpy(image_data)
         image_data = torch.movedim(image_data, -1, 0)
-        # image_data = T.Resize((256, 256))(image_data)
-        # Just some regularization
-        image_data = image_data + 0.1*torch.randn_like(image_data)
-        image_data = image_data
 
         return image_data
 
@@ -216,7 +166,7 @@ class FitsDataset(Dataset):
 
     def __getitem__(self, idx):
         npy_path = self.data_paths[idx]
-        image_data = np.load(npy_path)
+        image_data = np.load(npy_path)['arr_0']  # there is always only one array
 
         # Pre-processing
         image_data = self.transform_data(image_data)
@@ -227,9 +177,9 @@ class FitsDataset(Dataset):
 
 
 if __name__ == '__main__':
-    root = '/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data'
+    root = f'/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data'
 
-    # transform_data(root)
+    transform_data(root)
     # images = np.concatenate([image.flatten() for image, label in Idat])
     # print("creating hist")
     # plt.hist(images)

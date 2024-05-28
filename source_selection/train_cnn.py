@@ -1,78 +1,112 @@
 import os
-from typing import Any
+from functools import partial, lru_cache
 
 import numpy as np
 import torch
-import torchmetrics
+import torcheval.metrics.functional as tef
 from lightning import LightningModule, Trainer
 from matplotlib import pyplot as plt
 from torch import nn
-from torchmetrics import AveragePrecision
-from torchmetrics.classification import BinaryAveragePrecision
 from torchvision import models
-from torchmetrics.functional import accuracy
+from torchvision.transforms import v2
 
 from pre_processing_for_ml import FitsDataset
 
 
+def setup_transferred_model(name: str, num_target_classes: int):
+    # use partial to prevent loading all models at once
+    model_map = {
+        'resnet50': partial(models.resnet50, weights="DEFAULT"),
+        'resnet152': partial(models.resnet152, weights="DEFAULT"),
+        'resnext50_32x4d': partial(models.resnext50_32x4d, weights="DEFAULT"),
+        'resnext101_64x4d': partial(models.resnext101_64x4d, weights="DEFAULT"),
+        'efficientnet_v2_l': partial(models.efficientnet_v2_l, weights="DEFAULT"),
+    }
+
+    backbone = model_map[name]()
+
+    feature_extractor = nn.Sequential(*list(backbone.children())[:-1])
+    num_out_features = (
+        backbone.fc if name in ('resnet50', 'resnet152', 'resnext101_64x4d')
+        else backbone.classifier[-1]  # efficientnet
+    ).in_features
+
+    classifier = nn.Sequential(
+        nn.Flatten(),
+        nn.Dropout1d(p=0.25),
+        nn.Linear(num_out_features, num_out_features),
+        nn.ReLU(),
+        nn.Linear(num_out_features, num_target_classes),
+    )
+
+    return feature_extractor, classifier
 
 
 class ImagenetTransferLearning(LightningModule):
-    def __init__(self):
+    def __init__(self, model: str):
         super().__init__()
+        self.save_hyperparameters()
 
-        # init a pretrained resnet
-        backbone = models.resnet50(weights="DEFAULT")
-        # backbone = models.resnet152(weights="DEFAULT")
-        # backbone = models.resnext101_64x4d(weights="DEFAULT")
-        # backbone = models.efficientnet_v2_l
-
-        layers = list(backbone.children())[:-1]
-        self.feature_extractor = nn.Sequential(*layers)
+        self.feature_extractor, self.classifier = setup_transferred_model(name=model, num_target_classes=1)
         self.feature_extractor.eval()
 
-        num_target_classes = 1
-        num_filters = backbone.fc.in_features
+        # self.average_precision = nn.ModuleDict({
+        #     'train_ap': BinaryAveragePrecision(),
+        #     'val_ap': BinaryAveragePrecision()
+        # })
 
-        self.classifier = nn.Sequential(
-            nn.Linear(num_filters, num_filters),
-            nn.ReLU(),
-            nn.Linear(num_filters, num_target_classes),
-        )
-
-        self.average_precision = nn.ModuleDict({
-            'train_ap': BinaryAveragePrecision(),
-            'val_ap': BinaryAveragePrecision()
-        })
-
+    @partial(torch.compile, mode='reduce-overhead')
     def forward(self, x):
         with torch.no_grad():
-            representations = self.feature_extractor(x).flatten(1)
+            representations = self.feature_extractor(x)
         x = self.classifier(representations)
         return x
+
+    @torch.no_grad()
+    def augmentation(self, inputs):
+        inputs = get_transforms()(inputs)
+        inputs = inputs + 0.01 * torch.randn_like(inputs)
+
+        return inputs
+
+    @torch.no_grad()
+    def normalize(self, inputs):
+        inputs = (inputs - inputs.mean(dim=(0, 2, 3), keepdim=True)) / inputs.std(dim=(0, 2, 3), keepdim=True)
+        return inputs
 
     def training_step(self, batch):
         loss = self.shared_step(batch, mode='train')
         return loss
 
     def validation_step(self, batch):
-        loss = self.shared_step(batch, 'val')
+        loss = self.shared_step(batch, mode='val')
         return loss
+
+    def predict_step(self, batch):
+        pass
 
     def shared_step(self, batch, mode):
         assert mode in ('train', 'val', 'test')
 
         inputs, target = batch
 
-        if torch.isnan(inputs).any():
-            breakpoint()
+        # inputs = self.normalize(inputs)
 
-        output = torch.sigmoid(self(inputs))
+        if mode == 'train':
+            inputs = self.augmentation(inputs)
 
-        target = target[None].T.to(dtype=output.dtype)  # massaging the targets into the correct dtype
-        loss = torch.nn.functional.binary_cross_entropy(output, target)
-        acc = accuracy(output, target, task="binary")
-        ap = self.average_precision[f"{mode}_ap"](output, target.int())
+        # TODO: do this from the global mean
+
+        output = self(inputs).flatten()
+
+        target = target.to(dtype=output.dtype)  # massaging the targets into the correct dtype
+        loss = torch.nn.functional.binary_cross_entropy_with_logits(output, target, pos_weight=torch.as_tensor(2.698717948717949))
+
+        with torch.no_grad():
+            pseudo_probs = torch.sigmoid(output)
+
+            ap = tef.binary_auprc(pseudo_probs, target)
+            acc = tef.binary_accuracy(pseudo_probs, target)
 
         self.log_dict(
             {
@@ -91,19 +125,19 @@ class ImagenetTransferLearning(LightningModule):
         return loss
 
     def configure_optimizers(self):
-        return torch.optim.AdamW(self.classifier.parameters(), lr=1e-4)
+        return torch.optim.AdamW(self.classifier.parameters(), lr=3e-5)
 
 
 def main(root: str):
     torch.set_float32_matmul_precision('high')
 
-    trainer = Trainer()
+    trainer = Trainer(benchmark=True, precision='bf16-mixed', num_sanity_val_steps=0)
 
-    model = ImagenetTransferLearning()
+    model = ImagenetTransferLearning(model='resnet50')
 
-    num_workers = len(os.sched_getaffinity(0))
+    # num_workers = len(os.sched_getaffinity(0))
     # num_workers = 0
-    # num_workers = 5
+    num_workers = 12
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else
         (None, False)
@@ -116,7 +150,7 @@ def main(root: str):
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,
             persistent_workers=persistent_workers,
-            pin_memory=True,
+            pin_memory=False,
             drop_last=(True if mode == 'train' else False),  # needed for torch.compile,
             shuffle=True,  # needed so that val AP is non nan
         )
@@ -137,7 +171,20 @@ def plot_marginal(root):
     plt.savefig('marginal_flipped_doubled.png')
 
 
+@lru_cache(maxsize=1)
+def get_transforms():
+    return v2.Compose([
+        # v2.Resize(size=1024),
+        v2.ColorJitter(brightness=.5, hue=.3, saturation=0.1, contrast=0.1),
+        v2.RandomInvert(),
+        v2.RandomEqualize(),
+        v2.RandomVerticalFlip(p=0.5),
+        v2.RandomHorizontalFlip(p=0.5),
+    ])
+
+
 if __name__ == '__main__':
-    root = '/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
+    # root = f'{os.environ["TMPDIR"]}/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
+    root = f'/dev/shm/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
 
     main(root)
