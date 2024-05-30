@@ -32,6 +32,15 @@ from glob import glob
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
 from itertools import compress
 import time
+import dask.array as da
+import psutil
+try:
+    from dask.distributed import Client
+    parallel = True
+except ImportError:
+    print('WARNING: dask.distrubted not installed, continue without parallel stacking.')
+    parallel = False
+
 
 
 def print_progress_bar(index, total, bar_length=50):
@@ -677,7 +686,7 @@ class Stack:
     """
     Stack measurement sets in template empty.ms
     """
-    def __init__(self, msin: list = None, outname: str = 'empty.ms'):
+    def __init__(self, msin: list = None, outname: str = 'empty.ms', chunkmem: float = 4.):
         if not os.path.exists(outname):
             sys.exit(f"ERROR: Template {outname} has not been created or is deleted")
         self.template = table(outname, readonly=False, ack=False)
@@ -685,8 +694,21 @@ class Stack:
         self.outname = outname
         self.ant_map = None
 
-    @staticmethod
-    def get_data_arrays(column: str = 'DATA', time_len: int = None, freq_len: int = None):
+        num_cpus = psutil.cpu_count(logical=True)
+        total_memory = psutil.virtual_memory().total / (1024 ** 3)  # in GB
+
+        if parallel:
+            print(f"CPU number: {num_cpus}\nMemory limit: {int(total_memory)}GB")
+            self.client = Client(n_workers=num_cpus,
+                                 threads_per_worker=1,
+                                 memory_limit=f'{total_memory/(num_cpus*1.5)}GB')
+            target_chunk_size = total_memory / num_cpus / chunkmem
+            self.chunk_size = int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize)
+        else:
+            target_chunk_size = total_memory / chunkmem
+            self.chunk_size = int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize)
+
+    def get_data_arrays(self, column: str = 'DATA', time_len: int = None, freq_len: int = None, use_dask: bool = True):
         """
         Get data arrays (new data and weights)
 
@@ -702,9 +724,15 @@ class Stack:
 
         # Initialize data
         if column in ['DATA']:
-            weights = np.zeros((time_len, freq_len))
+            if use_dask:
+                weights = da.zeros((time_len, freq_len), chunks=(-1, -1), dtype=np.float16)
+            else:
+                weights = np.zeros((time_len, freq_len), dtype=np.float16)
         elif column in ['UVW']:
-            weights = np.zeros((time_len, 3))
+            if use_dask:
+                weights = da.zeros((time_len, 3), chunks=(self.chunk_size, -1), dtype=np.float16)
+            else:
+                weights = np.zeros((time_len, 3), dtype=np.float16)
         else:
             weights = None
 
@@ -715,20 +743,29 @@ class Stack:
                 dtp = np.float32
             else:
                 dtp = np.float32
-            new_data = np.zeros((time_len, freq_len, 4), dtype=dtp)
+            if use_dask:
+                new_data = da.zeros((time_len, freq_len, 4), dtype=dtp, chunks=(self.chunk_size, -1, -1))
+            else:
+                new_data = np.zeros((time_len, freq_len, 4), dtype=dtp)
 
         elif column == 'WEIGHT':
-            new_data = np.zeros((time_len, freq_len), dtype=np.float32)
+            if use_dask:
+                new_data = da.zeros((time_len, freq_len), dtype=np.float32, chunks=(self.chunk_size, -1))
+            else:
+                new_data = np.zeros((time_len, freq_len), dtype=np.float32)
 
         elif column == 'UVW':
-            new_data = np.zeros((time_len, 3), dtype=np.float32)
+            if use_dask:
+                new_data = da.zeros((time_len, 3), dtype=np.float32, chunks=(self.chunk_size, -1))
+            else:
+                new_data = np.zeros((time_len, 3), dtype=np.float32)
 
         else:
             sys.exit("ERROR: Use only DATA, WEIGHT_SPECTRUM, WEIGHT, or UVW")
 
         return new_data, weights
 
-    def stack_all(self, column: str = 'DATA', less_memory: bool = False):
+    def stack_all(self, column: str = 'DATA'):
         """
         Stack all MS
 
@@ -808,10 +845,12 @@ class Stack:
         # Remove ref_time
         ref_time = None
 
+        use_dask = True
+
         # Loop over columns
         for col in columns:
 
-            new_data, weights = self.get_data_arrays(col, time_len, freq_len)
+            new_data, weights = self.get_data_arrays(col, time_len, freq_len, use_dask=use_dask)
 
             # Loop over measurement sets
             for ms in self.mslist:
@@ -868,26 +907,32 @@ class Stack:
 
                 # Get data
                 if col == 'DATA':
-                    weighted_flag = np.invert(t.getcol("FLAG")) * t.getcol("WEIGHT_SPECTRUM")
+                    weighted_flag = da.multiply(da.invert(da.from_array(t.getcol("FLAG"), chunks=(self.chunk_size, -1, -1))),
+                                                da.from_array(t.getcol("WEIGHT_SPECTRUM"), chunks=(self.chunk_size, -1, -1)))
                 elif col == 'WEIGHT_SPECTRUM':
-                    weighted_flag = np.invert(t.getcol("FLAG"))
+                    weighted_flag = da.invert(da.from_array(t.getcol("FLAG"), chunks=(self.chunk_size, -1, -1)))
                 elif col =='UVW':
-                    weighted_flag = t.getcol("WEIGHT_SPECTRUM")
-                data = t.getcol(col)
+                    weighted_flag = add_axis(da.mean(da.from_array(t.getcol("WEIGHT_SPECTRUM")[:, :, 0],
+                                                                   chunks=(self.chunk_size, -1)), axis=1), 3)
+
+                data = da.from_array(t.getcol(col), chunks=self.chunk_size)
 
                 # Stack columns
-                #TODO: https://docs.dask.org/en/stable/array.html
-                if col == 'DATA':
-                    new_data[np.ix_(ref_indices, freq_idxs)] += np.multiply(data[indices, :, :], weighted_flag[indices, :, :])
-                    weights[np.ix_(ref_indices, freq_idxs)] += weighted_flag[indices, :, 0]
-                elif col == 'WEIGHT_SPECTRUM':  # --> https://casa.nrao.edu/Memos/CASA-data-weights.pdf
-                    new_data[np.ix_(ref_indices, freq_idxs)] += np.multiply(data[indices, :, :], weighted_flag[indices, :, :])
+                if col == 'DATA' or col == 'WEIGHT_SPECTRUM':
+                    if use_dask:
+                        for i, f in enumerate(freq_idxs):
+                            new_data[ref_indices, f, :] += da.multiply(data[indices, i, :], weighted_flag[indices, i, :])
+                            if col == 'DATA':
+                                weights[ref_indices, f] += weighted_flag[indices, i, 0]
+                    else:
+                        new_data[np.ix_(ref_indices, freq_idxs)] += da.multiply(data[indices, :, :], weighted_flag[indices, :, :]).compute()
+                        if col == 'DATA':
+                            weights[np.ix_(ref_indices, freq_idxs)] += weighted_flag[indices, :, 0].compute()
                 elif col == 'WEIGHT':
-                    new_data[ref_indices, :] *= data[indices, :]
+                    new_data[ref_indices, :] *= data[indices, :].compute()
                 elif col == 'UVW':
-                    weighted_uvw = add_axis(np.mean(weighted_flag[indices, :, 0], axis=1), 3)
-                    new_data[ref_indices, :] += np.multiply(data[indices, :], weighted_uvw)
-                    weights[ref_indices] += weighted_uvw
+                    new_data[ref_indices, :] += da.multiply(data[indices, :], weighted_flag[indices, :]).compute()
+                    weights[ref_indices] += weighted_flag[indices, :].compute()
 
                 t.close()
 
@@ -898,12 +943,18 @@ class Stack:
             if col == 'DATA':
                 for p in range(4):
                     new_data[:, :, p] /= weights
-                T.putcol('FLAG', add_axis(np.invert(weights > 0), 4))
+                if use_dask:
+                    T.putcol('FLAG', add_axis(da.invert(weights > 0).compute(), 4))
+                else:
+                    T.putcol('FLAG', add_axis(da.invert(weights > 0), 4))
             elif col == 'UVW':
                 new_data /= weights
 
             print(f'Put column {col}')
-            T.putcol(col, new_data)
+            if use_dask:
+                T.putcol(col, new_data.compute())
+            else:
+                T.putcol(col, new_data)
 
         print("----------\n")
         T.close()
@@ -928,10 +979,11 @@ def parse_args():
     parser = ArgumentParser(description='MS stacking')
     parser.add_argument('msin', nargs='+', help='Measurement sets to stack')
     parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
+    parser.add_argument('--chunk_mem', type=float, default=4., help='Chunk memory size. Large files need larger parameter, small files can have small parameter value.')
     parser.add_argument('--no_cleanup', action='store_true', default=None, help='Do not remove mapping files')
     parser.add_argument('--record_time', action='store_true', default=None, help='Time stacking')
-    parser.add_argument('--use_less_memory', action='store_true', default=None, help='Use less memory (generally slower option)')
-    
+    parser.add_argument('--no_compression', action='store_true', default=None, help='Time stacking')
+
     return parser.parse_args()
 
 
@@ -949,15 +1001,16 @@ def ms_merger():
     # Stack MS
     if args.record_time:
         start_time = time.time()
-    s = Stack(args.msin, args.msout)
-    s.stack_all(less_memory=args.use_less_memory)
+    s = Stack(args.msin, args.msout, chunkmem=args.chunk_mem)
+    s.stack_all()
     if args.record_time:
         end_time = time.time()
         elapsed_time = end_time - start_time
         print(f"Elapsed time for stacking: {elapsed_time//60} minutes")
 
     # Apply dysco compression
-    compress(args.msout)
+    if not args.no_compression:
+        compress(args.msout)
 
     # Clean up mapping files
     if not args.no_cleanup:
