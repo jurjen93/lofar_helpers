@@ -76,6 +76,6 @@ def main(dataroot, checkpoint_path):
 if __name__ == '__main__':
     # root = f'{os.environ["TMPDIR"]}/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
     root = f'/dev/shm/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
-    checkpoint_path = '/gpfs/home5/robertsc/CORTEX/lofar_helpers/source_selection/lightning_logs/version_5471545/checkpoints/epoch=89-step=4680.ckpt'
+    checkpoint_path = '/lofar_helpers/source_selection/lightning_logs.old/version_5471545/checkpoints/epoch=89-step=4680.ckpt'
 
     main(root, checkpoint_path)

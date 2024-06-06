@@ -169,7 +169,7 @@ class FitsDataset(Dataset):
         image_data = np.load(npy_path)['arr_0']  # there is always only one array
 
         # Pre-processing
-        image_data = self.transform_data(image_data)
+        image_data = self.transform_data(image_data).to(torch.bfloat16)
 
         label = self.labels[idx]
 
