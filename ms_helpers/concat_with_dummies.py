@@ -171,7 +171,7 @@ def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg, t
             t.close()
             freqavg = get_largest_divider(channum, freq_avg + 1)
             if freqavg!=freq_avg:
-                print(f"WARNING: {channum} Channels can only be divded by {freqavg} and not by {freq_avg}")
+                print(f"WARNING: {channum} Channels can only be divided by {freqavg} and not by {freq_avg}")
             parset += f'\navg.freqstep={freqavg}'
         if freq_res is not None:
             parset += f'\navg.freqresolution={freq_res}'
