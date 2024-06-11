@@ -116,8 +116,9 @@ def compress(ms, avg):
 
         print('\n----------\nDYSCO COMPRESSION\n----------\n')
 
-        os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[avg] msout.overwrite=true "
-                  f"msout.storagemanager=dysco avg.type=averager avg.timestep={avg} avg.freqstep={avg}")
+        os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[interpolate,avg] msout.overwrite=true "
+                  f"msout.storagemanager=dysco avg.type=averager avg.timestep={avg} avg.freqstep={avg} "
+                  f"avg.minpoints={avg} interpolate.type=interpolate interpolate.windowsize=17")
 
         try:
             t = table(f"{ms}.tmp") # test if exists
@@ -643,15 +644,12 @@ class Template:
         self.station_info = unique_station_list(unique_stations)
         self.lofar_stations_info = unique_station_list(unique_lofar_stations)
 
-        for i in range(ceil(avg_factor*10)):
-            chan_range = np.arange(min(unique_channels), max(unique_channels) + i*dfreq_min/avg_factor, dfreq_min/avg_factor)
-            if len(chan_range) % avg_factor == 0:
-                break
 
+        chan_range = np.linspace(min(unique_channels), max(unique_channels), ceil(len(unique_channels) * avg_factor))
         self.channels = np.sort(np.expand_dims(np.unique(chan_range), 0))
         self.chan_num = self.channels.shape[-1]
         # time_range = np.arange(min_t_lst, min(max_t_lst+min_dt, one_lst_day_sec/2 + min_t_lst + min_dt), min_dt)# ensure just half LST day
-        time_range = np.arange(min_t_lst, max_t_lst + min_dt/avg_factor, min_dt/avg_factor)
+        time_range = np.arange(min_t_lst, max_t_lst + min_dt, min_dt/avg_factor)
         baseline_count = n_baselines(len(self.station_info))
         nrows = baseline_count*len(time_range)
 
@@ -934,8 +932,6 @@ class Stack:
                 # Make antenna mapping in parallel
                 mapping_folder = ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping'
 
-                indices = []
-                ref_indices = []
                 print('Read mapping')
                 total_map = {}
                 for m, ant_map_json in enumerate(glob(mapping_folder + "/*.json")):
@@ -1033,7 +1029,7 @@ def ms_merger():
     # Make template
     args = parse_args()
 
-    # Find averaging_factor
+    # Find averaging_factor TODO: PERHAPS ISSUES?
     avg = get_avg_factor(args.msin, args.less_avg)
     print(f"Averaging factor {avg}")
 
