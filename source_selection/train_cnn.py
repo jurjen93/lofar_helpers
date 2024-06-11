@@ -97,7 +97,7 @@ class ImagenetTransferLearning(LightningModule):
             (means, stds)
         )
 
-        return (inputs.log() - means) / stds
+        return (inputs - means) / stds
 
     @partial(torch.compile, mode='reduce-overhead')
     def forward(self, x):
@@ -164,7 +164,6 @@ class ImagenetTransferLearning(LightningModule):
         )
 
         if PROFILE:
-            # global profiler
             profiler.step()
 
         return loss
@@ -178,9 +177,10 @@ def main(dataset_root: str, model: str, lr: float, normalize=False, dropout_p=0.
 
     logging_root = 'lightning_logs/'
 
-    version_appendix = int(os.getenv('SLURM_ARRAY_ID', 0))
+    version = int(os.getenv('SLURM_ARRAY_JOB_ID', os.getenv('SLURM_JOB_ID', 0)))
+    version_appendix = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
     while True:
-        version_dir = f"version_{os.getenv('SLURM_JOB_ID', '0')}_{version_appendix}__model_{model}__lr_{lr}__normalize_{normalize}___dropoutP_{dropout_p}"
+        version_dir = f"version_{version}_{version_appendix}__model_{model}__lr_{lr}__normalize_{normalize}___dropoutP_{dropout_p}"
         logging_dir = Path.cwd() / logging_root / version_dir
         if not logging_dir.exists():
             break
@@ -257,9 +257,9 @@ def main(dataset_root: str, model: str, lr: float, normalize=False, dropout_p=0.
 def get_transforms():
     return v2.Compose([
         # v2.Resize(size=1024),
-        # v2.ColorJitter(brightness=.5, hue=.3, saturation=0.1, contrast=0.1),
-        # v2.RandomInvert(),
-        # v2.RandomEqualize(),
+        v2.ColorJitter(brightness=.5, hue=.3, saturation=0.1, contrast=0.1),
+        v2.RandomInvert(),
+        v2.RandomEqualize(),
         v2.RandomVerticalFlip(p=0.5),
         v2.RandomHorizontalFlip(p=0.5),
     ])
