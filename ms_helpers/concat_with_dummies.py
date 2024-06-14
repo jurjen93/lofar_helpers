@@ -14,6 +14,7 @@ from glob import glob
 import argparse
 import os
 
+
 def get_largest_divider(inp, max=1000):
     """
     Get largest divider
@@ -27,6 +28,7 @@ def get_largest_divider(inp, max=1000):
         if inp % r == 0:
             return r
     sys.exit("ERROR: code should not arrive here.")
+
 
 def get_channels(input_ms):
     """
@@ -121,7 +123,6 @@ def split_ms_phasedir(mslist):
         else:
             d[pd] += [ms]
     return d
-
 
 
 def parse_args():

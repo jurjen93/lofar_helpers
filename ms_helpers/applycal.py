@@ -99,7 +99,7 @@ def parse_args():
     """Argument parser"""
 
     parser = ArgumentParser(description='Applycal on MS with H5')
-    parser.add_argument('msin', nargs='+', type=str, help='input measurement set', required=True)
+    parser.add_argument('msin', nargs='+', type=str, help='input measurement set')
     parser.add_argument('--msout', type=str, default='.', help='output measurement set')
     parser.add_argument('--h5', type=str, help='h5 calibration', required=True)
     parser.add_argument('--colin', type=str, default='DATA', help='input column name')
