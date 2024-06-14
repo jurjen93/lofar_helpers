@@ -145,7 +145,9 @@ class SubtractWSClean:
             self.scale = ''
 
         # region file to mask
-        if localnorth:
+        if region is None:
+            self.region = None
+        elif localnorth:
             self.region = self.box_to_localnorth(region)
         else:
             self.region = pyregion.open(region)
@@ -574,7 +576,7 @@ def parse_args():
     """
     parser = ArgumentParser(description='Subtract region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
-    parser.add_argument('--region', type=str, help='region file', required=True)
+    parser.add_argument('--region', type=str, help='region file')
     parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)')
     parser.add_argument('--model_image_folder', type=str,
                         help='folder where model images are stored (if not given script takes model images from run folder)')
@@ -704,7 +706,8 @@ def main():
 
         # mask
         print('############## MASK REGION ##############')
-        object.mask_region(region_cube=args.use_region_cube)
+        if args.region is not None:
+            object.mask_region(region_cube=args.use_region_cube)
 
         # predict
         print('############## PREDICT ##############')

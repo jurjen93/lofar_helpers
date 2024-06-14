@@ -47,9 +47,11 @@ def get_channels(input_ms):
     if len(input_ms) == 0:
         sys.exit("ERROR: no MS given.")
 
+    input_ms.sort(key=lambda x: x.split('/')[-1])
+
     # collect all frequencies in 1 numpy array
     for n, ms in enumerate(input_ms):
-        t = ct.table(ms + '/::SPECTRAL_WINDOW')
+        t = ct.table(ms + '/::SPECTRAL_WINDOW', ack=False)
 
         if n == 0:
             chans = t.getcol("CHAN_FREQ")
@@ -73,7 +75,10 @@ def fill_freq_gaps(input, make_dummies, output_name):
     # get frequency channels
     chans, mslist = get_channels(input)
     # get differences between frequency steps
+    chan_diff_single = np.abs(np.diff(chans, n=1))
+    chans_per_ms = len(chan_diff_single)//len(mslist)+1
     chan_diff = np.abs(np.diff(chans, n=2))
+    num_missing = [int(i) for i in chan_diff_single[:-1]/chan_diff_single[1:]/chans_per_ms][chans_per_ms-1::chans_per_ms]
 
     # file to write sorted list of MS
     file = open(output_name, 'w')
@@ -82,10 +87,13 @@ def fill_freq_gaps(input, make_dummies, output_name):
     if np.sum(chan_diff) != 0:
         dummy_idx = set(
             (np.ndarray.flatten(np.argwhere(chan_diff > 0)) / len(chan_diff) * len(mslist)).round(0).astype(int))
-        for n, idx in enumerate(dummy_idx):
+        n = 0
+        for idx in dummy_idx:
             if make_dummies:
-                print('dummy_' + str(n) + ' between ' + str(mslist[idx - 1]) + ' and ' + str(mslist[idx]))
-                mslist.insert(idx, 'dummy_' + str(n))
+                for k in range(int(num_missing[idx-1])):
+                    print('dummy_' + str(n) + ' between ' + str(mslist[idx - 1]) + ' and ' + str(mslist[idx+n]))
+                    mslist.insert(idx+n, 'dummy_' + str(n))
+                    n += 1
             else:
                 print('Gap between ' + str(mslist[idx - 1]) + ' and ' + str(mslist[idx]))
         for ms in mslist:
@@ -99,6 +107,23 @@ def fill_freq_gaps(input, make_dummies, output_name):
         return True
 
 
+def split_ms_phasedir(mslist):
+    """
+    Separate MS with different phase centers
+    """
+
+    d = {}
+    for ms in mslist:
+        t = ct.table(f"{ms}::FIELD", ack=False)
+        pd = ''.join([str(round(i, 6)) for i in t.getcol("PHASE_DIR").squeeze()])
+        if pd not in d.keys():
+            d.update({pd: [ms]})
+        else:
+            d[pd] += [ms]
+    return d
+
+
+
 def parse_args():
     """
     Parse input arguments
@@ -106,14 +131,16 @@ def parse_args():
 
     parser = argparse.ArgumentParser(
         description='Concattenate measurement sets, while taking into account frequency gaps')
-    parser.add_argument('--msin', nargs='+', help='MS', required=True)
-    parser.add_argument('--msout', help='Concat name', type=str, default='concat.ms')
+    parser.add_argument('msin', nargs='+', help='MS')
+    parser.add_argument('--msout', help='Concat name', type=str, default=None)
     parser.add_argument('--data_column', help='Data column', type=str, default='DATA')
     parser.add_argument('--phase_center', help='Phase shift to new center', type=str)
     parser.add_argument('--time_avg', help='Time averaging factor', type=int)
     parser.add_argument('--freq_avg', help='Frequency averaging factor', type=int)
     parser.add_argument('--time_res', help='Time resolution (in seconds)', type=int)
     parser.add_argument('--freq_res', help='Frequency resolution', type=str)
+    parser.add_argument('--make_only_parset', action='store_true', help='Make only parset')
+
     return parser.parse_args()
 
 
@@ -131,56 +158,79 @@ def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg, t
     :return: parset
     """
 
-    txtname = parset_name.replace('.parset', '.txt')
+    ms_dict = split_ms_phasedir(ms)
+    parsets = []
 
-    if fill_freq_gaps(input=ms, make_dummies=True, output_name=txtname):
-        print('--- SUCCESS: no frequency gaps found ---')
+    print(ms_dict)
 
-    # write parset
-    with open(txtname) as f:
-        lines = f.readlines()
-    parset = 'msin=' + '[' + ', '.join(lines).replace('\n', '') + ']\n'
-    parset += 'msout=' + concat_name
-    parset += '\nmsin.datacolumn=' + data_column + \
-              '\nmsin.missingdata=True' \
-              '\nmsin.orderms=False' \
-              '\nmsout.storagemanager=dysco' \
-              '\nmsout.writefullresflag=False'
-    steps = []
+    for dir, ms in ms_dict.items():
 
-    if phase_center is not None:
-        steps.append('ps')
-        parset += '\nps.type=phaseshifter'
-        parset += f'\nps.phasecenter={phase_center}'
+        txtname = parset_name.replace('.parset', '.txt')
+        if len(ms_dict.values()) > 1:
+            parsetname = parset_name.replace('.parset', dir+'.parset')
+        else:
+            parsetname = parset_name
 
-    if time_avg is not None or freq_avg is not None or freq_res is not None or time_res is not None:
-        steps.append('avg')
-        parset += '\navg.type=averager'
-        if time_avg is not None and time_res is not None:
-            sys.exit("ERROR: choose time averaging or time resolution")
-        if freq_avg is not None and freq_res is not None:
-            sys.exit("ERROR: choose frequency averaging or frequency resolution")
+        if fill_freq_gaps(input=ms, make_dummies=True, output_name=txtname):
+            print('--- SUCCESS: no frequency gaps found ---')
 
-        if time_avg is not None:
-            parset += f'\navg.timestep={time_avg}'
-        if time_res is not None:
-            parset += f'\navg.timeresolution={time_res}'
-        if freq_avg is not None:
-            t = ct.table(ms[0] + "::SPECTRAL_WINDOW")
-            channum = len(t.getcol("CHAN_FREQ")[0])
-            t.close()
-            freqavg = get_largest_divider(channum, freq_avg + 1)
-            if freqavg!=freq_avg:
-                print(f"WARNING: {channum} Channels can only be divided by {freqavg} and not by {freq_avg}")
-            parset += f'\navg.freqstep={freqavg}'
-        if freq_res is not None:
-            parset += f'\navg.freqresolution={freq_res}'
+        # Write parset
+        with open(txtname) as f:
+            lines = f.readlines()
+        parset = 'msin=' + '[' + ', '.join(lines).replace('\n', '') + ']\n'
 
-    parset += '\nsteps='+str(steps).replace(" ", "").replace("'", "")
-    with open(parset_name, 'w') as f:
-        f.write(parset)
+        if concat_name is None:
+            concat_name = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
+                           replace('mstargetphase','')+'.concat.ms').replace('..', '.').split('/')[-1]
 
-    return parset
+        parset += 'msout=' + concat_name
+        parset += '\nmsin.datacolumn=' + data_column + \
+                  '\nmsin.missingdata=True' \
+                  '\nmsin.orderms=False' \
+                  '\nmsout.storagemanager=dysco' \
+                  '\nmsout.writefullresflag=False'
+        steps = []
+
+        if phase_center is not None:
+            steps.append('ps')
+            parset += '\nps.type=phaseshifter'
+            parset += f'\nps.phasecenter={phase_center}'
+
+            # Apply beam
+            steps.append('beam')
+            parset += '\nbeam.type=applybeam'
+            parset += '\nbeam.updateweights=True'
+            parset += '\nbeam.direction=[]'
+
+        if time_avg is not None or freq_avg is not None or freq_res is not None or time_res is not None:
+            steps.append('avg')
+            parset += '\navg.type=averager'
+            if time_avg is not None and time_res is not None:
+                sys.exit("ERROR: choose time averaging or time resolution")
+            if freq_avg is not None and freq_res is not None:
+                sys.exit("ERROR: choose frequency averaging or frequency resolution")
+
+            if time_avg is not None:
+                parset += f'\navg.timestep={time_avg}'
+            if time_res is not None:
+                parset += f'\navg.timeresolution={time_res}'
+            if freq_avg is not None:
+                t = ct.table(ms[0] + "::SPECTRAL_WINDOW", ack=False)
+                channum = len(t.getcol("CHAN_FREQ")[0])
+                t.close()
+                freqavg = get_largest_divider(channum, freq_avg + 1)
+                if freqavg!=freq_avg:
+                    print(f"WARNING: {channum} Channels can only be divided by {freqavg} and not by {freq_avg}")
+                parset += f'\navg.freqstep={freqavg}'
+            if freq_res is not None:
+                parset += f'\navg.freqresolution={freq_res}'
+
+        parset += '\nsteps='+str(steps).replace(" ", "").replace("'", "")
+        with open(parsetname, 'w') as f:
+            f.write(parset)
+        parsets.append(parsetname)
+
+    return parsets
 
 
 def main():
@@ -189,9 +239,11 @@ def main():
     """
     args = parse_args()
     parsetname = 'concat.parset'
-    make_parset(parsetname, args.msin, args.msout, args.data_column,
+    parsets = make_parset(parsetname, args.msin, args.msout, args.data_column,
                 args.time_avg, args.freq_avg, args.time_res, args.freq_res, args.phase_center)
-    os.system('DP3 ' + parsetname)
+    if not args.make_only_parset:
+        for parset in parsets:
+            os.system('DP3 ' + parset)
 
 if __name__ == '__main__':
     main()

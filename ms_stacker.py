@@ -28,21 +28,22 @@ import astropy.units as u
 from pprint import pprint
 from argparse import ArgumentParser
 import json
-from glob import glob
-from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor
+from concurrent.futures import ThreadPoolExecutor
 from itertools import compress
 import time
 import dask.array as da
 import psutil
 from math import ceil
+from glob import glob
+
 try:
     from dask.distributed import Client
-    parallel = True
+    use_dask = True
 except ImportError:
     print('WARNING: dask.distrubted not installed, continue without parallel stacking.')
-    parallel = False
+    use_dask = False
 
-parallel = False # TODO: dask not yet implemented
+use_dask = False # TODO: dask not yet implemented
 
 one_lst_day_sec = 86164.1
 
@@ -104,6 +105,21 @@ def decompress(ms):
         return ms
 
 
+def make_odd(i):
+    """
+    Make odd number
+
+    :input:
+        - i: digit
+
+    :return: odd digit
+    """
+    if int(i) % 2 == 0:
+        i += 1
+
+    return int(i)
+
+
 def compress(ms, avg):
     """
     running DP3 to apply dysco compression
@@ -116,9 +132,19 @@ def compress(ms, avg):
 
         print('\n----------\nDYSCO COMPRESSION\n----------\n')
 
-        os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[interpolate,avg] msout.overwrite=true "
-                  f"msout.storagemanager=dysco avg.type=averager avg.timestep={avg} avg.freqstep={avg} "
-                  f"avg.minpoints={avg} interpolate.type=interpolate interpolate.windowsize=17")
+        cmd = f"DP3 msin={ms} msout={ms}.tmp msout.overwrite=true msout.storagemanager=dysco"
+
+        if avg > 1:
+            cmd += (f" avg.type=averager avg.timestep={avg} avg.freqstep={avg} avg.minpoints={avg} "
+                    f"interpolate.type=interpolate interpolate.windowsize={make_odd(25*avg)}")
+            steps = ['interpolate', 'avg']
+        else:
+            steps = []
+
+        steps = str(steps).replace("'", "").replace(' ','')
+        cmd += f' steps={steps}'
+
+        os.system(cmd)
 
         try:
             t = table(f"{ms}.tmp") # test if exists
@@ -644,12 +670,14 @@ class Template:
         self.station_info = unique_station_list(unique_stations)
         self.lofar_stations_info = unique_station_list(unique_lofar_stations)
 
-
-        chan_range = np.linspace(min(unique_channels), max(unique_channels), ceil(len(unique_channels) * avg_factor))
+        if avg_factor <= 1:
+            chan_range = np.arange(min(unique_channels) - dfreq_min, max(unique_channels) + dfreq_min, dfreq_min/avg_factor)
+        else:
+            chan_range = np.linspace(min(unique_channels), max(unique_channels), ceil(len(unique_channels) * avg_factor))
         self.channels = np.sort(np.expand_dims(np.unique(chan_range), 0))
         self.chan_num = self.channels.shape[-1]
-        # time_range = np.arange(min_t_lst, min(max_t_lst+min_dt, one_lst_day_sec/2 + min_t_lst + min_dt), min_dt)# ensure just half LST day
-        time_range = np.arange(min_t_lst, max_t_lst + min_dt, min_dt/avg_factor)
+        time_range = np.arange(min_t_lst, min(max_t_lst+min_dt, one_lst_day_sec/2 + min_t_lst + min_dt), min_dt/avg_factor)# ensure just half LST day
+        # time_range = np.arange(min_t_lst, max_t_lst + min_dt, min_dt/avg_factor)
         baseline_count = n_baselines(len(self.station_info))
         nrows = baseline_count*len(time_range)
 
@@ -666,6 +694,11 @@ class Template:
         # Reshape
         for col in ['DATA', 'FLAG', 'WEIGHT_SPECTRUM']:
             newdesc_data[col]['shape'] = np.array([self.chan_num, 4])
+        # newdesc_data['UVW_WEIGHTS'] = newdesc_data['UVW']
+        # newdesc_data['UVW_WEIGHTS']['comment'] = 'Vector with uvw coordinates weights, for stacking.'
+        # newdesc_data['INDEX'] = newdesc_data['ANTENNA1']
+        # newdesc_data['INDEX']['comment'] = 'Index values of MS.'
+
         newdesc_data.pop('_keywords_')
 
         pprint(newdesc_data)
@@ -685,10 +718,12 @@ class Template:
         tnew.putcol("INTERVAL", np.array([np.diff(time_range)[0]] * nrows))
         tnew.flush(True)
         tnew.close()
+
+        # Set default values
         taql(f"UPDATE {self.outname} SET FLAG = False")
         taql(f"UPDATE {self.outname} SET WEIGHT = 1")
         taql(f"UPDATE {self.outname} SET SIGMA = 1")
-        # taql(f"UPDATE {self.outname} SET WEIGHT_SPECTRUM = 0") # Should already be 0
+
 
         # Set SPECTRAL_WINDOW info
         self.add_spectral_window()
@@ -723,12 +758,11 @@ class Stack:
         self.template = table(outname, readonly=False, ack=False)
         self.mslist = msin
         self.outname = outname
-        self.ant_map = None
 
         num_cpus = psutil.cpu_count(logical=True)
         total_memory = psutil.virtual_memory().total / (1024 ** 3)  # in GB
 
-        if parallel:
+        if use_dask:
             print(f"CPU number: {num_cpus}\nMemory limit: {int(total_memory)}GB")
             self.client = Client(n_workers=num_cpus,
                                  threads_per_worker=1,
@@ -737,7 +771,7 @@ class Stack:
             self.chunk_size = int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize)
         else:
             target_chunk_size = total_memory / chunkmem
-            self.chunk_size = int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize)
+            self.chunk_size = min(int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize), 1_000_000)
 
     def get_data_arrays(self, column: str = 'DATA', nrows: int = None, freq_len: int = None):
         """
@@ -753,11 +787,12 @@ class Stack:
             - weights: weights corresponding to new data array (empty array with correct shape)
         """
 
-        # Initialize data
-        # if column in ['DATA']:
-        #     weights = np.zeros((nrows, freq_len), dtype=np.float16)
+        tmpfilename = column.lower()+'.tmp.dat'
+        tmpfilename_weights = column.lower()+'_weights.tmp.dat'
+
         if column in ['UVW']:
-            weights = np.zeros((nrows, 3), dtype=np.float16)
+            weights = np.memmap(tmpfilename_weights, dtype=np.float16, mode='w+', shape=(nrows, 3))
+            weights[:] = 0
         else:
             weights = None
 
@@ -768,16 +803,18 @@ class Stack:
                 dtp = np.float32
             else:
                 dtp = np.float32
-            new_data = np.zeros((nrows, freq_len, 4), dtype=dtp)
+            shape = (nrows, freq_len, 4)
 
         elif column == 'WEIGHT':
-            new_data = np.zeros((nrows, freq_len), dtype=np.float32)
+            shape, dtp = (nrows, freq_len), np.float32
 
         elif column == 'UVW':
-            new_data = np.zeros((nrows, 3), dtype=np.float32)
+            shape, dtp = (nrows, 3), np.float32
 
         else:
             sys.exit("ERROR: Use only DATA, WEIGHT_SPECTRUM, WEIGHT, or UVW")
+
+        new_data = np.memmap(tmpfilename, dtype=dtp, mode='w+', shape=shape)
 
         return new_data, weights
 
@@ -786,10 +823,14 @@ class Stack:
         Make mapping json files essential for efficient stacking
         """
 
-        ref_time = self.T.getcol("TIME")
+        T = taql(f"SELECT TIME,ANTENNA1,ANTENNA2 FROM {os.path.abspath(self.outname)} ORDER BY TIME")
+
+        ref_time = T.getcol("TIME")
         time_len = ref_time.__len__()
         ref_uniq_time = np.unique(ref_time)
-        ref_antennas = np.c_[self.T.getcol("ANTENNA1"), self.T.getcol("ANTENNA2")]
+        ref_antennas = np.c_[T.getcol("ANTENNA1"), T.getcol("ANTENNA2")]
+
+        T.close()
 
         def process_antpair(antpair):
             """
@@ -851,29 +892,32 @@ class Stack:
             mapping_folder = ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping'
 
             # Verify if folder exists
-            os.makedirs(mapping_folder, exist_ok=False)
+            try:
+                os.makedirs(mapping_folder, exist_ok=False)
 
-            # Get MS info
-            new_stats, new_ids = get_station_id(ms)
-            id_map = dict(zip(new_ids, [ref_stats.index(a) for a in new_stats]))
+                # Get MS info
+                new_stats, new_ids = get_station_id(ms)
+                id_map = dict(zip(new_ids, [ref_stats.index(a) for a in new_stats]))
 
-            # Time in LST
-            time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
-            uniq_time = np.unique(time)
-            time_idxs = find_closest_index_list(uniq_time, ref_uniq_time)
+                # Time in LST
+                time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
+                time_beyond_max = time > max(ref_time)
+                time[time_beyond_max] -= one_lst_day_sec/2
+                uniq_time = np.append(np.unique(time[np.invert(time_beyond_max)]), np.unique(time[time_beyond_max]))
+                time_idxs = find_closest_index_list(uniq_time, ref_uniq_time)
 
-            # Map antenna pairs to same as ref (template) table (ensuring antennas are inverted when ~12h LST day is passed)
-            # antennas = np.c_[
-            #     map_array_dict(np.where(time <= one_lst_day_sec/2, t.getcol("ANTENNA1"), t.getcol("ANTENNA2")), id_map),
-            #     map_array_dict(np.where(time <= one_lst_day_sec/2, t.getcol("ANTENNA2"), t.getcol("ANTENNA1")), id_map)]
-            antennas = np.c_[
-                map_array_dict(t.getcol("ANTENNA1"), id_map),
-                map_array_dict(t.getcol("ANTENNA2"), id_map)]
+                # Map antenna pairs to same as ref (template)
+                antennas = np.c_[map_array_dict(t.getcol("ANTENNA1"), id_map), map_array_dict(t.getcol("ANTENNA2"), id_map)]
 
-            # Unique antenna pairs
-            uniq_ant_pairs = np.unique(antennas, axis=0)
+                # Unique antenna pairs
+                uniq_ant_pairs = np.unique(antennas, axis=0)
 
-            run_parallel_mapping(uniq_ant_pairs)
+                run_parallel_mapping(uniq_ant_pairs)
+            except FileExistsError:
+                time_beyond_max = [0]
+                print(f'{mapping_folder} already exists')
+
+        return time_beyond_max if np.sum(time_beyond_max) > 0 else None
 
     def stack_all(self, column: str = 'DATA'):
         """
@@ -894,12 +938,11 @@ class Stack:
         freq_len = ref_freqs.__len__()
         F.close()
 
-        # Time
-        self.T = taql(f"SELECT TIME,ANTENNA1,ANTENNA2,WEIGHT,UVW,WEIGHT_SPECTRUM,DATA FROM "
-                 f"{os.path.abspath(self.outname)} ORDER BY TIME")
-
         # Make baseline/time mapping
-        self.make_mapping()
+        time_beyond_max = self.make_mapping()
+
+        # Get template data
+        self.T = table(os.path.abspath(self.outname), readonly=False, ack=False)
 
         # Loop over columns
         for col in columns:
@@ -944,31 +987,60 @@ class Stack:
                 indices = list(total_map.keys())
                 ref_indices = list(total_map.values())
 
-                # Get data
+                # Chunked stacking!
                 chunks = t.nrows()//self.chunk_size + 1
                 print(f'Stacking in {chunks} chunks')
                 for chunk_idx in range(chunks):
                     print_progress_bar(chunk_idx, chunks+1)
-                    if col == 'DATA':
-                        data = t.getcol('DATA_WEIGHTED', startrow=chunk_idx * self.chunk_size, nrow=self.chunk_size)
-                    elif col == 'WEIGHT_SPECTRUM':
-                        data = t.getcol('WEIGHT_SPECTRUM', startrow=chunk_idx * self.chunk_size, nrow=self.chunk_size)
-                    elif col == 'UVW':
-                        data = t.getcol('UVW', startrow=chunk_idx * self.chunk_size, nrow=self.chunk_size)
-                        weights = add_axis(np.nanmean(t.getcol("WEIGHT_SPECTRUM", startrow=chunk_idx * self.chunk_size,
-                                                               nrow=self.chunk_size)[:, :, 0], axis=1), 3)
+                    data = t.getcol(col+"_WEIGHTED" if col == 'DATA' else col,
+                                                  startrow=chunk_idx * self.chunk_size, nrow=self.chunk_size)
+                    if use_dask:
+                        data = da.from_array(data)
+                    if col == 'UVW':
+                        weights = add_axis(np.nanmean(t.getcol("WEIGHT_SPECTRUM",
+                                                  startrow=chunk_idx * self.chunk_size,
+                                                  nrow=self.chunk_size)[:, :, 0], axis=1), 3)
+                        if use_dask:
+                            weights = da.from_array(weights)
                         weights[(weights == 0.) | (weights != weights)] = 1e-6
+                        data *= weights
+                        if use_dask:
+                            data = da.from_array(data.compute())
 
                     row_idxs_new = ref_indices[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)]
                     row_idxs = [int(i - chunk_idx * self.chunk_size) for i in
                                 indices[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)]]
 
+                    if use_dask:
+                        dask_new_data = da.from_array(new_data, chunks=new_data.shape)
+
                     # Stack columns
                     if col == 'UVW':
-                        new_data[row_idxs_new, :] += np.multiply(data[row_idxs, :], weights[row_idxs, :])
-                        uvw_weights[row_idxs_new, :] += weights[row_idxs, :]
+                        if time_beyond_max is not None:
+                            data[time_beyond_max[row_idxs]] *= -1
+                        if use_dask:
+                            dask_new_data[row_idxs_new, :] += data[row_idxs, :]
+                            dask_new_data.compute()
+                        else:
+                            new_data[row_idxs_new, :] += data[row_idxs, :]
+                        new_data.flush()
+
+                        if use_dask:
+                            dask_uvw_weights = da.from_array(uvw_weights, chunks=uvw_weights.shape)
+                            dask_uvw_weights[row_idxs_new, :] += weights[row_idxs, :]
+                            dask_uvw_weights.compute()
+                        else:
+                            uvw_weights[row_idxs_new, :] += weights[row_idxs, :]
+                        uvw_weights.flush()
                     else:
-                        new_data[np.ix_(row_idxs_new, freq_idxs)] += data[row_idxs, :, :]
+                        if use_dask:
+                            #TODO: This won't probably work...
+                            dask_new_data[np.ix_(row_idxs_new, freq_idxs)] += data[row_idxs, :, :]
+                            dask_new_data.compute()
+                        else:
+                            new_data[np.ix_(row_idxs_new, freq_idxs)] += data[row_idxs, :, :]
+                        new_data.flush()
+
                 print_progress_bar(chunk_idx, chunks)
                 t.close()
 
@@ -976,9 +1048,10 @@ class Stack:
             if col == 'UVW':
                 new_data /= uvw_weights
                 new_data[new_data != new_data] = 0.
-                self.T.putcol(col, new_data)
-            else:
-                self.T.putcol(col, new_data)
+
+            for chunk_idx in range(chunks):
+                self.T.putcol(col, new_data[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)],
+                              startrow=chunk_idx * self.chunk_size, nrow=self.chunk_size)
 
         self.T.close()
 
@@ -1004,6 +1077,17 @@ def clean_mapping_files(msin):
     return
 
 
+def clean_binary_files():
+    """
+    Clean-up binary files
+    """
+
+    for b in glob('*.tmp.dat'):
+        os.system(f'rm {b}')
+
+    return
+
+
 def parse_args():
     """
     Parse input arguments
@@ -1014,9 +1098,11 @@ def parse_args():
     parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
     parser.add_argument('--chunk_mem', type=float, default=4., help='Chunk memory size. Large files need larger parameter, small files can have small parameter value.')
     parser.add_argument('--less_avg', type=float, default=1., help='Factor to reduce averaging. Helps to speedup stacking, but less accurate results.')
-    parser.add_argument('--no_cleanup', action='store_true', default=None, help='Do not remove mapping files')
-    parser.add_argument('--record_time', action='store_true', default=None, help='Time of stacking')
-    parser.add_argument('--no_compression', action='store_true', default=None, help='No compression of data')
+    parser.add_argument('--simple_stacking', action='store_true', help='Do not increase time/freq resolution during stacking (speeds up stacking).')
+    parser.add_argument('--advanced_stacking', action='store_true', help='Increase time/freq resolution during stacking (resulting in larger data volume).')
+    parser.add_argument('--no_cleanup', action='store_true', help='Do not remove mapping files')
+    parser.add_argument('--record_time', action='store_true', help='Time of stacking')
+    parser.add_argument('--no_compression', action='store_true', help='No compression of data')
 
     return parser.parse_args()
 
@@ -1029,8 +1115,11 @@ def ms_merger():
     # Make template
     args = parse_args()
 
-    # Find averaging_factor TODO: PERHAPS ISSUES?
-    avg = get_avg_factor(args.msin, args.less_avg)
+    # Find averaging_factor
+    if args.simple_stacking:
+        avg = 1
+    else:
+        avg = get_avg_factor(args.msin, args.less_avg)
     print(f"Averaging factor {avg}")
 
     t = Template(args.msin, args.msout)
@@ -1049,11 +1138,12 @@ def ms_merger():
 
     # Apply dysco compression
     if not args.no_compression:
-        compress(args.msout, max(int(avg), 1))
+        compress(args.msout, 1 if args.advanced_stacking else max(int(avg), 1))
 
     # Clean up mapping files
     if not args.no_cleanup:
         clean_mapping_files(args.msin)
+        clean_binary_files()
 
 
 if __name__ == '__main__':
