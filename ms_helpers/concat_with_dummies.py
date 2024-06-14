@@ -144,11 +144,10 @@ def parse_args():
     return parser.parse_args()
 
 
-def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg, time_res, freq_res, phase_center):
+def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq_res, phase_center):
     """
     Make parset for DP3
 
-    :param parset_name: Name of the parset
     :param ms: input measurement sets
     :param concat_name: name of concattenated measurement sets
     :param data_column: data column
@@ -165,11 +164,13 @@ def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg, t
 
     for dir, ms in ms_dict.items():
 
-        txtname = parset_name.replace('.parset', '.txt')
-        if len(ms_dict.values()) > 1:
-            parsetname = parset_name.replace('.parset', dir+'.parset')
-        else:
-            parsetname = parset_name
+
+        if concat_name is None:
+            concat_name = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
+                           replace('mstargetphase','')+'.concat.ms').replace('..', '.').split('/')[-1]
+        parsetname = concat_name.replace('.concat.ms')+'.parset'
+        txtname = parsetname.replace('.parset', '.txt')
+
 
         if fill_freq_gaps(input=ms, make_dummies=True, output_name=txtname):
             print('--- SUCCESS: no frequency gaps found ---')
@@ -178,10 +179,6 @@ def make_parset(parset_name, ms, concat_name, data_column, time_avg, freq_avg, t
         with open(txtname) as f:
             lines = f.readlines()
         parset = 'msin=' + '[' + ', '.join(lines).replace('\n', '') + ']\n'
-
-        if concat_name is None:
-            concat_name = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
-                           replace('mstargetphase','')+'.concat.ms').replace('..', '.').split('/')[-1]
 
         parset += 'msout=' + concat_name
         parset += '\nmsin.datacolumn=' + data_column + \
@@ -238,8 +235,7 @@ def main():
     Main script
     """
     args = parse_args()
-    parsetname = 'concat.parset'
-    parsets = make_parset(parsetname, args.msin, args.msout, args.data_column,
+    parsets = make_parset(args.msin, args.msout, args.data_column,
                 args.time_avg, args.freq_avg, args.time_res, args.freq_res, args.phase_center)
     if not args.make_only_parset:
         for parset in parsets:
