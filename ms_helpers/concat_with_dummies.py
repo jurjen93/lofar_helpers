@@ -168,7 +168,7 @@ def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq
         if concat_name is None:
             concat_name = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
                            replace('mstargetphase','')+'.concat.ms').replace('..', '.').split('/')[-1]
-        parsetname = concat_name.replace('.concat.ms')+'.parset'
+        parsetname = concat_name.replace('.concat.ms', '.parset')
         txtname = parsetname.replace('.parset', '.txt')
 
 
