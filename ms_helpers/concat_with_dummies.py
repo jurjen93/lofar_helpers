@@ -65,7 +65,7 @@ def get_channels(input_ms):
     return np.sort(chans), input_ms
 
 
-def fill_freq_gaps(input, make_dummies, output_name):
+def fill_freq_gaps(input, make_dummies, output_name, only_basename):
     """
     Fill the frequency gaps between sub-blocks with dummies (if requested)
     and return txt file with MS in order
@@ -104,6 +104,8 @@ def fill_freq_gaps(input, make_dummies, output_name):
         return False
     else:
         for ms in mslist:
+            if only_basename:
+                ms = ms.split('/')[-1]
             file.write(ms + '\n')
         file.close()
         return True
@@ -141,11 +143,12 @@ def parse_args():
     parser.add_argument('--time_res', help='Time resolution (in seconds)', type=int)
     parser.add_argument('--freq_res', help='Frequency resolution', type=str)
     parser.add_argument('--make_only_parset', action='store_true', help='Make only parset')
+    parser.add_argument('--only_basename', action='store_true', help='Return only basename of msin')
 
     return parser.parse_args()
 
 
-def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq_res, phase_center):
+def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq_res, phase_center, only_basename):
     """
     Make parset for DP3
 
@@ -154,6 +157,7 @@ def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq
     :param data_column: data column
     :param time_avg: time averaging
     :param freq_avg: frequency averaging
+    :param only_basename: return only basename
 
     :return: parset
     """
@@ -172,8 +176,7 @@ def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq
         parsetname = concat_name.replace('.concat.ms', '.parset')
         txtname = parsetname.replace('.parset', '.txt')
 
-
-        if fill_freq_gaps(input=ms, make_dummies=True, output_name=txtname):
+        if fill_freq_gaps(input=ms, make_dummies=True, output_name=txtname, only_basename=only_basename):
             print('--- SUCCESS: no frequency gaps found ---')
 
         # Write parset
@@ -237,7 +240,7 @@ def main():
     """
     args = parse_args()
     parsets = make_parset(args.msin, args.msout, args.data_column,
-                args.time_avg, args.freq_avg, args.time_res, args.freq_res, args.phase_center)
+                args.time_avg, args.freq_avg, args.time_res, args.freq_res, args.phase_center, args.only_basename)
     if not args.make_only_parset:
         for parset in parsets:
             os.system('DP3 ' + parset)
