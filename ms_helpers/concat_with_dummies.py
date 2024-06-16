@@ -148,7 +148,7 @@ def parse_args():
     return parser.parse_args()
 
 
-def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq_res, phase_center, only_basename):
+def make_parset(mss, concat_name, data_column, time_avg, freq_avg, time_res, freq_res, phase_center, only_basename):
     """
     Make parset for DP3
 
@@ -162,7 +162,7 @@ def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq
     :return: parset
     """
 
-    ms_dict = split_ms_phasedir(ms)
+    ms_dict = split_ms_phasedir(mss)
     parsets = []
 
     print(ms_dict)
@@ -171,9 +171,11 @@ def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq
 
 
         if concat_name is None:
-            concat_name = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
+            concatname = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
                            replace('mstargetphase','')+'.concat.ms').replace('..', '.').split('/')[-1]
-        parsetname = concat_name.replace('.concat.ms', '.parset')
+        else:
+            concatname = concat_name
+        parsetname = concatname.replace('.concat.ms', '.parset')
         txtname = parsetname.replace('.parset', '.txt')
 
         if fill_freq_gaps(input=ms, make_dummies=True, output_name=txtname, only_basename=only_basename):
@@ -184,7 +186,7 @@ def make_parset(ms, concat_name, data_column, time_avg, freq_avg, time_res, freq
             lines = f.readlines()
         parset = 'msin=' + '[' + ', '.join(lines).replace('\n', '') + ']\n'
 
-        parset += 'msout=' + concat_name
+        parset += 'msout=' + concatname
         parset += '\nmsin.datacolumn=' + data_column + \
                   '\nmsin.missingdata=True' \
                   '\nmsin.orderms=False' \
