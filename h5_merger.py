@@ -371,7 +371,7 @@ class MergeH5:
             self.ax_time = array([])
             self.ax_freq = array([])
             for m in self.ms:
-                t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + m + '::SPECTRAL_WINDOW')
+                t = ct.taql('SELECT CHAN_FREQ, CHAN_WIDTH FROM ' + os.path.abspath(m) + '::SPECTRAL_WINDOW')
                 self.ax_freq = append(self.ax_freq, t.getcol('CHAN_FREQ')[0])
                 t.close()
 
