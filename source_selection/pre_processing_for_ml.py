@@ -1,6 +1,7 @@
 import bisect
 import itertools
 import random
+from functools import lru_cache, cached_property
 from pathlib import Path
 
 import torch
@@ -114,13 +115,13 @@ def transform_data(root_dir, classes=('continue', 'stop'), modes=('', '_val')):
 
 
 class FitsDataset(Dataset):
-    def __init__(self, root_dir, mode='train'):
+    def __init__(self, root_dir):
         """
         Args:
             root_dir (string): Directory with good/bad folders in it.
         """
 
-        assert mode in ('train', 'validation')
+        modes = ('train', 'val')
 
         classes = {'stop': 0, 'continue': 1}
 
@@ -130,25 +131,36 @@ class FitsDataset(Dataset):
         ext = '.npz'
         glob_ext = '*' + ext
 
-        for folder in (root_dir / (cls + ('' if mode == 'train' else '_val')) for cls in classes):
-            assert folder.exists(), f"root folder doesn't exist, got: '{str(folder.resolve())}'"
-            assert len(list(folder.glob(glob_ext))) > 0, f"no '{ext}' files were found in '{str(folder.resolve())}'"
+        for mode in modes:
+            for folder in (root_dir / (cls + ('' if mode == 'train' else '_val')) for cls in classes):
+                assert folder.exists(), f"root folder doesn't exist, got: '{str(folder.resolve())}'"
+                assert len(list(folder.glob(glob_ext))) > 0, f"no '{ext}' files were found in '{str(folder.resolve())}'"
 
         # Yes this code is way overengineered. Yes I also derive pleasure from writing it :) - RJS
         #
         # Actual documentation:
         # You want all 'self.x' variables to be non-python objects such as numpy arrays,
         # otherwise you get memory leaks in the PyTorch dataloader
-        self.data_paths, self.labels = map(np.asarray, list(zip(*(
-            (str(file), val)
-            for cls, val in classes.items()
-            for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(glob_ext)
-        ))))
+        def get_datapoints(mode):
+            return tuple(map(np.asarray, list(zip(*(
+                (str(file), val)
+                for cls, val in classes.items()
+                for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(glob_ext)
+            )))))
 
-        assert len(self.data_paths) > 0
+        self.train_paths, self.train_labels = get_datapoints('train')
+        self.val_paths, self.val_labels = get_datapoints('val')
 
-        sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.data_paths]))
+        assert len(self.train_paths) > 0
+        assert len(self.val_paths) > 0
+
+        sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.train_paths]))
         print(f'{mode}: using the following sources: {sources}')
+
+        sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.val_paths]))
+        print(f'{mode}: using the following sources: {sources}')
+
+
 
     @staticmethod
     def transform_data(image_data):
@@ -156,22 +168,42 @@ class FitsDataset(Dataset):
         Transform data for preprocessing
         """
 
-        image_data = torch.from_numpy(image_data)
+        image_data = torch.from_numpy(image_data).to(torch.bfloat16)
         image_data = torch.movedim(image_data, -1, 0)
 
         return image_data
 
+    @cached_property
     def __len__(self):
-        return len(self.data_paths)
+        return self.train_len + self.val_len
+
+    @cached_property
+    def train_len(self):
+        return len(self.train_paths)
+
+
+    @cached_property
+    def val_len(self):
+        return len(self.val_paths)
 
     def __getitem__(self, idx):
-        npy_path = self.data_paths[idx]
+        if idx < self.train_len:
+            data_paths = self.train_paths
+            labels = self.train_labels
+        else:
+            data_paths = self.val_paths
+            labels = self.val_labels
+
+        idx = idx % self.train_len
+
+        npy_path = data_paths[idx]
+        label = labels[idx]
+
         image_data = np.load(npy_path)['arr_0']  # there is always only one array
 
         # Pre-processing
-        image_data = self.transform_data(image_data).to(torch.bfloat16)
+        image_data = self.transform_data(image_data)
 
-        label = self.labels[idx]
 
         return image_data, label
 

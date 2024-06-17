@@ -1,21 +1,22 @@
 import argparse
+import itertools
 import os
 from functools import partial, lru_cache
 from pathlib import Path
 
 import torch
 import torcheval.metrics.functional as tef
-from lightning import LightningModule, Trainer
-from lightning.pytorch.profilers import PyTorchProfiler
-from pytorch_lightning.loggers import TensorBoardLogger
-from torch import nn
+from torch import nn, binary_cross_entropy_with_logits
+from torch.utils.data import SequentialSampler, Sampler, RandomSampler
+from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
 from torchvision.transforms import v2
+from tqdm import tqdm
 
 from pre_processing_for_ml import FitsDataset
 
-
 PROFILE = False
+
 
 def get_feature_extractor(name: str):
     # use partial to prevent loading all models at once
@@ -52,52 +53,61 @@ def get_classifier(dropout_p: float, n_features: int, num_target_classes: int):
     return classifier
 
 
-class ImagenetTransferLearning(LightningModule):
+@torch.no_grad()
+def normalize_inputs(inputs, mode=0):
+    assert mode in range(3)
+
+    if mode == 0:
+        # Actual op instead of simple return because of debugging reasons
+        means, stds = [0, 0, 0], [1, 1, 1]
+    elif mode == 1:
+        # Inputs are lognormal -> log to make normal
+        means, stds = [-1.55642344, -1.75137082, -2.13795913], [1.25626133, 0.79308821, 0.7116124]
+        inputs = inputs.log()
+    else:
+        # Inputs are lognormal
+        means, stds = [0.35941373, 0.23197646, 0.15068751], [0.28145176, 0.17234328, 0.10769559]
+
+    # Resulting shape of means and stds: [1, 3, 1, 1]
+    means, stds = map(
+        lambda x: torch.tensor(x, device=inputs.device).unsqueeze(0).unsqueeze(-1).unsqueeze(-1),
+        (means, stds)
+    )
+
+    return (inputs - means) / stds
+
+
+@torch.no_grad()
+def augmentation(inputs):
+    inputs = get_transforms()(inputs)
+    inputs = inputs + 0.01 * torch.randn_like(inputs)
+
+    return inputs
+
+# @torch.no_grad()
+# def get_metrics(pseudo_probs, targets):
+#
+#     ap = tef.binary_auprc(pseudo_probs, targets)
+#     acc = tef.binary_accuracy(pseudo_probs, targets)
+#
+#     return {
+#         'Average_Precision': ap,
+#         'Accuracy': acc
+#     }
+
+class ImagenetTransferLearning(nn.Module):
     def __init__(
             self,
             model: str = 'resnet50',
-            lr: float = 1e-4,
-            normalize: int = 0,
             dropout_p: float = 0.25
     ):
         super().__init__()
-        self.save_hyperparameters()
 
         self.feature_extractor, num_features = get_feature_extractor(name=model)
         self.feature_extractor.eval()
 
         self.classifier = get_classifier(dropout_p, n_features=num_features, num_target_classes=1)
 
-        self.lr = lr
-        self.normalize = normalize
-
-        # self.average_precision = nn.ModuleDict({
-        #     'train_ap': BinaryAveragePrecision(),
-        #     'val_ap': BinaryAveragePrecision()
-        # })
-
-    @torch.no_grad()
-    def normalize_inputs(self, inputs):
-        assert self.normalize in range(3)
-
-        if self.normalize == 0:
-            # Actual op instead of simple return because of debugging reasons
-            means, stds = [0, 0, 0], [1, 1, 1]
-        elif self.normalize == 1:
-            # Inputs are lognormal -> log to make normal
-            means, stds = [-1.55642344, -1.75137082, -2.13795913], [1.25626133, 0.79308821, 0.7116124]
-            inputs = inputs.log()
-        else:
-            # Inputs are lognormal
-            means, stds = [0.35941373, 0.23197646, 0.15068751], [0.28145176, 0.17234328, 0.10769559]
-
-        # Resulting shape of means and stds: [1, 3, 1, 1]
-        means, stds = map(
-            lambda x: torch.tensor(x, device=self.device).unsqueeze(0).unsqueeze(-1).unsqueeze(-1),
-            (means, stds)
-        )
-
-        return (inputs - means) / stds
 
     @partial(torch.compile, mode='reduce-overhead')
     def forward(self, x):
@@ -106,152 +116,256 @@ class ImagenetTransferLearning(LightningModule):
         x = self.classifier(representations)
         return x
 
-    @torch.no_grad()
-    def augmentation(self, inputs):
 
-        inputs = get_transforms()(inputs)
-        inputs = inputs + 0.01 * torch.randn_like(inputs)
+    def step(self, inputs, targets):
+        logits = self(inputs).flatten()
 
-        return inputs
-
-    def training_step(self, batch):
-        loss = self.shared_step(batch, mode='train')
-        return loss
-
-    def validation_step(self, batch):
-        loss = self.shared_step(batch, mode='val')
-        return loss
-
-    def predict_step(self, batch):
-        pass
-
-    def shared_step(self, batch, mode):
-        assert mode in ('train', 'val', 'test')
-
-        inputs, target = batch
-
-        inputs = self.normalize_inputs(inputs)
-
-        if mode == 'train':
-            inputs = self.augmentation(inputs)
-
-        # TODO: do this from the global mean
-
-        output = self(inputs).flatten()
-
-        target = target.to(dtype=output.dtype)  # massaging the targets into the correct dtype
-        loss = torch.nn.functional.binary_cross_entropy_with_logits(output, target,
-                                                                    pos_weight=torch.as_tensor(2.698717948717949))
-
-        with torch.no_grad():
-            pseudo_probs = torch.sigmoid(output)
-
-            ap = tef.binary_auprc(pseudo_probs, target)
-            acc = tef.binary_accuracy(pseudo_probs, target)
-
-        self.log_dict(
-            {
-                f"{mode}_{name}": val for name, val in [
-                ("bce_loss", loss),
-                ("accuracy", acc),
-                ("average_precision", ap)
-            ]
-            },
-            on_step=mode == 'train',
-            on_epoch=mode != 'train',
-            prog_bar=True,
-            logger=True,
+        loss = binary_cross_entropy_with_logits(
+            logits,
+            targets,
+            pos_weight=torch.as_tensor(2.698717948717949)
         )
 
         if PROFILE:
+            global profiler
             profiler.step()
 
-        return loss
-
-    def configure_optimizers(self):
-        return torch.optim.AdamW(self.classifier.parameters(), lr=self.lr)
+        return logits, loss
 
 
-def main(dataset_root: str, model: str, lr: float, normalize=False, dropout_p=0.1):
-    torch.set_float32_matmul_precision('high')
-
-    logging_root = 'lightning_logs/'
-
-    version = int(os.getenv('SLURM_ARRAY_JOB_ID', os.getenv('SLURM_JOB_ID', 0)))
-    version_appendix = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
-    while True:
-        version_dir = f"version_{version}_{version_appendix}__model_{model}__lr_{lr}__normalize_{normalize}___dropoutP_{dropout_p}"
-        logging_dir = Path.cwd() / logging_root / version_dir
-        if not logging_dir.exists():
-            break
-
-        version_appendix += 1
-
-    logger = TensorBoardLogger(
-        save_dir=os.getcwd(),
-        name=logging_root,
-        version=version_dir
-    )
-
-    profiler_kwargs = {}
-    if PROFILE:
-        profiling_dir = str(logging_dir)
-
-        global profiler
-        profiler = torch.profiler.profile(
-            schedule=torch.profiler.schedule(wait=0, warmup=1, active=10, repeat=0),
-            on_trace_ready=torch.profiler.tensorboard_trace_handler(profiling_dir),
-            record_shapes=True,
-            with_stack=True,
-        )
-
-        profiler_kwargs = {
-            'limit_train_batches': 5,
-            'limit_val_batches': 5,
-            'max_epochs': 1
-        }
-
-        profiler.start()
-
-
-    trainer = Trainer(
-        **profiler_kwargs,
-
-        benchmark=True,
-        precision='bf16-mixed',
-        num_sanity_val_steps=0,
-        logger=logger
-
-    )
-
-    model = ImagenetTransferLearning(model=model, lr=lr, normalize=normalize, dropout_p=dropout_p)
-
-    # num_workers = len(os.sched_getaffinity(0))
-    # num_workers = 0
-    num_workers = 12
+def get_dataloader(dataset_root, batch_size):
+    num_workers = min(12, len(os.sched_getaffinity(0)))
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else
         (None, False)
     )
 
-    train_dataloader, val_dataloader = (
-        torch.utils.data.DataLoader(
-            dataset=FitsDataset(dataset_root, mode=mode),
-            batch_size=24,
-            num_workers=num_workers,
-            prefetch_factor=prefetch_factor,
-            persistent_workers=persistent_workers,
-            pin_memory=False,
-            drop_last=(True if mode == 'train' else False),  # needed for torch.compile,
-            shuffle=(True if mode == 'train' else False),  # needed so that val AP is non nan
-        )
-        for mode in ('train', 'validation')
+    dataset = FitsDataset(dataset_root)
+    dataloaders = MultiEpochsDataLoader(
+        dataset=dataset,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        prefetch_factor=prefetch_factor,
+        persistent_workers=persistent_workers,
+        pin_memory=True,
+        drop_last=False,
+        sampler=TrainValSampler(dataset.train_len, dataset.val_len)
     )
 
-    trainer.fit(model, train_dataloaders=train_dataloader, val_dataloaders=val_dataloader)
+    return dataloaders
+
+def get_tensorboard_logger(logging_root='./runs/', /, **kwargs):
+
+    # As version string, prefer $SLURM_ARRAY_JOB_ID, then $SLURM_JOB_ID, then 0.
+    version = int(os.getenv('SLURM_ARRAY_JOB_ID', os.getenv('SLURM_JOB_ID', 0)))
+    version_appendix = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
+    while True:
+        version_dir = "__".join((
+            f"version_{version}_{version_appendix}",
+            *(f"{k}_{v}" for k, v in kwargs.items())
+        ))
+
+        logging_dir = Path.cwd() / logging_root / version_dir
+
+        if not logging_dir.exists():
+            break
+        version_appendix += 1
+
+    writer = SummaryWriter(log_dir=str(logging_dir))
+
+    # writer.add_hparams()
+
+    return writer
+
+
+def log_metrics(writer, metrics: dict, global_step: int):
+    for metric_name, value in metrics.items():
+        if isinstance(value, tuple):
+            probs, labels = value
+            writer_fn = partial(
+                writer.add_pr_curve, labels=labels, predictions=probs,
+            )
+        else:
+            writer_fn = partial(
+                writer.add_scalar, scalar_value=value
+            )
+
+        writer_fn(tag=metric_name, global_step=global_step)
+
+def get_optimizer(parameters: list[torch.Tensor], lr: float):
+    return torch.optim.AdamW(parameters, lr=lr)
+
+
+def merge_metrics(suffix, **kwargs):
+    return {
+        f"{k}/{suffix}": v for k, v in kwargs.items()
+    }
+
+def main(dataset_root: str, model: str, lr: float, normalize: bool, dropout_p: float, batch_size: int):
+    torch.set_float32_matmul_precision('high')
+
+    profiler_kwargs = {}
+
+    if PROFILE:
+        pass
+        # profiling_dir = str(logging_dir)
+        #
+        # global profiler
+        # profiler = torch.profiler.profile(
+        #     schedule=torch.profiler.schedule(wait=0, warmup=1, active=9, repeat=0),
+        #     on_trace_ready=torch.profiler.tensorboard_trace_handler(profiling_dir),
+        # )
+        #
+        # profiler.start()
+
+
+    writer = get_tensorboard_logger(model=model, lr=lr, normalize=normalize, dropout_p=dropout_p)
+
+    device = torch.device('cuda')
+
+    model: nn.Module = ImagenetTransferLearning(model=model, dropout_p=dropout_p)
+    model.feature_extractor.eval()
+    model.to(device=device, memory_format=torch.channels_last)
+
+    optimizer = get_optimizer(model.classifier.parameters(), lr=lr)
+
+    dataloaders = get_dataloader(dataset_root, batch_size=batch_size)
+    num_train_iters = dataloaders.dataset.train_len // batch_size
+
+    logging_interval = 5
+
+    with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+
+        n_epochs = 100
+        for epoch in range(n_epochs):
+            for i, (data, labels) in tqdm(enumerate(dataloaders), total=len(dataloaders)):
+                global_step = epoch * len(dataloaders) + i
+
+                training = i < num_train_iters
+
+                data, labels = (
+                    data.to(device, non_blocking=True, memory_format=torch.channels_last),
+                    labels.to(device, non_blocking=True, dtype=data.dtype)
+                )
+
+                data = normalize_inputs(data)
+
+                if training:
+                    if i == 0:
+                        # print("training")
+                        log_suffix = 'training'
+                        model.classifier.train()
+
+                    optimizer.zero_grad(set_to_none=True)
+
+                    logits, loss = model.step(data, labels)
+                    loss = loss.mean()
+
+                    loss.backward()
+                    optimizer.step()
+
+                    if i % logging_interval == 0:
+                        with torch.no_grad():
+                            probs = torch.sigmoid(logits)
+                            ap = tef.binary_auprc(probs, labels)
+
+                            metrics = merge_metrics(
+                                bce_loss=loss, au_pr_curve=ap, pr_curve=(probs, labels), suffix=log_suffix,
+                            )
+
+                            log_metrics(writer, metrics, global_step=global_step)
+
+                    # if i == num_train_iters - 1:
+                    #     print("training end")
+
+                else:
+                    if i == num_train_iters:
+                        val_losses, val_logits, val_targets = [], [], []
+                        # print("validation start")
+
+                        log_suffix = 'validation'
+                        model.classifier.eval()
+
+                    with torch.no_grad():
+                        logits, loss = model.step(data, labels)
+
+                        val_losses.append(loss)
+                        val_logits.append(logits)
+                        val_targets.append(labels)
+
+
+                    if i == len(dataloaders) - 1:
+                        # print("validation end")
+
+                        losses, logits, targets = map(torch.concatenate, (val_losses, val_logits, val_targets))
+
+                        probs = torch.sigmoid(logits)
+                        ap = tef.binary_auprc(probs, targets)
+
+                        metrics = merge_metrics(
+                            bce_loss=losses.mean(),
+                            au_pr_curve=ap,
+                            pr_curve=(probs, targets),
+                            suffix=log_suffix
+                        )
+
+                        log_metrics(writer, metrics, global_step=global_step)
+
 
     if PROFILE:
         profiler.stop()
+
+    writer.flush()
+    writer.close()
+
+
+class TrainValSampler(Sampler):
+    def __init__(self, train_len, val_len):
+        super().__init__()
+        self.train_sampler = RandomSampler(torch.arange(train_len))
+        self.train_len, self.val_len = train_len, val_len
+
+
+    def __len__(self):
+        return len(self.train_sampler) + self.val_len
+
+    def __iter__(self):
+        yield from itertools.chain(self.train_sampler, torch.arange(self.train_len, self.train_len+self.val_len))
+
+
+class MultiEpochsDataLoader(torch.utils.data.DataLoader):
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._DataLoader__initialized = False
+        if self.batch_sampler is None:
+            self.sampler = _RepeatSampler(self.sampler)
+        else:
+            self.batch_sampler = _RepeatSampler(self.batch_sampler)
+        self._DataLoader__initialized = True
+        self.iterator = super().__iter__()
+
+    def __len__(self):
+        return len(self.sampler) if self.batch_sampler is None else len(self.batch_sampler.sampler)
+
+    def __iter__(self):
+        for i in range(len(self)):
+            yield next(self.iterator)
+
+
+class _RepeatSampler(object):
+    """ Sampler that repeats forever.
+
+    Args:
+        sampler (Sampler)
+    """
+
+    def __init__(self, sampler):
+        self.sampler = sampler
+
+    def __iter__(self):
+        while True:
+            yield from iter(self.sampler)
 
 @lru_cache(maxsize=1)
 def get_transforms():
@@ -275,6 +389,7 @@ def get_argparser():
     # Add arguments
     parser.add_argument('dataset_root', type=Path)
     parser.add_argument('--lr', type=float, help='Learning rate for the model.', default=1e-4)
+    parser.add_argument('--batch_size', type=int, help='Batch size', default=64)
     parser.add_argument('--model', type=str, help='The model to use.', default='resnet50')
     parser.add_argument('--normalize', type=int, help='Whether to do normalization', default=0, choices=[0, 1, 2])
     parser.add_argument('--dropout_p', type=float, help='Dropout probability', default=0.1)
