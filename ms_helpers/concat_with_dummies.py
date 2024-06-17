@@ -99,6 +99,8 @@ def fill_freq_gaps(input, make_dummies, output_name, only_basename):
             else:
                 print('Gap between ' + str(mslist[idx - 1]) + ' and ' + str(mslist[idx]))
         for ms in mslist:
+            if only_basename:
+                ms = ms.split('/')[-1]
             file.write(ms + '\n')
         file.close()
         return False

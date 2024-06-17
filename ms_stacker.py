@@ -136,7 +136,7 @@ def compress(ms, avg):
 
         if avg > 1:
             cmd += (f" avg.type=averager avg.timestep={avg} avg.freqstep={avg} avg.minpoints={avg} "
-                    f"interpolate.type=interpolate interpolate.windowsize={make_odd(25*avg)}")
+                    f"interpolate.type=interpolate interpolate.windowsize={make_odd(15*avg)}")
             steps = ['interpolate', 'avg']
         else:
             steps = []
@@ -1097,8 +1097,8 @@ def parse_args():
     parser.add_argument('msin', nargs='+', help='Measurement sets to stack')
     parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
     parser.add_argument('--chunk_mem', type=float, default=4., help='Chunk memory size. Large files need larger parameter, small files can have small parameter value.')
-    parser.add_argument('--less_avg', type=float, default=1., help='Factor to reduce averaging. Helps to speedup stacking, but less accurate results.')
-    parser.add_argument('--simple_stacking', action='store_true', help='Do not increase time/freq resolution during stacking (speeds up stacking).')
+    parser.add_argument('--avg', type=float, default=1., help='Additional final frequency and time averaging')
+    parser.add_argument('--less_avg', type=float, default=1., help='Factor to reduce averaging (only in combination with --advanced_stacking). Helps to speedup stacking, but less accurate results.')
     parser.add_argument('--advanced_stacking', action='store_true', help='Increase time/freq resolution during stacking (resulting in larger data volume).')
     parser.add_argument('--no_cleanup', action='store_true', help='Do not remove mapping files')
     parser.add_argument('--record_time', action='store_true', help='Time of stacking')
@@ -1116,11 +1116,14 @@ def ms_merger():
     args = parse_args()
 
     # Find averaging_factor
-    if args.simple_stacking:
+    if not args.advanced_stacking:
+        if args.less_avg != 1.:
+            sys.exit("ERROR: --less_avg only used in combination with --advanced_stacking")
         avg = 1
     else:
         avg = get_avg_factor(args.msin, args.less_avg)
-    print(f"Averaging factor {avg}")
+    print(f"Intermediate averaging factor {avg}\n"
+          f"Final averaging factor {max(int(avg * args.avg), 1) if args.advanced_stacking else int(args.avg)}")
 
     t = Template(args.msin, args.msout)
     t.make_template(overwrite=True, avg_factor=avg)
@@ -1138,7 +1141,7 @@ def ms_merger():
 
     # Apply dysco compression
     if not args.no_compression:
-        compress(args.msout, 1 if args.advanced_stacking else max(int(avg), 1))
+        compress(args.msout, max(int(avg * args.avg), 1) if args.advanced_stacking else int(args.avg))
 
     # Clean up mapping files
     if not args.no_cleanup:
