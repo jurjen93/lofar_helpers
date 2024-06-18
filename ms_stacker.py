@@ -28,13 +28,16 @@ import astropy.units as u
 from pprint import pprint
 from argparse import ArgumentParser
 import json
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from itertools import compress
 import time
 import dask.array as da
 import psutil
 from math import ceil
 from glob import glob
+import matplotlib.pyplot as plt
+from scipy.spatial import cKDTree
+
 
 try:
     from dask.distributed import Client
@@ -135,7 +138,7 @@ def compress(ms, avg):
         cmd = f"DP3 msin={ms} msout={ms}.tmp msout.overwrite=true msout.storagemanager=dysco"
 
         if avg > 1:
-            cmd += (f" avg.type=averager avg.timestep={avg} avg.freqstep={avg} avg.minpoints={avg} "
+            cmd += (f" avg.type=averager avg.timestep={avg} avg.minpoints={avg} "
                     f"interpolate.type=interpolate interpolate.windowsize={make_odd(15*avg)}")
             steps = ['interpolate', 'avg']
         else:
@@ -435,6 +438,30 @@ def find_closest_index_list(a1, a2):
     return abs(np.array(a1)[:, None] - np.array(a2)).argmin(axis=1)
 
 
+def find_closest_index_multi_array(a1, a2):
+    """
+    Find the indices of the closest values between two multi-D arrays.
+
+    :input:
+        - a1: first array
+        - a2: second array
+
+    :return:
+        - The indices of the closest value in the array.
+    """
+    # Ensure inputs are numpy arrays
+    a1 = np.asarray(a1)
+    a2 = np.asarray(a2)
+
+    # Build a KDTree for the second array
+    tree = cKDTree(a2)
+
+    # Query the tree for the closest points in a1
+    distances, indices = tree.query(a1)
+
+    return list(indices)
+
+
 def map_array_dict(arr, dct):
     """
     Maps elements of the input_array to new values using a mapping_dict
@@ -495,6 +522,87 @@ def add_axis(arr, ax_size):
     or_shape = arr.shape
     new_shape = list(or_shape) + [ax_size]
     return np.repeat(arr, ax_size).reshape(new_shape)
+
+
+def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, mappingfiles: list = None):
+    """
+    Plot baseline track
+
+    :input:
+        - t_final_name: table with final name
+        - t_input_names: tables to compare with
+        - mappingfiles: baseline mapping files
+    """
+
+    if len(t_input_names) > 4:
+        sys.exit("ERROR: Can just plot 4 inputs")
+
+    colors = ['red', 'orange', 'pink', 'brown']
+
+
+    for n, t_input_name in enumerate(t_input_names):
+
+        m = open(mappingfiles[n])
+        mapping = {int(i): int(j) for i, j in json.load(m).items()}
+
+        with table(t_final_name) as f:
+            uvw1 = f.getcol("UVW")[list(mapping.values())]
+
+        with table(t_input_name) as f:
+            uvw2 = f.getcol("UVW")[list(mapping.keys())]
+
+        # Scatter plot for uvw1
+        if n == 0:
+            lbl = 'Final MS'
+        else:
+            lbl = None
+
+        plt.scatter(uvw1[:, 0], uvw1[:, 1], label=lbl, color='blue', edgecolor='black', alpha=0.4, s=100, marker='o')
+
+        # Scatter plot for uvw2
+        plt.scatter(uvw2[:, 0], uvw2[:, 1], label=f'MS {n} to stack', color=colors[n], edgecolor='black', alpha=0.7, s = 40, marker='*')
+
+        # Adding labels and title
+        plt.xlabel("U (m)", fontsize=14)
+        plt.ylabel("V (m)", fontsize=14)
+
+        # Adding grid
+        plt.grid(True, linestyle='--', alpha=0.6)
+
+        # Adding legend
+        plt.legend(fontsize=12)
+
+    plt.show()
+
+
+def resample_uwv(uvw_array, N):
+    """
+    Resample a uvw array to have N rows.
+
+    Parameters:
+    uvw_array (np.ndarray): The input array with shape (num_points, 3).
+    N (int): The desired number of rows.
+
+    Returns:
+    np.ndarray: The resampled 2D array with shape (N, 3).
+    """
+    # Get the original shape
+    num_points, num_coords = uvw_array.shape
+
+    if num_coords != 3:
+        raise ValueError("Input array must have shape (num_points, 3)")
+
+    # Resample each coordinate separately
+    resampled_array = np.zeros((N, num_coords))
+
+    for i in range(num_coords):
+        resampled_array[:, i] = np.interp(
+            np.linspace(0, num_points - 1, N),
+            np.arange(num_points),
+            uvw_array[:, i]
+        )
+
+    return resampled_array
 
 
 class Template:
@@ -670,14 +778,15 @@ class Template:
         self.station_info = unique_station_list(unique_stations)
         self.lofar_stations_info = unique_station_list(unique_lofar_stations)
 
-        if avg_factor <= 1:
-            chan_range = np.arange(min(unique_channels) - dfreq_min, max(unique_channels) + dfreq_min, dfreq_min/avg_factor)
-        else:
-            chan_range = np.linspace(min(unique_channels), max(unique_channels), ceil(len(unique_channels) * avg_factor))
+        # if avg_factor <= 1:
+        #     chan_range = np.arange(min(unique_channels) - dfreq_min, max(unique_channels) + dfreq_min, dfreq_min/avg_factor)
+        # else:
+        #     chan_range = np.linspace(min(unique_channels), max(unique_channels), ceil(len(unique_channels) * avg_factor))
+        chan_range = np.arange(min(unique_channels) - dfreq_min, max(unique_channels) + dfreq_min, dfreq_min)
         self.channels = np.sort(np.expand_dims(np.unique(chan_range), 0))
         self.chan_num = self.channels.shape[-1]
-        time_range = np.arange(min_t_lst, min(max_t_lst+min_dt, one_lst_day_sec/2 + min_t_lst + min_dt), min_dt/avg_factor)# ensure just half LST day
-        # time_range = np.arange(min_t_lst, max_t_lst + min_dt, min_dt/avg_factor)
+        # time_range = np.arange(min_t_lst, min(max_t_lst+min_dt, one_lst_day_sec/2 + min_t_lst + min_dt), min_dt/avg_factor)# ensure just half LST day
+        time_range = np.arange(min_t_lst, max_t_lst + min_dt, min_dt/avg_factor)
         baseline_count = n_baselines(len(self.station_info))
         nrows = baseline_count*len(time_range)
 
@@ -694,10 +803,6 @@ class Template:
         # Reshape
         for col in ['DATA', 'FLAG', 'WEIGHT_SPECTRUM']:
             newdesc_data[col]['shape'] = np.array([self.chan_num, 4])
-        # newdesc_data['UVW_WEIGHTS'] = newdesc_data['UVW']
-        # newdesc_data['UVW_WEIGHTS']['comment'] = 'Vector with uvw coordinates weights, for stacking.'
-        # newdesc_data['INDEX'] = newdesc_data['ANTENNA1']
-        # newdesc_data['INDEX']['comment'] = 'Index values of MS.'
 
         newdesc_data.pop('_keywords_')
 
@@ -721,8 +826,8 @@ class Template:
 
         # Set default values
         taql(f"UPDATE {self.outname} SET FLAG = False")
-        taql(f"UPDATE {self.outname} SET WEIGHT = 1")
-        taql(f"UPDATE {self.outname} SET SIGMA = 1")
+        # taql(f"UPDATE {self.outname} SET WEIGHT = 1")
+        # taql(f"UPDATE {self.outname} SET SIGMA = 1")
 
 
         # Set SPECTRAL_WINDOW info
@@ -748,79 +853,11 @@ class Template:
         if 'tmp' in self.tmpfile:
             shutil.rmtree(self.tmpfile)
 
-class Stack:
-    """
-    Stack measurement sets in template empty.ms
-    """
-    def __init__(self, msin: list = None, outname: str = 'empty.ms', chunkmem: float = 4.):
-        if not os.path.exists(outname):
-            sys.exit(f"ERROR: Template {outname} has not been created or is deleted")
-        self.template = table(outname, readonly=False, ack=False)
-        self.mslist = msin
-        self.outname = outname
-
-        num_cpus = psutil.cpu_count(logical=True)
-        total_memory = psutil.virtual_memory().total / (1024 ** 3)  # in GB
-
-        if use_dask:
-            print(f"CPU number: {num_cpus}\nMemory limit: {int(total_memory)}GB")
-            self.client = Client(n_workers=num_cpus,
-                                 threads_per_worker=1,
-                                 memory_limit=f'{total_memory/(num_cpus*1.5)}GB')
-            target_chunk_size = total_memory / num_cpus / chunkmem
-            self.chunk_size = int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize)
-        else:
-            target_chunk_size = total_memory / chunkmem
-            self.chunk_size = min(int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize), 1_000_000)
-
-    def get_data_arrays(self, column: str = 'DATA', nrows: int = None, freq_len: int = None):
-        """
-        Get data arrays (new data and weights)
-
-        :param:
-            - column: column name (DATA, WEIGHT_SPECTRUM, WEIGHT, OR UVW)
-            - nrows: number of rows
-            - freq_len: frequency axis length
-
-        :return:
-            - new_data: new data array (empty array with correct shape)
-            - weights: weights corresponding to new data array (empty array with correct shape)
-        """
-
-        tmpfilename = column.lower()+'.tmp.dat'
-        tmpfilename_weights = column.lower()+'_weights.tmp.dat'
-
-        if column in ['UVW']:
-            weights = np.memmap(tmpfilename_weights, dtype=np.float16, mode='w+', shape=(nrows, 3))
-            weights[:] = 0
-        else:
-            weights = None
-
-        if column in ['DATA', 'WEIGHT_SPECTRUM']:
-            if column == 'DATA':
-                dtp = np.complex128
-            elif column == 'WEIGHT_SPECTRUM':
-                dtp = np.float32
-            else:
-                dtp = np.float32
-            shape = (nrows, freq_len, 4)
-
-        elif column == 'WEIGHT':
-            shape, dtp = (nrows, freq_len), np.float32
-
-        elif column == 'UVW':
-            shape, dtp = (nrows, 3), np.float32
-
-        else:
-            sys.exit("ERROR: Use only DATA, WEIGHT_SPECTRUM, WEIGHT, or UVW")
-
-        new_data = np.memmap(tmpfilename, dtype=dtp, mode='w+', shape=shape)
-
-        return new_data, weights
-
-    def make_mapping(self):
+    def make_mapping_lst(self):
         """
         Make mapping json files essential for efficient stacking
+        These map LST times from input MS to template MS.
+        Note that these are not accurate mappings but good first estimate, which are later corrected with final mappings.
         """
 
         T = taql(f"SELECT TIME,ANTENNA1,ANTENNA2 FROM {os.path.abspath(self.outname)} ORDER BY TIME")
@@ -901,9 +938,7 @@ class Stack:
 
                 # Time in LST
                 time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
-                time_beyond_max = time > max(ref_time)
-                time[time_beyond_max] -= one_lst_day_sec/2
-                uniq_time = np.append(np.unique(time[np.invert(time_beyond_max)]), np.unique(time[time_beyond_max]))
+                uniq_time = np.unique(time)
                 time_idxs = find_closest_index_list(uniq_time, ref_uniq_time)
 
                 # Map antenna pairs to same as ref (template)
@@ -914,10 +949,196 @@ class Stack:
 
                 run_parallel_mapping(uniq_ant_pairs)
             except FileExistsError:
-                time_beyond_max = [0]
                 print(f'{mapping_folder} already exists')
 
-        return time_beyond_max if np.sum(time_beyond_max) > 0 else None
+    def make_mapping_uvw(self):
+        """
+        Make mapping json files essential for efficient stacking based on UVW points
+        """
+
+        # Get baselines
+        ants = table(self.outname + "::ANTENNA", ack=False)
+        baselines = np.c_[make_ant_pairs(ants.nrows(), 1)]
+        ants.close()
+
+        UVW = np.memmap('UVW.tmp.dat', dtype=np.float32).reshape(-1, 3)
+
+        print('\nMake new mapping based on UVW points')
+        for n, baseline in enumerate(baselines):
+            print_progress_bar(n, len(baselines))
+            folder = '/'.join(self.mslist[0].split('/')[0:-1])
+            if not folder: folder = '.'
+            mapping_folder_baseline = sorted(glob(folder+'/*_mapping/'+'-'.join([str(a) for a in baseline]) + '.json'))
+            idxs_ref = np.unique([idx for mapp in mapping_folder_baseline for idx in json.load(open(mapp)).values()])
+            uvw_ref = UVW[list(idxs_ref)]
+            for mapp in mapping_folder_baseline:
+                idxs = [int(i) for i in json.load(open(mapp)).keys()]
+                ms = (glob('/'.join(mapp.split('/')[0:-1]).replace("_baseline_mapping","")+'.ms') +
+                      glob('/'.join(mapp.split('/')[0:-1]).replace("_baseline_mapping","")+'.MS'))[0]
+                t = table(ms, ack=False).getcol("UVW")[idxs]
+                idxs_new = [int(i) for i in np.array(idxs_ref)[list(find_closest_index_multi_array(t[:, 0:2], uvw_ref[:, 0:2]))]]
+                with open(mapp, 'w+') as f:
+                    json.dump(dict(zip(idxs, idxs_new)), f)
+
+    def make_uvw(self):
+        """
+        Fill UVW data points
+        """
+
+        # Make baseline/time mapping
+        self.make_mapping_lst()
+
+        # Get baselines
+        ants = table(self.outname + "::ANTENNA", ack=False)
+        baselines = np.c_[make_ant_pairs(ants.nrows(), 1)]
+        ants.close()
+
+        T = table(self.outname, readonly=False, ack=False)
+        UVW = np.memmap('UVW.tmp.dat', dtype=np.float32, mode='w+', shape=(T.nrows(), 3))
+
+        # Determine the optimal number of workers
+        cpu_count = max(os.cpu_count()-3, 1)
+
+        # Start with a reasonable default
+        num_workers = min(16, cpu_count * 2)  # I/O-bound heuristic
+        print(f"Using {num_workers} workers for making UVW column")
+
+        for ms_idx, ms in enumerate(sorted(self.mslist)):
+            with table(ms, ack=False) as f:
+                uvw = np.memmap(f'uvw_{ms_idx}.tmp.dat', dtype=np.float32, mode='w+', shape=(f.nrows(), 3))
+                uvw[:] = f.getcol("UVW")
+
+        batch_size = max(1, len(baselines) // num_workers)  # Ensure at least one baseline per batch
+
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            future_to_baseline = {
+                executor.submit(process_baselines, range(i, min(i + batch_size, len(baselines))), baselines,
+                                self.mslist): i
+                for i in range(0, len(baselines), batch_size)
+            }
+
+            for future in as_completed(future_to_baseline):
+                batch_start_idx = future_to_baseline[future]
+                try:
+                    results = future.result()
+                    for row_idxs, uvw, b_idx in results:
+                        UVW[row_idxs] = resample_uwv(uvw, len(row_idxs))
+                        print_progress_bar(b_idx, len(baselines))
+                except Exception as exc:
+                    print(f'Batch starting at index {batch_start_idx} generated an exception: {exc}')
+
+        UVW.flush()
+        T.putcol("UVW", UVW)
+        T.close()
+
+        # Make final mapping
+        self.make_mapping_uvw()
+
+
+def process_baselines(baseline_indices, baselines, mslist):
+    results = []
+    for b_idx in baseline_indices:
+        baseline = baselines[b_idx]
+        c = 0
+        uvw = None
+        row_idxs = []
+        for ms_idx, ms in enumerate(sorted(mslist)):
+            mappingfolder = ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping'
+            try:
+                mapjson = json.load(open(mappingfolder + '/' + '-'.join([str(a) for a in baseline]) + '.json'))
+            except FileNotFoundError:
+                c += 1
+                continue
+
+            row_idxs += list(mapjson.values())
+            uvw_to_add = np.memmap(f'uvw_{ms_idx}.tmp.dat', dtype=np.float32).reshape((-1, 3))[[int(i) for i in list(mapjson.keys())]]
+            if ms_idx - c == 0:
+                uvw = uvw_to_add
+                c += 999
+                continue
+
+            closest_index = find_closest_index_multi_array(uvw_to_add[:, 0:2], uvw[:, 0:2])
+
+            offset_forward = 0
+            offset_backward = 0
+            for idx, i in enumerate(closest_index):
+                if idx < len(closest_index) - 1 and i == closest_index[idx + 1]:
+                    offset_forward += 1
+            closest_index = closest_index[offset_forward:]
+            for idx, i in enumerate(closest_index[::-1]):
+                if idx < len(closest_index) - 1 and i == closest_index[::-1][idx + 1]:
+                    offset_backward += 1
+
+            if offset_forward > 0:
+                uvw = np.append(uvw_to_add[:offset_forward], uvw, axis=0)
+            if offset_backward > 0:
+                uvw = np.append(uvw, uvw_to_add[-offset_backward:], axis=0)
+
+        results.append((list(np.unique(row_idxs)), uvw, b_idx))
+    return results
+
+
+class Stack:
+    """
+    Stack measurement sets in template empty.ms
+    """
+    def __init__(self, msin: list = None, outname: str = 'empty.ms', chunkmem: float = 4.):
+        if not os.path.exists(outname):
+            sys.exit(f"ERROR: Template {outname} has not been created or is deleted")
+        self.template = table(outname, readonly=False, ack=False)
+        self.mslist = msin
+        self.outname = outname
+
+        num_cpus = psutil.cpu_count(logical=True)
+        total_memory = psutil.virtual_memory().total / (1024 ** 3)  # in GB
+
+        if use_dask:
+            print(f"CPU number: {num_cpus}\nMemory limit: {int(total_memory)}GB")
+            self.client = Client(n_workers=num_cpus,
+                                 threads_per_worker=1,
+                                 memory_limit=f'{total_memory/(num_cpus*1.5)}GB')
+            target_chunk_size = total_memory / num_cpus / chunkmem
+            self.chunk_size = int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize)
+        else:
+            target_chunk_size = total_memory / chunkmem
+            self.chunk_size = min(int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize), 1_000_000)
+
+
+    def get_data_arrays(self, column: str = 'DATA', nrows: int = None, freq_len: int = None):
+        """
+        Get data arrays (new data and weights)
+
+        :param:
+            - column: column name (DATA, WEIGHT_SPECTRUM, WEIGHT, OR UVW)
+            - nrows: number of rows
+            - freq_len: frequency axis length
+
+        :return:
+            - new_data: new data array (empty array with correct shape)
+        """
+
+        tmpfilename = column.lower()+'.tmp.dat'
+
+
+        if column in ['DATA', 'WEIGHT_SPECTRUM']:
+            if column == 'DATA':
+                dtp = np.complex128
+            elif column == 'WEIGHT_SPECTRUM':
+                dtp = np.float32
+            else:
+                dtp = np.float32
+            shape = (nrows, freq_len, 4)
+
+        elif column == 'WEIGHT':
+            shape, dtp = (nrows, freq_len), np.float32
+
+        else:
+            sys.exit("ERROR: Use only DATA, WEIGHT_SPECTRUM, WEIGHT, or UVW")
+
+        new_data = np.memmap(tmpfilename, dtype=dtp, mode='w+', shape=shape)
+
+        return new_data
+
 
     def stack_all(self, column: str = 'DATA'):
         """
@@ -928,7 +1149,7 @@ class Stack:
         """
 
         if column == 'DATA':
-            columns = ['UVW', column, 'WEIGHT_SPECTRUM']
+            columns = [column, 'WEIGHT_SPECTRUM']
         else:
             sys.exit("ERROR: Only column 'DATA' allowed (for now)")
 
@@ -938,19 +1159,13 @@ class Stack:
         freq_len = ref_freqs.__len__()
         F.close()
 
-        # Make baseline/time mapping
-        time_beyond_max = self.make_mapping()
-
         # Get template data
         self.T = table(os.path.abspath(self.outname), readonly=False, ack=False)
 
         # Loop over columns
         for col in columns:
 
-            if col == 'UVW':
-                new_data, uvw_weights = self.get_data_arrays(col, self.T.nrows(), freq_len)
-            else:
-                new_data, _ = self.get_data_arrays(col, self.T.nrows(), freq_len)
+            new_data = self.get_data_arrays(col, self.T.nrows(), freq_len)
 
             # Loop over measurement sets
             for ms in self.mslist:
@@ -960,8 +1175,6 @@ class Stack:
                 # Open MS table
                 if col == 'DATA':
                     t = taql(f"SELECT {col} * WEIGHT_SPECTRUM AS DATA_WEIGHTED FROM {os.path.abspath(ms)} ORDER BY TIME")
-                elif col == 'UVW':
-                    t = taql(f"SELECT {col},WEIGHT_SPECTRUM FROM {os.path.abspath(ms)} ORDER BY TIME")
                 else:
                     t = taql(f"SELECT {col} FROM {os.path.abspath(ms)} ORDER BY TIME")
 
@@ -994,60 +1207,19 @@ class Stack:
                     print_progress_bar(chunk_idx, chunks+1)
                     data = t.getcol(col+"_WEIGHTED" if col == 'DATA' else col,
                                                   startrow=chunk_idx * self.chunk_size, nrow=self.chunk_size)
-                    if use_dask:
-                        data = da.from_array(data)
-                    if col == 'UVW':
-                        weights = add_axis(np.nanmean(t.getcol("WEIGHT_SPECTRUM",
-                                                  startrow=chunk_idx * self.chunk_size,
-                                                  nrow=self.chunk_size)[:, :, 0], axis=1), 3)
-                        if use_dask:
-                            weights = da.from_array(weights)
-                        weights[(weights == 0.) | (weights != weights)] = 1e-6
-                        data *= weights
-                        if use_dask:
-                            data = da.from_array(data.compute())
 
                     row_idxs_new = ref_indices[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)]
                     row_idxs = [int(i - chunk_idx * self.chunk_size) for i in
                                 indices[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)]]
 
-                    if use_dask:
-                        dask_new_data = da.from_array(new_data, chunks=new_data.shape)
-
                     # Stack columns
-                    if col == 'UVW':
-                        if time_beyond_max is not None:
-                            data[time_beyond_max[row_idxs]] *= -1
-                        if use_dask:
-                            dask_new_data[row_idxs_new, :] += data[row_idxs, :]
-                            dask_new_data.compute()
-                        else:
-                            new_data[row_idxs_new, :] += data[row_idxs, :]
-                        new_data.flush()
-
-                        if use_dask:
-                            dask_uvw_weights = da.from_array(uvw_weights, chunks=uvw_weights.shape)
-                            dask_uvw_weights[row_idxs_new, :] += weights[row_idxs, :]
-                            dask_uvw_weights.compute()
-                        else:
-                            uvw_weights[row_idxs_new, :] += weights[row_idxs, :]
-                        uvw_weights.flush()
-                    else:
-                        if use_dask:
-                            #TODO: This won't probably work...
-                            dask_new_data[np.ix_(row_idxs_new, freq_idxs)] += data[row_idxs, :, :]
-                            dask_new_data.compute()
-                        else:
-                            new_data[np.ix_(row_idxs_new, freq_idxs)] += data[row_idxs, :, :]
-                        new_data.flush()
+                    new_data[np.ix_(row_idxs_new, freq_idxs)] += data[row_idxs, :, :]
+                    new_data.flush()
 
                 print_progress_bar(chunk_idx, chunks)
                 t.close()
 
             print(f'Put column {col}')
-            if col == 'UVW':
-                new_data /= uvw_weights
-                new_data[new_data != new_data] = 0.
 
             for chunk_idx in range(chunks):
                 self.T.putcol(col, new_data[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)],
@@ -1074,8 +1246,6 @@ def clean_mapping_files(msin):
     for ms in msin:
         shutil.rmtree(ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping')
 
-    return
-
 
 def clean_binary_files():
     """
@@ -1084,8 +1254,6 @@ def clean_binary_files():
 
     for b in glob('*.tmp.dat'):
         os.system(f'rm {b}')
-
-    return
 
 
 def parse_args():
@@ -1103,6 +1271,7 @@ def parse_args():
     parser.add_argument('--no_cleanup', action='store_true', help='Do not remove mapping files')
     parser.add_argument('--record_time', action='store_true', help='Time of stacking')
     parser.add_argument('--no_compression', action='store_true', help='No compression of data')
+    parser.add_argument('--make_only_template', action='store_true', help='Stop after making empty template')
 
     return parser.parse_args()
 
@@ -1127,24 +1296,26 @@ def ms_merger():
 
     t = Template(args.msin, args.msout)
     t.make_template(overwrite=True, avg_factor=avg)
+    t.make_uvw()
     print("############\nTemplate creation completed\n############")
 
     # Stack MS
-    if args.record_time:
-        start_time = time.time()
-    s = Stack(args.msin, args.msout, chunkmem=args.chunk_mem)
-    s.stack_all()
-    if args.record_time:
-        end_time = time.time()
-        elapsed_time = end_time - start_time
-        print(f"Elapsed time for stacking: {elapsed_time//60} minutes")
+    if not args.make_only_template:
+        if args.record_time:
+            start_time = time.time()
+        s = Stack(args.msin, args.msout, chunkmem=args.chunk_mem)
+        s.stack_all()
+        if args.record_time:
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+            print(f"Elapsed time for stacking: {elapsed_time//60} minutes")
 
     # Apply dysco compression
     if not args.no_compression:
         compress(args.msout, max(int(avg * args.avg), 1) if args.advanced_stacking else int(args.avg))
 
     # Clean up mapping files
-    if not args.no_cleanup:
+    if not args.no_cleanup and not args.make_only_template:
         clean_mapping_files(args.msin)
         clean_binary_files()
 
