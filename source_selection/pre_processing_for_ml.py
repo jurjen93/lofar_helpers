@@ -173,7 +173,7 @@ class FitsDataset(Dataset):
 
         return image_data
 
-    @cached_property
+    @lru_cache(maxsize=1)
     def __len__(self):
         return self.train_len + self.val_len
 

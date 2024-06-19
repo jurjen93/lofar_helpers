@@ -84,6 +84,7 @@ def augmentation(inputs):
 
     return inputs
 
+
 # @torch.no_grad()
 # def get_metrics(pseudo_probs, targets):
 #
@@ -103,11 +104,13 @@ class ImagenetTransferLearning(nn.Module):
     ):
         super().__init__()
 
+        # For saving in the state dict
+        self.kwargs = {'model': model, 'dropout_p': dropout_p}
+
         self.feature_extractor, num_features = get_feature_extractor(name=model)
         self.feature_extractor.eval()
 
         self.classifier = get_classifier(dropout_p, n_features=num_features, num_target_classes=1)
-
 
     @partial(torch.compile, mode='reduce-overhead')
     def forward(self, x):
@@ -115,7 +118,6 @@ class ImagenetTransferLearning(nn.Module):
             representations = self.feature_extractor(x)
         x = self.classifier(representations)
         return x
-
 
     def step(self, inputs, targets):
         logits = self(inputs).flatten()
@@ -154,8 +156,8 @@ def get_dataloader(dataset_root, batch_size):
 
     return dataloaders
 
-def get_tensorboard_logger(logging_root='./runs/', /, **kwargs):
 
+def get_logging_dir(logging_root: str, /, **kwargs):
     # As version string, prefer $SLURM_ARRAY_JOB_ID, then $SLURM_JOB_ID, then 0.
     version = int(os.getenv('SLURM_ARRAY_JOB_ID', os.getenv('SLURM_JOB_ID', 0)))
     version_appendix = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
@@ -165,12 +167,15 @@ def get_tensorboard_logger(logging_root='./runs/', /, **kwargs):
             *(f"{k}_{v}" for k, v in kwargs.items())
         ))
 
-        logging_dir = Path.cwd() / logging_root / version_dir
+        logging_dir = Path(logging_root) / version_dir
 
         if not logging_dir.exists():
             break
         version_appendix += 1
 
+    return str(logging_dir.resolve())
+
+def get_tensorboard_logger(logging_dir):
     writer = SummaryWriter(log_dir=str(logging_dir))
 
     # writer.add_hparams()
@@ -192,6 +197,7 @@ def log_metrics(writer, metrics: dict, global_step: int):
 
         writer_fn(tag=metric_name, global_step=global_step)
 
+
 def get_optimizer(parameters: list[torch.Tensor], lr: float):
     return torch.optim.AdamW(parameters, lr=lr)
 
@@ -200,6 +206,7 @@ def merge_metrics(suffix, **kwargs):
     return {
         f"{k}/{suffix}": v for k, v in kwargs.items()
     }
+
 
 def main(dataset_root: str, model: str, lr: float, normalize: bool, dropout_p: float, batch_size: int):
     torch.set_float32_matmul_precision('high')
@@ -218,8 +225,16 @@ def main(dataset_root: str, model: str, lr: float, normalize: bool, dropout_p: f
         #
         # profiler.start()
 
+    logging_dir = get_logging_dir(
+        Path.cwd() / 'runs',
+        # kwargs
+        model=model,
+        lr=lr,
+        normalize=normalize,
+        dropout_p=dropout_p
+    )
 
-    writer = get_tensorboard_logger(model=model, lr=lr, normalize=normalize, dropout_p=dropout_p)
+    writer = get_tensorboard_logger(logging_dir)
 
     device = torch.device('cuda')
 
@@ -232,11 +247,13 @@ def main(dataset_root: str, model: str, lr: float, normalize: bool, dropout_p: f
     dataloaders = get_dataloader(dataset_root, batch_size=batch_size)
     num_train_iters = dataloaders.dataset.train_len // batch_size
 
-    logging_interval = 5
+    logging_interval = 10
+
+    best_val_loss = torch.inf
 
     with torch.cuda.amp.autocast(dtype=torch.bfloat16):
 
-        n_epochs = 100
+        n_epochs = 250
         for epoch in range(n_epochs):
             for i, (data, labels) in tqdm(enumerate(dataloaders), total=len(dataloaders)):
                 global_step = epoch * len(dataloaders) + i
@@ -290,9 +307,8 @@ def main(dataset_root: str, model: str, lr: float, normalize: bool, dropout_p: f
                         logits, loss = model.step(data, labels)
 
                         val_losses.append(loss)
-                        val_logits.append(logits)
+                        val_logits.append(logits.clone())
                         val_targets.append(labels)
-
 
                     if i == len(dataloaders) - 1:
                         # print("validation end")
@@ -311,6 +327,8 @@ def main(dataset_root: str, model: str, lr: float, normalize: bool, dropout_p: f
 
                         log_metrics(writer, metrics, global_step=global_step)
 
+                        if losses.mean() < best_val_loss:
+                            save_checkpoint(logging_dir, model, optimizer, global_step, normalize=normalize, batch_size=batch_size)
 
     if PROFILE:
         profiler.stop()
@@ -325,12 +343,11 @@ class TrainValSampler(Sampler):
         self.train_sampler = RandomSampler(torch.arange(train_len))
         self.train_len, self.val_len = train_len, val_len
 
-
     def __len__(self):
         return len(self.train_sampler) + self.val_len
 
     def __iter__(self):
-        yield from itertools.chain(self.train_sampler, torch.arange(self.train_len, self.train_len+self.val_len))
+        yield from itertools.chain(self.train_sampler, torch.arange(self.train_len, self.train_len + self.val_len))
 
 
 class MultiEpochsDataLoader(torch.utils.data.DataLoader):
@@ -367,6 +384,7 @@ class _RepeatSampler(object):
         while True:
             yield from iter(self.sampler)
 
+
 @lru_cache(maxsize=1)
 def get_transforms():
     return v2.Compose([
@@ -378,6 +396,48 @@ def get_transforms():
         v2.RandomHorizontalFlip(p=0.5),
     ])
 
+
+def save_checkpoint(logging_dir, model, optimizer, global_step, **kwargs):
+    old_checkpoints = Path(logging_dir).glob('*.pth')
+    for old_checkpoint in old_checkpoints:
+        Path.unlink(old_checkpoint)
+
+    torch.save(
+        {
+            'model': type(model),
+            'model_state_dict': model.state_dict(),
+            'optimizer': type(optimizer),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'step': global_step,
+            **kwargs
+        },
+        f=(logging_dir + f'/ckpt_step={global_step}.pth')
+    )
+
+def load_checkpoint(ckpt_path):
+
+    ckpt_dict = torch.load(ckpt_path)
+
+    # ugh, this is so ugly, something something hindsight something something 20-20
+    # FIXME: probably should do a pattern match, but this works for now
+    kwargs = str(Path(ckpt_path).parent).split('/')[-1].split('__')
+
+    # strip 'model_' from the name
+    model_name = kwargs[1][6:]
+    lr = float(kwargs[2].split('_')[-1])
+    normalize = int(kwargs[3].split('_')[-1])
+    dropout_p = float(kwargs[4].split('_')[-1])
+
+    model = ckpt_dict['model'](model=model_name, dropout_p=dropout_p)
+    model.load_state_dict(ckpt_dict['model_state_dict'])
+
+    # FIXME: add optim class and args to state dict
+    optim = ckpt_dict.get('optimizer', torch.optim.AdamW)(
+        lr=lr,
+        params=model.classifier.parameters()
+    ).load_state_dict(ckpt_dict['optimizer_state_dict'])
+
+    return {'model': model, 'optim': optim, 'normalize': normalize}
 
 def get_argparser():
     """
