@@ -28,7 +28,7 @@ import astropy.units as u
 from pprint import pprint
 from argparse import ArgumentParser
 import json
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
 from itertools import compress
 import time
 import dask.array as da
@@ -37,6 +37,7 @@ from math import ceil
 from glob import glob
 import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
+from scipy.interpolate import interp1d
 
 
 try:
@@ -123,7 +124,7 @@ def make_odd(i):
     return int(i)
 
 
-def compress(ms, avg):
+def compress(ms, avg=None):
     """
     running DP3 to apply dysco compression
 
@@ -137,12 +138,12 @@ def compress(ms, avg):
 
         cmd = f"DP3 msin={ms} msout={ms}.tmp msout.overwrite=true msout.storagemanager=dysco"
 
-        if avg > 1:
-            cmd += (f" avg.type=averager avg.timestep={avg} avg.minpoints={avg} "
-                    f"interpolate.type=interpolate interpolate.windowsize={make_odd(15*avg)}")
-            steps = ['interpolate', 'avg']
-        else:
-            steps = []
+        # if avg > 1:
+        #     cmd += (f" avg.type=averager avg.timestep={avg} avg.minpoints={avg} "
+        #             f"interpolate.type=interpolate interpolate.windowsize={make_odd(15*avg)}")
+        #     steps = ['interpolate', 'avg']
+        # else:
+        steps = []
 
         steps = str(steps).replace("'", "").replace(' ','')
         cmd += f' steps={steps}'
@@ -524,7 +525,7 @@ def add_axis(arr, ax_size):
     return np.repeat(arr, ax_size).reshape(new_shape)
 
 
-def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, mappingfiles: list = None):
+def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, mappingfiles: list = None, UV=True):
     """
     Plot baseline track
 
@@ -539,6 +540,8 @@ def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, ma
 
     colors = ['red', 'orange', 'pink', 'brown']
 
+    if not UV:
+        print("MAKE UW PLOT")
 
     for n, t_input_name in enumerate(t_input_names):
 
@@ -557,14 +560,14 @@ def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, ma
         else:
             lbl = None
 
-        plt.scatter(uvw1[:, 0], uvw1[:, 1], label=lbl, color='blue', edgecolor='black', alpha=0.4, s=100, marker='o')
+        plt.scatter(uvw1[:, 0], uvw1[:, 2] if UV else uvw1[:, 3], label=lbl, color='blue', edgecolor='black', alpha=0.4, s=100, marker='o')
 
         # Scatter plot for uvw2
-        plt.scatter(uvw2[:, 0], uvw2[:, 1], label=f'MS {n} to stack', color=colors[n], edgecolor='black', alpha=0.7, s = 40, marker='*')
+        plt.scatter(uvw2[:, 0], uvw2[:, 2] if UV else uvw2[:, 3], label=f'MS {n} to stack', color=colors[n], edgecolor='black', alpha=0.7, s = 40, marker='*')
 
         # Adding labels and title
         plt.xlabel("U (m)", fontsize=14)
-        plt.ylabel("V (m)", fontsize=14)
+        plt.ylabel("V (m)" if UV else "W (m)", fontsize=14)
 
         # Adding grid
         plt.grid(True, linestyle='--', alpha=0.6)
@@ -575,34 +578,59 @@ def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, ma
     plt.show()
 
 
-def resample_uwv(uvw_array, N):
+def resample_uwv(uvw_arrays, row_idxs, time, time_ref):
     """
     Resample a uvw array to have N rows.
-
-    Parameters:
-    uvw_array (np.ndarray): The input array with shape (num_points, 3).
-    N (int): The desired number of rows.
-
-    Returns:
-    np.ndarray: The resampled 2D array with shape (N, 3).
     """
+
     # Get the original shape
-    num_points, num_coords = uvw_array.shape
+    num_points, num_coords = uvw_arrays.shape
 
     if num_coords != 3:
         raise ValueError("Input array must have shape (num_points, 3)")
 
-    # Resample each coordinate separately
-    resampled_array = np.zeros((N, num_coords))
+    sorted_indices = np.argsort(time)
 
+    # Resample each coordinate separately
+    resampled_array = np.zeros((len(row_idxs), num_coords))
+
+    # Use the interpolation functions to compute resampled values
     for i in range(num_coords):
-        resampled_array[:, i] = np.interp(
-            np.linspace(0, num_points - 1, N),
-            np.arange(num_points),
-            uvw_array[:, i]
-        )
+        interp_funcs = [
+            interp1d(time[sorted_indices], uvw_arrays[:, i][sorted_indices], kind='nearest', fill_value='extrapolate')
+            for i in range(num_coords)
+        ]
+        resampled_array[:, i] = interp_funcs[i](time_ref[list(row_idxs)])
 
     return resampled_array
+
+
+def resample_array(data, factor):
+    """
+    Resamples the input data array such that the number of points increases by a factor.
+    The lowest and highest values remain the same, and the spacing between points remains equal.
+
+    Parameters:
+        - data: The input data array to resample.
+        - factor: The factor by which to increase the number of data points.
+
+    Returns:
+        - The resampled data array.
+    """
+    # Original number of points
+    n_points = len(data)
+
+    # Number of points in the resampled array
+    new_n_points = factor * (n_points - 1) + 1
+
+    # Generate the new set of equally spaced indices
+    original_indices = np.arange(n_points)
+    new_indices = np.linspace(0, n_points - 1, new_n_points + 1)
+
+    # Perform linear interpolation
+    resampled_data = np.interp(new_indices, original_indices, data)
+
+    return resampled_data
 
 
 class Template:
@@ -622,7 +650,7 @@ class Template:
         newdesc = tnew_spw_tmp.getdesc()
         for col in ['CHAN_WIDTH', 'CHAN_FREQ', 'RESOLUTION', 'EFFECTIVE_BW']:
             newdesc[col]['shape'] = np.array([self.channels.shape[-1]])
-        pprint(newdesc)
+        # pprint(newdesc)
 
         tnew_spw = table(self.outname + '::SPECTRAL_WINDOW', newdesc, readonly=False, ack=False)
         tnew_spw.addrows(1)
@@ -664,13 +692,12 @@ class Template:
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('ANTENNA'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
-        pprint(newdesc)
+        # pprint(newdesc)
         tnew_ant_tmp.close()
 
         tnew_ant = table(self.outname + '::ANTENNA', newdesc, readonly=False, ack=False)
         tnew_ant.addrows(len(stations))
-        print(len(stations))
-        print('Number of stations: ' + str(tnew_ant.nrows()))
+        print('Total number of stations: ' + str(tnew_ant.nrows()))
         tnew_ant.putcol("NAME", stations)
         tnew_ant.putcol("TYPE", ['GROUND-BASED']*len(stations))
         tnew_ant.putcol("POSITION", positions)
@@ -688,7 +715,7 @@ class Template:
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('FEED'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
-        pprint(newdesc)
+        # pprint(newdesc)
         tnew_ant_tmp.close()
 
         tnew_feed = table(self.outname + '::FEED', newdesc, readonly=False, ack=False)
@@ -711,7 +738,7 @@ class Template:
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_ANTENNA_FIELD'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
-        pprint(newdesc)
+        # pprint(newdesc)
         tnew_ant_tmp.close()
 
         tnew_field = table(self.outname + '::LOFAR_ANTENNA_FIELD', newdesc, readonly=False, ack=False)
@@ -731,7 +758,7 @@ class Template:
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_STATION'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
-        pprint(newdesc)
+        # pprint(newdesc)
         tnew_ant_tmp.close()
 
         tnew_station = table(self.outname + '::LOFAR_STATION', newdesc, readonly=False, ack=False)
@@ -779,10 +806,10 @@ class Template:
         self.lofar_stations_info = unique_station_list(unique_lofar_stations)
 
         # if avg_factor <= 1:
-        #     chan_range = np.arange(min(unique_channels) - dfreq_min, max(unique_channels) + dfreq_min, dfreq_min/avg_factor)
+        chan_range = np.arange(min(unique_channels), max(unique_channels) + dfreq_min, dfreq_min)
+        # chan_range = np.arange(min(unique_channels), max(unique_channels) + dfreq_min, dfreq_min/avg_factor)
         # else:
-        #     chan_range = np.linspace(min(unique_channels), max(unique_channels), ceil(len(unique_channels) * avg_factor))
-        chan_range = np.arange(min(unique_channels) - dfreq_min, max(unique_channels) + dfreq_min, dfreq_min)
+        #     chan_range = resample_array(np.arange(min(unique_channels), max(unique_channels) + dfreq_min, dfreq_min), ceil(avg_factor))
         self.channels = np.sort(np.expand_dims(np.unique(chan_range), 0))
         self.chan_num = self.channels.shape[-1]
         # time_range = np.arange(min_t_lst, min(max_t_lst+min_dt, one_lst_day_sec/2 + min_t_lst + min_dt), min_dt/avg_factor)# ensure just half LST day
@@ -865,7 +892,7 @@ class Template:
         ref_time = T.getcol("TIME")
         time_len = ref_time.__len__()
         ref_uniq_time = np.unique(ref_time)
-        ref_antennas = np.c_[T.getcol("ANTENNA1"), T.getcol("ANTENNA2")]
+        ref_antennas = np.sort(np.c_[T.getcol("ANTENNA1"), T.getcol("ANTENNA2")])
 
         T.close()
 
@@ -910,10 +937,7 @@ class Template:
 
                 # Optionally, gather results or handle exceptions
                 for future in futures:
-                    try:
-                        future.result()  # This will raise exceptions if any occurred during the execution
-                    except Exception as exc:
-                        print(f"Generated an exception: {exc}")
+                    future.result()  # This will raise exceptions if any occurred during the execution
 
         ref_stats, ref_ids = get_station_id(self.outname)
 
@@ -926,10 +950,10 @@ class Template:
             t = taql(f"SELECT TIME,ANTENNA1,ANTENNA2 FROM {os.path.abspath(ms)} ORDER BY TIME")
 
             # Make antenna mapping in parallel
-            mapping_folder = ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping'
+            mapping_folder = ms + '_baseline_mapping'
 
             # Verify if folder exists
-            try:
+            if not check_folder_exists(mapping_folder):
                 os.makedirs(mapping_folder, exist_ok=False)
 
                 # Get MS info
@@ -942,43 +966,14 @@ class Template:
                 time_idxs = find_closest_index_list(uniq_time, ref_uniq_time)
 
                 # Map antenna pairs to same as ref (template)
-                antennas = np.c_[map_array_dict(t.getcol("ANTENNA1"), id_map), map_array_dict(t.getcol("ANTENNA2"), id_map)]
+                antennas = np.sort(np.c_[map_array_dict(t.getcol("ANTENNA1"), id_map), map_array_dict(t.getcol("ANTENNA2"), id_map)])
 
                 # Unique antenna pairs
-                uniq_ant_pairs = np.unique(antennas, axis=0)
+                uniq_ant_pairs = np.unique(np.sort(antennas), axis=0)
 
                 run_parallel_mapping(uniq_ant_pairs)
-            except FileExistsError:
+            else:
                 print(f'{mapping_folder} already exists')
-
-    def make_mapping_uvw(self):
-        """
-        Make mapping json files essential for efficient stacking based on UVW points
-        """
-
-        # Get baselines
-        ants = table(self.outname + "::ANTENNA", ack=False)
-        baselines = np.c_[make_ant_pairs(ants.nrows(), 1)]
-        ants.close()
-
-        UVW = np.memmap('UVW.tmp.dat', dtype=np.float32).reshape(-1, 3)
-
-        print('\nMake new mapping based on UVW points')
-        for n, baseline in enumerate(baselines):
-            print_progress_bar(n, len(baselines))
-            folder = '/'.join(self.mslist[0].split('/')[0:-1])
-            if not folder: folder = '.'
-            mapping_folder_baseline = sorted(glob(folder+'/*_mapping/'+'-'.join([str(a) for a in baseline]) + '.json'))
-            idxs_ref = np.unique([idx for mapp in mapping_folder_baseline for idx in json.load(open(mapp)).values()])
-            uvw_ref = UVW[list(idxs_ref)]
-            for mapp in mapping_folder_baseline:
-                idxs = [int(i) for i in json.load(open(mapp)).keys()]
-                ms = (glob('/'.join(mapp.split('/')[0:-1]).replace("_baseline_mapping","")+'.ms') +
-                      glob('/'.join(mapp.split('/')[0:-1]).replace("_baseline_mapping","")+'.MS'))[0]
-                t = table(ms, ack=False).getcol("UVW")[idxs]
-                idxs_new = [int(i) for i in np.array(idxs_ref)[list(find_closest_index_multi_array(t[:, 0:2], uvw_ref[:, 0:2]))]]
-                with open(mapp, 'w+') as f:
-                    json.dump(dict(zip(idxs, idxs_new)), f)
 
     def make_uvw(self):
         """
@@ -988,6 +983,34 @@ class Template:
         # Make baseline/time mapping
         self.make_mapping_lst()
 
+        def process_baselines(baseline_indices, baselines, mslist):
+            """Process baselines parallel executor"""
+            results = []
+            for b_idx in baseline_indices:
+                baseline = baselines[b_idx]
+                c = 0
+                # uvw = np.memmap('total_uvw.dat', dtype=np.float32, shape=(1, 3), mode='w+')
+                uvw = np.zeros((0, 3))
+                # time = np.memmap('total_time.dat', dtype=np.float64, shape=1, mode='w+')
+                time = np.array([])
+                row_idxs = []
+                for ms_idx, ms in enumerate(sorted(mslist)):
+                    mappingfolder = ms + '_baseline_mapping'
+                    try:
+                        mapjson = json.load(open(mappingfolder + '/' + '-'.join([str(a) for a in baseline]) + '.json'))
+                    except FileNotFoundError:
+                        c += 1
+                        continue
+
+                    row_idxs += list(mapjson.values())
+                    uvw = np.append(np.memmap(f'{ms}_uvw.tmp.dat', dtype=np.float32).reshape((-1, 3))[
+                        [int(i) for i in list(mapjson.keys())]], uvw, axis=0)
+
+                    time = np.append(np.memmap(f'{ms}_time.tmp.dat', dtype=np.float64)[[int(i) for i in list(mapjson.keys())]], time)
+
+                results.append((list(np.unique(row_idxs)), uvw, b_idx, time))
+            return results
+
         # Get baselines
         ants = table(self.outname + "::ANTENNA", ack=False)
         baselines = np.c_[make_ant_pairs(ants.nrows(), 1)]
@@ -995,18 +1018,24 @@ class Template:
 
         T = table(self.outname, readonly=False, ack=False)
         UVW = np.memmap('UVW.tmp.dat', dtype=np.float32, mode='w+', shape=(T.nrows(), 3))
+        TIME = np.memmap('TIME.tmp.dat', dtype=np.float64, mode='w+', shape=(T.nrows()))
+        TIME[:] = T.getcol("TIME")
 
         # Determine the optimal number of workers
         cpu_count = max(os.cpu_count()-3, 1)
 
         # Start with a reasonable default
-        num_workers = min(16, cpu_count * 2)  # I/O-bound heuristic
-        print(f"Using {num_workers} workers for making UVW column")
+        num_workers = min(48, cpu_count * 2)  # I/O-bound heuristic
+
+        print(f"Using {num_workers} workers for making UVW column and accurate baseline mapping."
+              f"\nThis is an expensive operation. So, be patient..")
 
         for ms_idx, ms in enumerate(sorted(self.mslist)):
             with table(ms, ack=False) as f:
-                uvw = np.memmap(f'uvw_{ms_idx}.tmp.dat', dtype=np.float32, mode='w+', shape=(f.nrows(), 3))
+                uvw = np.memmap(f'{ms}_uvw.tmp.dat', dtype=np.float32, mode='w+', shape=(f.nrows(), 3))
+                time = np.memmap(f'{ms}_time.tmp.dat', dtype=np.float64, mode='w+', shape=(f.nrows()))
                 uvw[:] = f.getcol("UVW")
+                time[:] = mjd_seconds_to_lst_seconds(f.getcol("TIME"))
 
         batch_size = max(1, len(baselines) // num_workers)  # Ensure at least one baseline per batch
 
@@ -1021,9 +1050,8 @@ class Template:
                 batch_start_idx = future_to_baseline[future]
                 try:
                     results = future.result()
-                    for row_idxs, uvw, b_idx in results:
-                        UVW[row_idxs] = resample_uwv(uvw, len(row_idxs))
-                        print_progress_bar(b_idx, len(baselines))
+                    for row_idxs, uvws, b_idx, time in results:
+                        UVW[row_idxs] = resample_uwv(uvws, row_idxs, time, TIME)
                 except Exception as exc:
                     print(f'Batch starting at index {batch_start_idx} generated an exception: {exc}')
 
@@ -1034,48 +1062,53 @@ class Template:
         # Make final mapping
         self.make_mapping_uvw()
 
+    def make_mapping_uvw(self):
+        """
+        Make mapping json files essential for efficient stacking based on UVW points
+        """
 
-def process_baselines(baseline_indices, baselines, mslist):
-    results = []
-    for b_idx in baseline_indices:
-        baseline = baselines[b_idx]
-        c = 0
-        uvw = None
-        row_idxs = []
-        for ms_idx, ms in enumerate(sorted(mslist)):
-            mappingfolder = ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping'
+        def process_baseline(baseline, mslist, UVW):
+            """Parallel processing baseline"""
             try:
-                mapjson = json.load(open(mappingfolder + '/' + '-'.join([str(a) for a in baseline]) + '.json'))
-            except FileNotFoundError:
-                c += 1
-                continue
+                folder = '/'.join(mslist[0].split('/')[0:-1])
+                if not folder:
+                    folder = '.'
+                mapping_folder_baseline = sorted(
+                    glob(folder + '/*_mapping/' + '-'.join([str(a) for a in baseline]) + '.json'))
+                idxs_ref = np.unique(
+                    [idx for mapp in mapping_folder_baseline for idx in json.load(open(mapp)).values()])
+                uvw_ref = UVW[list(idxs_ref)]
+                for mapp in mapping_folder_baseline:
+                    idxs = [int(i) for i in json.load(open(mapp)).keys()]
+                    ms = glob('/'.join(mapp.split('/')[0:-1]).replace("_baseline_mapping", ""))[0]
+                    uvw_in = np.memmap(f'{ms}_uvw.tmp.dat', dtype=np.float32).reshape(-1, 3)[idxs]
+                    idxs_new = [int(i) for i in np.array(idxs_ref)[
+                        list(find_closest_index_multi_array(uvw_in[:, 0:2], uvw_ref[:, 0:2]))]]
+                    with open(mapp, 'w+') as f:
+                        json.dump(dict(zip(idxs, idxs_new)), f)
+            except Exception as exc:
+                print(f'Baseline {baseline} generated an exception: {exc}')
 
-            row_idxs += list(mapjson.values())
-            uvw_to_add = np.memmap(f'uvw_{ms_idx}.tmp.dat', dtype=np.float32).reshape((-1, 3))[[int(i) for i in list(mapjson.keys())]]
-            if ms_idx - c == 0:
-                uvw = uvw_to_add
-                c += 999
-                continue
+        # Get baselines
+        ants = table(self.outname + "::ANTENNA", ack=False)
+        baselines = np.c_[make_ant_pairs(ants.nrows(), 1)]
+        ants.close()
 
-            closest_index = find_closest_index_multi_array(uvw_to_add[:, 0:2], uvw[:, 0:2])
+        UVW = np.memmap('UVW.tmp.dat', dtype=np.float32).reshape(-1, 3)
 
-            offset_forward = 0
-            offset_backward = 0
-            for idx, i in enumerate(closest_index):
-                if idx < len(closest_index) - 1 and i == closest_index[idx + 1]:
-                    offset_forward += 1
-            closest_index = closest_index[offset_forward:]
-            for idx, i in enumerate(closest_index[::-1]):
-                if idx < len(closest_index) - 1 and i == closest_index[::-1][idx + 1]:
-                    offset_backward += 1
+        num_workers = min(os.cpu_count()-3, len(baselines))
 
-            if offset_forward > 0:
-                uvw = np.append(uvw_to_add[:offset_forward], uvw, axis=0)
-            if offset_backward > 0:
-                uvw = np.append(uvw, uvw_to_add[-offset_backward:], axis=0)
-
-        results.append((list(np.unique(row_idxs)), uvw, b_idx))
-    return results
+        print('\nMake new mapping based on UVW points')
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+            future_to_baseline = {executor.submit(process_baseline, baseline, self.mslist, UVW): baseline for baseline in
+                                  baselines}
+            for n, future in enumerate(as_completed(future_to_baseline)):
+                baseline = future_to_baseline[future]
+                try:
+                    future.result()
+                except Exception as exc:
+                    print(f'Baseline {baseline} generated an exception: {exc}')
+                print_progress_bar(n + 1, len(baselines))
 
 
 class Stack:
@@ -1103,7 +1136,6 @@ class Stack:
             target_chunk_size = total_memory / chunkmem
             self.chunk_size = min(int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize), 1_000_000)
 
-
     def get_data_arrays(self, column: str = 'DATA', nrows: int = None, freq_len: int = None):
         """
         Get data arrays (new data and weights)
@@ -1115,10 +1147,17 @@ class Stack:
 
         :return:
             - new_data: new data array (empty array with correct shape)
+            - weights: weights corresponding to new data array (empty array with correct shape)
         """
 
         tmpfilename = column.lower()+'.tmp.dat'
+        tmpfilename_weights = column.lower()+'_weights.tmp.dat'
 
+        if column in ['UVW']:
+            weights = np.memmap(tmpfilename_weights, dtype=np.float16, mode='w+', shape=(nrows, 3))
+            weights[:] = 0
+        else:
+            weights = None
 
         if column in ['DATA', 'WEIGHT_SPECTRUM']:
             if column == 'DATA':
@@ -1132,12 +1171,15 @@ class Stack:
         elif column == 'WEIGHT':
             shape, dtp = (nrows, freq_len), np.float32
 
+        elif column == 'UVW':
+            shape, dtp = (nrows, 3), np.float32
+
         else:
             sys.exit("ERROR: Use only DATA, WEIGHT_SPECTRUM, WEIGHT, or UVW")
 
         new_data = np.memmap(tmpfilename, dtype=dtp, mode='w+', shape=shape)
 
-        return new_data
+        return new_data, weights
 
 
     def stack_all(self, column: str = 'DATA'):
@@ -1148,8 +1190,35 @@ class Stack:
             - column: column name (currently only DATA)
         """
 
+        def load_json(file_path):
+            with open(file_path, 'r') as file:
+                return json.load(file)
+
+        def read_mapping(mapping_folder):
+            """
+            Read mapping with multi-threads
+            """
+            # Get the list of JSON files
+            json_files = glob(os.path.join(mapping_folder, "*.json"))
+
+            # Load JSON files in parallel
+            total_map = {}
+            with ThreadPoolExecutor() as executor:
+                for result in executor.map(load_json, json_files):
+                    total_map.update(result)
+
+            # Convert keys and values to integers and sort
+            total_map = {int(k): int(v) for k, v in total_map.items()}
+            sorted_total_map = dict(sorted(total_map.items()))
+
+            indices = list(sorted_total_map.keys())
+            ref_indices = list(sorted_total_map.values())
+
+            return indices, ref_indices
+
         if column == 'DATA':
-            columns = [column, 'WEIGHT_SPECTRUM']
+            columns = ['UVW', column, 'WEIGHT_SPECTRUM']
+            # columns = [column, 'WEIGHT_SPECTRUM']
         else:
             sys.exit("ERROR: Only column 'DATA' allowed (for now)")
 
@@ -1165,7 +1234,10 @@ class Stack:
         # Loop over columns
         for col in columns:
 
-            new_data = self.get_data_arrays(col, self.T.nrows(), freq_len)
+            if col == 'UVW':
+                new_data, uvw_weights = self.get_data_arrays(col, self.T.nrows(), freq_len)
+            else:
+                new_data, _ = self.get_data_arrays(col, self.T.nrows(), freq_len)
 
             # Loop over measurement sets
             for ms in self.mslist:
@@ -1175,6 +1247,8 @@ class Stack:
                 # Open MS table
                 if col == 'DATA':
                     t = taql(f"SELECT {col} * WEIGHT_SPECTRUM AS DATA_WEIGHTED FROM {os.path.abspath(ms)} ORDER BY TIME")
+                elif col == 'UVW':
+                    t = taql(f"SELECT {col},WEIGHT_SPECTRUM FROM {os.path.abspath(ms)} ORDER BY TIME")
                 else:
                     t = taql(f"SELECT {col} FROM {os.path.abspath(ms)} ORDER BY TIME")
 
@@ -1186,19 +1260,10 @@ class Stack:
                     f.close()
 
                 # Make antenna mapping in parallel
-                mapping_folder = ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping'
+                mapping_folder = ms + '_baseline_mapping'
 
                 print('Read mapping')
-                total_map = {}
-                for m, ant_map_json in enumerate(glob(mapping_folder + "/*.json")):
-                    print_progress_bar(m, len(glob(mapping_folder+"/*.json")))
-                    with open(ant_map_json, 'r') as file:
-                        # Load its content and convert it into a dictionary
-                        maps = json.load(file)
-                        total_map.update(maps)
-                total_map = dict(sorted({int(i): int(j) for i, j in total_map.items()}.items()))
-                indices = list(total_map.keys())
-                ref_indices = list(total_map.values())
+                indices, ref_indices = read_mapping(mapping_folder)
 
                 # Chunked stacking!
                 chunks = t.nrows()//self.chunk_size + 1
@@ -1213,13 +1278,24 @@ class Stack:
                                 indices[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)]]
 
                     # Stack columns
-                    new_data[np.ix_(row_idxs_new, freq_idxs)] += data[row_idxs, :, :]
-                    new_data.flush()
+                    if col == 'UVW':
+                        new_data[row_idxs_new, :] += data[row_idxs, :]
+                        new_data.flush()
+
+                        uvw_weights[row_idxs_new, :] += 1
+                        uvw_weights.flush()
+                    else:
+                        new_data[np.ix_(row_idxs_new, freq_idxs)] += data[row_idxs, :, :]
+                        new_data.flush()
 
                 print_progress_bar(chunk_idx, chunks)
                 t.close()
 
             print(f'Put column {col}')
+            if col == 'UVW':
+                uvw_weights[uvw_weights==0] = 1
+                new_data /= uvw_weights
+                new_data[new_data != new_data] = 0.
 
             for chunk_idx in range(chunks):
                 self.T.putcol(col, new_data[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)],
@@ -1244,7 +1320,7 @@ def clean_mapping_files(msin):
     """
 
     for ms in msin:
-        shutil.rmtree(ms.replace('.ms', '').replace('.MS', '') + '_baseline_mapping')
+        shutil.rmtree(ms + '_baseline_mapping')
 
 
 def clean_binary_files():
@@ -1254,6 +1330,13 @@ def clean_binary_files():
 
     for b in glob('*.tmp.dat'):
         os.system(f'rm {b}')
+
+
+def check_folder_exists(folder_path):
+    """
+    Check if folder exists
+    """
+    return os.path.isdir(folder_path)
 
 
 def parse_args():
@@ -1267,8 +1350,8 @@ def parse_args():
     parser.add_argument('--chunk_mem', type=float, default=4., help='Chunk memory size. Large files need larger parameter, small files can have small parameter value.')
     parser.add_argument('--avg', type=float, default=1., help='Additional final frequency and time averaging')
     parser.add_argument('--less_avg', type=float, default=1., help='Factor to reduce averaging (only in combination with --advanced_stacking). Helps to speedup stacking, but less accurate results.')
-    parser.add_argument('--advanced_stacking', action='store_true', help='Increase time/freq resolution during stacking (resulting in larger data volume).')
-    parser.add_argument('--no_cleanup', action='store_true', help='Do not remove mapping files')
+    parser.add_argument('--advanced_stacking', action='store_true', help='Increase time resolution during stacking (resulting in larger data volume).')
+    parser.add_argument('--keep_mapping', action='store_true', help='Do not remove mapping files')
     parser.add_argument('--record_time', action='store_true', help='Time of stacking')
     parser.add_argument('--no_compression', action='store_true', help='No compression of data')
     parser.add_argument('--make_only_template', action='store_true', help='Stop after making empty template')
@@ -1284,20 +1367,24 @@ def ms_merger():
     # Make template
     args = parse_args()
 
+    # Verify if output exists
+    if check_folder_exists(args.msout):
+        sys.exit(f"ERROR: {args.msout} already exists! Delete file first if you want to overwrite.")
+
     # Find averaging_factor
     if not args.advanced_stacking:
         if args.less_avg != 1.:
             sys.exit("ERROR: --less_avg only used in combination with --advanced_stacking")
         avg = 1
     else:
-        avg = get_avg_factor(args.msin, args.less_avg)
+        avg = get_avg_factor(args.msin, args.less_avg)*2
     print(f"Intermediate averaging factor {avg}\n"
           f"Final averaging factor {max(int(avg * args.avg), 1) if args.advanced_stacking else int(args.avg)}")
 
     t = Template(args.msin, args.msout)
     t.make_template(overwrite=True, avg_factor=avg)
     t.make_uvw()
-    print("############\nTemplate creation completed\n############")
+    print("\n############\nTemplate creation completed\n############")
 
     # Stack MS
     if not args.make_only_template:
@@ -1312,12 +1399,13 @@ def ms_merger():
 
     # Apply dysco compression
     if not args.no_compression:
-        compress(args.msout, max(int(avg * args.avg), 1) if args.advanced_stacking else int(args.avg))
+        compress(args.msout) #, max(int(avg * args.avg), 1) if args.advanced_stacking else int(args.avg))
 
     # Clean up mapping files
-    if not args.no_cleanup and not args.make_only_template:
+    if not args.keep_mapping:
         clean_mapping_files(args.msin)
-        clean_binary_files()
+
+    clean_binary_files()
 
 
 if __name__ == '__main__':
