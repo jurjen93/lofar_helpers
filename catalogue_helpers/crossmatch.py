@@ -420,12 +420,12 @@ def main():
     """Main"""
 
 
-    outcols = ['Cat_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
+    outcols = ['Source_ID', 'Cat_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
                      'Maj', 'E_Maj', 'Min', 'E_Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms', 'DC_Maj','E_DC_Maj','DC_Min','E_DC_Min',
                'DC_PA','E_DC_PA','DC_Maj_img_plane','E_DC_Maj_img_plane','DC_Min_img_plane','E_DC_Min_img_plane','DC_PA_img_plane',
                'E_DC_PA_img_plane', 'Total_flux_6']
 
-    outcols_publication = ['Cat_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
+    outcols_publication = ['Source_ID', 'Cat_id', 'RA', 'E_RA', 'DEC', 'E_DEC', 'Total_flux', 'E_Total_flux', 'Peak_flux', 'E_Peak_flux',
                      'Maj', 'E_Maj', 'Min', 'E_Min', 'PA', 'E_PA', 'S_Code', 'Isl_rms']
 
     args = parse_args()
@@ -477,6 +477,8 @@ def main():
 
         totalcat = merge_with_table(totalcat, DR1_table, sep=6, res=args.resolution)
         totalcat = remove_duplicates(totalcat, args.resolution)
+
+        totalcat["Source_ID"] = ["ILTJ"+i.replace(' ','') for i in SkyCoord(totalcat.to_pandas()["RA"]*u.deg, totalcat.to_pandas()["DEC"]*u.deg, frame='icrs').to_string('hmsdms', sep='', precision=2)]
 
         totalcat[outcols].write(args.out_table, format='fits', overwrite=True)
         totalcat[outcols_publication].write('publication_'+args.out_table, format='fits', overwrite=True)
