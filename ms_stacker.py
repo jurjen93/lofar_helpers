@@ -507,7 +507,7 @@ def get_avg_factor(mslist, less_avg=1):
         uniq_obs.append(obs.getcol("TIME_RANGE")[0][0])
         obs.close()
     obs_count = len(np.unique(uniq_obs))
-    avgfactor = ceil(np.sqrt(obs_count)) / less_avg
+    avgfactor = ceil(np.sqrt(obs_count / less_avg))
     if avgfactor < 1:
         return avgfactor
     else:
@@ -530,30 +530,40 @@ def add_axis(arr, ax_size):
     return np.repeat(arr, ax_size).reshape(new_shape)
 
 
-def resample_uwv(uvw_arrays, time, time_ref):
+
+def resample_uwv(uvw_arrays, row_idxs, time, time_ref):
     """
     Resample a uvw array to have N rows.
+
+    Parameters:
+        - uvw_arrays: UVW array with shape (num_points, 3)
+        - row_idxs: Indices of rows to resample
+        - time: Original time array
+        - time_ref: Reference time array to resample to
+
+    Returns:
+        - Resampled UVW array
     """
 
     # Get the original shape
     num_points, num_coords = uvw_arrays.shape
 
     if num_coords != 3:
-        raise ValueError(f"Input array must have shape ({num_points}, 3)")
+        raise ValueError("Input array must have shape (num_points, 3)")
 
+    # Sort the time array and corresponding UVW arrays
     sorted_indices = np.argsort(time)
-
-    resampled_array = np.zeros((len(time_ref), num_coords))
+    time_sorted = time[sorted_indices]
+    uvw_sorted = uvw_arrays[sorted_indices, :]
 
     # Create a single interpolation function for the entire UVW array
-    interp_funcs = [
-        interp1d(time[sorted_indices], uvw_arrays[:, i][sorted_indices], kind='nearest', fill_value='extrapolate')
-        for i in range(num_coords)
-    ]
-    for i in range(num_coords):
-        resampled_array[:, i] = interp_funcs[i](time_ref)
+    interp_func = interp1d(time_sorted, uvw_sorted, axis=0, kind='nearest', fill_value='extrapolate')
+
+    # Apply the interpolation function to the reference times
+    resampled_array = interp_func(time_ref[row_idxs])
 
     return resampled_array
+
 
 
 def resample_array(data, factor):
@@ -1023,8 +1033,8 @@ class Template:
 
         T = table(self.outname, readonly=False, ack=False)
         UVW = np.memmap('UVW.tmp.dat', dtype=np.float32, mode='w+', shape=(T.nrows(), 3))
-        # TIME = np.memmap('TIME.tmp.dat', dtype=np.float64, mode='w+', shape=(T.nrows()))
-        TIME = np.unique(T.getcol("TIME"))
+        TIME = np.memmap('TIME.tmp.dat', dtype=np.float64, mode='w+', shape=(T.nrows()))
+        TIME[:] = T.getcol("TIME")
 
         # Determine the optimal number of workers
         cpu_count = max(os.cpu_count()-3, 1)
@@ -1055,8 +1065,8 @@ class Template:
                 batch_start_idx = future_to_baseline[future]
                 try:
                     results = future.result()
-                    for _, uvws, b_idx, time in results:
-                        UVW[np.array(range(len(TIME)))*len(baselines)+b_idx] = resample_uwv(uvws, time, TIME)
+                    for row_idxs, uvws, b_idx, time in results:
+                        UVW[row_idxs] = resample_uwv(uvws, row_idxs, time, TIME)
                 except Exception as exc:
                     print(f'Batch starting at index {batch_start_idx} generated an exception: {exc}')
 
@@ -1066,7 +1076,6 @@ class Template:
 
         # Make final mapping
         self.make_mapping_uvw()
-
 
     def make_mapping_uvw(self):
         """
@@ -1144,7 +1153,7 @@ class Stack:
 
     def smooth_uvw(self):
         """
-        Smooth UVW values
+        Smooth UVW values (EXPERIMENTAL, CURRENTLY NOT USED)
         """
 
         uvw, _ = get_data_arrays('UVW', self.T.nrows())
@@ -1168,7 +1177,7 @@ class Stack:
         self.T.putcol('UVW', uvw)
 
 
-    def stack_all(self, column: str = 'DATA', advanced: bool = False):
+    def stack_all(self, column: str = 'DATA'):
         """
         Stack all MS
 
@@ -1199,10 +1208,7 @@ class Stack:
             return indices, ref_indices
 
         if column == 'DATA':
-            if advanced:
-                columns = ['UVW', column, 'WEIGHT_SPECTRUM']
-            else:
-                columns = [column, 'WEIGHT_SPECTRUM']
+            columns = ['UVW', column, 'WEIGHT_SPECTRUM']
         else:
             sys.exit("ERROR: Only column 'DATA' allowed (for now)")
 
@@ -1285,8 +1291,6 @@ class Stack:
             for chunk_idx in range(self.T.nrows()//self.chunk_size+1):
                 self.T.putcol(col, new_data[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)],
                               startrow=chunk_idx * self.chunk_size, nrow=self.chunk_size)
-
-        # self.smooth_uvw()
 
         self.T.close()
 
@@ -1398,7 +1402,7 @@ def parse_args():
     parser.add_argument('--less_avg', type=float, default=1., help='Factor to reduce averaging (only in combination with --advanced_stacking). Helps to speedup stacking, but less accurate results.')
     parser.add_argument('--advanced_stacking', action='store_true', help='Increase time resolution during stacking (resulting in larger data volume).')
     parser.add_argument('--keep_mapping', action='store_true', help='Do not remove mapping files')
-    parser.add_argument('--record_time', action='store_true', help='Time of stacking')
+    parser.add_argument('--record_time', action='store_true', help='Record wall-time of stacking')
     parser.add_argument('--no_compression', action='store_true', help='No compression of data')
     parser.add_argument('--make_only_template', action='store_true', help='Stop after making empty template')
 
@@ -1437,7 +1441,7 @@ def ms_merger():
         if args.record_time:
             start_time = time.time()
         s = Stack(args.msin, args.msout, chunkmem=args.chunk_mem)
-        s.stack_all(advanced=args.advanced_stacking)
+        s.stack_all()
         if args.record_time:
             end_time = time.time()
             elapsed_time = end_time - start_time
