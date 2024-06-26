@@ -69,7 +69,7 @@ def parse_args():
     """
 
     parser = ArgumentParser(description='MS stacking')
-    parser.add_argument('msin', type=str, help='Input Measurement Set', required=True)
+    parser.add_argument('msin', type=str, help='Input Measurement Set')
     parser.add_argument('--msout', type=str, default=None, help='Output Measurement Set')
     parser.add_argument('--overwrite', action='store_true', help='Overwrite input Measurement Set')
 
