@@ -46,5 +46,6 @@ def main():
         print(' '.join(command))
         os.system(' '.join(command))
 
+
 if __name__ == '__main__':
     main()
