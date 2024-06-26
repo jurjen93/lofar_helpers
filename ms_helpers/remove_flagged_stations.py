@@ -47,6 +47,10 @@ def remove_flagged_antennas(msin: str = None, msout: str = None, overwrite: bool
         if np.all(flags[ant_rows]):
             fully_flagged_antennas.append(ant)
 
+    if len(fully_flagged_antennas) == 0:
+        print(f'No flagged antennas for {msin}, move on.')
+        return
+
     # Get names of ants to filter
     ants_to_filter = ','.join([ants_names[idx] for idx in fully_flagged_antennas])
     print(f"Filtering fully flagged antennas: {ants_to_filter}")
