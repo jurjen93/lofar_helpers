@@ -10,6 +10,3 @@ def get_fits_diff(fits_file_1, fits_file_2, out_name='diff.fits'):
 
     hdu = fits.PrimaryHDU(header=f1.header, data=f1.data - f2.data)
     hdu.writeto(out_name, overwrite=True)
-
-    f1.close()
-    f2.close()
