@@ -142,10 +142,9 @@ def get_dataloaders(dataset_root, batch_size):
         (None, False)
     )
 
-    dataset = FitsDataset(dataset_root)
     loaders = tuple(
         MultiEpochsDataLoader(
-            dataset=dataset,
+            dataset=FitsDataset(dataset_root, mode=mode),
             batch_size=batch_size,
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,
@@ -288,7 +287,7 @@ def main(dataset_root: str, model_name: str, lr: float, normalize: int, dropout_
         for epoch in range(n_epochs):
 
             global_step = train_step_f(global_step=global_step)
-            global_step, val_loss = val_step_f(global_step=global_step)
+            val_loss = val_step_f(global_step=global_step)
 
             if val_loss < best_val_loss:
                 checkpoint_saver(global_step=global_step)
@@ -321,7 +320,6 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f)
 
     model.classifier.eval()
     for i, (data, labels) in tqdm(enumerate(val_dataloader), desc='Validation', total=len(val_dataloader)):
-        global_step += 1
         # print("validation start")
 
         data, labels = prepare_data_f(data, labels)
@@ -335,9 +333,9 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f)
     losses, logits, targets = map(torch.concatenate, (val_losses, val_logits, val_targets))
 
     mean_loss = losses.mean()
-    metrics_logger(loss=mean_loss, logits=logits, targets=targets, global_step=global_step, log_suffix='validation')
+    metrics_logger(loss=mean_loss, logits=logits, targets=targets, global_step=global_step, log_suffix='Validation')
 
-    return global_step, mean_loss
+    return mean_loss
 
 
 
