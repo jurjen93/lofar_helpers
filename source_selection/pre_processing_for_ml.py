@@ -1,19 +1,15 @@
-import bisect
 import itertools
-import random
-from functools import lru_cache, cached_property
+import os
+from functools import lru_cache
 from pathlib import Path
 
-import torch
-from joblib import Parallel, delayed
-from torch.utils.data import Dataset
-import os
-from astropy.io import fits
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from astropy.io import fits
+from joblib import Parallel, delayed
 from matplotlib.colors import SymLogNorm
-from PIL import Image
-import torchvision.transforms as T
+from torch.utils.data import Dataset
 
 
 def get_rms(data: np.ndarray, maskSup=1e-7):
@@ -115,13 +111,14 @@ def transform_data(root_dir, classes=('continue', 'stop'), modes=('', '_val')):
 
 
 class FitsDataset(Dataset):
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, mode='train'):
         """
         Args:
             root_dir (string): Directory with good/bad folders in it.
         """
 
         modes = ('train', 'val')
+        assert mode in modes
 
         classes = {'stop': 0, 'continue': 1}
 
@@ -131,35 +128,26 @@ class FitsDataset(Dataset):
         ext = '.npz'
         glob_ext = '*' + ext
 
-        for mode in modes:
-            for folder in (root_dir / (cls + ('' if mode == 'train' else '_val')) for cls in classes):
-                assert folder.exists(), f"root folder doesn't exist, got: '{str(folder.resolve())}'"
-                assert len(list(folder.glob(glob_ext))) > 0, f"no '{ext}' files were found in '{str(folder.resolve())}'"
+        for folder in (root_dir / (cls + ('' if mode == 'train' else '_val')) for cls in classes):
+            assert folder.exists(), f"root folder doesn't exist, got: '{str(folder.resolve())}'"
+            assert len(list(folder.glob(glob_ext))) > 0, f"no '{ext}' files were found in '{str(folder.resolve())}'"
 
         # Yes this code is way overengineered. Yes I also derive pleasure from writing it :) - RJS
         #
         # Actual documentation:
         # You want all 'self.x' variables to be non-python objects such as numpy arrays,
         # otherwise you get memory leaks in the PyTorch dataloader
-        def get_datapoints(mode):
-            return tuple(map(np.asarray, list(zip(*(
-                (str(file), val)
-                for cls, val in classes.items()
-                for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(glob_ext)
-            )))))
+        self.data_paths, self.labels = map(np.asarray, list(zip(*(
+            (str(file), val)
+            for cls, val in classes.items()
+            for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(glob_ext)
+        ))))
 
-        self.train_paths, self.train_labels = get_datapoints('train')
-        self.val_paths, self.val_labels = get_datapoints('val')
 
-        assert len(self.train_paths) > 0
-        assert len(self.val_paths) > 0
+        assert len(self.data_paths) > 0
 
-        sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.train_paths]))
+        sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.data_paths]))
         print(f'{mode}: using the following sources: {sources}')
-
-        sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.val_paths]))
-        print(f'{mode}: using the following sources: {sources}')
-
 
 
     @staticmethod
@@ -175,29 +163,12 @@ class FitsDataset(Dataset):
 
     @lru_cache(maxsize=1)
     def __len__(self):
-        return self.train_len + self.val_len
-
-    @cached_property
-    def train_len(self):
-        return len(self.train_paths)
-
-
-    @cached_property
-    def val_len(self):
-        return len(self.val_paths)
+        return len(self.data_paths)
 
     def __getitem__(self, idx):
-        if idx < self.train_len:
-            data_paths = self.train_paths
-            labels = self.train_labels
-        else:
-            data_paths = self.val_paths
-            labels = self.val_labels
 
-        idx = idx % self.train_len
-
-        npy_path = data_paths[idx]
-        label = labels[idx]
+        npy_path = self.data_paths[idx]
+        label = self.labels[idx]
 
         image_data = np.load(npy_path)['arr_0']  # there is always only one array
 
