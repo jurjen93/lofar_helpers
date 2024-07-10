@@ -25,7 +25,7 @@ from casacore.tables import table, default_ms, taql
 import numpy as np
 from os import system as run_command
 import os
-import shutil
+from shutil import rmtree, move
 import sys
 from astropy.time import Time
 from astropy.coordinates import EarthLocation
@@ -34,10 +34,7 @@ from pprint import pprint
 from argparse import ArgumentParser
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from itertools import compress
 import time
-import dask.array as da
-from dask import delayed
 import psutil
 from math import ceil
 from glob import glob
@@ -45,14 +42,9 @@ import matplotlib.pyplot as plt
 from scipy.spatial import cKDTree
 from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter1d
+from joblib import Parallel, delayed
+import tempfile
 
-
-try:
-    from dask.distributed import Client
-    use_dask_distributed = True
-except ImportError:
-    print('WARNING: dask.distributed not installed, continue without parallel stacking.')
-    use_dask_distributed = False
 
 one_lst_day_sec = 86164.1
 
@@ -61,7 +53,7 @@ def print_progress_bar(index, total, bar_length=50):
     """
     Prints a progress bar to the console.
 
-    :input:
+    :param::param:
         - index: the current index (0-based) in the iteration.
         - total: the total number of indices.
         - bar_length: the character length of the progress bar (default 50).
@@ -82,7 +74,7 @@ def is_dysco_compressed(ms):
     """
     Check if MS is dysco compressed
 
-    :input:
+    :param:
         - ms: measurement set
     """
 
@@ -96,7 +88,7 @@ def decompress(ms):
     """
     running DP3 to remove dysco compression
 
-    :input:
+    :param:
         - ms: measurement set
     """
 
@@ -105,7 +97,7 @@ def decompress(ms):
         print('\n----------\nREMOVE DYSCO COMPRESSION\n----------\n')
 
         if os.path.exists(f'{ms}.tmp'):
-            shutil.rmtree(f'{ms}.tmp')
+            rmtree(f'{ms}.tmp')
         run_command(f"DP3 msin={ms} msout={ms}.tmp steps=[]")
         print('----------')
         return ms + '.tmp'
@@ -118,7 +110,7 @@ def make_odd(i):
     """
     Make odd number
 
-    :input:
+    :param:
         - i: digit
 
     :return: odd digit
@@ -133,13 +125,13 @@ def compress(ms, avg=None):
     """
     running DP3 to apply dysco compression
 
-    :input:
+    :param:
         - ms: measurement set
     """
 
     if not is_dysco_compressed(ms):
 
-        print('\n----------\nDYSCO COMPRESSION\n----------\n')
+        print('DYSCO COMPRESSION')
 
         cmd = f"DP3 msin={ms} msout={ms}.tmp msout.overwrite=true msout.storagemanager=dysco"
 
@@ -161,8 +153,8 @@ def compress(ms, avg=None):
         except RuntimeError:
             sys.exit(f"ERROR: dysco compression failed (please check {ms})")
 
-        shutil.rmtree(ms)
-        shutil.move(f"{ms}.tmp", ms)
+        rmtree(ms)
+        move(f"{ms}.tmp", ms)
 
         print('----------')
         return ms
@@ -171,11 +163,38 @@ def compress(ms, avg=None):
         return ms
 
 
+def time_resolution(resolution, fov_diam, time_smearing=0.95):
+    """
+    Calculate the best time resolution, given a time_smearing allowance
+
+    Using formulas from Bridle & Schwab (1999)
+
+    :params:
+        - resolution: resolution in arcseconds
+        - fov_diam: longest FoV diameter in degrees
+        - time_smearing: allowable time smearing
+    :return: integration time in seconds
+    """
+
+    #TODO: Make dependent on frequency
+
+    # Convert distance from degrees to radians
+    distance_from_phase_center_rad = np.deg2rad(fov_diam/2)
+
+    # Calculate angular resolution (radians)
+    angular_resolution_rad = resolution*4.8481*1e-6
+
+    int_time = (np.sqrt((1-time_smearing)/1.2288710615597145e-09)/
+                          distance_from_phase_center_rad*angular_resolution_rad)
+
+    return int_time
+
+
 def get_ms_content(ms):
     """
     Get MS content
 
-    :input:
+    :param:
         - ms: measurement set
 
     :return:
@@ -214,7 +233,6 @@ def get_ms_content(ms):
     dfreq = np.diff(sorted(set(channels)))[0]
     time = sorted(np.unique(T.getcol("TIME")))
     time_lst = mjd_seconds_to_lst_seconds(T.getcol("TIME"))
-    # time_lst = T.getcol("TIME")
     time_min_lst, time_max_lst = time_lst.min(), time_lst.max()
     total_time_seconds = max(time)-min(time)
     dt = np.diff(sorted(set(time)))[0]
@@ -263,7 +281,7 @@ def get_station_id(ms):
     """
     Get station with corresponding id number
 
-    :input:
+    :param:
         - ms: measurement set
 
     :return:
@@ -285,7 +303,7 @@ def mjd_seconds_to_lst_seconds(mjd_seconds, longitude_deg=52.909):
     """
     Convert time in modified Julian Date time to LST
 
-    :input:
+    :param:
         - mjd_seconds: modified Julian date time in seconds
         - longitde_deg: longitude telescope in degrees (52.909 for LOFAR)
 
@@ -315,7 +333,7 @@ def same_phasedir(mslist: list = None):
     """
     Have MS same phase center?
 
-    :input:
+    :param:
         - mslist: measurement set list
     """
 
@@ -333,7 +351,7 @@ def sort_station_list(zipped_list):
     Sorts a list of lists (or tuples) based on the first element of each inner list or tuple,
     which is necessary for a zipped list with station names and positions
 
-    :input:
+    :param:
         - list_of_lists (list of lists or tuples): The list to be sorted.
 
     :return:
@@ -363,7 +381,7 @@ def n_baselines(n_antennas: int = None):
     """
     Return number of baselines
 
-    :input:
+    :param:
         - n_antennas: number of antennas
 
     :return: number of baselines
@@ -376,7 +394,7 @@ def make_ant_pairs(n_ant, n_time):
     """
     Generate ANTENNA1 and ANTENNA2 arrays for an array with M antennas over N time slots.
 
-    :input:
+    :param:
         - n_ant: Number of antennas in the array.
         - n_int: Number of time slots.
 
@@ -399,7 +417,7 @@ def repeat_elements(original_list, repeat_count):
     """
     Repeat each element in the original list a specified number of times.
 
-    :input:
+    :param:
         - original_list: The original list to be transformed.
         - repeat_count: The number of times each element should be repeated.
 
@@ -413,7 +431,7 @@ def find_closest_index(arr, value):
     """
     Find the index of the closest value in the array to the given value.
 
-    :input:
+    :param:
         - arr: A NumPy array of values.
         - value: A float value to find the closest value to.
 
@@ -434,7 +452,7 @@ def find_closest_index_list(a1, a2):
     """
     Find the indices of the closest values between two arrays.
 
-    :input:
+    :param:
         - a1: first array
         - a2: second array
 
@@ -448,7 +466,7 @@ def find_closest_index_multi_array(a1, a2):
     """
     Find the indices of the closest values between two multi-D arrays.
 
-    :input:
+    :param:
         - a1: first array
         - a2: second array
 
@@ -472,7 +490,7 @@ def map_array_dict(arr, dct):
     """
     Maps elements of the input_array to new values using a mapping_dict
 
-    :input:
+    :param:
         - arr: numpy array of integers that need to be mapped.
         - dct: dictionary where each key-value pair represents an original value and its corresponding new value.
 
@@ -494,7 +512,7 @@ def get_avg_factor(mslist, less_avg=1):
     """
     Calculate optimized averaging factor
 
-    :input:
+    :param:
         - mslist: measurement set list
         - less_avg: factor to reduce averaging
     :return:
@@ -518,7 +536,7 @@ def add_axis(arr, ax_size):
     """
     Add ax dimension with a specific size
 
-    :input:
+    :param:
         - arr: numpy array
         - ax_size: axis size
 
@@ -535,13 +553,13 @@ def resample_uwv(uvw_arrays, row_idxs, time, time_ref):
     """
     Resample a uvw array to have N rows.
 
-    Parameters:
+    :param:
         - uvw_arrays: UVW array with shape (num_points, 3)
         - row_idxs: Indices of rows to resample
         - time: Original time array
         - time_ref: Reference time array to resample to
 
-    Returns:
+    :return:
         - Resampled UVW array
     """
 
@@ -571,11 +589,11 @@ def resample_array(data, factor):
     Resamples the input data array such that the number of points increases by a factor.
     The lowest and highest values remain the same, and the spacing between points remains equal.
 
-    Parameters:
+    :param:
         - data: The input data array to resample.
         - factor: The factor by which to increase the number of data points.
 
-    Returns:
+    :return:
         - The resampled data array.
     """
     # Original number of points
@@ -641,8 +659,22 @@ def get_data_arrays(column: str = 'DATA', nrows: int = None, freq_len: int = Non
 
 
 def load_json(file_path):
+    """Load json file"""
+
     with open(file_path, 'r') as file:
         return json.load(file)
+
+
+def squeeze_to_intlist(arr):
+    """Squeeze array and make list with integers"""
+
+    squeezed = np.squeeze(arr).astype(int)
+    if squeezed.ndim == 0:
+        return [squeezed.item()]
+    elif squeezed.ndim == 1:
+        return squeezed.tolist()
+    else:
+        return squeezed.tolist()
 
 
 def remove_flagged_entries(input_table):
@@ -650,18 +682,87 @@ def remove_flagged_entries(input_table):
     Remove flagged entries.
     Note that this corrupts the time axis.
     """
+    # Define the output table temporary name
+    output_table = input_table + '.copy.tmp'
 
-    output_table = input_table+'.copy.tmp'
+    # Open the input table
+    with table(input_table, ack=False) as tb:
+        # Select rows that do not match the deletion criteria
+        selected_rows = tb.query('NOT all(WEIGHT_SPECTRUM == 0)')
 
-    # Select rows that do not match the deletion criteria
-    selected_rows = taql(f'select from {input_table} where not all(WEIGHT_SPECTRUM == 0)')
+        # Create a new table with the selected rows
+        selected_rows.copy(output_table, deep=True)
 
-    # Create a new table with the selected rows
-    selected_rows.copy(output_table, deep=True)
+    # Overwrite the input table with the new table
+    rmtree(input_table)
+    move(output_table, input_table)
 
-    # Replace with input (overwrite)
-    shutil.rmtree(input_table)
-    shutil.move(output_table, input_table)
+    # Make new time axis TODO: issues with new time axis for BDA datasets
+    # t = table(input_table, ack=False, readonly=False)
+    # time_old = np.unique(t.getcol("TIME"))
+    # tm = np.linspace(time_old.min(), time_old.max(), t.nrows())
+    #
+    # ants = table(input_table + "::ANTENNA", ack=False)
+    # baselines = np.c_[make_ant_pairs(ants.nrows(), 1)]
+    # ants.close()
+    #
+    # t = repeat_elements(time_range, baseline_count)
+
+
+def sum_arrays_chunkwise(array1, array2, chunk_size=1000, n_jobs=-1, un_memmap=True):
+    """
+    Sums two arrays in chunks using joblib for parallel processing.
+
+    :param:
+        - array1: np.ndarray or np.memmap
+        - array2: np.ndarray or np.memmap
+        - chunk_size: int, size of each chunk
+        - n_jobs: int, number of jobs for parallel processing (-1 means using all processors)
+        - un_memmap: bool, whether to convert memmap arrays to regular arrays if they fit in memory
+
+    :return:
+        - np.ndarray or np.memmap: result array which is the sum of array1 and array2
+    """
+
+    def sum_chunk(start, end):
+        return array1[start:end] + array2[start:end]
+
+    # Ensure the arrays have the same length
+    assert len(array1) == len(array2), "Arrays must have the same length"
+
+    # Check if un-memmap is needed and feasible
+    if un_memmap and isinstance(array1, np.memmap):
+        try:
+            array1 = np.array(array1)
+        except MemoryError:
+            pass  # If memory error, fall back to using memmap
+
+    if un_memmap and isinstance(array2, np.memmap):
+        try:
+            array2 = np.array(array2)
+        except MemoryError:
+            pass  # If memory error, fall back to using memmap
+
+    n = len(array1)
+    # Create a list of chunk indices
+    chunks = [(i, min(i + chunk_size, n)) for i in range(0, n, chunk_size)]
+
+    # Determine the output storage type based on input type
+    if isinstance(array1, np.memmap) or isinstance(array2, np.memmap):
+        # Create a temporary file to store the result as a memmap
+        temp_file = tempfile.NamedTemporaryFile(delete=False)
+        result_array = np.memmap(temp_file.name, dtype=array1.dtype, mode='w+', shape=array1.shape)
+    else:
+        result_array = np.empty_like(array1)
+
+    # Parallel processing
+    results = Parallel(n_jobs=n_jobs)(delayed(sum_chunk)(start, end) for start, end in chunks)
+
+    # Store the results in the result array
+    for i, (start, end) in enumerate(chunks):
+        result_array[start:end] = results[i]
+
+    return result_array
 
 
 class Template:
@@ -675,13 +776,12 @@ class Template:
         Add SPECTRAL_WINDOW as sub table
         """
 
-        print("\n----------\nAdd table: " + self.outname + "::SPECTRAL_WINDOW\n----------\n")
+        print("Add table ==> " + self.outname + "::SPECTRAL_WINDOW")
 
         tnew_spw_tmp = table(self.ref_table.getkeyword('SPECTRAL_WINDOW'), ack=False)
         newdesc = tnew_spw_tmp.getdesc()
         for col in ['CHAN_WIDTH', 'CHAN_FREQ', 'RESOLUTION', 'EFFECTIVE_BW']:
             newdesc[col]['shape'] = np.array([self.channels.shape[-1]])
-        # pprint(newdesc)
 
         tnew_spw = table(self.outname + '::SPECTRAL_WINDOW', newdesc, readonly=False, ack=False)
         tnew_spw.addrows(1)
@@ -704,7 +804,7 @@ class Template:
         Add ANTENNA and FEED tables
         """
 
-        print("\n----------\nAdd table: " + self.outname + "::ANTENNA\n----------\n")
+        print("Add table ==> " + self.outname + "::ANTENNA")
 
         stations = [sp[0] for sp in self.station_info]
         st_id = dict(zip(set(
@@ -723,12 +823,11 @@ class Template:
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('ANTENNA'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
-        # pprint(newdesc)
         tnew_ant_tmp.close()
 
         tnew_ant = table(self.outname + '::ANTENNA', newdesc, readonly=False, ack=False)
         tnew_ant.addrows(len(stations))
-        print('Total number of stations: ' + str(tnew_ant.nrows()))
+        print('Total number of output stations: ' + str(tnew_ant.nrows()))
         tnew_ant.putcol("NAME", stations)
         tnew_ant.putcol("TYPE", ['GROUND-BASED']*len(stations))
         tnew_ant.putcol("POSITION", positions)
@@ -742,11 +841,10 @@ class Template:
         tnew_ant.flush(True)
         tnew_ant.close()
 
-        print("\n----------\nAdd table: " + self.outname + "::FEED\n----------\n")
+        print("Add table ==> " + self.outname + "::FEED")
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('FEED'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
-        # pprint(newdesc)
         tnew_ant_tmp.close()
 
         tnew_feed = table(self.outname + '::FEED', newdesc, readonly=False, ack=False)
@@ -765,11 +863,11 @@ class Template:
         tnew_feed.flush(True)
         tnew_feed.close()
 
-        print("\n----------\nAdd table: " + self.outname + "::LOFAR_ANTENNA_FIELD\n----------\n")
+        print("Add table ==> " + self.outname + "::LOFAR_ANTENNA_FIELD")
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_ANTENNA_FIELD'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
-        # pprint(newdesc)
+
         tnew_ant_tmp.close()
 
         tnew_field = table(self.outname + '::LOFAR_ANTENNA_FIELD', newdesc, readonly=False, ack=False)
@@ -785,11 +883,10 @@ class Template:
         tnew_field.flush(True)
         tnew_field.close()
 
-        print("\n----------\nAdd table: " + self.outname + "::LOFAR_STATION\n----------\n")
+        print("Add table ==> " + self.outname + "::LOFAR_STATION")
 
         tnew_ant_tmp = table(self.ref_table.getkeyword('LOFAR_STATION'), ack=False)
         newdesc = tnew_ant_tmp.getdesc()
-        # pprint(newdesc)
         tnew_ant_tmp.close()
 
         tnew_station = table(self.outname + '::LOFAR_STATION', newdesc, readonly=False, ack=False)
@@ -812,7 +909,7 @@ class Template:
 
         if overwrite:
             if os.path.exists(self.outname):
-                shutil.rmtree(self.outname)
+                rmtree(self.outname)
 
         same_phasedir(self.mslist)
 
@@ -847,11 +944,7 @@ class Template:
         self.station_info = unique_station_list(unique_stations)
         self.lofar_stations_info = unique_station_list(unique_lofar_stations)
 
-        # if avg_factor <= 1:
         chan_range = np.arange(min(unique_channels), max(unique_channels) + dfreq_min, dfreq_min)
-        # chan_range = np.arange(min(unique_channels), max(unique_channels) + dfreq_min, dfreq_min/avg_factor)
-        # else:
-        #     chan_range = resample_array(np.arange(min(unique_channels), max(unique_channels) + dfreq_min, dfreq_min), ceil(avg_factor))
         self.channels = np.sort(np.expand_dims(np.unique(chan_range), 0))
         self.chan_num = self.channels.shape[-1]
         # time_range = np.arange(min_t_lst, min(max_t_lst+min_dt, one_lst_day_sec/2 + min_t_lst + min_dt), min_dt/avg_factor)# ensure just half LST day
@@ -879,6 +972,7 @@ class Template:
         newdesc_data.pop('_keywords_')
 
         pprint(newdesc_data)
+        print()
 
         # Make main table
         default_ms(self.outname, newdesc_data)
@@ -896,12 +990,6 @@ class Template:
         tnew.flush(True)
         tnew.close()
 
-        # Set default values
-        taql(f"UPDATE {self.outname} SET FLAG = False")
-        # taql(f"UPDATE {self.outname} SET WEIGHT = 1")
-        # taql(f"UPDATE {self.outname} SET SIGMA = 1")
-
-
         # Set SPECTRAL_WINDOW info
         self.add_spectral_window()
 
@@ -913,7 +1001,7 @@ class Template:
                        'LOFAR_ELEMENT_FAILURE', 'OBSERVATION', 'POINTING',
                        'POLARIZATION', 'PROCESSOR', 'STATE']:
             try:
-                print("\n----------\nAdd table: " + self.outname + "::" + subtbl + "\n----------\n")
+                print("Add table ==> " + self.outname + "::" + subtbl)
 
                 tsub = table(self.tmpfile+"::"+subtbl, ack=False, readonly=False)
                 tsub.copy(self.outname + '/' + subtbl, deep=True)
@@ -926,7 +1014,7 @@ class Template:
 
         # Cleanup
         if 'tmp' in self.tmpfile:
-            shutil.rmtree(self.tmpfile)
+            rmtree(self.tmpfile)
 
     def make_mapping_lst(self):
         """
@@ -949,14 +1037,14 @@ class Template:
             Making json files with antenna pair mappings.
             Mapping INPUT MS idx --> OUTPUT MS idx
 
-            :input:
+            :param:
                 - antpair: antenna pair
 
             """
 
             # Get idx
-            pair_idx = np.squeeze(np.argwhere(np.all(antennas == antpair, axis=1))).astype(int)
-            ref_pair_idx = np.squeeze(np.argwhere(np.all(ref_antennas == antpair, axis=1))[time_idxs]).astype(int)
+            pair_idx = squeeze_to_intlist(np.argwhere(np.all(antennas == antpair, axis=1)))
+            ref_pair_idx = squeeze_to_intlist(np.argwhere(np.all(ref_antennas == antpair, axis=1))[time_idxs])
 
             # Make mapping dict
             mapping = {int(pair_idx[i]): int(ref_pair_idx[i]) for i in range(min(pair_idx.__len__(), ref_pair_idx.__len__()))}
@@ -974,7 +1062,7 @@ class Template:
             """
             Parallel processing of mapping with unique antenna pairs
 
-            :input:
+            :param:
                 - uniq_ant_pairs: unique antenna pairs to loop over in parallel
             """
 
@@ -1069,15 +1157,6 @@ class Template:
         TIME = np.memmap('TIME.tmp.dat', dtype=np.float64, mode='w+', shape=(T.nrows()))
         TIME[:] = T.getcol("TIME")
 
-        # Determine the optimal number of workers
-        cpu_count = max(os.cpu_count()-3, 1)
-
-        # Start with a reasonable default
-        num_workers = min(48, cpu_count * 2)  # I/O-bound heuristic
-
-        print(f"Using {num_workers} workers for making UVW column and accurate baseline mapping."
-              f"\nThis is an expensive operation. So, be patient..")
-
         for ms_idx, ms in enumerate(sorted(self.mslist)):
             with table(ms, ack=False) as f:
                 uvw = np.memmap(f'{ms}_uvw.tmp.dat', dtype=np.float32, mode='w+', shape=(f.nrows(), 3))
@@ -1085,7 +1164,15 @@ class Template:
                 uvw[:] = f.getcol("UVW")
                 time[:] = mjd_seconds_to_lst_seconds(f.getcol("TIME"))
 
+        # Determine number of workers
+        num_workers = max(os.cpu_count()-5, 1)  # I/O-bound heuristic
+
+        print(f"Using {num_workers} workers for making UVW column and accurate baseline mapping."
+              f"\nThis is an expensive operation. So, be patient..")
+
         batch_size = max(1, len(baselines) // num_workers)  # Ensure at least one baseline per batch
+
+        print("Multithreading...")
 
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
             future_to_baseline = {
@@ -1106,6 +1193,7 @@ class Template:
         UVW.flush()
         T.putcol("UVW", UVW)
         T.close()
+
 
         # Make final mapping
         self.make_mapping_uvw()
@@ -1144,7 +1232,7 @@ class Template:
 
         UVW = np.memmap('UVW.tmp.dat', dtype=np.float32).reshape(-1, 3)
 
-        num_workers = min(os.cpu_count()-3, len(baselines))
+        num_workers = min(os.cpu_count()-5, len(baselines))
 
         print('\nMake new mapping based on UVW points')
         with ThreadPoolExecutor(max_workers=num_workers) as executor:
@@ -1163,29 +1251,27 @@ class Stack:
     """
     Stack measurement sets in template empty.ms
     """
-    def __init__(self, msin: list = None, outname: str = 'empty.ms', chunkmem: float = 4.):
+    def __init__(self, msin: list = None, outname: str = 'empty.ms', chunkmem: float = 1.):
         if not os.path.exists(outname):
             sys.exit(f"ERROR: Template {outname} has not been created or is deleted")
+        print("\n\n==== Start stacking ====\n")
         self.template = table(outname, readonly=False, ack=False)
         self.mslist = msin
         self.outname = outname
         self.flag = False
 
+        # Freq
+        F = table(self.outname+'::SPECTRAL_WINDOW', ack=False)
+        self.ref_freqs = F.getcol("CHAN_FREQ")[0]
+        self.freq_len = self.ref_freqs.__len__()
+        F.close()
 
-        num_cpus = psutil.cpu_count(logical=True)
+        self.num_cpus = psutil.cpu_count(logical=True)
         total_memory = psutil.virtual_memory().total / (1024 ** 3)  # in GB
+        target_chunk_size = total_memory / chunkmem
+        self.chunk_size = min(int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize/2/self.freq_len), 2_000_000)
+        print(f"\n---------------\nChunk size ==> {self.chunk_size}")
 
-        if use_dask_distributed:
-            print('POSITIVE: dask.distributed installed, continue with advanced parallel stacking.')
-            print(f"\nCPU number: {num_cpus}\nMemory limit: {int(total_memory)}GB\n")
-            self.client = Client(n_workers=num_cpus,
-                                 threads_per_worker=1,
-                                 memory_limit=f'{total_memory/(num_cpus*1.5)}GB')
-            target_chunk_size = total_memory / num_cpus / chunkmem
-            self.chunk_size = min(int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize), 1_000_000)
-        else:
-            target_chunk_size = total_memory / chunkmem
-            self.chunk_size = min(int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize), 1_000_000)
 
     def smooth_uvw(self):
         """
@@ -1217,7 +1303,7 @@ class Stack:
         """
         Stack all MS
 
-        :input:
+        :param:
             - column: column name (currently only DATA)
         """
 
@@ -1248,12 +1334,6 @@ class Stack:
         else:
             sys.exit("ERROR: Only column 'DATA' allowed (for now)")
 
-        # Freq
-        F = table(self.outname+'::SPECTRAL_WINDOW', ack=False)
-        ref_freqs = F.getcol("CHAN_FREQ")[0]
-        freq_len = ref_freqs.__len__()
-        F.close()
-
         # Get template data
         self.T = table(os.path.abspath(self.outname), readonly=False, ack=False)
 
@@ -1261,9 +1341,9 @@ class Stack:
         for col in columns:
 
             if col == 'UVW':
-                new_data, uvw_weights = get_data_arrays(col, self.T.nrows(), freq_len)
+                new_data, uvw_weights = get_data_arrays(col, self.T.nrows(), self.freq_len)
             else:
-                new_data, _ = get_data_arrays(col, self.T.nrows(), freq_len)
+                new_data, _ = get_data_arrays(col, self.T.nrows(), self.freq_len)
 
             # Loop over measurement sets
             for ms in self.mslist:
@@ -1282,7 +1362,7 @@ class Stack:
                 if col != 'UVW':
                     f = table(ms+'::SPECTRAL_WINDOW', ack=False)
                     freqs = f.getcol("CHAN_FREQ")[0]
-                    freq_idxs = find_closest_index_list(freqs, ref_freqs)
+                    freq_idxs = find_closest_index_list(freqs, self.ref_freqs)
                     f.close()
 
                 # Make antenna mapping in parallel
@@ -1297,31 +1377,25 @@ class Stack:
                 for chunk_idx in range(chunks):
                     print_progress_bar(chunk_idx, chunks+1)
                     data = t.getcol(col+"_WEIGHTED" if col == 'DATA' else col,
-                                                  startrow=chunk_idx * self.chunk_size, nrow=self.chunk_size)
+                                            startrow=chunk_idx * self.chunk_size, nrow=self.chunk_size)
 
                     row_idxs_new = ref_indices[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)]
                     row_idxs = [int(i - chunk_idx * self.chunk_size) for i in
                                 indices[chunk_idx * self.chunk_size:self.chunk_size * (chunk_idx+1)]]
 
-                    # Stack columns (using dask for multi-processing)
-                    if col == 'UVW':
-                        new_data_dask_subset = da.from_array(new_data[row_idxs_new, :], chunks='auto')
-                        updated_data = (new_data_dask_subset + data[row_idxs, :]).compute()
-                        new_data[row_idxs_new, :] = updated_data
-                        new_data.flush()
 
-                        uvw_weights_dask_subset = da.from_array(uvw_weights[row_idxs_new, :], chunks='auto')
-                        updated_weights = (uvw_weights_dask_subset + 1).compute()
-                        uvw_weights[row_idxs_new, :] = updated_weights
+                    if col == 'UVW':
+                        new_data[row_idxs_new, :] = sum_arrays_chunkwise(new_data[row_idxs_new, :], data[row_idxs, :],
+                                                                         chunk_size=self.chunk_size//self.num_cpus)
+
+                        uvw_weights[row_idxs_new, :] = sum_arrays_chunkwise(uvw_weights[row_idxs_new, :], np.ones(uvw_weights[row_idxs_new, :].shape),
+                                                                         chunk_size=self.chunk_size//self.num_cpus)
                         uvw_weights.flush()
                     else:
-                        new_data_dask_subset = da.from_array(new_data[np.ix_(row_idxs_new, freq_idxs)], chunks='auto')
-                        updated_data = (new_data_dask_subset + data[row_idxs, :]).compute()
-                        new_data[np.ix_(row_idxs_new, freq_idxs)] = updated_data
-                        new_data.flush()
+                        new_data[np.ix_(row_idxs_new, freq_idxs)] = sum_arrays_chunkwise(new_data[np.ix_(row_idxs_new, freq_idxs)], data[row_idxs, :],
+                                                                         chunk_size=self.chunk_size//self.num_cpus)
 
-                        new_data.flush()
-
+                    new_data.flush()
 
                 print_progress_bar(chunk_idx, chunks)
                 t.close()
@@ -1338,13 +1412,13 @@ class Stack:
 
         self.T.close()
 
-        if self.flag:
-            # ADD FLAG
-            print(f'Put column FLAG')
-            taql(f'UPDATE {self.outname} SET FLAG = (WEIGHT_SPECTRUM == 0)')
-        else:
-            # REMOVE FLAGS
-            remove_flagged_entries(self.outname)
+        # if self.flag:
+        #     # ADD FLAG
+        print(f'Put column FLAG')
+        taql(f'UPDATE {self.outname} SET FLAG = (WEIGHT_SPECTRUM == 0)')
+        # else: TODO: FIX FLAGGING
+        #     # REMOVE FLAGS
+        #     remove_flagged_entries(self.outname)
 
         # NORM DATA
         print(f'Normalise column DATA')
@@ -1359,7 +1433,7 @@ def clean_mapping_files(msin):
     """
 
     for ms in msin:
-        shutil.rmtree(ms + '_baseline_mapping')
+        rmtree(ms + '_baseline_mapping')
 
 
 def clean_binary_files():
@@ -1382,11 +1456,12 @@ def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, ba
     """
     Plot baseline track
 
-    :input:
+    :param:
         - t_final_name: table with final name
         - t_input_names: tables to compare with
         - mappingfiles: baseline mapping files
     """
+
 
     if len(t_input_names) > 4:
         sys.exit("ERROR: Can just plot 4 inputs")
@@ -1397,13 +1472,17 @@ def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, ba
         print("MAKE UW PLOT")
 
     ant1, ant2 = baseline.split('-')
+    plt.close()
 
     for n, t_input_name in enumerate(t_input_names):
+        print(t_input_name)
 
         ref_stats, ref_ids = get_station_id(t_final_name)
         new_stats, new_ids = get_station_id(t_input_name)
 
         id_map = dict(zip([ref_stats.index(a) for a in new_stats], new_ids))
+
+        print(ref_stats[int(float(ant1))], ref_stats[int(float(ant2))])
 
         with table(t_final_name, ack=False) as f:
             fsub = f.query(f'ANTENNA1={ant1} AND ANTENNA2={ant2} AND NOT ALL(WEIGHT_SPECTRUM == 0)', columns='UVW')
@@ -1415,15 +1494,16 @@ def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, ba
 
         # Scatter plot for uvw1
         if n == 0:
-            lbl = 'Final MS'
+            lbl = 'Final dataset'
         else:
             lbl = None
 
-        plt.scatter(uvw1[:, 0], uvw1[:, 2] if UV else uvw1[:, 3], label=lbl, color='blue', edgecolor='black', alpha=0.2, s=100, marker='o')
-        # plt.plot(uvw1[:, 0], uvw1[:, 2] if UV else uvw1[:, 3], color='blue', alpha=0.4)
+        if uvw2.ndim>1:
 
-        # Scatter plot for uvw2
-        plt.scatter(uvw2[:, 0], uvw2[:, 2] if UV else uvw2[:, 3], label=f'Dataset {n}', color=colors[n], edgecolor='black', alpha=0.7, s = 40, marker='*')
+            plt.scatter(uvw1[:, 0], uvw1[:, 2] if UV else uvw1[:, 3], label=lbl, color='blue', edgecolor='black', alpha=0.2, s=130, marker='o')
+
+            # Scatter plot for uvw2
+            plt.scatter(uvw2[:, 0], uvw2[:, 2] if UV else uvw2[:, 3], label=f'Dataset {n}', color=colors[n], edgecolor='black', alpha=0.7, s=70, marker='*')
 
 
     # Adding labels and title
@@ -1469,15 +1549,14 @@ def parse_args():
     parser = ArgumentParser(description='Sidereal visibility averaging')
     parser.add_argument('msin', nargs='+', help='Measurement sets to combine')
     parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
-    parser.add_argument('--chunk_mem', type=float, default=4., help='Chunk memory size. Large files need larger parameter, small files can have small parameter value.')
-    parser.add_argument('--avg', type=float, default=1., help='Additional final frequency and time averaging')
-    parser.add_argument('--less_avg', type=float, default=1., help='Factor to reduce averaging (only in combination with --advanced_stacking). Helps to speedup stacking, but less accurate results.')
-    parser.add_argument('--advanced_stacking', action='store_true', help='Increase time resolution during stacking (resulting in larger data volume).')
     parser.add_argument('--time_res', type=float, help='Desired time resolution in seconds')
-    parser.add_argument('--keep_mapping', action='store_true', help='Do not remove mapping files')
+    parser.add_argument('--resolution', type=float, help='Desired spatial resolution (if given, you also have to give --fov_diam)')
+    parser.add_argument('--fov_diam', type=float, help='Desired field of view diameter to calculate optimal time resolution (if given, you also have to give --resolution)')
     parser.add_argument('--record_time', action='store_true', help='Record wall-time of stacking')
-    parser.add_argument('--no_compression', action='store_true', help='No compression of data')
+    parser.add_argument('--chunk_mem', type=float, default=1., help='Additional memory chunk parameter (larger for smaller chunks)')
+    parser.add_argument('--no_dysco', action='store_true', help='No Dysco compression of data')
     parser.add_argument('--make_only_template', action='store_true', help='Stop after making empty template')
+    parser.add_argument('--keep_mapping', action='store_true', help='Do not remove mapping files')
     parser.add_argument('--plot_uv_baseline_coverage', action='store_true', help='make plots with baseline versus UV')
 
     return parser.parse_args()
@@ -1495,25 +1574,23 @@ def ms_merger():
     if check_folder_exists(args.msout):
         sys.exit(f"ERROR: {args.msout} already exists! Delete file first if you want to overwrite.")
 
-    if args.advanced_stacking and args.time_res is not None:
-        sys.exit("ERROR: --advanced_stacking and --time_res cannot be both given.")
-
+    avg = 1
     if args.time_res is not None:
         avg = 1
-        print(f"Use time resolution {args.time_res} seconds")
+        time_res = args.time_res
+        print(f"Use time resolution {time_res} seconds")
+    elif args.resolution is not None and args.fov_diam is not None:
+        time_res = time_resolution(args.resolution, args.fov_diam)
+        print(f"Use time resolution {time_res} seconds")
+    elif args.resolution is not None or args.fov_diam is not None:
+        sys.exit("ERROR: if --resolution given, you also have to give --fov_diam, and vice versa.")
     else:
-        # Find averaging_factor
-        if not args.advanced_stacking:
-            if args.less_avg != 1.:
-                sys.exit("ERROR: --less_avg only used in combination with --advanced_stacking")
-            avg = 1
-        else:
-            avg = get_avg_factor(args.msin, args.less_avg)
-        print(f"Intermediate averaging factor {avg}\n"
-              f"Final averaging factor {max(int(avg * args.avg), 1) if args.advanced_stacking else int(args.avg)}")
+        avg = 2
+        time_res = None
+        print(f"Additional time sampling factor {avg}\n")
 
     t = Template(args.msin, args.msout)
-    t.make_template(overwrite=True, time_res=args.time_res, avg_factor=avg)
+    t.make_template(overwrite=True, time_res=time_res, avg_factor=avg)
     t.make_uvw()
     print("\n############\nTemplate creation completed\n############")
 
@@ -1528,18 +1605,17 @@ def ms_merger():
             elapsed_time = end_time - start_time
             print(f"Elapsed time for stacking: {elapsed_time//60} minutes")
 
-    # Apply dysco compression
-    if not args.no_compression:
-        compress(args.msout)
-
     if args.plot_uv_baseline_coverage:
         make_baseline_uvw_plots(args.msout, args.msin)
 
     # Clean up mapping files
     if not args.keep_mapping:
         clean_mapping_files(args.msin)
-
     clean_binary_files()
+
+    # Apply dysco compression
+    if not args.no_dysco:
+        compress(args.msout)
 
 
 if __name__ == '__main__':

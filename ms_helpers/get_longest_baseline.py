@@ -14,7 +14,7 @@ def parse_args():
     """
 
     parser = ArgumentParser(description='Longest baseline length')
-    parser.add_argument('--ms', help='MS', required=True)
+    parser.add_argument('ms', help='MS', required=True)
     return parser.parse_args()
 
 
