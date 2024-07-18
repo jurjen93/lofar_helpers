@@ -2,7 +2,7 @@
 Concat measurement sets with dummies
 
 Example:
-    python concat_with_dummies.py --ms *.ms --concat_name concat.ms --data_column CORRECTED_DATA
+    python concat_with_dummies.py --concat_name concat.ms --freq_avg 4 --time_avg 8 *.ms
 """
 
 __author__ = "Jurjen de Jong"

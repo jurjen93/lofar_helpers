@@ -28,20 +28,31 @@ def main():
     if args.timerange is not None:
         min_time, max_time = [f for f in args.timerange.split('-')]
 
+
     for ms in args.ms:
+
+        expr = ''
+
         command = ['DP3',
                    'msout.storagemanager=dysco',
                    f'msin={ms}',
                    f'msout=flagged_{ms.split("/")[-1]}',
                    'steps=[flag]',
                    'flag.type=preflagger',
-                   f'flag.baseline={args.ant}']
+                   f'flag.flag1.baseline={args.ant}']
+        if args.freqrange is not None or args.timerange is not None:
+            expr += 'flag1'
         # frequency flagging
         if args.freqrange is not None:
-            command += [f"flag.freqrange='[{min_freq} .. {max_freq} MHz]'"]
+            command += [f"flag.flag2.freqrange='[{min_freq} .. {max_freq} MHz]'"]
+            expr += ' and flag2'
         # time flagging
         if args.timerange is not None:
-            command += [f"flag.reltime='[{min_time} .. {max_time}]'"]
+            command += [f"flag.flag3.reltime='[{min_time} .. {max_time}]'"]
+            expr += ' and flag3'
+
+        command += [f'flag.expr="{expr}"']
+
 
         print(' '.join(command))
         os.system(' '.join(command))

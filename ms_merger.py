@@ -176,16 +176,14 @@ def time_resolution(resolution, fov_diam, time_smearing=0.95):
     :return: integration time in seconds
     """
 
-    #TODO: Make dependent on frequency
-
     # Convert distance from degrees to radians
     distance_from_phase_center_rad = np.deg2rad(fov_diam/2)
 
     # Calculate angular resolution (radians)
     angular_resolution_rad = resolution*4.8481*1e-6
 
-    int_time = (np.sqrt((1-time_smearing)/1.2288710615597145e-09)/
-                          distance_from_phase_center_rad*angular_resolution_rad)
+    int_time = 2.9*10**4*(angular_resolution_rad*np.sqrt(1-time_smearing)/
+                          distance_from_phase_center_rad)
 
     return int_time
 
@@ -321,7 +319,7 @@ def mjd_seconds_to_lst_seconds(mjd_seconds, longitude_deg=52.909):
     location = EarthLocation(lon=longitude_deg * u.deg, lat=0. * u.deg)
 
     # Calculate LST in hours
-    lst_hours = time_utc.sidereal_time('mean', longitude=location.lon).hour
+    lst_hours = time_utc.sidereal_time('apparent', longitude=location.lon).hour
 
     # Convert LST from hours to seconds
     lst_seconds = lst_hours * 3600.0
@@ -1269,7 +1267,7 @@ class Stack:
         self.num_cpus = psutil.cpu_count(logical=True)
         total_memory = psutil.virtual_memory().total / (1024 ** 3)  # in GB
         target_chunk_size = total_memory / chunkmem
-        self.chunk_size = min(int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize/2/self.freq_len), 2_000_000)
+        self.chunk_size = min(int(target_chunk_size * (1024 ** 3) / np.dtype(np.float128).itemsize/2/self.freq_len), 500_000)
         print(f"\n---------------\nChunk size ==> {self.chunk_size}")
 
 
