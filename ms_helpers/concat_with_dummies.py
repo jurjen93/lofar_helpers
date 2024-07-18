@@ -13,6 +13,7 @@ import sys
 from glob import glob
 import argparse
 import os
+from pprint import pprint
 
 
 def get_largest_divider(inp, max=1000):
@@ -167,7 +168,7 @@ def make_parset(mss, concat_name, data_column, time_avg, freq_avg, time_res, fre
     ms_dict = split_ms_phasedir(mss)
     parsets = []
 
-    print(ms_dict)
+    pprint(ms_dict)
 
     for dir, ms in ms_dict.items():
 
@@ -175,9 +176,12 @@ def make_parset(mss, concat_name, data_column, time_avg, freq_avg, time_res, fre
         if concat_name is None:
             concatname = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
                            replace('mstargetphase','')+'.concat.ms').replace('..', '.').split('/')[-1]
+            parsetname = concatname.replace('.concat.ms', '.parset')
+
         else:
             concatname = concat_name
-        parsetname = concatname.replace('.concat.ms', '.parset')
+            parsetname = concatname.replace('.ms', '.parset')
+
         txtname = parsetname.replace('.parset', '.txt')
 
         if fill_freq_gaps(input=ms, make_dummies=True, output_name=txtname, only_basename=only_basename):
