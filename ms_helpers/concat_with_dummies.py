@@ -1,5 +1,5 @@
 """
-Concat measurement sets with dummies
+Concat measurement sets with dummies for missing frequency subbands.
 
 Example:
     python concat_with_dummies.py --concat_name concat.ms --freq_avg 4 --time_avg 8 *.ms

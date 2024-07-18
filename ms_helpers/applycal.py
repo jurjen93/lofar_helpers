@@ -1,5 +1,6 @@
 """
-Use this script to apply solutions in the correct order with beam corrections, based on input from an h5 solution file.
+Apply solutions by taking into account beam order corrections towards the direction of the solution file
+and back to the phase center of the input measurement set.
 """
 
 import tables
