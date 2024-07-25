@@ -3,7 +3,6 @@ from typing import Any
 import numpy as np
 import torch
 from lightning import LightningModule, Trainer
-from lightning.pytorch.utilities.types import STEP_OUTPUT
 from matplotlib import pyplot as plt
 from torch import nn
 from torchvision import models

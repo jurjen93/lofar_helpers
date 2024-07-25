@@ -18,7 +18,7 @@ from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
-    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose, cumsum, insert, abs, asarray, newaxis, argmin, cos, sin
+    pi, array, all, exp, angle, sort, sum, finfo, take, diff, take, transpose, cumsum, insert, abs, asarray, newaxis, argmin, cos, sin
 import os
 import re
 from scipy.interpolate import interp1d
@@ -2613,14 +2613,14 @@ def h5_check(h5):
                     print('/'.join([solset, soltab, 'pol']) + ':\n' + ','.join(
                         [make_utf8(p) for p in list(st._f_get_child('pol')[:])]))
                 if 'time' in axes:
-                    time = st._f_get_child('time')[:]
+                    # time = st._f_get_child('time')[:]
                     # print('/'.join([solset, soltab, 'time']) + ' start:\n' + str(time[0]))
                     # print('/'.join([solset, soltab, 'time']) + ' end:\n' + str(time[-1]))
                     if len(st._f_get_child('time')[:]) > 1:
                         print('/'.join([solset, soltab, 'time']) + ' time resolution:\n' + str(
                             diff(st._f_get_child('time')[:])[0]))
                 if 'freq' in axes:
-                    freq = st._f_get_child('freq')[:]
+                    # freq = st._f_get_child('freq')[:]
                     # print('/'.join([solset, soltab, 'freq']) + ' start:\n' + str(freq[0]))
                     # print('/'.join([solset, soltab, 'freq']) + ' end:\n' + str(freq[-1]))
                     if len(st._f_get_child('freq')[:]) > 1:
@@ -2887,7 +2887,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
                     # make sure tec is merged in phase only (if convert_tec==True)
                     merge.create_new_dataset('sol000', 'phase')
                 else:
-                    if not 'rotation' in st:
+                    if 'rotation' not in st:
                         merge.create_new_dataset('sol000', st)
     if merge.doublefulljones:
         merge.matrix_multiplication()

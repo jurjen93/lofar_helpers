@@ -8,7 +8,6 @@ from astropy.nddata import Cutout2D
 from astropy.wcs import WCS
 from matplotlib.colors import LogNorm, SymLogNorm, PowerNorm
 import pyregion
-from pyregion.mpl_helper import properties_func_default
 import sys
 
 warnings.filterwarnings("ignore")

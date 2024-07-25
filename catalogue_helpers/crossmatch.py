@@ -8,15 +8,13 @@ So, feel free to adapt and use it for your own purposes.
 
 from astropy.coordinates import SkyCoord
 from astropy import units as u
-from astropy.table import Table, vstack, hstack
+from astropy.table import Table, vstack
 from astropy.coordinates import match_coordinates_sky
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.colors import LogNorm
 import warnings
-import scienceplots
-import math
 from scipy.special import erf
 
 plt.style.use('science')

@@ -3,10 +3,8 @@ import numpy as np
 from astropy.time import Time, TimeDelta
 import matplotlib.pyplot as plt
 import astropy.units as u
-from astropy.coordinates import (SkyCoord, FK5, ITRS, CIRS, EarthLocation, CartesianRepresentation,
+from astropy.coordinates import (SkyCoord, FK5, CIRS, EarthLocation, CartesianRepresentation,
                                  solar_system_ephemeris, get_body_barycentric_posvel)
-from PyAstronomy import pyasl
-import datetime
 
 def calculate_uvw(X1, Y1, Z1, X2, Y2, Z2, time_str, alpha, delta):
     """
@@ -106,7 +104,7 @@ def aberration_correction(timestamp, ra, dec):
     time = Time(timestamp, format='isot', scale='utc')
 
     # Initial coordinates
-    sky_coord = SkyCoord(ra=ra, dec=dec, unit='deg')
+    # sky_coord = SkyCoord(ra=ra, dec=dec, unit='deg')
 
     # Calculate the position and velocity of Earth
     with solar_system_ephemeris.set('builtin'):

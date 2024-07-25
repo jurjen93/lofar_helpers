@@ -7,7 +7,6 @@ import tables
 from subprocess import call
 from argparse import ArgumentParser
 from numpy import pi
-import sys
 
 
 class ApplyCal:
