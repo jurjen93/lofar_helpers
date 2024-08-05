@@ -101,13 +101,13 @@ def make_ant_pairs(n_ant, n_time):
     return antenna1, antenna2
 
 
-def interpolate_weights(flagged_ms, ms):
+def interpolate_flags(flagged_ms, ms):
     """
     Args:
         flagged_ms: measurement set from where to interpolate
         ms: the pre-averaged measurement set
     Returns:
-        interpolated weights
+        interpolated flags
     """
 
     ants = table(flagged_ms + "::ANTENNA", ack=False)
@@ -190,8 +190,8 @@ def main():
     # run aoflagger on the input MS
     runaoflagger(args.msin)
 
-    # interpolate weights
-    interpolate_weights(args.msin, args.msout)
+    # interpolate flags
+    interpolate_flags(args.msin, args.msout)
 
 
 if __name__ == '__main__':
