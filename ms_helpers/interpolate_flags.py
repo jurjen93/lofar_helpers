@@ -1,16 +1,18 @@
 """
-With this script you can flag data from a lower freq/time resolution to a higher one.
-Make sure that both datasets have the same antennas with same antenna indices and originate from the same observation.
+With this script you can flag data with a specific freq/time resolution and interpolate the flags to a dataset (or datasets) with another freq/time resolution.
+Make sure that all datasets have the same antennas with same antenna indices and originate from the same observation.
 
 Strategy:
     1) aoflagger with default_StokesV.lua strategy (Stokes V)
     2) interpolate the new flags to the output measurement set (higher freq/time resolution dataset)
 
 Usage:
-    python interpolate_flags_diff_timefreqres.py --msin dataset_lowres.ms --msout dataset_original.ms
+    python interpolate_flags.py --msin dataset_lowres.ms dataset_original.ms
 
     dataset_lowres.ms --> a dataset with a lower time/freq resolution which originates from dataset_original.ms
     dataset_original.ms --> the original dataset
+
+    NOTE: when interpolating to multiple datasets, that the first dataset always the dataset is to run aoflagger on.
 """
 
 from casacore.tables import table
@@ -175,7 +177,7 @@ def parse_args():
 
     parser = ArgumentParser(description='Flag data from a lower freq/time resolution to a higher one')
     parser.add_argument('--msin', help='MS input from where to interpolate')
-    parser.add_argument('--msout', help='MS output from where to apply new interpolated flags')
+    parser.add_argument('msout', nargs='+', help='MS output from where to apply new interpolated flags')
 
     return parser.parse_args()
 
@@ -191,7 +193,9 @@ def main():
     runaoflagger(args.msin)
 
     # interpolate flags
-    interpolate_flags(args.msin, args.msout)
+    for ms in args.msout:
+        print(f'Interpolate to {ms}')
+        interpolate_flags(args.msin, ms)
 
 
 if __name__ == '__main__':
