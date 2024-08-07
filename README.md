@@ -1,14 +1,20 @@
 ## LOFAR helper scripts
 
-These scripts are helper script for LOFAR data reduction.\
-Scripts were originally used for imaging and recalibrating A399-401 (see paper https://arxiv.org/abs/2209.13930) but can also be used for other purposes for reducing LOFAR data as well.
+These scripts were developed for reducing LOFAR data for the following studies:
+- Study of the bridge between galaxy clusters A399 and A401: https://arxiv.org/abs/2209.13930
+- Producing the deepest sub-arcsecond wide-field image of ELAIS-N1: https://arxiv.org/pdf/2407.13247v1
 
-Clone repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git``` \
+Although the scripts were developed for specific purposes, 
+I have tried to write them such they can be used for more general use-cases as well.
+Some of these scripts have been integrated in data reduction pipelines as well.
+You are free to use the scripts for your own work.
+
+Clone the repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git``` \
 If you are only interested in ```h5_merger.py```, use:\
 ```wget "https://raw.githubusercontent.com/jurjen93/lofar_helpers/master/h5_merger.py"```
 
 #### Contact
-Let me know if you are using this script or other scripts and have any issues or suggestions for improvements.
+Let me know if you have any issues or suggestions for improvements.
 You can contact me on: jurjendejong(AT)strw.leidenuniv.nl
 
 
