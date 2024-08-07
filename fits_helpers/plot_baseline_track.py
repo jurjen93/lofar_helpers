@@ -99,6 +99,8 @@ def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, ba
         plt.savefig(saveas, dpi=150)
         plt.close()
 
+
+#####TEST######
 plot_baseline_track('test_1.ms', sorted(glob('a*.ms')), '0-71', saveas='test_1.png')
 plot_baseline_track('test_2.ms', sorted(glob('a*.ms')), '0-71', saveas='test_2.png')
 plot_baseline_track('test_3.ms', sorted(glob('a*.ms')), '0-71', saveas='test_3.png')
