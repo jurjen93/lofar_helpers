@@ -23,7 +23,7 @@ from astropy.wcs.utils import skycoord_to_pixel
 from astropy.coordinates import SkyCoord
 from astropy.wcs import WCS
 import matplotlib.pyplot as plt
-from matplotlib.colors import SymLogNorm, PowerNorm
+from matplotlib.colors import PowerNorm
 from astropy.visualization.wcsaxes import WCSAxes
 import matplotlib.path as mpath
 import matplotlib.patches as patches
@@ -33,7 +33,6 @@ from astropy.table import Table
 import pyregion
 from scipy.cluster.hierarchy import linkage, fcluster
 from scipy.spatial import distance
-from glob import glob
 
 
 def get_rms(image_data):
@@ -462,7 +461,7 @@ def main():
 
         f = fits.open(fts)
         pixscale = np.sqrt(abs(f[0].header['CDELT2']*f[0].header['CDELT1']))
-        beamarea = get_beamarea(f)
+        # beamarea = get_beamarea(f)
         f.close()
 
         clusters_small = get_clusters_ra_dec(T, pixscale*100)

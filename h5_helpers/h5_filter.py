@@ -11,7 +11,7 @@ from astropy.io import fits
 from argparse import ArgumentParser, ArgumentTypeError
 from math import pi, cos, sin, acos
 from losoto.h5parm import h5parm
-from numpy import ones, zeros, unique
+from numpy import ones, zeros
 import os
 from glob import glob
 import re

@@ -36,7 +36,7 @@ from pandas import DataFrame, concat
 import csv
 import sys
 import matplotlib.pyplot as plt
-from matplotlib.colors import SymLogNorm, PowerNorm
+from matplotlib.colors import SymLogNorm
 
 
 __all__ = ['']
@@ -439,7 +439,7 @@ class SetBoxes(Imaging):
             positions = peaks_in_image[['pix_x', 'pix_y']].to_numpy()
             n+=1
         if n>1:
-            print(f'There are multiple sources in same box.\n Splitting possible.')
+            print('There are multiple sources in same box.\n Splitting possible.')
         return self
 
 def parse_args():
@@ -506,7 +506,7 @@ def main():
     if not args.no_images:
         os.system(f'rm -rf {folder}/box_images; mkdir {folder}/box_images')  # make folder with box images
     os.system(f'rm -rf {folder}/boxes; mkdir {folder}/boxes')  # make folder with the .reg files
-    os.system(f'rm source_file.csv') # clean up
+    os.system('rm source_file.csv') # clean up
 
     with open(f'{folder}/source_file.csv', 'w') as source_file:
         source_file.write('id,pix_x,pix_y,flux,size,sources\n')
@@ -566,7 +566,7 @@ def main():
             try:
                 fig = plt.figure(figsize=(10, 10))
                 plt.subplot(1, 2, 1, projection = image.wcs_cut)
-                plt.title(f'Initial image')
+                plt.title('Initial image')
                 plt.imshow(image.before, norm=SymLogNorm(linthresh=image.vmin/10, vmin=image.vmin/10, vmax=image.vmax/2), origin='lower',
                               cmap='CMRmap')
                 plt.subplot(1, 2, 2, projection = image.wcs_cut)

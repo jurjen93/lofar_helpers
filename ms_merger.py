@@ -1024,7 +1024,7 @@ class Template:
         T = taql(f"SELECT TIME,ANTENNA1,ANTENNA2 FROM {os.path.abspath(self.outname)} ORDER BY TIME")
 
         ref_time = T.getcol("TIME")
-        time_len = ref_time.__len__()
+        # time_len = ref_time.__len__()
         ref_uniq_time = np.unique(ref_time)
         ref_antennas = np.sort(np.c_[T.getcol("ANTENNA1"), T.getcol("ANTENNA2")])
 
@@ -1419,7 +1419,7 @@ class Stack:
         #     remove_flagged_entries(self.outname)
 
         # NORM DATA
-        print(f'Normalise column DATA')
+        print('Normalise column DATA')
         taql(f'UPDATE {self.outname} SET DATA = (DATA / WEIGHT_SPECTRUM) WHERE ANY(WEIGHT_SPECTRUM > 0)')
 
         print("----------\n")

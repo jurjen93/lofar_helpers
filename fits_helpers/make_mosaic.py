@@ -146,7 +146,7 @@ def make_image(image_data=None, hdu=None, save=None, cmap: str = 'CMRmap', heade
     """
 
     RMS = 1.76e-05 #TODO: TEMPORARY
-    vmin = RMS
+    # vmin = RMS
     vmax = RMS*20
 
     # if hdu is None:

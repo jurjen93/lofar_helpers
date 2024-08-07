@@ -22,7 +22,7 @@ For ELAIS-N1 at 0.3" we found by visual inspection 85% accuracy for M sources (s
 
 
 import numpy as np
-from shapely.geometry import Polygon, Point, MultiPolygon
+from shapely.geometry import Polygon, Point
 import warnings
 import astropy.units as u
 import matplotlib.pyplot as plt
@@ -31,9 +31,8 @@ from astropy import coordinates
 from astropy.io import fits
 from astropy.nddata import Cutout2D
 from astropy.wcs import WCS
-from matplotlib.colors import LogNorm, SymLogNorm, PowerNorm
+from matplotlib.colors import PowerNorm
 import pyregion
-import sys
 from shapely.ops import cascaded_union
 from matplotlib.path import Path
 from itertools import combinations
@@ -214,7 +213,7 @@ class MeasureSource:
         while len(self.poly_list) == 0 and i < 10:
             if len(self.poly_list) == 0:
                 self.poly_list = [Polygon(cs.vertices) for cs in cs_list if (len(cs.vertices) >= 4
-                                                             and Polygon(cs.vertices).is_valid == True
+                                                             and Polygon(cs.vertices).is_valid
                                                              and Polygon(cs.vertices).area > self.beam_pixels / i)]
             i += 1
 
