@@ -92,8 +92,10 @@ def correct_doppler_shift_casacore(msname, restfreq, outms, frame='LSRK'):
 
     print(f"Doppler correction applied. Output MS saved as {outms}")
 
-# Example usage:
-msname = 'your_measurement_set.ms'
-restfreq = '1420.40575177MHz'
-outms = 'corrected_measurement_set.ms'
-correct_doppler_shift_casacore(msname, restfreq, outms)
+
+if __name__ == '__main__':
+    # Example usage:
+    msname = 'your_measurement_set.ms'
+    restfreq = '1420.40575177MHz'
+    outms = 'corrected_measurement_set.ms'
+    correct_doppler_shift_casacore(msname, restfreq, outms)

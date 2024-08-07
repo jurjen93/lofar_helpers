@@ -4,11 +4,12 @@ from astropy.coordinates import SkyCoord
 import numpy as np
 import sys
 from argparse import ArgumentParser
+from casacore.tables import table
 
 
 class FindClosestDir:
     """
-    Make template h5
+    Find closest h5 direction in merged h5
     """
     def __init__(self, h5_in, template_name):
         os.system(' '.join(['cp', h5_in, template_name]))
@@ -80,15 +81,16 @@ class FindClosestDir:
         """
         Find closest directions, using the astropy SkyCoord class
 
-        :param coor: coordinate in arcseconds
+        :param coor: coordinate in radian
         """
         min_sep, min_sep_idx = 999, 999
         for n, dir in enumerate(self.dirs):
-            c1 = SkyCoord(dir[0], dir[1], unit='arcsecond', frame='icrs')  # your coords
-            c2 = SkyCoord(coor[0], coor[1], unit='arcsecond', frame='icrs')
+            c1 = SkyCoord(dir[0], dir[1], unit='radian', frame='icrs')  # your coords
+            c2 = SkyCoord(coor[0], coor[1], unit='radian', frame='icrs')
             sep = c1.separation(c2).value
             if sep < min_sep:
                 min_sep_idx = n
+                min_sep = sep
 
         # Make sure this function selects a closest direction
         assert min_sep_idx != 999, "ERROR: coordinate comparison went wrong?! (most likely a bug in h5 or code)"
@@ -96,7 +98,7 @@ class FindClosestDir:
 
         return min_sep_idx
 
-    def add_closest_values(self, coor):
+    def add_closest_values(self, coor, outcoor):
         """
         Add closest phase, amplitude, and weights to new output h5
         """
@@ -113,8 +115,12 @@ class FindClosestDir:
 
             # modify source table
             ss._f_get_child('source')._f_remove()
-            values = np.array([(b'Dir00', coor)],
-                              dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+            if outcoor in ['msin', 'directions']:
+                values = np.array([(b'Dir00', coor)],
+                                  dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
+            else:
+                values = np.array([(b'Dir00', self.h5_in.root.sol000.source[:][idx][1])],
+                                  dtype=[('name', 'S128'), ('dir', '<f4', (2,))])
             title = 'Source names and directions'
             self.h5_out.create_table(ss, 'source', values, title=title)
 
@@ -159,6 +165,19 @@ def make_list(arglist):
         sys.exit("ERROR: --directions input invalid\nDo not use any spaces, example input: [0.1,0.2] [1.2,4.1]")
 
 
+def get_dir_from_ms(msin):
+    """
+    Get phase direction from measurement set
+    """
+
+    output = []
+
+    for ms in msin:
+        with table(ms+"::FIELD") as t:
+            output.append(list(t.getcol("PHASE_DIR").squeeze()))
+    return output
+
+
 def parse_args():
     """
     Command line argument parser
@@ -168,9 +187,10 @@ def parse_args():
 
     parser = ArgumentParser()
     parser.add_argument('--h5_in', help='Input h5parm', required=True)
-    parser.add_argument('--directions', nargs='+',
-                        help='directions to find the closest h5_in direction to (Example: (0.1, 0.2) (1.2, 3.1) (3.5, 1.2)',
-                        default=None)
+    parser.add_argument('--msin', help='MS to get phase center from', nargs="+")
+    parser.add_argument('--directions', nargs='+', help='directions to find the closest h5_in direction to (Example: (0.1, 0.2) (1.2, 3.1) (3.5, 1.2)', default=None)
+    parser.add_argument('--outcoor', help='Output coordinates from msin, directions, h5_in (only touch this if you know what you are doing)', type=str, default='h5_in')
+
     return parser.parse_args()
 
 
@@ -179,7 +199,12 @@ def main():
 
     args = parse_args()
     inputh5 = args.h5_in
-    dirs = make_list(args.directions)
+    if args.directions is not None:
+        dirs = make_list(args.directions)
+    elif args.msin is not None:
+        dirs = get_dir_from_ms(args.msin)
+    else:
+        sys.exit('ERROR: give --msin or --directions')
 
     os.system('mkdir output_h5s')
     print('Make folder --> output_h5s')
@@ -187,11 +212,7 @@ def main():
     for n, dir in enumerate(dirs):
         T = FindClosestDir(inputh5, f'output_h5s/source_{n}.h5')
         T.make_template()
-        T.add_closest_values(dir)
-
-    print('See output in --> output_h5s\n'
-          'You can optionally use h5_merger.py to merge all the directions into 1 big h5 file\n'
-          'Example command --> python h5_merger.py -in output_h5s/source_*.h5 -out merged.h5 --propagate_flags')
+        T.add_closest_values(dir, args.outcoor)
 
 
 if __name__ == '__main__':
