@@ -613,6 +613,7 @@ def main(h5s: list = None, fitsfiles: list = None, station: str = 'international
     )
 
     fname = f'./selection_output/selfcal_performance_{sq.main_source}.csv'
+    system(f'mkdir -p ./selection_output')
     with open(fname, 'w') as textfile:
         # output csv
         csv_writer = csv.writer(textfile)
@@ -659,6 +660,7 @@ def calc_all_scores(sources_root, stations='international'):
     results = filter(None, results)
 
     fname = f'./selection_output/selfcal_performance.csv'
+    system(f'mkdir -p ./selection_output')
     with open(fname, 'w') as textfile:
         csv_writer = csv.writer(textfile)
         csv_writer.writerow(
