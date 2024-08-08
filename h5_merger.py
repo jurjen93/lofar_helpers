@@ -1865,47 +1865,47 @@ class MergeH5:
 
         return self
 
-    def flag_stations(self):
-        """
-        Propagate flagged station input to output.
-        """
-
-        H = tables.open_file(self.h5name_out, 'r+')
-        for input_h5 in self.h5_tables:
-            T = tables.open_file(input_h5)
-            for solset in T.root._v_groups.keys():
-                ss = T.root._f_get_child(solset)
-                for soltab in ss._v_groups.keys():
-                    st = ss._f_get_child(soltab)
-                    weight = st.weight
-                    antennas_in = list(st.ant[:])
-                    axes = make_utf8(weight.attrs['AXES']).split(',')
-                    if 'tec' in soltab:
-                        soltab = 'phase' + soltab[-3:]
-                    axes_output = make_utf8(
-                        H.root._f_get_child(solset)._f_get_child(soltab).weight.attrs['AXES']).split(',')
-                    ant_index = axes.index('ant')
-                    weight = reorderAxes(weight, axes, [i for i in axes_output if i in axes])
-                    for a in range(weight.shape[ant_index]):
-                        antenna = antennas_in[a]
-                        if sum(take(weight, [a], ant_index)) == 0.:
-                            if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
-                                st_out = H.root._f_get_child(solset)._f_get_child(soltab)
-                                if antenna in list(st_out.ant[:]):
-                                    if ant_index == 0:
-                                        st_out.weight[a, ...] = 0.
-                                    elif ant_index == 1:
-                                        st_out.weight[:, a, ...] = 0.
-                                    elif ant_index == 2:
-                                        st_out.weight[:, :, a, ...] = 0.
-                                    elif ant_index == 3:
-                                        st_out.weight[:, :, :, a, ...] = 0.
-                                    elif ant_index == 4:
-                                        st_out.weight[:, :, :, :, a, ...] = 0.
-
-            T.close()
-        H.close()
-        return self
+    # def flag_stations(self):
+    #     """
+    #     Propagate flagged station input to output.
+    #     """
+    #
+    #     H = tables.open_file(self.h5name_out, 'r+')
+    #     for input_h5 in self.h5_tables:
+    #         T = tables.open_file(input_h5)
+    #         for solset in T.root._v_groups.keys():
+    #             ss = T.root._f_get_child(solset)
+    #             for soltab in ss._v_groups.keys():
+    #                 st = ss._f_get_child(soltab)
+    #                 weight = st.weight
+    #                 antennas_in = list(st.ant[:])
+    #                 axes = make_utf8(weight.attrs['AXES']).split(',')
+    #                 if 'tec' in soltab:
+    #                     soltab = 'phase' + soltab[-3:]
+    #                 axes_output = make_utf8(
+    #                     H.root._f_get_child(solset)._f_get_child(soltab).weight.attrs['AXES']).split(',')
+    #                 ant_index = axes.index('ant')
+    #                 weight = reorderAxes(weight, axes, [i for i in axes_output if i in axes])
+    #                 for a in range(weight.shape[ant_index]):
+    #                     antenna = antennas_in[a]
+    #                     if sum(take(weight, [a], ant_index)) == 0.:
+    #                         if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
+    #                             st_out = H.root._f_get_child(solset)._f_get_child(soltab)
+    #                             if antenna in list(st_out.ant[:]):
+    #                                 if ant_index == 0:
+    #                                     st_out.weight[a, ...] = 0.
+    #                                 elif ant_index == 1:
+    #                                     st_out.weight[:, a, ...] = 0.
+    #                                 elif ant_index == 2:
+    #                                     st_out.weight[:, :, a, ...] = 0.
+    #                                 elif ant_index == 3:
+    #                                     st_out.weight[:, :, :, a, ...] = 0.
+    #                                 elif ant_index == 4:
+    #                                     st_out.weight[:, :, :, :, a, ...] = 0.
+    #
+    #         T.close()
+    #     H.close()
+    #     return self
 
     def add_weights(self):
         """
@@ -2519,13 +2519,35 @@ def split_rotation(h5_in):
     See Eq. B1 in https://www.aanda.org/articles/aa/pdf/2019/02/aa33867-18.pdf
     """
 
-    os.system(f'cp {h5_in} {h5_in}.rotation.h5')
-    os.system(f'cp {h5_in} {h5_in}.phase_amp.h5')
+    rot_h5 = f'{h5_in}.rotation.h5'
 
-    with tables.open_file(h5_in + '.phase_amp.h5', 'r+') as H:
-        H.remove_node("/sol000", "rotation000", recursive=True)
+    os.system(f'cp {h5_in} {rot_h5}')
 
-    with tables.open_file(h5_in + '.rotation.h5', 'r+') as H:
+    with tables.open_file(rot_h5, 'r+') as H:
+        if not 'phase000' in H.root.sol000._v_children.keys() \
+                and not 'amplitude000' in H.root.sol000._v_children.keys():
+            phaseamp_h5 = None
+            hasphase = False
+            hasamp = False
+        else:
+            phaseamp_h5 = f'{h5_in}.phase_amp.h5'
+            os.system(f'cp {h5_in} {phaseamp_h5}')
+
+    if phaseamp_h5 is not None:
+        with tables.open_file(phaseamp_h5, 'r+') as H:
+            H.remove_node("/sol000", "rotation000", recursive=True)
+
+            if 'phase000' in H.root.sol000._v_children.keys():
+                hasphase = True
+            else:
+                hasphase = False
+
+            if 'amplitude000' in H.root.sol000._v_children.keys():
+                hasamp = True
+            else:
+                hasamp = False
+
+    with tables.open_file(rot_h5, 'r+') as H:
         axes = make_utf8(H.root.sol000.rotation000.val.attrs["AXES"]) + ',pol'
         rot = H.root.sol000.rotation000.val[:]
         Axx = cos(rot)
@@ -2556,13 +2578,29 @@ def split_rotation(h5_in):
         newamps[..., 2] = amplitudesyx
         newamps[..., 3] = amplitudesyy
 
+        if hasphase:
+            H.remove_node("/sol000/phase000", "val", recursive=True)
+            H.remove_node("/sol000/phase000", "weight", recursive=True)
+            H.remove_node("/sol000/phase000", "pol", recursive=True)
+        else:
+            H.create_group('/sol000', 'phase000', 'phase')
+            H.create_array('/sol000/phase000', 'time', H.root.sol000.rotation000.time[:])
+            H.create_array('/sol000/phase000', 'ant', H.root.sol000.rotation000.ant[:])
+            H.create_array('/sol000/phase000', 'freq', H.root.sol000.rotation000.freq[:])
+            H.create_array('/sol000/phase000', 'dir', H.root.sol000.rotation000.dir[:])
+
+        if hasamp:
+            H.remove_node("/sol000/amplitude000", "val", recursive=True)
+            H.remove_node("/sol000/amplitude000", "weight", recursive=True)
+            H.remove_node("/sol000/amplitude000", "pol", recursive=True)
+        else:
+            H.create_group('/sol000', 'amplitude000', 'amplitude')
+            H.create_array('/sol000/amplitude000', 'time', H.root.sol000.rotation000.time[:])
+            H.create_array('/sol000/amplitude000', 'ant', H.root.sol000.rotation000.ant[:])
+            H.create_array('/sol000/amplitude000', 'freq', H.root.sol000.rotation000.freq[:])
+            H.create_array('/sol000/amplitude000', 'dir', H.root.sol000.rotation000.dir[:])
+
         H.remove_node("/sol000", "rotation000", recursive=True)
-        H.remove_node("/sol000/phase000", "val", recursive=True)
-        H.remove_node("/sol000/amplitude000", "val", recursive=True)
-        H.remove_node("/sol000/phase000", "weight", recursive=True)
-        H.remove_node("/sol000/amplitude000", "weight", recursive=True)
-        H.remove_node("/sol000/phase000", "pol", recursive=True)
-        H.remove_node("/sol000/amplitude000", "pol", recursive=True)
 
         H.create_array('/sol000/phase000', 'weight', ones(newphase.shape))
         H.create_array('/sol000/amplitude000', 'weight', ones(newamps.shape))
@@ -2576,7 +2614,7 @@ def split_rotation(h5_in):
         H.root.sol000.amplitude000.val.attrs['AXES'] = bytes(axes, 'utf-8')
         H.root.sol000.amplitude000.weight.attrs['AXES'] = bytes(axes, 'utf-8')
 
-    return h5_in+'.rotation.h5', h5_in + '.phase_amp.h5'
+    return rot_h5, phaseamp_h5
 
 
 def h5_check(h5):
@@ -2772,7 +2810,7 @@ def running_mean(nparray, avgfactor):
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, add_ms_stations=None, check_output=None, freq_av=None, time_av=None,
-             check_flagged_station=True, propagate_flags=None, freq_concat=None, time_concat=None, no_antenna_crash=None,
+             propagate_flags=None, freq_concat=None, time_concat=None, no_antenna_crash=None,
              output_summary=None, min_distance=0.):
     """
     Main function that uses the class MergeH5 to merge h5 tables.
@@ -2795,7 +2833,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     :param add_cs: use MS to replace super station with core station
     :param add_ms_stations: return only stations from Measurement set
     :param check_output: check if output has all correct output information
-    :param check_flagged_station: check if complete input stations are flagged, if so flag same stations in output
     :param propagate_flags: interpolate weights and return in output file
     :param freq_concat: concat freq blocks
     :param time_concat: concat time blocks
@@ -2839,8 +2876,11 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         if has_rotation(h5_in):
             print("Rotation table in "+h5_in+" splitting table into fulljones for correct merging")
             rot_h5, phaseamp_h5 = split_rotation(h5_in)
-            h5_tables[n] = phaseamp_h5
-            h5_tables.insert(n+1, rot_h5)
+            if phaseamp_h5 is not None:
+                h5_tables[n] = phaseamp_h5
+                h5_tables.insert(n+1, rot_h5)
+            else:
+                h5_tables[n] = rot_h5
 
     #################################################
     #################### MERGING ####################
@@ -2930,8 +2970,8 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
         merge.reorder_directions()
 
     # Check if station weights are fully flagged in input and flag in output as well
-    if check_flagged_station and not propagate_flags:
-        merge.flag_stations()
+    # if check_flagged_station and not propagate_flags:
+    #     merge.flag_stations()
 
     # Check table source size
     merge.reduce_memory_source()
@@ -3023,7 +3063,7 @@ def parse_input():
     parser.add_argument('--filter_directions', type=str, default=None, help='Filter out a list of indexed directions from your output solution file. Only lists allowed (example: --filter_directions [2, 3]).')
     parser.add_argument('--add_cs', action='store_true', default=None, help='Add core stations to antenna output from MS (needs --ms).')
     parser.add_argument('--add_ms_stations', action='store_true', default=None, help='Use only antenna stations from measurement set (needs --ms). Note that this is different from --add_cs, as it does not keep the international stations if these are not in the MS.')
-    parser.add_argument('--no_stationflag_check', action='store_true', default=None, help='Do not flag complete station (for all directions) if entire station is flagged somewhere in input solution file.')
+    # parser.add_argument('--no_stationflag_check', action='store_true', default=None, help='Do not flag complete station (for all directions) if entire station is flagged somewhere in input solution file.')
     parser.add_argument('--propagate_flags', action='store_true', default=None, help='Interpolate weights and return in output file.')
     parser.add_argument('--no_antenna_crash', action='store_true', default=None, help='Do not check if antennas are in h5.')
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
@@ -3116,7 +3156,7 @@ def main():
              check_output=args.check_output,
              time_av=args.time_av,
              freq_av=args.freq_av,
-             check_flagged_station=not args.no_stationflag_check,
+             # check_flagged_station=not args.no_stationflag_check,
              propagate_flags=args.propagate_flags,
              freq_concat=args.merge_diff_freq or args.freq_concat,
              time_concat=args.time_concat,
