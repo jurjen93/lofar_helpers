@@ -74,7 +74,7 @@ def distance(c1, c2):
     c2 = SkyCoord(f'{c2[0]}deg', f'{c2[1]}deg', frame='icrs')
     return c1.separation(c2).value
 
-def ds9_poly_info(point, poly_reg):
+def point_in_polygon(point, poly_reg):
     """
     Is point in polygon region file
 
@@ -146,7 +146,7 @@ def main():
     writer.writerow(['idx', 'dir_name', 'polygon_file', 'dir', 'poly_center', 'area', 'avg'])
     for n, dir in enumerate(dirs):
         for polygonregion_file in glob('poly_*.reg'):
-            point_in_poly, poly_area, poly_center, avg = ds9_poly_info(dir, polygonregion_file)
+            point_in_poly, poly_area, poly_center, avg = point_in_polygon(dir, polygonregion_file)
             if point_in_poly:
                 print(n, make_utf8(dirname[n]), polygonregion_file)
                 writer.writerow([n,
