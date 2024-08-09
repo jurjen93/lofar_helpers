@@ -2581,7 +2581,10 @@ def split_rotation(h5_in):
         if hasphase:
             H.remove_node("/sol000/phase000", "val", recursive=True)
             H.remove_node("/sol000/phase000", "weight", recursive=True)
-            H.remove_node("/sol000/phase000", "pol", recursive=True)
+            try:
+                H.remove_node("/sol000/phase000", "pol", recursive=True)
+            except:
+                pass
         else:
             H.create_group('/sol000', 'phase000', 'phase')
             H.create_array('/sol000/phase000', 'time', H.root.sol000.rotation000.time[:])
@@ -2592,7 +2595,10 @@ def split_rotation(h5_in):
         if hasamp:
             H.remove_node("/sol000/amplitude000", "val", recursive=True)
             H.remove_node("/sol000/amplitude000", "weight", recursive=True)
-            H.remove_node("/sol000/amplitude000", "pol", recursive=True)
+            try:
+                H.remove_node("/sol000/amplitude000", "pol", recursive=True)
+            except:
+                pass
         else:
             H.create_group('/sol000', 'amplitude000', 'amplitude')
             H.create_array('/sol000/amplitude000', 'time', H.root.sol000.rotation000.time[:])
