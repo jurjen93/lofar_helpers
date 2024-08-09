@@ -1920,12 +1920,12 @@ class MergeH5:
         H = tables.open_file(self.h5name_out, 'r+')
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
-            print(set(list(ss._v_groups.keys())+['tec000']))
             soltabs = list(ss._v_groups.keys())
 
             if self.has_converted_tec and not any(['tec' in i for i in soltabs]):
                 soltabs += ['tec000']
 
+            print(soltabs)
             for n, soltab in enumerate(soltabs):
                 print(soltab + ', from:')
 
