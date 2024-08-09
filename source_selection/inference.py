@@ -1,6 +1,9 @@
+import os
+
 import matplotlib.image
 import torch
 from pytorch_lightning import Trainer
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 from train_cnn import ImagenetTransferLearning, load_checkpoint

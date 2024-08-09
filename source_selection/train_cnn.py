@@ -7,6 +7,7 @@ from pathlib import Path
 import torch
 import torcheval.metrics.functional as tef
 from torch import nn, binary_cross_entropy_with_logits
+from torch.nn.functional import interpolate
 from torch.utils.data import SequentialSampler, Sampler, RandomSampler
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
@@ -17,6 +18,22 @@ from pre_processing_for_ml import FitsDataset
 
 PROFILE = False
 
+
+def init_vit(model_name):
+    assert model_name == 'vit_l_16'
+
+    backbone = models.vit_l_16(weights='ViT_L_16_Weights.IMAGENET1K_SWAG_E2E_V1')
+    for param in backbone.parameters():
+        param.requires_grad_(False)
+
+    # backbone.class_token[:] = 0
+    backbone.class_token.requires_grad_(True)
+
+    hidden_dim = backbone.heads[0].in_features
+
+    del backbone.heads
+
+    return backbone, hidden_dim
 
 def get_feature_extractor(name: str):
     # use partial to prevent loading all models at once
@@ -94,19 +111,44 @@ class ImagenetTransferLearning(nn.Module):
     ):
         super().__init__()
 
+        get_classifier_f = partial(get_classifier, dropout_p=dropout_p, num_target_classes=1)
+
         # For saving in the state dict
-        self.kwargs = {'model': model_name, 'dropout_p': dropout_p}
+        self.kwargs = {'model_name': model_name, 'dropout_p': dropout_p}
 
-        self.feature_extractor, num_features = get_feature_extractor(name=model_name)
-        self.feature_extractor.eval()
+        if model_name == 'vit_l_16':
+            self.vit, num_features = init_vit(model_name)
+            self.vit.eval()
 
-        self.classifier = get_classifier(dropout_p, n_features=num_features, num_target_classes=1)
+            classifier = get_classifier_f(n_features=num_features)
+            self.vit.heads = classifier
+
+            self.forward = self.vit_forward
+
+        else:
+            self.feature_extractor, num_features = get_feature_extractor(name=model_name)
+            self.feature_extractor.eval()
+
+            self.classifier = get_classifier_f(n_features=num_features)
+
+            self.forward = self.cnn_forward
+
 
     @partial(torch.compile, mode='reduce-overhead')
-    def forward(self, x):
+    def cnn_forward(self, x):
         with torch.no_grad():
             representations = self.feature_extractor(x)
         x = self.classifier(representations)
+        return x
+
+    @partial(torch.compile, mode='reduce-overhead')
+    def vit_forward(self, x):
+
+        # with torch.no_grad():
+        #     x = interpolate(x, size=512, mode='bilinear', align_corners=False)
+
+        x = self.vit.forward(x)
+
         return x
 
     def step(self, inputs, targets):
@@ -124,6 +166,17 @@ class ImagenetTransferLearning(nn.Module):
 
         return logits, loss
 
+    def eval(self):
+        if self.kwargs['model_name'] == 'vit_l_16':
+            self.vit.heads.eval()
+        else:
+            self.classifier.eval()
+
+    def train(self):
+        if self.kwargs['model_name'] == 'vit_l_16':
+            self.vit.heads.train()
+        else:
+            self.classifier.train()
 
 def get_dataloaders(dataset_root, batch_size):
     num_workers = min(12, len(os.sched_getaffinity(0)))
@@ -202,10 +255,12 @@ def merge_metrics(suffix, **kwargs):
 
 @torch.no_grad()
 def prepare_data(data, labels, normalize, device):
+
     data, labels = (
         data.to(device, non_blocking=True, memory_format=torch.channels_last),
         labels.to(device, non_blocking=True, dtype=data.dtype)
     )
+    data = interpolate(data, size=512, mode='bilinear', align_corners=False)
 
     data = normalize_inputs(data, mode=normalize)
 
@@ -242,12 +297,15 @@ def main(dataset_root: str, model_name: str, lr: float, normalize: int, dropout_
     device = torch.device('cuda')
 
     model: nn.Module = ImagenetTransferLearning(model_name=model_name, dropout_p=dropout_p)
-    model.feature_extractor.eval()
 
     # noinspection PyArgumentList
     model.to(device=device, memory_format=torch.channels_last)
 
-    optimizer = get_optimizer(model.classifier.parameters(), lr=lr)
+    if model_name == 'vit_l_16':
+        params = [param for param in model.parameters() if param.requires_grad]
+        optimizer = get_optimizer(params, lr=lr)
+    else:
+        optimizer = get_optimizer(model.classifier.parameters(), lr=lr)
 
     train_dataloader, val_dataloader = get_dataloaders(dataset_root, batch_size)
 
@@ -308,7 +366,7 @@ def log_metrics(loss, logits, targets, log_suffix, global_step, write_metrics_f)
 def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f):
     val_losses, val_logits, val_targets = [], [], []
 
-    model.classifier.eval()
+    model.eval()
     for i, (data, labels) in tqdm(enumerate(val_dataloader), desc='Validation', total=len(val_dataloader)):
         # print("validation start")
 
@@ -323,7 +381,7 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f)
     losses, logits, targets = map(torch.concatenate, (val_losses, val_logits, val_targets))
 
     mean_loss = losses.mean()
-    metrics_logger(loss=mean_loss, logits=logits, targets=targets, global_step=global_step, log_suffix='Validation')
+    metrics_logger(loss=mean_loss, logits=logits, targets=targets, global_step=global_step, log_suffix='validation')
 
     return mean_loss
 
@@ -331,7 +389,7 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f)
 
 def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, logging_interval, metrics_logger):
     # print("training")
-    model.classifier.train()
+    model.train()
 
     for i, (data, labels) in tqdm(enumerate(train_dataloader), desc='Training', total=len(train_dataloader)):
         global_step += 1
@@ -394,7 +452,6 @@ class _RepeatSampler(object):
 @lru_cache(maxsize=1)
 def get_transforms():
     return v2.Compose([
-        # v2.Resize(size=1024),
         v2.ColorJitter(brightness=.5, hue=.3, saturation=0.1, contrast=0.1),
         v2.RandomInvert(),
         v2.RandomEqualize(),
@@ -434,7 +491,7 @@ def load_checkpoint(ckpt_path):
     normalize = int(kwargs[3].split('_')[-1])
     dropout_p = float(kwargs[4].split('_')[-1])
 
-    model = ckpt_dict['model'](model=model_name, dropout_p=dropout_p)
+    model = ckpt_dict['model'](model_name=model_name, dropout_p=dropout_p)
     model.load_state_dict(ckpt_dict['model_state_dict'])
 
     # FIXME: add optim class and args to state dict
