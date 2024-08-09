@@ -473,6 +473,7 @@ class MergeH5:
 
         # convert tec to phase?
         self.convert_tec = convert_tec
+        self.has_converted_tec = False
         self.merge_all_in_one = merge_all_in_one
         if filtered_dir:
             self.filtered_dir = filtered_dir
@@ -856,8 +857,7 @@ class MergeH5:
 
         return self
 
-    @staticmethod
-    def tecphase_conver(tec, freqs):
+    def tecphase_conver(self, tec, freqs):
         """
         convert tec to phase --> See Equation 1 from Sweijen et al. 2022
 
@@ -866,6 +866,8 @@ class MergeH5:
 
         :return: tec phase converted values
         """
+
+        self.has_converted_tec = True
 
         return -8.44797245e9 * tec / freqs
 
@@ -1918,20 +1920,34 @@ class MergeH5:
         H = tables.open_file(self.h5name_out, 'r+')
         for solset in H.root._v_groups.keys():
             ss = H.root._f_get_child(solset)
-            print(ss._v_groups.keys())
-            for n, soltab in enumerate(set(list(ss._v_groups.keys())+['tec000'])):
+            print(set(list(ss._v_groups.keys())+['tec000']))
+            soltabs = list(ss._v_groups.keys())
+
+            if self.has_converted_tec and not any(['tec' in i for i in soltabs]):
+                soltabs += ['tec000']
+
+            for n, soltab in enumerate(soltabs):
                 print(soltab + ', from:')
+
                 if 'tec' in soltab and \
                         soltab not in list(ss._v_groups.keys()):
                     st = ss._f_get_child(soltab.replace('tec', 'phase'))
                 else:
                     st = ss._f_get_child(soltab)
+
                 shape = st.val.shape
-                weight_out = ones(shape)
+
+                if self.has_converted_tec and 'tec' in soltab:
+                    weight_out = ss._f_get_child(soltab.replace('tec', 'phase')).weight[:]
+                else:
+                    weight_out = ones(shape)
+
                 axes_new = make_utf8(st.val.attrs["AXES"]).split(',')
                 for m, input_h5 in enumerate(self.h5_tables):
+                    print(input_h5)
                     T = tables.open_file(input_h5)
                     if soltab not in list(T.root._f_get_child(solset)._v_groups.keys()):
+                        print(soltab+' not in '+input_h5)
                         T.close()
                         continue
                     st2 = T.root._f_get_child(solset)._f_get_child(soltab)
@@ -2004,8 +2020,6 @@ class MergeH5:
                                 'ERROR: Upsampling of weights because same direction exists multiple times in input h5 (verify and/or remove --propagate_flags)')
                         else:
                             weight_out *= newvals
-
-                            # print(weight_out[:, -8, ...])
 
                     else:
                         sys.exit('ERROR: Upsampling of weights bug due to unexpected missing axes.\n axes from '
