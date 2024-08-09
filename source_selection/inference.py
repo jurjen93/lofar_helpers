@@ -2,7 +2,6 @@ import os
 
 import matplotlib.image
 import torch
-from pytorch_lightning import Trainer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
@@ -46,14 +45,6 @@ def main(dataset_root, checkpoint_path):
     ckpt_dict = load_checkpoint(checkpoint_path)
     model = ckpt_dict['model']
 
-    # num_workers = len(os.sched_getaffinity(0))
-    # num_workers = 0
-    num_workers = 12
-    prefetch_factor, persistent_workers = (
-        (2, True) if num_workers > 0 else
-        (None, False)
-    )
-
     num_workers = min(18, len(os.sched_getaffinity(0)))
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else
@@ -79,18 +70,10 @@ def main(dataset_root, checkpoint_path):
 
         preds, stds = map(torch.concat, zip(*[elem for elem in variational_dropout(model, dataloader)]))
         save_images(dataset, out_path, preds, stds, mode=mode)
-    # train_pred, train_std = map(torch.concat, zip(*[elem for elem in variational_dropout(model, train_dataloader)]))
-    # save_images(FitsDataset(root, mode='train'), out_path, train_pred, train_std)
 
     for mode in ('train', 'val'):
         gen_and_save(mode)
 
-def get_subdataloader(dataloader, mode):
-    train_len = dataloader.dataset.train_len // dataloader.batch_size
-    for i, sample in enumerate(dataloader):
-        print(i)
-        if (mode == 'train' and i < train_len) or (mode == 'val' and i >= train_len):
-            yield sample
 
 
 if __name__ == '__main__':
