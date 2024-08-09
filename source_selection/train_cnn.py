@@ -85,16 +85,6 @@ def augmentation(inputs):
     return inputs
 
 
-# @torch.no_grad()
-# def get_metrics(pseudo_probs, targets):
-#
-#     ap = tef.binary_auprc(pseudo_probs, targets)
-#     acc = tef.binary_accuracy(pseudo_probs, targets)
-#
-#     return {
-#         'Average_Precision': ap,
-#         'Accuracy': acc
-#     }
 
 class ImagenetTransferLearning(nn.Module):
     def __init__(

@@ -16,7 +16,7 @@ def variational_dropout(model, dataloader, variational_iters=25):
 
     for sample in tqdm(dataloader):
         with torch.cuda.amp.autocast(dtype=torch.bfloat16):
-            batch, labels = sample[0].cuda(), sample[1].cuda()
+            batch, labels = sample[0].cuda(non_blocking=True), sample[1].cuda(non_blocking=True)
             preds = torch.sigmoid(torch.concat([model(batch).clone() for _ in range(variational_iters)], dim=1))
 
             means = preds.mean(dim=1)
@@ -29,27 +29,15 @@ def variational_dropout(model, dataloader, variational_iters=25):
 
 
 def save_images(dataset, out_paths, preds, stds, mode):
-    train_len, val_len = dataset.train_len, dataset.val_len
-    if mode == 'val':
-        idx = torch.arange(train_len, train_len+val_len)
-        data_paths = dataset.val_paths
-        dataset_len = val_len
-    else:
-        idx = torch.arange(train_len)
-        data_paths = dataset.train_paths
-        dataset_len = train_len
-
-    assert dataset_len == len(preds)
-
-    for index, in_path, pred, std in tqdm(zip(idx, data_paths, preds, stds), total=dataset_len):
-        batch, label = dataset[index]
+    for elem, in_path, pred, std in tqdm(zip(dataset, dataset.data_paths, preds, stds), total=len(dataset)):
+        batch, label = elem
         name = in_path.strip('.npz').split('/')[-1]
         matplotlib.image.imsave(
             fname=f'{out_paths}/{std:.3f}_{pred:.3f}_{label}_{name}.png',
             arr=batch.to(torch.float).movedim(0, -1).numpy()
         )
 
-def main(dataroot, checkpoint_path):
+def main(dataset_root, checkpoint_path):
     torch.set_float32_matmul_precision('high')
 
     ckpt_dict = load_checkpoint(checkpoint_path)
@@ -63,27 +51,36 @@ def main(dataroot, checkpoint_path):
         (None, False)
     )
 
-    sample_loader = torch.utils.data.DataLoader(
-        dataset=FitsDataset(root),
-        batch_size=1,
-        num_workers=num_workers,
-        prefetch_factor=prefetch_factor,
-        persistent_workers=persistent_workers,
-        pin_memory=False,
-        drop_last=False,  # needed for torch.compile,
-        shuffle=False,  # needed so that val AP is non nan
+    num_workers = min(18, len(os.sched_getaffinity(0)))
+    prefetch_factor, persistent_workers = (
+        (2, True) if num_workers > 0 else
+        (None, False)
     )
+    batch_size = 64
 
-    train_dataloader = get_subdataloader(sample_loader, mode='train')
-    val_dataloader = get_subdataloader(sample_loader, mode='val')
+    def gen_and_save(mode):
+        dataset = FitsDataset(dataset_root, mode=mode)
 
-    out_path = '/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/preds_val3/'
+        dataloader = DataLoader(
+            dataset=dataset,
+            batch_size=batch_size,
+            num_workers=num_workers,
+            prefetch_factor=prefetch_factor,
+            persistent_workers=False,
+            pin_memory=True,
+            shuffle=False,
+            drop_last=False,
+        )
 
-    val_pred, val_std = map(torch.concat, zip(*[elem for elem in variational_dropout(model, val_dataloader)]))
-    save_images(FitsDataset(root), out_path, val_pred, val_std, mode='val')
+        out_path = f'/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/preds_{mode}/'
+
+        preds, stds = map(torch.concat, zip(*[elem for elem in variational_dropout(model, dataloader)]))
+        save_images(dataset, out_path, preds, stds, mode=mode)
     # train_pred, train_std = map(torch.concat, zip(*[elem for elem in variational_dropout(model, train_dataloader)]))
     # save_images(FitsDataset(root, mode='train'), out_path, train_pred, train_std)
 
+    for mode in ('train', 'val'):
+        gen_and_save(mode)
 
 def get_subdataloader(dataloader, mode):
     train_len = dataloader.dataset.train_len // dataloader.batch_size

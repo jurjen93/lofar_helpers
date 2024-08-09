@@ -156,6 +156,7 @@ class FitsDataset(Dataset):
         Transform data for preprocessing
         """
 
+        # FIXME: this should really be a parameter
         image_data = torch.from_numpy(image_data).to(torch.bfloat16)
         image_data = torch.movedim(image_data, -1, 0)
 
