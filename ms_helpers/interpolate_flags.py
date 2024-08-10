@@ -103,11 +103,12 @@ def make_ant_pairs(n_ant, n_time):
     return antenna1, antenna2
 
 
-def interpolate_flags(flagged_ms, ms):
+def interpolate_flags(flagged_ms, ms, make_backup_flags):
     """
     Args:
         flagged_ms: measurement set from where to interpolate
         ms: the pre-averaged measurement set
+        make_backup_flags: make backup of flags
     Returns:
         interpolated flags
     """
@@ -118,6 +119,9 @@ def interpolate_flags(flagged_ms, ms):
 
     t1 = table(flagged_ms, ack=False)
     t2 = table(ms, ack=False, readonly=False)
+
+    if make_backup_flags:
+        np.save(ms+'.flags.npy', t2.getcol("FLAG"))
 
     # Get freq axis first table
     t = table(flagged_ms+'::SPECTRAL_WINDOW', ack=False)
@@ -177,6 +181,8 @@ def parse_args():
 
     parser = ArgumentParser(description='Flag data from a lower freq/time resolution to a higher one')
     parser.add_argument('--msin', help='MS input from where to interpolate')
+    parser.add_argument('--backup_flags', action='store_true', default=None, help='Make backup of flags')
+    parser.add_argument('--skip_flagging', action='store_true', default=None, help='Skip flagging')
     parser.add_argument('msout', nargs='+', help='MS output from where to apply new interpolated flags')
 
     return parser.parse_args()
@@ -190,12 +196,13 @@ def main():
     args = parse_args()
 
     # run aoflagger on the input MS
-    runaoflagger(args.msin)
+    if not args.skip_flagging:
+        runaoflagger(args.msin)
 
     # interpolate flags
     for ms in args.msout:
         print(f'Interpolate to {ms}')
-        interpolate_flags(args.msin, ms)
+        interpolate_flags(args.msin, ms, args.back_flags)
 
 
 if __name__ == '__main__':
