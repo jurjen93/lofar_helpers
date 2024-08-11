@@ -202,7 +202,7 @@ def main():
     # interpolate flags
     for ms in args.msout:
         print(f'Interpolate to {ms}')
-        interpolate_flags(args.msin, ms, args.back_flags)
+        interpolate_flags(args.msin, ms, args.backup_flags)
 
 
 if __name__ == '__main__':
