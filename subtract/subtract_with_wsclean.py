@@ -365,13 +365,14 @@ class SubtractWSClean:
             for c in range(0, nrows, best_slice):
 
                 if c == 0:
-                    print(f'SUBTRACT --> {colmn} {sign} MODEL_DATA')
+                    print(f'Output --> {colmn} {sign} MODEL_DATA')
+
                 if not self.onlyprint:
                     data = ts.getcol(colmn, startrow=c, nrow=best_slice)
 
                 if not self.onlyprint:
                     model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
-                    ts.putcol(out_column, data - model if self.inverse else data + model, startrow=c, nrow=best_slice)
+                    ts.putcol(out_column, data - model if not self.inverse else data + model, startrow=c, nrow=best_slice)
             ts.close()
 
         return self
@@ -469,7 +470,10 @@ class SubtractWSClean:
         os.system(f'cp {h5parm} {outputh5}')
 
         with tables.open_file(outputh5, 'r+') as outh5:
-            dir_axis = make_utf8(outh5.root.sol000.phase000.val.attrs["AXES"]).split(',').index('dir')
+
+            axes = outh5.root.sol000.phase000.val.attrs["AXES"]
+
+            dir_axis = make_utf8(axes).split(',').index('dir')
 
             sources = outh5.root.sol000.source[:]
             dirs = [make_utf8(dir) for dir in sources['name']]
@@ -500,6 +504,11 @@ class SubtractWSClean:
             outh5.create_array('/sol000/amplitude000', 'weight', amplitude_w)
             outh5.create_array('/sol000/amplitude000', 'dir', dirs)
             outh5.create_table('/sol000', 'source', new_dirs, title='Source names and directions')
+
+            outh5.root.sol000.phase000.val.attrs['AXES'] = bytes(axes, 'utf-8')
+            outh5.root.sol000.phase000.weight.attrs['AXES'] = bytes(axes, 'utf-8')
+            outh5.root.sol000.amplitude000.val.attrs['AXES'] = bytes(axes, 'utf-8')
+            outh5.root.sol000.amplitude000.weight.attrs['AXES'] = bytes(axes, 'utf-8')
 
         return outputh5
 
