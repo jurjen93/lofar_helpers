@@ -23,6 +23,7 @@ import csv
 from argparse import ArgumentParser
 from astropy.coordinates import SkyCoord
 
+
 def make_utf8(inp):
     """
     Convert input to utf8 instead of bytes
@@ -34,6 +35,7 @@ def make_utf8(inp):
         return inp
     except (UnicodeDecodeError, AttributeError):
         return inp
+
 
 def split_polygons_ds9(regionfile, extra_boundary=0.):
     """
@@ -62,6 +64,7 @@ def split_polygons_ds9(regionfile, extra_boundary=0.):
         poly_file.writelines(poly)
     regionfile.close()
 
+
 def distance(c1, c2):
     """
     Get distance based on coordiantes in degrees
@@ -73,6 +76,7 @@ def distance(c1, c2):
     c1 = SkyCoord(f'{c1[0]}deg', f'{c1[1]}deg', frame='icrs')
     c2 = SkyCoord(f'{c2[0]}deg', f'{c2[1]}deg', frame='icrs')
     return c1.separation(c2).value
+
 
 def point_in_polygon(point, poly_reg):
     """
@@ -112,6 +116,7 @@ def point_in_polygon(point, poly_reg):
     else:
         return False, None, None, None
 
+
 def parse_args():
     """Argument parser"""
 
@@ -120,6 +125,7 @@ def parse_args():
     parser.add_argument('--h5', help='h5 file to write directions from', type=str, required=True)
     parser.add_argument('--extra_boundary', help='make polygons with extra boundaries', type=float, default=0.)
     return parser.parse_args()
+
 
 def main():
     """Main function"""

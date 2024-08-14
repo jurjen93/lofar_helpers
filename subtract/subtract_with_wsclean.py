@@ -109,7 +109,7 @@ def get_time_preavg_factor(ms: str = None):
 
 
 class SubtractWSClean:
-    def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, onlyprint: bool = False):
+    def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, onlyprint: bool = False, inverse: bool = False):
         """
         Subtract image with WSClean
 
@@ -151,6 +151,8 @@ class SubtractWSClean:
             self.region = self.box_to_localnorth(region)
         else:
             self.region = pyregion.open(region)
+
+        self.inverse = inverse
 
     def clean_model_images(self):
         """
@@ -296,16 +298,18 @@ class SubtractWSClean:
 
                 hdu = fits.open(fits_model)
 
+                b = not self.inverse
+
                 if region_cube:
                     manualmask = self.region.get_mask(hdu=hdu[0], shape=self.imshape)
                     for i in range(hdu[0].header['NAXIS4']):
-                        hdu[0].data[i][0][np.where(manualmask == True)] = 0.0
+                        hdu[0].data[i][0][np.where(manualmask == b)] = 0.0
                     hdu.writeto(fits_model, overwrite=True)
 
                 else:
                     hduflat = self.flat_model_image(fits_model)
                     manualmask = self.region.get_mask(hdu=hduflat)
-                    hdu[0].data[0][0][np.where(manualmask == True)] = 0.0
+                    hdu[0].data[0][0][np.where(manualmask == b)] = 0.0
                     hdu.writeto(fits_model, overwrite=True)
 
                 # hdu.close()
@@ -345,20 +349,29 @@ class SubtractWSClean:
             nrows = ts.nrows()
             # make sure every slice has the same size
             best_slice = get_largest_divider(nrows, 1000)
+
+            if self.inverse:
+                sign = '+'
+            else:
+                sign = '-'
+
+            if 'SUBTRACT_DATA' in colnames:
+                colmn = 'SUBTRACT_DATA'
+            elif 'CORRECTED_DATA' in colnames:
+                colmn = 'CORRECTED_DATA'
+            else:
+                colmn = 'DATA'
+
             for c in range(0, nrows, best_slice):
-                if 'CORRECTED_DATA' in colnames:
-                    if c == 0:
-                        print('SUBTRACT --> CORRECTED_DATA - MODEL_DATA')
-                    if not self.onlyprint:
-                        data = ts.getcol('CORRECTED_DATA', startrow=c, nrow=best_slice)
-                else:
-                    if c == 0:
-                        print('SUBTRACT --> DATA - MODEL_DATA')
-                    if not self.onlyprint:
-                        data = ts.getcol('DATA', startrow=c, nrow=best_slice)
+
+                if c == 0:
+                    print(f'SUBTRACT --> {colmn} {sign} MODEL_DATA')
+                if not self.onlyprint:
+                    data = ts.getcol(colmn, startrow=c, nrow=best_slice)
+
                 if not self.onlyprint:
                     model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
-                    ts.putcol(out_column, data - model, startrow=c, nrow=best_slice)
+                    ts.putcol(out_column, data - model if self.inverse else data + model, startrow=c, nrow=best_slice)
             ts.close()
 
         return self
@@ -444,6 +457,53 @@ class SubtractWSClean:
         T.close()
         return False
 
+    def split_facet_h5(self, h5parm: str = None, dirname: str = None):
+        """
+        Split multi-facet h5parm
+
+        :param h5parm: multi-facet h5parm
+        :param dirname: direction name
+        """
+
+        outputh5 = f'{h5parm}.{dirname}.h5'
+        os.system(f'cp {h5parm} {outputh5}')
+
+        with tables.open_file(outputh5, 'r+') as outh5:
+            dir_axis = make_utf8(outh5.root.sol000.phase000.val.attrs["AXES"]).split(',').index('dir')
+
+            sources = outh5.root.sol000.source[:]
+            dirs = [make_utf8(dir) for dir in sources['name']]
+            dir_idx = dirs.index(dirname)
+
+            def get_data(soltab, axis):
+                return np.take(outh5.root.sol000._f_get_child(soltab)._f_get_child(axis)[:], indices=[dir_idx], axis=dir_axis)
+
+            phase_w = get_data('phase000', 'weight')
+            amplitude_w = get_data('amplitude000', 'weight')
+            phase_v = get_data('phase000', 'val')
+            amplitude_v = get_data('amplitude000', 'val')
+            new_dirs = np.array([outh5.root.sol000.source[:][dir_idx]])
+            dirs = np.array([outh5.root.sol000.phase000.dir[:][dir_idx]])
+
+            outh5.remove_node("/sol000/phase000", "val", recursive=True)
+            outh5.remove_node("/sol000/phase000", "weight", recursive=True)
+            outh5.remove_node("/sol000/phase000", "dir", recursive=True)
+            outh5.remove_node("/sol000/amplitude000", "val", recursive=True)
+            outh5.remove_node("/sol000/amplitude000", "weight", recursive=True)
+            outh5.remove_node("/sol000/amplitude000", "dir", recursive=True)
+            outh5.remove_node("/sol000", "source", recursive=True)
+
+            outh5.create_array('/sol000/phase000', 'val', phase_v)
+            outh5.create_array('/sol000/phase000', 'weight', phase_w)
+            outh5.create_array('/sol000/phase000', 'dir', dirs)
+            outh5.create_array('/sol000/amplitude000', 'val', amplitude_v)
+            outh5.create_array('/sol000/amplitude000', 'weight', amplitude_w)
+            outh5.create_array('/sol000/amplitude000', 'dir', dirs)
+            outh5.create_table('/sol000', 'source', new_dirs, title='Source names and directions')
+
+        return outputh5
+
+
     def run_DP3(self, phaseshift: str = None, freqavg: str = None,
                 timeres: str = None, concat: bool = None,
                 applybeam: bool = None, applycal_h5: str = None, dirname: str = None):
@@ -462,7 +522,7 @@ class SubtractWSClean:
 
         command = ['DP3',
                    'msin.missingdata=True',
-                   'msin.datacolumn=SUBTRACT_DATA',
+                   'msin.datacolumn=SUBTRACT_DATA' if not self.inverse else 'msin.datacolumn=DATA',
                    'msin.orderms=False',
                    'msout.storagemanager=dysco']
 
@@ -578,16 +638,13 @@ def parse_args():
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
     parser.add_argument('--region', type=str, help='region file')
     parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)')
-    parser.add_argument('--model_image_folder', type=str,
-                        help='folder where model images are stored (if not given script takes model images from run folder)')
-    parser.add_argument('--model_images', nargs='+',
-                        help='instead of --model_image_folder, you can also specify the model images to use')
+    parser.add_argument('--model_image_folder', type=str, help='folder where model images are stored (if not given script takes model images from run folder)')
+    parser.add_argument('--model_images', nargs='+', help='instead of --model_image_folder, you can also specify the model images to use')
     parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north')
     parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
     parser.add_argument('--h5parm_predict', type=str, help='h5 solution file')
-    parser.add_argument('--facets_predict', type=str, help='facet region file with all facets to apply solutions')
-    parser.add_argument('--phasecenter', type=str,
-                        help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
+    parser.add_argument('--facets_predict', type=str, help='facet region file for prediction')
+    parser.add_argument('--phasecenter', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
     parser.add_argument('--freqavg', type=str, help='frequency averaging')
     parser.add_argument('--timeres', type=str, help='time resolution averaging in secondsZ')
     parser.add_argument('--concat', action='store_true', help='concat MS')
@@ -595,11 +652,10 @@ def parse_args():
     parser.add_argument('--applycal', action='store_true', help='applycal after subtraction and phaseshifting')
     parser.add_argument('--applycal_h5', type=str, help='applycal solution file')
     parser.add_argument('--print_only_commands', action='store_true', help='only print commands for testing purposes')
-    parser.add_argument('--forwidefield', action='store_true',
-                        help='will search for the polygon_info.csv file to extract information from')
+    parser.add_argument('--forwidefield', action='store_true', help='will search for the polygon_info.csv file to extract information from')
     parser.add_argument('--skip_predict', action='store_true', help='skip predict and do only subtract')
-    parser.add_argument('--even_time_avg', action='store_true',
-                        help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
+    parser.add_argument('--even_time_avg', action='store_true', help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
+    parser.add_argument('--inverse', action='store_true', help='instead of subtracting, you predict and add model data from a single facet')
 
     return parser.parse_args()
 
@@ -698,7 +754,7 @@ def main():
         dirname = None
 
     object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north,
-                             onlyprint=args.print_only_commands)
+                             onlyprint=args.print_only_commands, inverse=args.inverse)
 
     if not args.skip_predict:
         # clean model images
@@ -709,13 +765,20 @@ def main():
         if args.region is not None:
             object.mask_region(region_cube=args.use_region_cube)
 
-        # predict
-        print('############## PREDICT ##############')
-        object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
+        if args.inverse:
+            faceth5 = object.split_facet_h5(h5parm=args.h5parm_predict, dirname=dirname)
+            # predict
+            print('############## PREDICT ##############')
+            object.predict(h5parm=faceth5, facet_regions=args.region)
+
+        else:
+            # predict
+            print('############## PREDICT ##############')
+            object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
 
     # subtract
     print('############## SUBTRACT ##############')
-    object.subtract_col(out_column='SUBTRACT_DATA')
+    object.subtract_col(out_column='SUBTRACT_DATA' if not args.inverse else "DATA")
 
     # extra DP3 step
     if args.phasecenter is not None or \
