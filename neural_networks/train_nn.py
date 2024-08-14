@@ -1,5 +1,4 @@
 import argparse
-import itertools
 import os
 from functools import partial, lru_cache
 from pathlib import Path
@@ -8,7 +7,7 @@ import torch
 import torcheval.metrics.functional as tef
 from torch import nn, binary_cross_entropy_with_logits
 from torch.nn.functional import interpolate
-from torch.utils.data import SequentialSampler, Sampler, RandomSampler
+from torch.utils.data import SequentialSampler, Sampler
 from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
 from torchvision.transforms import v2
@@ -34,7 +33,7 @@ def init_vit(model_name):
 
     return backbone, hidden_dim
 
-def get_feature_extractor(name: str):
+def init_cnn(name: str):
     # use partial to prevent loading all models at once
     model_map = {
         'resnet50': partial(models.resnet50, weights="DEFAULT"),
@@ -126,7 +125,7 @@ class ImagenetTransferLearning(nn.Module):
             self.forward = self.vit_forward
 
         else:
-            self.feature_extractor, num_features = get_feature_extractor(name=model_name)
+            self.feature_extractor, num_features = init_cnn(name=model_name)
             self.feature_extractor.eval()
 
             self.classifier = get_classifier_f(n_features=num_features)
@@ -408,8 +407,6 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
         mean_loss.backward()
         optimizer.step()
 
-        breakpoint()
-
         if i % logging_interval == 0:
             with torch.no_grad():
                 metrics_logger(loss=mean_loss.detach(), logits=logits.detach(), targets=labels, global_step=global_step, log_suffix='training')
@@ -522,7 +519,7 @@ def get_argparser():
     parser.add_argument('--dropout_p', type=float, help='Dropout probability', default=0.25)
     parser.add_argument('--resize', type=int, default=0, help="size to resize to. Will be set to 512 for ViT.")
     parser.add_argument('--use_compile', type=bool, default=True)
-    parser.add_argument('--profile', action='store_true')
+    parser.add_argument('--profile', action='store_true', help="[DISABLED] profile the training and validation loop")
 
     return parser.parse_args()
 
@@ -533,6 +530,7 @@ def sanity_check_args(parsed_args):
     assert 0 <= parsed_args.dropout_p <= 1
     assert parsed_args.resize >= 0
 
+    # ViT always needs the input size to be 512x512
     if parsed_args.model_name == 'vit_16_l' and parsed_args.resize != 512:
         print("Setting resize to 512 since vit_16_l is being used")
         parsed_args.resize = 512
