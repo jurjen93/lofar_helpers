@@ -531,7 +531,7 @@ def sanity_check_args(parsed_args):
     assert parsed_args.resize >= 0
 
     # ViT always needs the input size to be 512x512
-    if parsed_args.model_name == 'vit_16_l' and parsed_args.resize != 512:
+    if parsed_args.model_name == 'vit_l_16' and parsed_args.resize != 512:
         print("Setting resize to 512 since vit_16_l is being used")
         parsed_args.resize = 512
 
