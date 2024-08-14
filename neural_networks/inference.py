@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from train_cnn import ImagenetTransferLearning, load_checkpoint
+from train_nn import ImagenetTransferLearning, load_checkpoint
 from pre_processing_for_ml import FitsDataset
 
 
@@ -44,6 +44,7 @@ def main(dataset_root, checkpoint_path):
 
     ckpt_dict = load_checkpoint(checkpoint_path)
     model = ckpt_dict['model']
+    breakpoint()
 
     num_workers = min(18, len(os.sched_getaffinity(0)))
     prefetch_factor, persistent_workers = (

@@ -27,4 +27,4 @@ PARAMS=$(sed -n "${SLURM_ARRAY_TASK_ID}p" $PARAM_FILE)
 read model lr normalize dropout_p <<< $PARAMS
 
 # Execute your Python script with the given parameters
-python train_cnn.py $DATA_TRAINDATA_PATH --model $model --lr $lr --normalize $normalize --dropout_p $dropout_p
+python train_nn.py $DATA_TRAINDATA_PATH --model $model --lr $lr --normalize $normalize --dropout_p $dropout_p

@@ -18,7 +18,6 @@ from pre_processing_for_ml import FitsDataset
 
 PROFILE = False
 
-
 def init_vit(model_name):
     assert model_name == 'vit_l_16'
 
@@ -107,7 +106,8 @@ class ImagenetTransferLearning(nn.Module):
     def __init__(
             self,
             model_name: str = 'resnet50',
-            dropout_p: float = 0.25
+            dropout_p: float = 0.25,
+            use_compile: bool = True
     ):
         super().__init__()
 
@@ -133,19 +133,19 @@ class ImagenetTransferLearning(nn.Module):
 
             self.forward = self.cnn_forward
 
+        if use_compile:
+            self.forward = torch.compile(model=self.forward, mode='reduce-overhead')
 
-    @partial(torch.compile, mode='reduce-overhead')
+
+    # @partial(torch.compile, mode='reduce-overhead')
     def cnn_forward(self, x):
         with torch.no_grad():
             representations = self.feature_extractor(x)
         x = self.classifier(representations)
         return x
 
-    @partial(torch.compile, mode='reduce-overhead')
+    # @partial(torch.compile, mode='reduce-overhead')
     def vit_forward(self, x):
-
-        # with torch.no_grad():
-        #     x = interpolate(x, size=512, mode='bilinear', align_corners=False)
 
         x = self.vit.forward(x)
 
@@ -254,19 +254,21 @@ def merge_metrics(suffix, **kwargs):
 
 
 @torch.no_grad()
-def prepare_data(data, labels, normalize, device):
+def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normalize: int, device: torch.device):
 
     data, labels = (
         data.to(device, non_blocking=True, memory_format=torch.channels_last),
         labels.to(device, non_blocking=True, dtype=data.dtype)
     )
-    data = interpolate(data, size=512, mode='bilinear', align_corners=False)
+
+    if resize:
+      data = interpolate(data, size=resize, mode='bilinear', align_corners=False)
 
     data = normalize_inputs(data, mode=normalize)
 
     return data, labels
 
-def main(dataset_root: str, model_name: str, lr: float, normalize: int, dropout_p: float, batch_size: int):
+def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: int, dropout_p: float, batch_size: int, use_compile: bool):
     torch.set_float32_matmul_precision('high')
 
     profiler_kwargs = {}
@@ -296,7 +298,7 @@ def main(dataset_root: str, model_name: str, lr: float, normalize: int, dropout_
 
     device = torch.device('cuda')
 
-    model: nn.Module = ImagenetTransferLearning(model_name=model_name, dropout_p=dropout_p)
+    model: nn.Module = ImagenetTransferLearning(model_name=model_name, dropout_p=dropout_p, use_compile=use_compile)
 
     # noinspection PyArgumentList
     model.to(device=device, memory_format=torch.channels_last)
@@ -315,7 +317,7 @@ def main(dataset_root: str, model_name: str, lr: float, normalize: int, dropout_
         partial(
             step_f,
             model=model,
-            prepare_data_f=partial(prepare_data, device=device, normalize=normalize),
+            prepare_data_f=partial(prepare_data, resize=resize, normalize=normalize, device=device),
             metrics_logger=partial(log_metrics, write_metrics_f=partial(write_metrics, writer=writer))
         )
         for step_f in (train_step, val_step)
@@ -329,7 +331,7 @@ def main(dataset_root: str, model_name: str, lr: float, normalize: int, dropout_
     best_val_loss = torch.inf
     global_step = 0  # make it a tensor so we can do in-place edits
 
-    with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+    with torch.amp.autocast('cuda', dtype=torch.bfloat16):
 
         n_epochs = 250
         for epoch in range(n_epochs):
@@ -406,6 +408,7 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
         mean_loss.backward()
         optimizer.step()
 
+        breakpoint()
 
         if i % logging_interval == 0:
             with torch.no_grad():
@@ -513,16 +516,34 @@ def get_argparser():
     parser.add_argument('dataset_root', type=Path)
     parser.add_argument('--lr', type=float, help='Learning rate for the model.', default=1e-4)
     parser.add_argument('--batch_size', type=int, help='Batch size', default=64)
-    parser.add_argument('--model_name', type=str, help='The model to use.', default='resnet50')
+    parser.add_argument('--model_name', type=str, help='The model to use.', default='resnet50',
+                        choices=['resnet50', 'resnet152', 'resnext50_32x4d', 'resnext101_64x4d', 'efficientnet_v2_l', 'vit_l_16'])
     parser.add_argument('--normalize', type=int, help='Whether to do normalization', default=0, choices=[0, 1, 2])
     parser.add_argument('--dropout_p', type=float, help='Dropout probability', default=0.25)
+    parser.add_argument('--resize', type=int, default=0, help="size to resize to. Will be set to 512 for ViT.")
+    parser.add_argument('--use_compile', type=bool, default=True)
     parser.add_argument('--profile', action='store_true')
 
     return parser.parse_args()
 
 
+def sanity_check_args(parsed_args):
+    assert parsed_args.lr >= 0
+    assert parsed_args.batch_size >= 0
+    assert 0 <= parsed_args.dropout_p <= 1
+    assert parsed_args.resize >= 0
+
+    if parsed_args.model_name == 'vit_16_l' and parsed_args.resize != 512:
+        print("Setting resize to 512 since vit_16_l is being used")
+        parsed_args.resize = 512
+
+    return parsed_args
+
+
 if __name__ == '__main__':
-    kwargs = vars(get_argparser())
+    args = get_argparser()
+    parsed_args = sanity_check_args(args)
+    kwargs = vars(args)
     print(kwargs)
 
     if kwargs['profile']:
@@ -530,8 +551,3 @@ if __name__ == '__main__':
     del kwargs['profile']
 
     main(**kwargs)
-    # '/dev/shm/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
-
-    # # root = f'{os.environ["TMPDIR"]}/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
-    #
-    # main(root)

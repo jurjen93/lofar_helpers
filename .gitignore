@@ -37,3 +37,5 @@ mergemerge.py
 #videos
 *.mp4
 *.gif
+#neural_networks
+runs/*
