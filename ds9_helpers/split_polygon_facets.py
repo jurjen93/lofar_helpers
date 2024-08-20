@@ -165,8 +165,8 @@ def main():
 
     f.close()
 
-    split_polygons_ds9(regionfile=reg, extra_boundary=args.extra_boundary)
-
+    if args.extra_boundary > 0:
+        split_polygons_ds9(regionfile=reg, extra_boundary=args.extra_boundary)
 
 if __name__ == "__main__":
     main()
