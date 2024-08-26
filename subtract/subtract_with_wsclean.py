@@ -11,6 +11,7 @@ from itertools import repeat
 import re
 import pandas as pd
 from argparse import ArgumentParser
+import random
 
 
 def add_trailing_zeros(s, digitsize=4):
@@ -347,6 +348,7 @@ class SubtractWSClean:
 
             # get number of rows
             nrows = ts.nrows()
+
             # make sure every slice has the same size
             best_slice = get_largest_divider(nrows, 1000)
 
@@ -611,6 +613,7 @@ class SubtractWSClean:
         command += ['steps=' + str(steps).replace(" ", "").replace("\'", "")]
 
         if concat:
+            msout = ['subtract_concat.ms']
             command += [f'msin={",".join(self.mslist)}',
                         'msout=subtract_concat.ms']
 
@@ -624,6 +627,7 @@ class SubtractWSClean:
             if not self.onlyprint:
                 os.system(' '.join(command) + " > dp3.subtract.log")
         else:
+            msout = []
             for n, ms in enumerate(self.mslist):
                 command += [f'msin={ms}', f'msout=sub{self.scale}_{ms}']
 
@@ -636,8 +640,9 @@ class SubtractWSClean:
 
                 if not self.onlyprint:
                     os.system(' '.join(command + [f'msin={ms}', f'msout=sub{self.scale}_{ms}']) + f" > dp3.sub{n}.log")
+            msout.append(f'sub{self.scale}_{ms}')
 
-        return self
+        return msout
 
 
 def parse_args():
@@ -666,6 +671,7 @@ def parse_args():
     parser.add_argument('--skip_predict', action='store_true', help='skip predict and do only subtract')
     parser.add_argument('--even_time_avg', action='store_true', help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
     parser.add_argument('--inverse', action='store_true', help='instead of subtracting, you predict and add model data from a single facet')
+    parser.add_argument('--scratch', action='store_true', help='Experts only: Run on scratch (use only for toil and when DP3 is called for averaging)')
 
     return parser.parse_args()
 
@@ -763,8 +769,26 @@ def main():
         timeres = args.timeres
         dirname = None
 
-    object = SubtractWSClean(mslist=args.mslist, region=args.region, localnorth=not args.no_local_north,
-                             onlyprint=args.print_only_commands, inverse=args.inverse)
+    if args.scratch:
+        hashvalue = random.getrandbits(128)
+        hasfolder = "%032x" % hashvalue
+        hasfolder = hasfolder[0:10]
+        absolute_path = os.path.abspath('/tmp')
+        runpath = absolute_path+'/'+hasfolder
+        command = [f'mkdir -p {runpath}',
+                   f'cp *.fits {runpath}',
+                   f'cp {args.region} {runpath}']
+        command += [f'mv {dataset} {runpath}' for dataset in args.mslist]
+        os.system('&&'.join(command))
+        outpath = os.getcwd()
+        os.chdir(runpath)
+
+
+    object = SubtractWSClean(mslist=args.mslist if not args.scratch else [ms.split('/')[-1] for ms in args.mslist],
+                             region=args.region if not args.scratch else args.region.split('/')[-1],
+                             localnorth=not args.no_local_north,
+                             onlyprint=args.print_only_commands,
+                             inverse=args.inverse)
 
     if not args.skip_predict:
         # clean model images
@@ -776,15 +800,23 @@ def main():
             object.mask_region(region_cube=args.use_region_cube)
 
         if args.inverse:
-            faceth5 = object.split_facet_h5(h5parm=args.h5parm_predict, dirname=dirname)
+            if args.scratch:
+                os.system(f'cp {args.h5parm_predict} {runpath}')
+            faceth5 = object.split_facet_h5(h5parm=args.h5parm_predict if not args.scratch else args.h5parm_predict.split('/')-[-1],
+                                            dirname=dirname)
             # predict
             print('############## PREDICT ##############')
-            object.predict(h5parm=faceth5, facet_regions=args.region)
+            object.predict(h5parm=faceth5,
+                           facet_regions=args.region if not args.scratch else args.region.split('/')[-1])
 
         else:
             # predict
             print('############## PREDICT ##############')
-            object.predict(h5parm=args.h5parm_predict, facet_regions=args.facets_predict)
+            if args.scratch:
+                os.system(f'cp {args.h5parm_predict} {runpath}')
+                os.system(f'cp {args.facets_predict} {runpath}')
+            object.predict(h5parm=args.h5parm_predict if not args.scratch else args.h5parm_predict.split('/')-[-1],
+                           facet_regions=args.facets_predict if not args.scratch else args.facets_predict.split('/')-[-1])
 
     # subtract
     print('############## SUBTRACT ##############')
@@ -807,8 +839,16 @@ def main():
         else:
             applycalh5 = None
 
-        object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeres=timeres,
-                       concat=args.concat, applybeam=args.applybeam, applycal_h5=applycalh5, dirname=dirname)
+        if args.scratch:
+            os.system(f'cp {applycalh5} {runpath}')
+
+        msout = object.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeres=timeres,
+                       concat=args.concat, applybeam=args.applybeam,
+                       applycal_h5=applycalh5 if not args.scratch else applycalh5.split('/')[-1], dirname=dirname)
+
+        if args.scratch:
+            for ms in msout: os.system(f'mv {ms} {outpath}')
+            os.system('rm -r *.ms')
 
         print(f"DONE: See output --> sub{object.scale}*.ms")
     else:

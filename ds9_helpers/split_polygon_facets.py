@@ -142,8 +142,8 @@ def main():
     dirname = H.root.sol000.source[:]['name']
     H.close()
 
-    #dangerous! Convert to degrees
-    if np.all(np.abs(dirs)<np.pi):
+    #TODO: dangerous! Convert to degrees
+    if np.all(np.abs(dirs)<2*np.pi):
         dirs %= (2*np.pi)
         dirs *= 360/(2*np.pi)
 
