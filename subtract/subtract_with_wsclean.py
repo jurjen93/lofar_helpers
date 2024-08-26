@@ -373,6 +373,7 @@ class SubtractWSClean:
                 if not self.onlyprint:
                     model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
                     ts.putcol(out_column, data - model if not self.inverse else data + model, startrow=c, nrow=best_slice)
+            ts.removecols(['MODEL_DATA'])
             ts.close()
 
         return self
