@@ -2,7 +2,7 @@
 Concat measurement sets with dummies for missing frequency subbands.
 
 Example:
-    python concat_with_dummies.py --concat_name concat.ms --freq_avg 4 --time_avg 8 *.ms
+    python concat_with_dummies.py --msout concat.ms --freq_avg 4 --time_avg 8 *.ms
 """
 
 __author__ = "Jurjen de Jong"
