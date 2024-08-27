@@ -165,6 +165,22 @@ def split_facet_h5(h5parm: str = None, dirname: str = None):
     return outputh5
 
 
+def isfulljones(h5: str = None):
+    """
+    Verify if file is fulljones
+
+    :param h5: h5 file
+    """
+    T = tables.open_file(h5)
+    soltab = list(T.root.sol000._v_groups.keys())[0]
+    if 'pol' in make_utf8(T.root.sol000._f_get_child(soltab).val.attrs["AXES"]):
+        if T.root.sol000._f_get_child(soltab).pol[:].shape[0] == 4:
+            T.close()
+            return True
+    T.close()
+    return False
+
+
 class SubtractWSClean:
     def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, onlyprint: bool = False, inverse: bool = False):
         """
@@ -501,21 +517,6 @@ class SubtractWSClean:
 
         return self
 
-    @staticmethod
-    def isfulljones(h5: str = None):
-        """
-        Verify if file is fulljones
-
-        :param h5: h5 file
-        """
-        T = tables.open_file(h5)
-        soltab = list(T.root.sol000._v_groups.keys())[0]
-        if 'pol' in make_utf8(T.root.sol000._f_get_child(soltab).val.attrs["AXES"]):
-            if T.root.sol000._f_get_child(soltab).pol[:].shape[0] == 4:
-                T.close()
-                return True
-        T.close()
-        return False
 
     def run_DP3(self, phaseshift: str = None, freqavg: str = None,
                 timeres: str = None, concat: bool = None,
@@ -529,6 +530,7 @@ class SubtractWSClean:
         :param concat: concat the measurement sets
         :param applybeam: apply beam in phaseshifted phase center (or otherwise center of field)
         :param applycal_h5: applycal solution file
+        :param dirname: direction name from h5parm
         """
 
         steps = []
@@ -567,7 +569,7 @@ class SubtractWSClean:
         # 3) APPLYCAL
         if applycal_h5 is not None:
             # add fulljones solutions apply
-            if self.isfulljones(applycal_h5):
+            if isfulljones(applycal_h5):
                 steps.append('ac')
                 command += ['ac.type=applycal',
                             'ac.parmdb=' + applycal_h5,
@@ -787,6 +789,7 @@ def main():
         os.chdir(runpath)
 
 
+    # set subtract object
     subpred = SubtractWSClean(mslist=args.mslist if not args.scratch else [ms.split('/')[-1] for ms in args.mslist],
                              region=args.region if not args.scratch else args.region.split('/')[-1],
                              localnorth=not args.no_local_north,
@@ -809,24 +812,24 @@ def main():
         if args.inverse:
             faceth5 = split_facet_h5(h5parm=args.h5parm_predict if not args.scratch else args.h5parm_predict.split('/')[-1],
                                             dirname=dirname)
-            # predict
+            # predict with 1 facet
             print('############## PREDICT ##############')
             subpred.predict(h5parm=faceth5,
                            facet_regions=args.region if not args.scratch else args.region.split('/')[-1])
 
         else:
-            # predict
+            # predict with multiple facets
             print('############## PREDICT ##############')
             if args.scratch:
                 os.system(f'cp {outpath}/{args.facets_predict.split("/")[-1]} {runpath}')
             subpred.predict(h5parm=args.h5parm_predict if not args.scratch else args.h5parm_predict.split('/')[-1],
                            facet_regions=args.facets_predict if not args.scratch else args.facets_predict.split('/')[-1])
 
-    # subtract
+    # subtract or add (if inverse=True)
     print('############## SUBTRACT ##############')
     subpred.subtract_col(out_column='SUBTRACT_DATA' if not args.inverse else "DATA")
 
-    # extra DP3 step
+    # DP3 steps
     if args.phasecenter is not None or \
             args.freqavg is not None or \
             args.timeres is not None or \
@@ -846,12 +849,15 @@ def main():
         if args.scratch:
             os.system(f'cp {outpath}/{applycalh5.split("/")[-1]} {runpath}')
 
+        # run DP3
         msout = subpred.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeres=timeres,
                        concat=args.concat, applybeam=args.applybeam,
                        applycal_h5=applycalh5 if not args.scratch else applycalh5.split('/')[-1], dirname=dirname)
 
         if args.scratch:
+            # copy averaged MS back to output folder
             for ms in msout: os.system(f'cp -r {ms} {outpath}')
+            # clean up scratch directory (for big MS)
             os.system('rm -rf *.ms')
             os.chdir(outpath)
 
