@@ -59,6 +59,7 @@ class ApplyCal:
                              f'ac{ac_count}.correction={corr}']
                 steps.append(f'ac{ac_count}')
                 ac_count += 1
+            T.close()
 
         # this step inverts the beam at the infield and corrects beam at phase center
         steps.append('beam_center')
