@@ -14,6 +14,11 @@ from glob import glob
 import argparse
 import os
 from pprint import pprint
+import re
+
+
+def case_insensitive_replace(text, old, new):
+    return re.sub(re.escape(old), new, text, flags=re.IGNORECASE)
 
 
 def get_largest_divider(inp, max=1000):
@@ -172,17 +177,16 @@ def make_parset(mss, concat_name, data_column, time_avg, freq_avg, time_res, fre
 
     for dir, ms in ms_dict.items():
 
-
         if concat_name is None:
             concatname = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
                            replace('mstargetphase','')+'.concat.ms').replace('..', '.').split('/')[-1]
-            parsetname = concatname.replace('.concat.ms', '.parset')
+            parsetname = case_insensitive_replace(concatname, '.concat.ms', '.parset')
 
         else:
             concatname = concat_name
-            parsetname = concatname.replace('.ms', '.parset')
+            parsetname = case_insensitive_replace(concatname, '.ms', '.parset')
 
-        txtname = parsetname.replace('.parset', '.txt')
+        txtname = case_insensitive_replace(parsetname, '.parset', '.txt')
 
         if fill_freq_gaps(input=ms, make_dummies=True, output_name=txtname, only_basename=only_basename):
             print('--- SUCCESS: no frequency gaps found ---')

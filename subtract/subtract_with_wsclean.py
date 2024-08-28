@@ -138,7 +138,7 @@ def split_facet_h5(h5parm: str = None, dirname: str = None):
         phase_v = get_data('phase000', 'val')
         amplitude_v = get_data('amplitude000', 'val')
         new_dirs = np.array([outh5.root.sol000.source[:][dir_idx]])
-        new_dirs['name'][0] = bytes('Dir' + str(0).zfill(2), 'utf-8')
+        # new_dirs['name'][0] = bytes('Dir' + str(0).zfill(2), 'utf-8')
         dirs = np.array([outh5.root.sol000.phase000.dir[:][dir_idx]])
 
         outh5.remove_node("/sol000/phase000", "val", recursive=True)
@@ -856,12 +856,12 @@ def main():
 
         if args.scratch:
             # copy averaged MS back to output folder
-            for ms in msout: os.system(f'cp -r {ms} {outpath}')
+            for ms in msout: os.system(f'cp -r {ms} {outpath}/{dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}')
             # clean up scratch directory (for big MS)
-            os.system('rm -rf *.ms')
+            os.system(f'cp *.log {outpath} && rm -rf *.ms')
             os.chdir(outpath)
 
-        print(f"DONE: See output --> sub{subpred.scale}*.ms")
+        print(f'DONE: See output --> {dirname.replace("Dir","facet_")}-*.ms')
     else:
         print(f"DONE: Output is SUBTRACT_DATA column in input MS")
 
