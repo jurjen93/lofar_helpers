@@ -707,7 +707,7 @@ def parse_args():
     parser.add_argument('--skip_predict', action='store_true', help='skip predict and do only subtract')
     parser.add_argument('--even_time_avg', action='store_true', help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
     parser.add_argument('--inverse', action='store_true', help='instead of subtracting, you predict and add model data from a single facet')
-    parser.add_argument('--scratch', action='store_true', help='Experts only: Run on scratch (use only for toil and when DP3 is called for averaging)')
+    parser.add_argument('--scratch_toil', action='store_true', help='Experts only: Run on scratch when using toil')
 
     return parser.parse_args()
 
@@ -805,7 +805,7 @@ def main():
         timeres = args.timeres
         dirname = None
 
-    if args.scratch:
+    if args.scratch_toil:
         hashvalue = random.getrandbits(128)
         hasfolder = "%032x" % hashvalue
         hasfolder = hasfolder[0:10]
@@ -817,7 +817,9 @@ def main():
                    f'cp *.fits {runpath}',
                    f'cp {args.region} {runpath}']
         command += [f'cp {dataset} {runpath}' for dataset in args.mslist]
+        # when running with scratch + toil, the next commands are to clean up the tmp* files
         command += [f'rm -rf {dataset}' for dataset in args.mslist]
+        command += ['rm *.fits', f'rm {args.model_image_folder}']
         os.system('&&'.join(command))
         outpath = os.getcwd()
         os.chdir(runpath)
@@ -828,8 +830,8 @@ def main():
 
 
     # set subtract object
-    subpred = SubtractWSClean(mslist=args.mslist if not args.scratch else [ms.split('/')[-1] for ms in args.mslist],
-                             region=args.region if not args.scratch else args.region.split('/')[-1],
+    subpred = SubtractWSClean(mslist=args.mslist if not args.scratch_toil else [ms.split('/')[-1] for ms in args.mslist],
+                             region=args.region if not args.scratch_toil else args.region.split('/')[-1],
                              localnorth=not args.no_local_north,
                              onlyprint=args.print_only_commands,
                              inverse=args.inverse)
@@ -844,24 +846,24 @@ def main():
         if args.region is not None:
             subpred.mask_region(region_cube=args.use_region_cube)
 
-        if args.scratch:
+        if args.scratch_toil:
             os.system(f'cp {outpath}/{args.h5parm_predict.split("/")[-1]} {runpath}')
 
         if args.inverse:
-            faceth5 = split_facet_h5(h5parm=args.h5parm_predict if not args.scratch else args.h5parm_predict.split('/')[-1],
+            faceth5 = split_facet_h5(h5parm=args.h5parm_predict if not args.scratch_toil else args.h5parm_predict.split('/')[-1],
                                             dirname=dirname)
             # predict with 1 facet
             print('############## PREDICT ##############')
             subpred.predict(h5parm=faceth5,
-                           facet_regions=args.region if not args.scratch else args.region.split('/')[-1])
+                           facet_regions=args.region if not args.scratch_toil else args.region.split('/')[-1])
 
         else:
             # predict with multiple facets
             print('############## PREDICT ##############')
-            if args.scratch:
+            if args.scratch_toil:
                 os.system(f'cp {outpath}/{args.facets_predict.split("/")[-1]} {runpath}')
-            subpred.predict(h5parm=args.h5parm_predict if not args.scratch else args.h5parm_predict.split('/')[-1],
-                           facet_regions=args.facets_predict if not args.scratch else args.facets_predict.split('/')[-1])
+            subpred.predict(h5parm=args.h5parm_predict if not args.scratch_toil else args.h5parm_predict.split('/')[-1],
+                           facet_regions=args.facets_predict if not args.scratch_toil else args.facets_predict.split('/')[-1])
 
     # subtract or add (if inverse=True)
     print('############## SUBTRACT ##############')
@@ -884,15 +886,15 @@ def main():
         else:
             applycalh5 = None
 
-        if args.scratch:
+        if args.scratch_toil:
             os.system(f'cp {outpath}/{applycalh5.split("/")[-1]} {runpath}')
 
         # run DP3
         msout = subpred.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeres=timeres,
                        concat=args.concat, applybeam=args.applybeam,
-                       applycal_h5=applycalh5 if not args.scratch else applycalh5.split('/')[-1], dirname=dirname)
+                       applycal_h5=applycalh5 if not args.scratch_toil else applycalh5.split('/')[-1], dirname=dirname)
 
-        if args.scratch:
+        if args.scratch_toil:
             # copy averaged MS back to output folder
             for ms in msout: os.system(f'cp -r {ms} {outpath}/{dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}')
             # clean up scratch directory (for big MS)
