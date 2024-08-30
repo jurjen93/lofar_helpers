@@ -12,6 +12,7 @@ import re
 import pandas as pd
 from argparse import ArgumentParser
 import random
+import shutil
 
 
 def add_trailing_zeros(s, digitsize=4):
@@ -24,6 +25,37 @@ def add_trailing_zeros(s, digitsize=4):
      """
     padded_string = "".join(repeat("0", digitsize)) + s
     return padded_string[-digitsize:]
+
+
+def unlink(symlink_path):
+    """
+    Replaces a symbolic link with the actual data it points to.
+
+    :param symlink_path: Path to the symbolic link to be replaced
+    """
+    try:
+        # Check if the provided path is a symbolic link
+        if os.path.islink(symlink_path):
+            # Get the actual path the symlink points to
+            target_path = os.readlink(symlink_path)
+
+            # Remove the symlink
+            os.unlink(symlink_path)
+            print(f"Symlink '{symlink_path}' removed.")
+
+            # Copy the data from the target path to the symlink location
+            if os.path.isdir(target_path):
+                shutil.copytree(target_path, symlink_path)
+                print(f"Directory '{target_path}' copied to '{symlink_path}'.")
+            else:
+                shutil.copy2(target_path, symlink_path)
+                print(f"File '{target_path}' copied to '{symlink_path}'.")
+        else:
+            print(f"'{symlink_path}' is not a symbolic link.")
+    except FileNotFoundError:
+        print(f"The symlink '{symlink_path}' does not exist.")
+    except OSError as e:
+        print(f"Error: {e} - Could not replace the symlink with data.")
 
 
 def get_largest_divider(inp, max=1000):
@@ -779,14 +811,20 @@ def main():
         hasfolder = hasfolder[0:10]
         absolute_path = os.path.abspath('/tmp')
         runpath = absolute_path+'/'+hasfolder
+
+        # mkdir and copy files
         command = [f'mkdir -p {runpath}',
                    f'cp *.fits {runpath}',
                    f'cp {args.region} {runpath}']
-        command += [f'rsync -a --no-perms {dataset} {runpath}' for dataset in args.mslist]
+        command += [f'cp {dataset} {runpath}' for dataset in args.mslist]
         command += [f'rm -rf {dataset}' for dataset in args.mslist]
         os.system('&&'.join(command))
         outpath = os.getcwd()
         os.chdir(runpath)
+
+        # replace symlinks with data to correct
+        for ms in args.mslist:
+            unlink(ms.split('/')[-1])
 
 
     # set subtract object
