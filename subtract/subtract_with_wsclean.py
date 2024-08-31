@@ -819,7 +819,7 @@ def main():
         command += [f'rsync -a --no-perms {dataset} {runpath}' for dataset in args.mslist]
         # when running with scratch + toil, the next commands are to clean up the tmp* files
         command += [f'rm -rf {dataset}' for dataset in args.mslist]
-        command += ['rm *.fits', f'rm {args.model_image_folder}']
+        command += ['rm *.fits', f'rm -rf {args.model_image_folder}']
         os.system('&&'.join(command))
         outpath = os.getcwd()
         os.chdir(runpath)
