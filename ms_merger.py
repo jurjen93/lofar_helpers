@@ -722,9 +722,6 @@ def sum_arrays_chunkwise(array1, array2, chunk_size=1000, n_jobs=-1, un_memmap=T
         - np.ndarray or np.memmap: result array which is the sum of array1 and array2
     """
 
-    def sum_chunk(start, end):
-        return array1[start:end] + array2[start:end]
-
     # Ensure the arrays have the same length
     assert len(array1) == len(array2), "Arrays must have the same length"
 
@@ -742,9 +739,6 @@ def sum_arrays_chunkwise(array1, array2, chunk_size=1000, n_jobs=-1, un_memmap=T
             pass  # If memory error, fall back to using memmap
 
     n = len(array1)
-    # Create a list of chunk indices
-    chunks = [(i, min(i + chunk_size, n)) for i in range(0, n, chunk_size)]
-
     # Determine the output storage type based on input type
     if isinstance(array1, np.memmap) or isinstance(array2, np.memmap):
         # Create a temporary file to store the result as a memmap
@@ -753,12 +747,15 @@ def sum_arrays_chunkwise(array1, array2, chunk_size=1000, n_jobs=-1, un_memmap=T
     else:
         result_array = np.empty_like(array1)
 
-    # Parallel processing
-    results = Parallel(n_jobs=n_jobs)(delayed(sum_chunk)(start, end) for start, end in chunks)
+    def sum_chunk_to_result(start, end):
+        # Directly store the result in the appropriate part of the result array
+        result_array[start:end] = array1[start:end] + array2[start:end]
 
-    # Store the results in the result array
-    for i, (start, end) in enumerate(chunks):
-        result_array[start:end] = results[i]
+    # Create a generator for chunk indices
+    chunks = ((i, min(i + chunk_size, n)) for i in range(0, n, chunk_size))
+
+    # Parallel processing with threading preferred for better I/O handling
+    Parallel(n_jobs=n_jobs, prefer="threads")(delayed(sum_chunk_to_result)(start, end) for start, end in chunks)
 
     return result_array
 
