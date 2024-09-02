@@ -443,7 +443,7 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
         #     print(f"Process {rank}: Gradients are synchronized across processes.")
         # else:
         #     print(f"Process {rank}: Gradients are NOT synchronized!")
-        # optimizer.step()
+        optimizer.step()
         # dist.barrier()
         # for grad in grads:
         #     print(grad)
