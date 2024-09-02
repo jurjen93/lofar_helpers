@@ -147,7 +147,7 @@ class FitsDataset(Dataset):
         assert len(self.data_paths) > 0
 
         sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.data_paths]))
-        print(f'{mode}: using the following sources: {sources}')
+        # print(f'{mode}: using the following sources: {sources}')
 
 
     @staticmethod
