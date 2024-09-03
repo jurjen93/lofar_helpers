@@ -1,12 +1,13 @@
 #!/bin/bash
 #SBATCH --job-name=cortex_multi_node
 #SBATCH --partition=gpu              
-#SBATCH --time=08:00:00
+#SBATCH --time=00:30:00
 #SBATCH --nodes=2
 #SBATCH --ntasks-per-node=4
 #SBATCH --gpus-per-node=4
 #SBATCH --cpus-per-task=18
 #SBATCH --output=out/multi_cortex%A_%a.out
+#SBATCH --gpu-bind=None
 
 set -e
 

@@ -281,8 +281,6 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
     torch.set_float32_matmul_precision('high')
     torch.cuda.set_device(local_rank)
     dist.init_process_group("NCCL", rank=rank, world_size=world_size)
-    
-    
 
     profiler_kwargs = {}
 
@@ -305,10 +303,10 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
         lr=lr,
         normalize=normalize,
         dropout_p=dropout_p, 
-        rank=rank
+        use_compile=use_compile, 
+        gpus=world_size
     )
-
-    writer = get_tensorboard_logger(logging_dir)
+    writer = get_tensorboard_logger(logging_dir) if not rank else None
 
     # device = torch.device('cuda')
     model: nn.Module = ImagenetTransferLearning(model_name=model_name, dropout_p=dropout_p, use_compile=False)
@@ -320,7 +318,6 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
 
     if use_compile:
         model.forward = torch.compile(model=model.forward, mode='reduce-overhead')
-
 
     if model_name == 'vit_l_16':
         params = [param for param in model.parameters() if param.requires_grad]
@@ -338,7 +335,7 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
             step_f,
             model=model,
             prepare_data_f=partial(prepare_data, resize=resize, normalize=normalize, device=local_rank),
-            metrics_logger=partial(log_metrics, write_metrics_f=partial(write_metrics, writer=writer))
+            metrics_logger=partial(log_metrics, write_metrics_f=partial(write_metrics, writer=writer) if writer is not None else None)
         )
         for step_f in (train_step, val_step)
     )
@@ -433,9 +430,9 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
         
         mean_loss.backward()
         dist.barrier()
-        param_grad = next(model.module.classifier[2].parameters()).grad
-        grads = [torch.zeros_like(param_grad) for _ in range(dist.get_world_size())]
-        dist.all_gather(grads, param_grad)
+        # param_grad = next(model.module.classifier[2].parameters()).grad
+        # grads = [torch.zeros_like(param_grad) for _ in range(dist.get_world_size())]
+        # dist.all_gather(grads, param_grad)
 
         # Check if all gathered gradients are the same
         # synced = all(torch.equal(grads[0], g) for g in grads)
@@ -451,7 +448,7 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
         # dist.destroy_process_group()
         # exit()
 
-        if i % logging_interval == 0:
+        if i % logging_interval == 0 and not rank:
             with torch.no_grad():
                 metrics_logger(loss=mean_loss.detach(), logits=logits.detach(), targets=labels, global_step=global_step, log_suffix='training')
 
