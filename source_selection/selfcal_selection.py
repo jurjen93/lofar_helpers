@@ -1,7 +1,10 @@
 """
-This script can be used to select the best self-calibration cycle from facetselfcal.py see:
+WARNING: THIS SCRIPT HAS BEEN MOVED TO https://github.com/rvweeren/lofar_facet_selfcal REPOSITORY
+
+This script is used to select the best self-calibration cycle from facetselfcal.py see:
 https://github.com/rvweeren/lofar_facet_selfcal/blob/main/facetselfcal.py
 It will return a few plots and a csv with the statistics for each self-calibration cycle.
+This is described in Section 3.3 of de Jong et al. (2024)
 
 You can run this script in the folder with your facetselfcal output on 1 source as
 python selfcal_quality.py --fits *.fits --h5 merged*.h5
@@ -673,6 +676,10 @@ def calc_all_scores(sources_root, stations='international'):
 
 
 if __name__ == '__main__':
+
+    print('WARNING: THIS SCRIPT HAS BEEN MOVED TO https://github.com/rvweeren/lofar_facet_selfcal REPOSITORY\n'
+          'This version has therefore not be maintained since September 2024')
+
     args = parse_args()
 
     output_folder='./selection_output'

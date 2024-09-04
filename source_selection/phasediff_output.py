@@ -1,6 +1,8 @@
 """
-This script is used to utilize h5parm with scalarphasediff solutions from facetselfcal
-to derive a score for the amount of available flux at the longest baselines with LOFAR.
+WARNING: THIS SCRIPT HAS BEEN MOVED TO https://github.com/rvweeren/lofar_facet_selfcal REPOSITORY
+
+This script is used to derive a S/N selection score by using an h5parm with scalarphasediff solutions from facetselfcal.
+This is described in Section 3.3 of de Jong et al. (2024)
 """
 
 author__ = "Jurjen de Jong (jurjendejong@strw.leidenuniv.nl)"
@@ -234,7 +236,8 @@ def parse_args():
 
 def main():
 
-    ###STILL AN EXPERIMENT!###
+    print('WARNING: THIS SCRIPT HAS BEEN MOVED TO https://github.com/rvweeren/lofar_facet_selfcal REPOSITORY\n'
+          'This version has therefore not be maintained since September 2024')
 
     args = parse_args()
 

@@ -748,7 +748,6 @@ def sum_arrays_chunkwise(array1, array2, chunk_size=1000, n_jobs=-1, un_memmap=T
         result_array = np.empty_like(array1)
 
     def sum_chunk_to_result(start, end):
-        # Directly store the result in the appropriate part of the result array
         result_array[start:end] = array1[start:end] + array2[start:end]
 
     # Create a generator for chunk indices
@@ -942,11 +941,14 @@ class Template:
         chan_range = np.arange(min(unique_channels), max(unique_channels) + dfreq_min, dfreq_min)
         self.channels = np.sort(np.expand_dims(np.unique(chan_range), 0))
         self.chan_num = self.channels.shape[-1]
-        # time_range = np.arange(min_t_lst, min(max_t_lst+min_dt, one_lst_day_sec/2 + min_t_lst + min_dt), min_dt/avg_factor)# ensure just half LST day
         if time_res is not None:
-            time_range = np.arange(min_t_lst, max_t_lst + min_dt, time_res)
+            # time_range = np.arange(min_t_lst, max_t_lst + min_dt, time_res)
+            time_range = np.arange(min_t_lst, min(max_t_lst + min_dt, one_lst_day_sec / 2 + min_t_lst + min_dt), time_res)
+
         else:
-            time_range = np.arange(min_t_lst, max_t_lst + min_dt, min_dt/avg_factor)
+            # time_range = np.arange(min_t_lst, max_t_lst + min_dt, min_dt/avg_factor)
+            time_range = np.arange(min_t_lst, min(max_t_lst + min_dt, one_lst_day_sec / 2 + min_t_lst + min_dt), min_dt / avg_factor)  # ensure just half LST day
+        self.max_t = max(time_range)
         baseline_count = n_baselines(len(self.station_info))
         nrows = baseline_count*len(time_range)
 
@@ -1093,6 +1095,8 @@ class Template:
 
                 # Time in LST
                 time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
+                # Ensure in 1/2 LST day
+                time = [t % one_lst_day_sec/2 if t > self.max_t else t for t in time]
                 uniq_time = np.unique(time)
                 time_idxs = find_closest_index_list(uniq_time, ref_uniq_time)
 
@@ -1156,8 +1160,14 @@ class Template:
             with table(ms, ack=False) as f:
                 uvw = np.memmap(f'{ms}_uvw.tmp.dat', dtype=np.float32, mode='w+', shape=(f.nrows(), 3))
                 time = np.memmap(f'{ms}_time.tmp.dat', dtype=np.float64, mode='w+', shape=(f.nrows()))
-                uvw[:] = f.getcol("UVW")
-                time[:] = mjd_seconds_to_lst_seconds(f.getcol("TIME"))
+
+                times = f.getcol("TIME")
+                uvws = f.getcol("UVW")
+
+                # 1/2 LST mapping
+                half_lst_map = [True if t > self.max_t else False for t in mjd_seconds_to_lst_seconds(times)]
+                uvw[:] = np.where(np.tile(half_lst_map, (3,1)).T, uvws*-1, uvws)
+                time[:] = np.where(half_lst_map, times % self.max_t, times)
 
         # Determine number of workers
         num_workers = max(os.cpu_count()-5, 1)  # I/O-bound heuristic
@@ -1546,7 +1556,7 @@ def parse_args():
     parser.add_argument('--msout', type=str, default='empty.ms', help='Measurement set output name')
     parser.add_argument('--time_res', type=float, help='Desired time resolution in seconds')
     parser.add_argument('--resolution', type=float, help='Desired spatial resolution (if given, you also have to give --fov_diam)')
-    parser.add_argument('--fov_diam', type=float, help='Desired field of view diameter to calculate optimal time resolution (if given, you also have to give --resolution)')
+    parser.add_argument('--fov_diam', type=float, help='Desired field of view diameter in degrees. This is used to calculate the optimal time resolution.')
     parser.add_argument('--record_time', action='store_true', help='Record wall-time of stacking')
     parser.add_argument('--chunk_mem', type=float, default=1., help='Additional memory chunk parameter (larger for smaller chunks)')
     parser.add_argument('--no_dysco', action='store_true', help='No Dysco compression of data')
