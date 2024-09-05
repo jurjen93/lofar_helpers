@@ -121,7 +121,7 @@ def make_odd(i):
     return int(i)
 
 
-def compress(ms, avg=None):
+def compress(ms):
     """
     running DP3 to apply dysco compression
 
@@ -135,11 +135,6 @@ def compress(ms, avg=None):
 
         cmd = f"DP3 msin={ms} msout={ms}.tmp msout.overwrite=true msout.storagemanager=dysco"
 
-        # if avg > 1:
-        #     cmd += (f" avg.type=averager avg.timestep={avg} avg.minpoints={avg} "
-        #             f"interpolate.type=interpolate interpolate.windowsize={make_odd(15*avg)}")
-        #     steps = ['interpolate', 'avg']
-        # else:
         steps = []
 
         steps = str(steps).replace("'", "").replace(' ','')
@@ -297,13 +292,13 @@ def get_station_id(ms):
     return ants, ids
 
 
-def mjd_seconds_to_lst_seconds(mjd_seconds, longitude_deg=52.909):
+def mjd_seconds_to_lst_seconds(mjd_seconds, longitude_deg=6.869837):
     """
     Convert time in modified Julian Date time to LST
 
     :param:
         - mjd_seconds: modified Julian date time in seconds
-        - longitde_deg: longitude telescope in degrees (52.909 for LOFAR)
+        - longitde_deg: longitude telescope in degrees (6.869837 for LOFAR )
 
     :return:
         time in LST
@@ -316,7 +311,7 @@ def mjd_seconds_to_lst_seconds(mjd_seconds, longitude_deg=52.909):
     time_utc = Time(mjd_days, format='mjd', scale='utc')
 
     # Define the observer's location using longitude (latitude doesn't affect LST)
-    location = EarthLocation(lon=longitude_deg * u.deg, lat=0. * u.deg)
+    location = EarthLocation(lon=longitude_deg * u.deg, lat=52.915122 * u.deg)
 
     # Calculate LST in hours
     lst_hours = time_utc.sidereal_time('apparent', longitude=location.lon).hour
@@ -462,26 +457,33 @@ def find_closest_index_list(a1, a2):
 
 def find_closest_index_multi_array(a1, a2):
     """
-    Find the indices of the closest values between two multi-D arrays.
+    Find the indices of the closest values between two multi-D arrays, preserving nearest neighbor relationships
+    even when the arrays are negated.
 
     :param:
-        - a1: first array
-        - a2: second array
+        - a1: first array (shape NxM)
+        - a2: second array (shape PxM)
 
     :return:
-        - The indices of the closest value in the array.
+        - A list of indices corresponding to the nearest neighbors in a2 for each point in a1.
     """
     # Ensure inputs are numpy arrays
     a1 = np.asarray(a1)
     a2 = np.asarray(a2)
 
-    # Build a KDTree for the second array
-    tree = cKDTree(a2)
+    # Concatenate the original and negated versions of a2
+    combined_a2 = np.vstack((a2, -a2))
+
+    # Build a KDTree for the combined array (original + negated)
+    tree = cKDTree(combined_a2)
 
     # Query the tree for the closest points in a1
     distances, indices = tree.query(a1)
 
-    return list(indices)
+    # Handle the indices since we doubled the array by adding -a2
+    final_indices = [i if i < len(a2) else i - len(a2) for i in indices]
+
+    return list(final_indices)
 
 
 def map_array_dict(arr, dct):
@@ -941,14 +943,13 @@ class Template:
         chan_range = np.arange(min(unique_channels), max(unique_channels) + dfreq_min, dfreq_min)
         self.channels = np.sort(np.expand_dims(np.unique(chan_range), 0))
         self.chan_num = self.channels.shape[-1]
+
         if time_res is not None:
-            # time_range = np.arange(min_t_lst, max_t_lst + min_dt, time_res)
-            time_range = np.arange(min_t_lst, min(max_t_lst + min_dt, one_lst_day_sec / 2 + min_t_lst + min_dt), time_res)
+            time_range = np.arange(min_t_lst, max_t_lst + min_dt, time_res)
 
         else:
-            # time_range = np.arange(min_t_lst, max_t_lst + min_dt, min_dt/avg_factor)
-            time_range = np.arange(min_t_lst, min(max_t_lst + min_dt, one_lst_day_sec / 2 + min_t_lst + min_dt), min_dt / avg_factor)  # ensure just half LST day
-        self.max_t = max(time_range)
+            time_range = np.arange(min_t_lst, max_t_lst + min_dt, min_dt/avg_factor)
+
         baseline_count = n_baselines(len(self.station_info))
         nrows = baseline_count*len(time_range)
 
@@ -1095,8 +1096,6 @@ class Template:
 
                 # Time in LST
                 time = mjd_seconds_to_lst_seconds(t.getcol("TIME"))
-                # Ensure in 1/2 LST day
-                time = [t % one_lst_day_sec/2 if t > self.max_t else t for t in time]
                 uniq_time = np.unique(time)
                 time_idxs = find_closest_index_list(uniq_time, ref_uniq_time)
 
@@ -1161,13 +1160,8 @@ class Template:
                 uvw = np.memmap(f'{ms}_uvw.tmp.dat', dtype=np.float32, mode='w+', shape=(f.nrows(), 3))
                 time = np.memmap(f'{ms}_time.tmp.dat', dtype=np.float64, mode='w+', shape=(f.nrows()))
 
-                times = f.getcol("TIME")
-                uvws = f.getcol("UVW")
-
-                # 1/2 LST mapping
-                half_lst_map = [True if t > self.max_t else False for t in mjd_seconds_to_lst_seconds(times)]
-                uvw[:] = np.where(np.tile(half_lst_map, (3,1)).T, uvws*-1, uvws)
-                time[:] = np.where(half_lst_map, times % self.max_t, times)
+                uvw[:] = f.getcol("UVW")
+                time[:] = mjd_seconds_to_lst_seconds(f.getcol("TIME"))
 
         # Determine number of workers
         num_workers = max(os.cpu_count()-5, 1)  # I/O-bound heuristic
@@ -1490,7 +1484,7 @@ def plot_baseline_track(t_final_name: str = None, t_input_names: list = None, ba
         print(ref_stats[int(float(ant1))], ref_stats[int(float(ant2))])
 
         with table(t_final_name, ack=False) as f:
-            fsub = f.query(f'ANTENNA1={ant1} AND ANTENNA2={ant2} AND NOT ALL(WEIGHT_SPECTRUM == 0)', columns='UVW')
+            fsub = f.query(f'ANTENNA1={ant1} AND ANTENNA2,={ant2} AND NOT ALL(WEIGHT_SPECTRUM == 0)', columns='UVW')
             uvw1 = fsub.getcol("UVW")
 
         with table(t_input_name, ack=False) as f:
