@@ -88,6 +88,7 @@ def process_args():
 
 def main(args):
     predictor = Predictor(args)
+    print("Initialized models")
     predictor.predict(input_path=args.input)
 
 
