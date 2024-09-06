@@ -58,7 +58,8 @@ def main(args):
 
     input_data: torch.Tensor = torch.from_numpy(process_fits(args.input))
 
-    prediction = model(input_data.swapdims(0, 2).unsqueeze(0))
+    with torch.autocast(dtype=torch.float32, device_type=args.device):
+        prediction = model(input_data.swapdims(0, 2).unsqueeze(0))
     print(prediction)
     return prediction
 
