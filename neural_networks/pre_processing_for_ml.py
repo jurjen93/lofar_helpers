@@ -89,25 +89,26 @@ def normalize_fits(image_data: np.ndarray):
     return image_data
 
 
+def process_fits(fits_path):
+    with fits.open(fits_path) as hdul:
+        image_data = hdul[0].data
+
+    return normalize_fits(image_data)
+
+
 def transform_data(root_dir, classes=('continue', 'stop'), modes=('', '_val')):
-
-    def process_fits(fits_path):
-        with fits.open(fits_path) as hdul:
-            image_data = hdul[0].data
-
-        transformed = normalize_fits(image_data)
-
-        np.savez_compressed(fits_path.with_suffix('.npz'), transformed.astype(np.float32))
-
     root_dir = Path(root_dir)
     assert root_dir.exists()
 
+    def save_processed(fits_path):
+        transformed = process_fits(fits_path)
+        np.savez_compressed(fits_path.with_suffix('.npz'), transformed.astype(np.float32))
+
     Parallel(n_jobs=len(os.sched_getaffinity(0)))(
-        delayed(process_fits)(fits_path)
+        delayed(save_processed)(fits_path)
         for cls, mode in itertools.product(classes, modes)
         for fits_path in (root_dir / (cls + mode)).glob('*.fits')
     )
-
 
 
 class FitsDataset(Dataset):
@@ -137,18 +138,22 @@ class FitsDataset(Dataset):
         # Actual documentation:
         # You want all 'self.x' variables to be non-python objects such as numpy arrays,
         # otherwise you get memory leaks in the PyTorch dataloader
-        self.data_paths, self.labels = map(np.asarray, list(zip(*(
-            (str(file), val)
-            for cls, val in classes.items()
-            for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(glob_ext)
-        ))))
-
+        self.data_paths, self.labels = map(
+            np.asarray, list(
+                zip(
+                    *(
+                        (str(file), val)
+                        for cls, val in classes.items()
+                        for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(glob_ext)
+                    )
+                )
+            )
+        )
 
         assert len(self.data_paths) > 0
 
         sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.data_paths]))
         # print(f'{mode}: using the following sources: {sources}')
-
 
     @staticmethod
     def transform_data(image_data):
@@ -167,7 +172,6 @@ class FitsDataset(Dataset):
         return len(self.data_paths)
 
     def __getitem__(self, idx):
-
         npy_path = self.data_paths[idx]
         label = self.labels[idx]
 
@@ -175,7 +179,6 @@ class FitsDataset(Dataset):
 
         # Pre-processing
         image_data = self.transform_data(image_data)
-
 
         return image_data, label
 

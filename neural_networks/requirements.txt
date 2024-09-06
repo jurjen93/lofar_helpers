@@ -3,7 +3,6 @@ torch
 torchvision
 torcheval
 tqdm
-matplotlib
 joblib
 astropy
-
+webdavclient3

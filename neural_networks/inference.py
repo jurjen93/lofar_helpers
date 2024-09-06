@@ -17,17 +17,20 @@ def variational_dropout(model, dataloader, variational_iters=25):
     model.cuda()
 
     for sample in tqdm(dataloader):
-        with torch.cuda.amp.autocast(dtype=torch.bfloat16):
-            batch, labels = sample[0].cuda(non_blocking=True), sample[1].cuda(non_blocking=True)
-            preds = torch.sigmoid(torch.concat([model(batch).clone() for _ in range(variational_iters)], dim=1))
+        yield from do_prediction(model, sample, variational_iters=variational_iters)
 
-            means = preds.mean(dim=1)
-            stds = preds.std(dim=1)
 
-        yield (
-            means.cpu(),
-            stds.cpu()
-        )
+def do_prediction(model, sample, variational_iters=25):
+    with torch.cuda.amp.autocast(dtype=torch.bfloat16):
+        batch, labels = sample[0].cuda(non_blocking=True), sample[1].cuda(non_blocking=True)
+        preds = torch.sigmoid(torch.concat([model(batch).clone() for _ in range(variational_iters)], dim=1))
+
+        means = preds.mean(dim=1)
+        stds = preds.std(dim=1)
+    yield (
+        means.cpu(),
+        stds.cpu()
+    )
 
 
 def save_images(dataset, out_paths, preds, stds, mode):
@@ -38,6 +41,7 @@ def save_images(dataset, out_paths, preds, stds, mode):
             fname=f'{out_paths}/{std:.3f}_{pred:.3f}_{label}_{name}.png',
             arr=batch.to(torch.float).movedim(0, -1).numpy()
         )
+
 
 def main(dataset_root, checkpoint_path):
     torch.set_float32_matmul_precision('high')
@@ -74,7 +78,6 @@ def main(dataset_root, checkpoint_path):
 
     for mode in ('train', 'val'):
         gen_and_save(mode)
-
 
 
 if __name__ == '__main__':
