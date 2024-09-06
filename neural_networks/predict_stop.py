@@ -47,22 +47,26 @@ def download_model(cache, model):
     os.remove(full_path_tar)
 
 
-def main(args):
-    model_path = os.path.join(args.cache, args.model)
-    if not os.path.exists(model_path):
-        # Download model
-        download_model(args.cache, args.model)
+class Predictor:
+    def __init__(self, args):
+        self.dtype = torch.float32
+        self.device = args.device
+        model_path = os.path.join(args.cache, args.model)
+        if not os.path.exists(model_path):
+            # Download model
+            download_model(args.cache, args.model)
 
-    checkpoint = load_checkpoint(model_path, args.device)
-    model = checkpoint.get("model")
+        checkpoint = load_checkpoint(model_path, args.device)
+        self.model = checkpoint.get("model").to(self.dtype)
 
-    input_data: torch.Tensor = torch.from_numpy(process_fits(args.input))
-    input_data.to(torch.float32)
+    def predict(self, input_path):
+        input_data: torch.Tensor = torch.from_numpy(process_fits(input_path))
+        input_data = input_data.to(self.dtype)
 
-    with torch.autocast(dtype=torch.float32, device_type=args.device):
-        prediction = model(input_data.swapdims(0, 2).unsqueeze(0))
-    print(prediction)
-    return prediction
+        with torch.autocast(dtype=self.dtype, device_type=self.device):
+            prediction = self.model(input_data.swapdims(0, 2).unsqueeze(0))
+        print(prediction)
+        return prediction
 
 
 def process_args():
@@ -80,6 +84,11 @@ def process_args():
     parser.add_argument("--input", type=str, default=None, help="Path to the fits file.")
     parser.add_argument("--device", type=str, default="cpu", help="Device for inference, default=cpu.")
     return parser.parse_args()
+
+
+def main(args):
+    predictor = Predictor(args)
+    predictor.predict(input_path=args.input)
 
 
 if __name__ == "__main__":
