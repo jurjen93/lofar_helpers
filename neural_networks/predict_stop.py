@@ -57,13 +57,14 @@ class Predictor:
 
         checkpoint = load_checkpoint(model_path, args.device)
         self.model = checkpoint.get("model").to(self.dtype)
+        self.model.eval()
 
     def predict(self, input_path):
         input_data: torch.Tensor = torch.from_numpy(process_fits(input_path))
         input_data = input_data.to(self.dtype)
-
-        with torch.autocast(dtype=self.dtype, device_type=self.device):
-            prediction = torch.sigmoid(self.model(input_data.swapdims(0, 2).unsqueeze(0)))
+        with torch.no_grad:
+            with torch.autocast(dtype=self.dtype, device_type=self.device):
+                prediction = torch.sigmoid(self.model(input_data.swapdims(0, 2).unsqueeze(0)))
         print(prediction)
         return prediction
 
