@@ -267,6 +267,7 @@ def merge_metrics(suffix, **kwargs):
 @torch.no_grad()
 def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normalize: int, device: torch.device):
 
+    # FIXME: probably don't need the .clone(), check if we can remove it
     data, labels = (
         data.clone().to(device, non_blocking=True, memory_format=torch.channels_last),
         labels.clone().to(device, non_blocking=True, dtype=data.dtype)
@@ -315,11 +316,7 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
     # noinspection PyArgumentList
     model.to(device=device, memory_format=torch.channels_last)
 
-    if model_name == 'vit_l_16':
-        params = [param for param in model.parameters() if param.requires_grad]
-        optimizer = get_optimizer(params, lr=lr)
-    else:
-        optimizer = get_optimizer(model.classifier.parameters(), lr=lr)
+    optimizer = get_optimizer([param for param in model.parameters() if param.requires_grad], lr=lr)
 
     train_dataloader, val_dataloader = get_dataloaders(dataset_root, batch_size)
 
@@ -339,13 +336,10 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
 
     checkpoint_saver = partial(save_checkpoint, logging_dir=logging_dir, model=model, optimizer=optimizer, normalize=normalize, batch_size=batch_size)
 
-
     best_val_loss = torch.inf
     global_step = 0  # make it a tensor so we can do in-place edits
 
     best_results = {}
-
-    # with torch.autocast('cuda', dtype=torch.bfloat16):
 
     n_epochs = 250
     for epoch in range(n_epochs):
@@ -383,7 +377,6 @@ def log_metrics(loss, logits, targets, log_suffix, global_step, write_metrics_f)
 
 @torch.no_grad()
 def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f):
-    # global DATA_SAMPLE
     val_losses, val_logits, val_targets = [], [], []
 
     model.eval()
@@ -525,7 +518,7 @@ def get_argparser():
     parser = argparse.ArgumentParser(description="Hyperparameter tuning for a machine learning model.")
 
     # Add arguments
-    parser.add_argument('--dataset_root', type=Path, default=f'/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data')
+    parser.add_argument('dataset_root', type=Path)
     parser.add_argument('--lr', type=float, help='Learning rate for the model.', default=1e-4)
     parser.add_argument('--batch_size', type=int, help='Batch size', default=12)
     parser.add_argument('--model_name', type=str, help='The model to use.', default='resnet50',
@@ -557,7 +550,6 @@ def set_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
     random.seed(seed)
-    torch.backends.cudnn.benchmark = False
     # torch.use_deterministic_algorithms(True)
     # torch.utils.deterministic.fill_uninitialized_memory = False
 
