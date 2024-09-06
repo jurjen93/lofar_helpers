@@ -56,7 +56,7 @@ def main(args):
     checkpoint = load_checkpoint(model_path, args.device)
     model = checkpoint.get("model")
 
-    input_data: torch.Tensor = process_fits(args.input)
+    input_data: torch.Tensor = torch.from_numpy(process_fits(args.input))
 
     prediction = model(input_data.swapdims(0, 2).unsqueeze(0))
     print(prediction)
