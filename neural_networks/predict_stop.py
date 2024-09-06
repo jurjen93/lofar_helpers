@@ -1,4 +1,5 @@
 import argparse
+import functools
 import logging
 import os
 import tarfile
@@ -7,6 +8,7 @@ import torch
 from tqdm import tqdm
 from webdav3.client import Client
 
+from lofar_helpers.neural_networks.inference import variational_dropout
 from pre_processing_for_ml import process_fits
 from train_nn import load_checkpoint
 from train_nn import ImagenetTransferLearning  # noqa
@@ -48,7 +50,7 @@ def download_model(cache, model):
 
 
 class Predictor:
-    def __init__(self, cache, model, device):
+    def __init__(self, cache, model, device: torch.device, variational_dropout: int):
         self.dtype = torch.float32
         self.device = device
         model_path = os.path.join(cache, model)
@@ -59,14 +61,33 @@ class Predictor:
         self.model = checkpoint.get("model").to(self.dtype)
         self.model.eval()
 
-    def predict(self, input_path):
+        assert variational_dropout >= 0
+        self.variational_dropout = variational_dropout
+
+    @functools.lru_cache(maxsize=1)
+    def prepare_data(self, input_path):
         input_data: torch.Tensor = torch.from_numpy(process_fits(input_path))
         input_data = input_data.to(self.dtype)
-        with torch.no_grad():
-            with torch.autocast(dtype=self.dtype, device_type=self.device):
-                prediction = torch.sigmoid(self.model(input_data.swapdims(0, 2).unsqueeze(0)))
-        print(prediction)
-        return prediction
+        input_data = input_data.swapdims(0, 2).unsqueeze(0)
+        return input_data
+
+    @torch.no_grad()
+    def predict(self, input_path):
+        data = self.prepare_data(input_path)
+
+        with torch.autocast(dtype=self.dtype, device_type=self.device):
+            if self.variational_dropout:
+                self.model.feature_extractor.eval()
+                self.model.classifier.train()
+
+            predictions = torch.concat([torch.sigmoid(self.model(data)).clone() for _ in range(self.variational_dropout)], dim=1)
+
+            mean = predictions.mean()
+            std = predictions.std()
+
+
+        print(mean, std)
+        return mean, std
 
 
 def process_args():
@@ -82,12 +103,13 @@ def process_args():
         help="Name of the model."
     )
     parser.add_argument("--input", type=str, default=None, help="Path to the fits file.")
-    parser.add_argument("--device", type=str, default="cpu", help="Device for inference, default=cpu.")
+    parser.add_argument("--device", type=torch.device, default=torch.device("cpu"), help="Device for inference, default=cpu.")
+    parser.add_argument("--variational_dropout", type=int, default=0, help="Amount of times to run the model to obtain a variational estimate of the stdev")
     return parser.parse_args()
 
 
 def main(args):
-    predictor = Predictor(cache=args.cache, device=args.device, model=args.model)
+    predictor = Predictor(cache=args.cache, device=args.device, model=args.model, variational_dropout=args.variational_dropout)
     print("Initialized models")
     predictor.predict(input_path=args.input)
 
