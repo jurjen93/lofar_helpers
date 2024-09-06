@@ -21,6 +21,7 @@ from pre_processing_for_ml import FitsDataset
 PROFILE = False
 SEED = None
 
+
 def init_vit(model_name):
     assert model_name == 'vit_l_16'
 
@@ -36,6 +37,7 @@ def init_vit(model_name):
     del backbone.heads
 
     return backbone, hidden_dim
+
 
 def init_cnn(name: str):
     # use partial to prevent loading all models at once
@@ -104,13 +106,12 @@ def augmentation(inputs):
     return inputs
 
 
-
 class ImagenetTransferLearning(nn.Module):
     def __init__(
-            self,
-            model_name: str = 'resnet50',
-            dropout_p: float = 0.25,
-            use_compile: bool = True
+        self,
+        model_name: str = 'resnet50',
+        dropout_p: float = 0.25,
+        use_compile: bool = True
     ):
         super().__init__()
 
@@ -138,7 +139,6 @@ class ImagenetTransferLearning(nn.Module):
 
         if use_compile:
             self.forward = torch.compile(model=self.forward, mode='reduce-overhead')
-
 
     # @partial(torch.compile, mode='reduce-overhead')
     def cnn_forward(self, x):
@@ -181,6 +181,7 @@ class ImagenetTransferLearning(nn.Module):
         else:
             self.classifier.train()
 
+
 def get_dataloaders(dataset_root, batch_size):
     num_workers = min(12, len(os.sched_getaffinity(0)))
     prefetch_factor, persistent_workers = (
@@ -192,7 +193,6 @@ def get_dataloaders(dataset_root, batch_size):
         generators[mode] = torch.Generator()
         if SEED is not None:
             generators[mode].manual_seed(SEED)
-
 
     loaders = tuple(
         MultiEpochsDataLoader(
@@ -218,10 +218,12 @@ def get_logging_dir(logging_root: str, /, **kwargs):
     version = int(os.getenv('SLURM_ARRAY_JOB_ID', os.getenv('SLURM_JOB_ID', 0)))
     version_appendix = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
     while True:
-        version_dir = "__".join((
-            f"version_{version}_{version_appendix}",
-            *(f"{k}_{v}" for k, v in kwargs.items())
-        ))
+        version_dir = "__".join(
+            (
+                f"version_{version}_{version_appendix}",
+                *(f"{k}_{v}" for k, v in kwargs.items())
+            )
+        )
 
         logging_dir = Path(logging_root) / version_dir
 
@@ -230,6 +232,7 @@ def get_logging_dir(logging_root: str, /, **kwargs):
         version_appendix += 1
 
     return str(logging_dir.resolve())
+
 
 def get_tensorboard_logger(logging_dir):
     writer = SummaryWriter(log_dir=str(logging_dir))
@@ -266,7 +269,6 @@ def merge_metrics(suffix, **kwargs):
 
 @torch.no_grad()
 def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normalize: int, device: torch.device):
-
     # FIXME: probably don't need the .clone(), check if we can remove it
     data, labels = (
         data.clone().to(device, non_blocking=True, memory_format=torch.channels_last),
@@ -274,13 +276,23 @@ def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normaliz
     )
 
     if resize:
-      data = interpolate(data, size=resize, mode='bilinear', align_corners=False)
+        data = interpolate(data, size=resize, mode='bilinear', align_corners=False)
 
     data = normalize_inputs(data, mode=normalize)
 
     return data, labels
 
-def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: int, dropout_p: float, batch_size: int, use_compile: bool):
+
+def main(
+    dataset_root: str,
+    model_name: str,
+    lr: float,
+    resize: int,
+    normalize: int,
+    dropout_p: float,
+    batch_size: int,
+    use_compile: bool
+):
     torch.set_float32_matmul_precision('high')
 
     profiler_kwargs = {}
@@ -303,7 +315,7 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
         model=model_name,
         lr=lr,
         normalize=normalize,
-        dropout_p=dropout_p, 
+        dropout_p=dropout_p,
         use_compile=use_compile
     )
 
@@ -331,10 +343,22 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
         for step_f in (train_step, val_step)
     )
 
-    train_step_f = partial(train_step_f, train_dataloader=train_dataloader, optimizer=optimizer, logging_interval=logging_interval)
+    train_step_f = partial(
+        train_step_f,
+        train_dataloader=train_dataloader,
+        optimizer=optimizer,
+        logging_interval=logging_interval
+    )
     val_step_f = partial(val_step_f, val_dataloader=val_dataloader)
 
-    checkpoint_saver = partial(save_checkpoint, logging_dir=logging_dir, model=model, optimizer=optimizer, normalize=normalize, batch_size=batch_size)
+    checkpoint_saver = partial(
+        save_checkpoint,
+        logging_dir=logging_dir,
+        model=model,
+        optimizer=optimizer,
+        normalize=normalize,
+        batch_size=batch_size
+    )
 
     best_val_loss = torch.inf
     global_step = 0  # make it a tensor so we can do in-place edits
@@ -352,7 +376,14 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
             checkpoint_saver(global_step=global_step)
             best_val_loss = val_loss
         with torch.no_grad():
-            log_metrics(loss=best_val_loss, logits=best_results['logits'], targets=best_results['targets'], global_step=global_step, log_suffix='validation_best', write_metrics_f=partial(write_metrics, writer=writer))
+            log_metrics(
+                loss=best_val_loss,
+                logits=best_results['logits'],
+                targets=best_results['targets'],
+                global_step=global_step,
+                log_suffix='validation_best',
+                write_metrics_f=partial(write_metrics, writer=writer)
+            )
 
     if PROFILE:
         profiler.stop()
@@ -374,6 +405,7 @@ def log_metrics(loss, logits, targets, log_suffix, global_step, write_metrics_f)
     )
 
     write_metrics_f(metrics=metrics, global_step=global_step)
+
 
 @torch.no_grad()
 def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f):
@@ -417,7 +449,13 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
         optimizer.step()
         if i % logging_interval == 0:
             with torch.no_grad():
-                metrics_logger(loss=mean_loss.detach(), logits=logits.detach(), targets=labels, global_step=global_step, log_suffix='training')
+                metrics_logger(
+                    loss=mean_loss.detach(),
+                    logits=logits.detach(),
+                    targets=labels,
+                    global_step=global_step,
+                    log_suffix='training'
+                )
 
     return global_step
 
@@ -459,13 +497,15 @@ class _RepeatSampler(object):
 
 @lru_cache(maxsize=1)
 def get_transforms():
-    return v2.Compose([
-        v2.ColorJitter(brightness=.5, hue=.3, saturation=0.1, contrast=0.1),
-        v2.RandomInvert(),
-        v2.RandomEqualize(),
-        v2.RandomVerticalFlip(p=0.5),
-        v2.RandomHorizontalFlip(p=0.5),
-    ])
+    return v2.Compose(
+        [
+            v2.ColorJitter(brightness=.5, hue=.3, saturation=0.1, contrast=0.1),
+            v2.RandomInvert(),
+            v2.RandomEqualize(),
+            v2.RandomVerticalFlip(p=0.5),
+            v2.RandomHorizontalFlip(p=0.5),
+        ]
+    )
 
 
 def save_checkpoint(logging_dir, model, optimizer, global_step, **kwargs):
@@ -485,9 +525,18 @@ def save_checkpoint(logging_dir, model, optimizer, global_step, **kwargs):
         f=(logging_dir + f'/ckpt_step={global_step}.pth')
     )
 
-def load_checkpoint(ckpt_path):
 
-    ckpt_dict = torch.load(ckpt_path, weights_only=False)
+def load_checkpoint(ckpt_path):
+    if os.path.isfile(ckpt_path):
+        ckpt_dict = torch.load(ckpt_path, weights_only=False)
+    else:
+        files = os.listdir(ckpt_path)
+        possible_checkpoints = list(filter(lambda x: x.endswith(".pth"), files))
+        if len(possible_checkpoints) != 1:
+            raise ValueError(
+                f"Too many checkpoint files in the given checkpoint directory. Please specify the model you want to load directly."
+            )
+        ckpt_dict = torch.load(f'{ckpt_path}/{possible_checkpoints[0]}')
 
     # ugh, this is so ugly, something something hindsight something something 20-20
     # FIXME: probably should do a pattern match, but this works for now
@@ -510,6 +559,7 @@ def load_checkpoint(ckpt_path):
 
     return {'model': model, 'optim': optim, 'normalize': normalize}
 
+
 def get_argparser():
     """
     Create and return an argument parser for hyperparameter tuning.
@@ -521,8 +571,10 @@ def get_argparser():
     parser.add_argument('dataset_root', type=Path)
     parser.add_argument('--lr', type=float, help='Learning rate for the model.', default=1e-4)
     parser.add_argument('--batch_size', type=int, help='Batch size', default=12)
-    parser.add_argument('--model_name', type=str, help='The model to use.', default='resnet50',
-                        choices=['resnet50', 'resnet152', 'resnext50_32x4d', 'resnext101_64x4d', 'efficientnet_v2_l', 'vit_l_16'])
+    parser.add_argument(
+        '--model_name', type=str, help='The model to use.', default='resnet50',
+        choices=['resnet50', 'resnet152', 'resnext50_32x4d', 'resnext101_64x4d', 'efficientnet_v2_l', 'vit_l_16']
+    )
     parser.add_argument('--normalize', type=int, help='Whether to do normalization', default=0, choices=[0, 1, 2])
     parser.add_argument('--dropout_p', type=float, help='Dropout probability', default=0.25)
     parser.add_argument('--resize', type=int, default=0, help="size to resize to. Will be set to 512 for ViT.")
@@ -546,6 +598,7 @@ def sanity_check_args(parsed_args):
 
     return parsed_args
 
+
 def set_seed(seed):
     np.random.seed(seed)
     torch.manual_seed(seed)
@@ -553,10 +606,12 @@ def set_seed(seed):
     # torch.use_deterministic_algorithms(True)
     # torch.utils.deterministic.fill_uninitialized_memory = False
 
+
 def seed_worker(worker_id):
-    worker_seed = torch.initial_seed() % 2**32
+    worker_seed = torch.initial_seed() % 2 ** 32
     np.random.seed(worker_id)
     random.seed(worker_seed)
+
 
 if __name__ == '__main__':
     args = get_argparser()

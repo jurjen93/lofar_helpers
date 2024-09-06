@@ -3,14 +3,11 @@ import logging
 import os
 import tarfile
 
-import torch
 from tqdm import tqdm
-
 from webdav3.client import Client
 
-# from train_nn import ImagenetTransferLearning
-from neural_networks.pre_processing_for_ml import process_fits
-from neural_networks.train_nn import ImagenetTransferLearning, load_checkpoint
+from pre_processing_for_ml import process_fits
+from train_nn import load_checkpoint
 
 
 def download_model(cache, model):
