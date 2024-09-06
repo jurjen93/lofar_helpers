@@ -48,14 +48,14 @@ def download_model(cache, model):
 
 
 class Predictor:
-    def __init__(self, args):
+    def __init__(self, cache, model, device):
         self.dtype = torch.float32
-        self.device = args.device
-        model_path = os.path.join(args.cache, args.model)
+        self.device = device
+        model_path = os.path.join(cache, model)
         if not os.path.exists(model_path):
-            download_model(args.cache, args.model)
+            download_model(cache, model)
 
-        checkpoint = load_checkpoint(model_path, args.device)
+        checkpoint = load_checkpoint(model_path, device)
         self.model = checkpoint.get("model").to(self.dtype)
         self.model.eval()
 
@@ -87,7 +87,7 @@ def process_args():
 
 
 def main(args):
-    predictor = Predictor(args)
+    predictor = Predictor(cache=args.cache, device=args.device, model=args.model)
     print("Initialized models")
     predictor.predict(input_path=args.input)
 
