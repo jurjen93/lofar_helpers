@@ -52,7 +52,8 @@ def main(args):
         # Download model
         download_model(args.cache, args.model)
 
-    model = load_checkpoint(model_path, args.device)
+    checkpoint = load_checkpoint(model_path, args.device)
+    model = checkpoint.get("model")
 
     input_data = process_fits(args.input)
 
