@@ -57,6 +57,7 @@ def main(args):
     model = checkpoint.get("model")
 
     input_data: torch.Tensor = torch.from_numpy(process_fits(args.input))
+    input_data.to(torch.float32)
 
     with torch.autocast(dtype=torch.float32, device_type=args.device):
         prediction = model(input_data.swapdims(0, 2).unsqueeze(0))
