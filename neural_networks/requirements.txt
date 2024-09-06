@@ -1,0 +1,9 @@
+matplotlib
+torch
+torchvision
+torcheval
+tqdm
+matplotlib
+joblib
+astropy
+

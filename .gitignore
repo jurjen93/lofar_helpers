@@ -37,3 +37,7 @@ mergemerge.py
 #videos
 *.mp4
 *.gif
+# runs, output file and environment
+runs/
+out/
+venv/
