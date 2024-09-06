@@ -53,7 +53,6 @@ class Predictor:
         self.device = args.device
         model_path = os.path.join(args.cache, args.model)
         if not os.path.exists(model_path):
-            # Download model
             download_model(args.cache, args.model)
 
         checkpoint = load_checkpoint(model_path, args.device)
@@ -64,7 +63,7 @@ class Predictor:
         input_data = input_data.to(self.dtype)
 
         with torch.autocast(dtype=self.dtype, device_type=self.device):
-            prediction = self.model(input_data.swapdims(0, 2).unsqueeze(0))
+            prediction = torch.sigmoid(self.model(input_data.swapdims(0, 2).unsqueeze(0)))
         print(prediction)
         return prediction
 
