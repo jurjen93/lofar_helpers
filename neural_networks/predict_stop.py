@@ -8,6 +8,7 @@ from webdav3.client import Client
 
 from pre_processing_for_ml import process_fits
 from train_nn import load_checkpoint
+from train_nn import ImagenetTransferLearning  # noqa
 
 
 def download_model(cache, model):
