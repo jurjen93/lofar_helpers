@@ -57,7 +57,7 @@ def main(args):
 
     input_data = process_fits(args.input)
 
-    prediction = model(input_data)
+    prediction = model(input_data[None])
     print(prediction)
     return prediction
 
