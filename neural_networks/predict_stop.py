@@ -23,7 +23,6 @@ def download_model(cache, model):
 
     client = Client(options)
     files = client.list()
-    print(files)
     if tarred_file not in files:
         logging.error(f"Available files: {files}")
         raise ValueError("No file exists remotely with this name.")

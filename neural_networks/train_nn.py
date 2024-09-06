@@ -1,5 +1,6 @@
 import argparse
 import os
+import pickle
 from functools import partial, lru_cache
 from pathlib import Path
 
@@ -536,11 +537,14 @@ def load_checkpoint(ckpt_path):
             raise ValueError(
                 f"Too many checkpoint files in the given checkpoint directory. Please specify the model you want to load directly."
             )
-        ckpt_dict = torch.load(f'{ckpt_path}/{possible_checkpoints[0]}')
+        ckpt_path = f'{ckpt_path}/{possible_checkpoints[0]}'
+        ckpt_dict = torch.load(ckpt_path)
 
     # ugh, this is so ugly, something something hindsight something something 20-20
     # FIXME: probably should do a pattern match, but this works for now
     kwargs = str(Path(ckpt_path).parent).split('/')[-1].split('__')
+
+    # model_name, lr, normalize, drop_p = pickle.load(ckpt_path + ".cfg")
 
     # strip 'model_' from the name
     model_name = kwargs[1][6:]
@@ -549,7 +553,10 @@ def load_checkpoint(ckpt_path):
     dropout_p = float(kwargs[4].split('_')[-1])
 
     model = ckpt_dict['model'](model_name=model_name, dropout_p=dropout_p)
-    model.load_state_dict(ckpt_dict['model_state_dict'])
+    try:
+        model.load_state_dict(ckpt_dict['model_state_dict'])
+    except:
+        model.load_state_dict(ckpt_dict['model_state_dict'], device=torch.device("cpu"))
 
     # FIXME: add optim class and args to state dict
     optim = ckpt_dict.get('optimizer', torch.optim.AdamW)(
