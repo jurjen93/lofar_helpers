@@ -297,7 +297,7 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
         # profiler.start()
 
     logging_dir = get_logging_dir(
-        str(Path.cwd() / 'runs'),
+        str(Path.cwd() / 'grid_search'),
         # kwargs
         model=model_name,
         lr=lr,
@@ -323,12 +323,7 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
 
     train_dataloader, val_dataloader = get_dataloaders(dataset_root, batch_size)
 
-    for data, labels in train_dataloader:
-        print(data.shape)
-        print(labels.shape)
-        exit()
-
-    logging_interval = 50
+    logging_interval = 10
 
     train_step_f, val_step_f = (
         partial(
@@ -380,7 +375,7 @@ def log_metrics(loss, logits, targets, log_suffix, global_step, write_metrics_f)
     metrics = merge_metrics(
         bce_loss=loss,
         au_pr_curve=ap,
-        pr_curve=(probs, targets),
+        pr_curve=(probs.to(torch.float32), targets.to(torch.float32)),
         suffix=log_suffix
     )
 

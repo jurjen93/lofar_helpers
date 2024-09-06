@@ -281,6 +281,8 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
     torch.set_float32_matmul_precision('high')
     torch.cuda.set_device(local_rank)
     dist.init_process_group("NCCL", rank=rank, world_size=world_size)
+    
+    
 
     profiler_kwargs = {}
 
@@ -303,7 +305,7 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
         lr=lr,
         normalize=normalize,
         dropout_p=dropout_p, 
-        use_compile=use_compile, 
+        use_compile=use_compile,
         gpus=world_size
     )
     writer = get_tensorboard_logger(logging_dir) if not rank else None
@@ -328,7 +330,7 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
 
     train_dataloader, val_dataloader = get_dataloaders(dataset_root, batch_size)
 
-    logging_interval = 50
+    logging_interval = 10
 
     train_step_f, val_step_f = (
         partial(
@@ -411,6 +413,7 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f,
 
 def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, logging_interval, metrics_logger, local_rank, rank):
     model.train()
+    train_losses, train_logits, train_targets = [], [], []
     for i, (data, labels) in tqdm(enumerate(train_dataloader), desc='Training', total=len(train_dataloader), disable=rank):
         global_step += 1
 
@@ -441,6 +444,9 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
         # else:
         #     print(f"Process {rank}: Gradients are NOT synchronized!")
         optimizer.step()
+        train_losses.append(loss.detach().clone())
+        train_logits.append(logits.clone())
+        train_targets.append(labels)
         # dist.barrier()
         # for grad in grads:
         #     print(grad)
@@ -450,7 +456,9 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
 
         if i % logging_interval == 0 and not rank:
             with torch.no_grad():
-                metrics_logger(loss=mean_loss.detach(), logits=logits.detach(), targets=labels, global_step=global_step, log_suffix='training')
+                losses, logits, targets = map(torch.concatenate, (train_losses, train_logits, train_targets))
+                metrics_logger(loss=losses.mean(), logits=logits, targets=targets, global_step=global_step, log_suffix='training')
+                train_losses, train_logits, train_targets = [], [], []
 
 
     return global_step

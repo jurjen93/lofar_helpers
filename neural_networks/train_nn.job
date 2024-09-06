@@ -1,19 +1,16 @@
 #!/bin/bash
-#SBATCH -p gpu
+#SBATCH --job-name=cortex_grid_search
+#SBATCH -p gpu_h100
 #SBATCH -t 08:00:00
 #SBATCH --gpus 1
+#SBATCH --output=out/multi_cortex%A_%a.out
 
 set -e
 
-CORTEX_PATH=$HOME/CORTEX
-DATA_IN_PATH='/scratch-shared/CORTEX/'
-DATA_TRAINDATA_PATH='/dev/shm/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
+cd ~/projects/lofar_helpers/neural_networks
 
-# Copy input data to /dev/shm/
-find $DATA_IN_PATH -name '*npz' | xargs -n 1 -P 18 -i rsync -R {} '/dev/shm/'
-
-# Activate venv
-source $CORTEX_PATH/venv/bin/activate
+source venv/bin/activate
+module load 2023
 
 # Read the parameter file
 PARAM_FILE=parameters.txt
@@ -24,7 +21,7 @@ SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID:=1}
 PARAMS=$(sed -n "${SLURM_ARRAY_TASK_ID}p" $PARAM_FILE)
 
 # Parse the parameters
-read model lr normalize dropout_p <<< $PARAMS
+read model lr normalize dropout_p batch_size <<< $PARAMS
 
 # Execute your Python script with the given parameters
-python train_nn.py $DATA_TRAINDATA_PATH --model $model --lr $lr --normalize $normalize --dropout_p $dropout_p
+python train_nn.py $DATA_TRAINDATA_PATH --model $model --lr $lr --normalize $normalize --dropout_p $dropout_p --batch_size $batch_size

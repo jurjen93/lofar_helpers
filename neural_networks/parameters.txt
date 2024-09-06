@@ -1,12 +1,72 @@
-efficientnet_v2_l 1e-04 0 0.1
-efficientnet_v2_l 1e-04 2 0.1
-efficientnet_v2_l 1e-03 0 0.1
-efficientnet_v2_l 1e-03 2 0.1
-efficientnet_v2_l 1e-04 0 0.25
-efficientnet_v2_l 1e-04 2 0.25
-efficientnet_v2_l 1e-03 0 0.25
-efficientnet_v2_l 1e-03 2 0.25
-efficientnet_v2_l 1e-04 0 0.4
-efficientnet_v2_l 1e-04 2 0.4
-efficientnet_v2_l 1e-03 0 0.4
-efficientnet_v2_l 1e-03 2 0.4
+resnext101_64x4d 1e-04 0 0.1 64
+resnext101_64x4d 1e-03 0 0.1 64
+resnext101_64x4d 1e-04 0 0.25 64
+resnext101_64x4d 1e-03 0 0.25 64
+resnext101_64x4d 1e-04 0 0.4 64
+resnext101_64x4d 1e-03 0 0.4 64
+resnext101_64x4d 1e-05 0 0.4 64
+resnext101_64x4d 1e-05 0 0.25 64
+resnext101_64x4d 1e-05 0 0.1 64
+resnext101_64x4d 1e-04 0 0.1 32
+resnext101_64x4d 1e-03 0 0.1 32
+resnext101_64x4d 1e-04 0 0.25 32
+resnext101_64x4d 1e-03 0 0.25 32
+resnext101_64x4d 1e-04 0 0.4 32
+resnext101_64x4d 1e-03 0 0.4 32
+resnext101_64x4d 1e-05 0 0.4 32
+resnext101_64x4d 1e-05 0 0.25 32
+resnext101_64x4d 1e-05 0 0.1 32
+efficientnet_v2_l 1e-04 0 0.1 64
+efficientnet_v2_l 1e-03 0 0.1 64
+efficientnet_v2_l 1e-04 0 0.25 64
+efficientnet_v2_l 1e-03 0 0.25 64
+efficientnet_v2_l 1e-04 0 0.4 64
+efficientnet_v2_l 1e-03 0 0.4 64
+efficientnet_v2_l 1e-05 0 0.4 64
+efficientnet_v2_l 1e-05 0 0.25 64
+efficientnet_v2_l 1e-05 0 0.1 64
+efficientnet_v2_l 1e-04 0 0.1 32
+efficientnet_v2_l 1e-03 0 0.1 32
+efficientnet_v2_l 1e-04 0 0.25 32
+efficientnet_v2_l 1e-03 0 0.25 32
+efficientnet_v2_l 1e-04 0 0.4 32
+efficientnet_v2_l 1e-03 0 0.4 32
+efficientnet_v2_l 1e-05 0 0.4 32
+efficientnet_v2_l 1e-05 0 0.25 32
+efficientnet_v2_l 1e-05 0 0.1 32
+vit_l_16 1e-04 0 0.1 64
+vit_l_16 1e-03 0 0.1 64
+vit_l_16 1e-04 0 0.25 64
+vit_l_16 1e-03 0 0.25 64
+vit_l_16 1e-04 0 0.4 64
+vit_l_16 1e-03 0 0.4 64
+vit_l_16 1e-05 0 0.4 64
+vit_l_16 1e-05 0 0.25 64
+vit_l_16 1e-05 0 0.1 64
+vit_l_16 1e-04 0 0.1 32
+vit_l_16 1e-03 0 0.1 32
+vit_l_16 1e-04 0 0.25 32
+vit_l_16 1e-03 0 0.25 32
+vit_l_16 1e-04 0 0.4 32
+vit_l_16 1e-03 0 0.4 32
+vit_l_16 1e-05 0 0.4 32
+vit_l_16 1e-05 0 0.25 32
+vit_l_16 1e-05 0 0.1 32
+resnext50_32x4d 1e-04 0 0.1 64
+resnext50_32x4d 1e-03 0 0.1 64
+resnext50_32x4d 1e-04 0 0.25 64
+resnext50_32x4d 1e-03 0 0.25 64
+resnext50_32x4d 1e-04 0 0.4 64
+resnext50_32x4d 1e-03 0 0.4 64
+resnext50_32x4d 1e-05 0 0.4 64
+resnext50_32x4d 1e-05 0 0.25 64
+resnext50_32x4d 1e-05 0 0.1 64
+resnext50_32x4d 1e-04 0 0.1 32
+resnext50_32x4d 1e-03 0 0.1 32
+resnext50_32x4d 1e-04 0 0.25 32
+resnext50_32x4d 1e-03 0 0.25 32
+resnext50_32x4d 1e-04 0 0.4 32
+resnext50_32x4d 1e-03 0 0.4 32
+resnext50_32x4d 1e-05 0 0.4 32
+resnext50_32x4d 1e-05 0 0.25 32
+resnext50_32x4d 1e-05 0 0.1 32
