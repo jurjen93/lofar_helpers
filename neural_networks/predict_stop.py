@@ -50,7 +50,7 @@ def download_model(cache, model):
 
 
 class Predictor:
-    def __init__(self, cache, model, device: torch.device, variational_dropout: int):
+    def __init__(self, cache, model, device: str, variational_dropout: int):
         self.dtype = torch.float32
         self.device = device
         model_path = os.path.join(cache, model)
@@ -103,7 +103,7 @@ def process_args():
         help="Name of the model."
     )
     parser.add_argument("--input", type=str, default=None, help="Path to the fits file.")
-    parser.add_argument("--device", type=torch.device, default=torch.device("cpu"), help="Device for inference, default=cpu.")
+    parser.add_argument("--device", type=str, default="cpu", help="Device for inference, default=cpu.")
     parser.add_argument("--variational_dropout", type=int, default=0, help="Amount of times to run the model to obtain a variational estimate of the stdev")
     return parser.parse_args()
 
