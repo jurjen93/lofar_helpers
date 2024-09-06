@@ -527,9 +527,9 @@ def save_checkpoint(logging_dir, model, optimizer, global_step, **kwargs):
     )
 
 
-def load_checkpoint(ckpt_path):
+def load_checkpoint(ckpt_path, device="gpu"):
     if os.path.isfile(ckpt_path):
-        ckpt_dict = torch.load(ckpt_path, weights_only=False)
+        ckpt_dict = torch.load(ckpt_path, weights_only=False, map_location=device)
     else:
         files = os.listdir(ckpt_path)
         possible_checkpoints = list(filter(lambda x: x.endswith(".pth"), files))
@@ -538,7 +538,7 @@ def load_checkpoint(ckpt_path):
                 f"Too many checkpoint files in the given checkpoint directory. Please specify the model you want to load directly."
             )
         ckpt_path = f'{ckpt_path}/{possible_checkpoints[0]}'
-        ckpt_dict = torch.load(ckpt_path)
+        ckpt_dict = torch.load(ckpt_path, weights_only=False, map_location=device)
 
     # ugh, this is so ugly, something something hindsight something something 20-20
     # FIXME: probably should do a pattern match, but this works for now
@@ -553,10 +553,7 @@ def load_checkpoint(ckpt_path):
     dropout_p = float(kwargs[4].split('_')[-1])
 
     model = ckpt_dict['model'](model_name=model_name, dropout_p=dropout_p)
-    try:
-        model.load_state_dict(ckpt_dict['model_state_dict'])
-    except:
-        model.load_state_dict(ckpt_dict['model_state_dict'], device=torch.device("cpu"))
+    model.load_state_dict(ckpt_dict['model_state_dict'])
 
     # FIXME: add optim class and args to state dict
     optim = ckpt_dict.get('optimizer', torch.optim.AdamW)(

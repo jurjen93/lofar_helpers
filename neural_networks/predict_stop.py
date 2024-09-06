@@ -52,7 +52,7 @@ def main(args):
         # Download model
         download_model(args.cache, args.model)
 
-    model = load_checkpoint(model_path)
+    model = load_checkpoint(model_path, args.device)
 
     input_data = process_fits(args.input)
 
@@ -74,6 +74,7 @@ def process_args():
         help="Name of the model."
     )
     parser.add_argument("--input", type=str, default=None, help="Path to the fits file.")
+    parser.add_argument("--device", type=str, default="cpu", help="Device for inference, default=cpu.")
     return parser.parse_args()
 
 
