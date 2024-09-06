@@ -3,6 +3,7 @@ import logging
 import os
 import tarfile
 
+import torch
 from tqdm import tqdm
 from webdav3.client import Client
 
@@ -55,9 +56,9 @@ def main(args):
     checkpoint = load_checkpoint(model_path, args.device)
     model = checkpoint.get("model")
 
-    input_data = process_fits(args.input)
+    input_data: torch.Tensor = process_fits(args.input)
 
-    prediction = model(input_data[None])
+    prediction = model(input_data.swapdims(0, 2).unsqueeze(0))
     print(prediction)
     return prediction
 
