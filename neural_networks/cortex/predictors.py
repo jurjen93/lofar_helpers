@@ -8,7 +8,7 @@ import torch
 from tqdm import tqdm
 from webdav3.client import Client
 
-from lofar_helpers.neural_networks.inference import variational_dropout
+from inference import variational_dropout
 from pre_processing_for_ml import process_fits
 from train_nn import load_checkpoint
 from train_nn import ImagenetTransferLearning  # noqa
