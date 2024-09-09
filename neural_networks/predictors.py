@@ -49,7 +49,7 @@ def download_model(cache, model):
     os.remove(full_path_tar)
 
 
-class Predictor:
+class StopPredictor:
     def __init__(self, cache, model, device: str, variational_dropout: int):
         self.dtype = torch.float32
         self.device = device
@@ -109,7 +109,7 @@ def process_args():
 
 
 def main(args):
-    predictor = Predictor(cache=args.cache, device=args.device, model=args.model, variational_dropout=args.variational_dropout)
+    predictor = StopPredictor(cache=args.cache, device=args.device, model=args.model, variational_dropout=args.variational_dropout)
     print("Initialized models")
     predictor.predict(input_path=args.input)
 

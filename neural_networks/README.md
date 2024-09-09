@@ -39,3 +39,23 @@ The dataloader expect filetree to be in the following format:
   |- continue_val
   |- stop_val
 ```
+
+### Inference guide
+
+Install this package as follows:
+```
+pip install -e "git+https://github.com/jurjen93/lofar_helpers.git#egg=cortex&subdirectory=neural_networks"
+```
+
+You can then initialize the predictor as follows:
+
+```Python
+from predictors import StopPredictor
+predictor = StopPredictor(cache="/your/model/cache", device="cpu", model="name_of_the_model")
+```
+
+The model cache will be used to store the to-be-downloaded models. This will then reuse downloaded models on subsequent runs of the program.
+
+```Python
+predictor.predict(input_path="/your/input/file.fits")
+```

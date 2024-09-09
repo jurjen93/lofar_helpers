@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="cortex"
+dynamic=["version"]
+requires-python = ">= 3.8"
+description = "AI model inference replacement for early-stopping in calibration iterations."
+authors = [
+  {name = "Jurjen de Jong", email = "jurjendejong@strw.leidenuniv.nl" },
+  {name = "Duncan Kampert", email = "duncan.kampert@surf.nl" },
+  {name = "Robert Jan Schlimbach", email = "robert-jan.schlimbach@surf.nl" },
+]
+readme = "README.md"
+
