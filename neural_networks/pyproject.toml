@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name="cortex"
-dynamic=["version"]
+dynamic=["version", "dependencies"]
 requires-python = ">= 3.8"
 description = "AI model inference replacement for early-stopping in calibration iterations."
 authors = [
@@ -15,7 +15,7 @@ authors = [
 readme = "README.md"
 
 [tool.setuptools]
-packages = ["cortex"]  # Define the package to be included
-dynamic = ["dependencies"]
+packages = ["cortex"]
+
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
