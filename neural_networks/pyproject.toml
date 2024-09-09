@@ -17,3 +17,5 @@ readme = "README.md"
 [tool.setuptools]
 packages = ["cortex"]  # Define the package to be included
 
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
