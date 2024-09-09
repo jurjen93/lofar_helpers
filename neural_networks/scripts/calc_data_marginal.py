@@ -1,6 +1,3 @@
-import itertools
-import math
-import os
 from pathlib import Path
 
 import numpy as np
@@ -9,7 +6,7 @@ import tqdm
 from astropy.io import fits
 from matplotlib import pyplot as plt
 
-from pre_processing_for_ml import FitsDataset
+from cortex.pre_processing_for_ml import FitsDataset
 
 
 def main_fits(root_folder):
