@@ -15,4 +15,4 @@ authors = [
 readme = "README.md"
 
 [tool.setuptools]
-py-modules = ['neural_networks']
+py-modules = []
