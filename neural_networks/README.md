@@ -50,7 +50,7 @@ pip install -e "git+https://github.com/jurjen93/lofar_helpers.git#egg=cortex&sub
 You can then initialize the predictor as follows:
 
 ```Python
-from predictors import StopPredictor
+from cortex.predictors import StopPredictor
 predictor = StopPredictor(cache="/your/model/cache", device="cpu", model="name_of_the_model")
 ```
 

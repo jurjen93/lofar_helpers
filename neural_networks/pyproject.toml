@@ -14,3 +14,5 @@ authors = [
 ]
 readme = "README.md"
 
+[tool.setuptools]
+py-modules = []
