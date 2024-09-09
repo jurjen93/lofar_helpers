@@ -15,4 +15,8 @@ authors = [
 readme = "README.md"
 
 [tool.setuptools]
-py-modules = []
+packages = ["cortex"]  # Specify the package(s) you want to install
+package-dir = {"" = "cortex"}  # Point to the source directory
+
+[tool.setuptools.packages.find]
+where = "cortex"  # This is the path relative to the pyproject.toml
