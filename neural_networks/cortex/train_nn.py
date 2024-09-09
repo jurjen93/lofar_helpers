@@ -17,7 +17,7 @@ from tqdm import tqdm
 import numpy as np
 import random
 
-from pre_processing_for_ml import FitsDataset
+from cortex.pre_processing_for_ml import FitsDataset
 
 PROFILE = False
 SEED = None

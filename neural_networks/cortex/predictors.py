@@ -8,10 +8,10 @@ import torch
 from tqdm import tqdm
 from webdav3.client import Client
 
-from inference import variational_dropout
-from pre_processing_for_ml import process_fits
-from train_nn import load_checkpoint
-from train_nn import ImagenetTransferLearning  # noqa
+from cortex.inference import variational_dropout
+from cortex.pre_processing_for_ml import process_fits
+from cortex.train_nn import load_checkpoint
+from cortex.train_nn import ImagenetTransferLearning  # noqa
 
 
 def download_model(cache, model):

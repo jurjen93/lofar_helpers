@@ -18,7 +18,7 @@ from torchvision import models
 from torchvision.transforms import v2
 from tqdm import tqdm
 
-from pre_processing_for_ml import FitsDataset
+from cortex.pre_processing_for_ml import FitsDataset
 
 PROFILE = False
 

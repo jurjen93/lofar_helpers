@@ -5,8 +5,8 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from train_nn import ImagenetTransferLearning, load_checkpoint
-from pre_processing_for_ml import FitsDataset
+from cortex.train_nn import ImagenetTransferLearning, load_checkpoint
+from cortex.pre_processing_for_ml import FitsDataset
 
 
 @torch.no_grad()
