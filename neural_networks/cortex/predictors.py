@@ -3,12 +3,12 @@ import functools
 import logging
 import os
 import tarfile
+from typing import Optional
 
 import torch
 from tqdm import tqdm
 from webdav3.client import Client
 
-from cortex.inference import variational_dropout
 from cortex.pre_processing_for_ml import process_fits
 from cortex.train_nn import load_checkpoint
 from cortex.train_nn import ImagenetTransferLearning  # noqa
@@ -50,7 +50,7 @@ def download_model(cache, model):
 
 
 class StopPredictor:
-    def __init__(self, cache, model, device: str, variational_dropout: int):
+    def __init__(self, cache, model, device: str, variational_dropout: Optional[int]):
         self.dtype = torch.float32
         self.device = device
         model_path = os.path.join(cache, model)
@@ -61,7 +61,7 @@ class StopPredictor:
         self.model = checkpoint.get("model").to(self.dtype)
         self.model.eval()
 
-        assert variational_dropout >= 0
+        assert variational_dropout is None or variational_dropout >= 0
         self.variational_dropout = variational_dropout
 
     @functools.lru_cache(maxsize=1)
@@ -80,11 +80,13 @@ class StopPredictor:
                 self.model.feature_extractor.eval()
                 self.model.classifier.train()
 
-            predictions = torch.concat([torch.sigmoid(self.model(data)).clone() for _ in range(self.variational_dropout)], dim=1)
+            predictions = torch.concat(
+                [torch.sigmoid(self.model(data)).clone() for _ in range(self.variational_dropout)],
+                dim=1
+                )
 
             mean = predictions.mean()
             std = predictions.std()
-
 
         print(mean, std)
         return mean, std
@@ -104,12 +106,22 @@ def process_args():
     )
     parser.add_argument("--input", type=str, default=None, help="Path to the fits file.")
     parser.add_argument("--device", type=str, default="cpu", help="Device for inference, default=cpu.")
-    parser.add_argument("--variational_dropout", type=int, default=0, help="Amount of times to run the model to obtain a variational estimate of the stdev")
+    parser.add_argument(
+        "--variational_dropout",
+        type=int,
+        default=None,
+        help="Optional: Amount of times to run the model to obtain a variational estimate of the stdev"
+        )
     return parser.parse_args()
 
 
 def main(args):
-    predictor = StopPredictor(cache=args.cache, device=args.device, model=args.model, variational_dropout=args.variational_dropout)
+    predictor = StopPredictor(
+        cache=args.cache,
+        device=args.device,
+        model=args.model,
+        variational_dropout=args.variational_dropout
+        )
     print("Initialized models")
     predictor.predict(input_path=args.input)
 
