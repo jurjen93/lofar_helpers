@@ -50,7 +50,7 @@ def download_model(cache, model):
 
 
 class StopPredictor:
-    def __init__(self, cache, model, device: str, variational_dropout: Optional[int]):
+    def __init__(self, cache, model, device: str, variational_dropout: int = 0):
         self.dtype = torch.float32
         self.device = device
         model_path = os.path.join(cache, model)
@@ -61,11 +61,11 @@ class StopPredictor:
         self.model = checkpoint.get("model").to(self.dtype)
         self.model.eval()
 
-        assert variational_dropout is None or variational_dropout >= 0
+        assert variational_dropout >= 0
         self.variational_dropout = variational_dropout
 
     @functools.lru_cache(maxsize=1)
-    def prepare_data(self, input_path):
+    def _prepare_data(self, input_path):
         input_data: torch.Tensor = torch.from_numpy(process_fits(input_path))
         input_data = input_data.to(self.dtype)
         input_data = input_data.swapdims(0, 2).unsqueeze(0)
@@ -73,17 +73,17 @@ class StopPredictor:
 
     @torch.no_grad()
     def predict(self, input_path):
-        data = self.prepare_data(input_path)
+        data = self._prepare_data(input_path)
 
         with torch.autocast(dtype=self.dtype, device_type=self.device):
-            if self.variational_dropout:
+            if self.variational_dropout > 0:
                 self.model.feature_extractor.eval()
                 self.model.classifier.train()
 
             predictions = torch.concat(
                 [torch.sigmoid(self.model(data)).clone() for _ in range(self.variational_dropout)],
                 dim=1
-                )
+            )
 
             mean = predictions.mean()
             std = predictions.std()
@@ -111,7 +111,7 @@ def process_args():
         type=int,
         default=None,
         help="Optional: Amount of times to run the model to obtain a variational estimate of the stdev"
-        )
+    )
     return parser.parse_args()
 
 
@@ -121,7 +121,7 @@ def main(args):
         device=args.device,
         model=args.model,
         variational_dropout=args.variational_dropout
-        )
+    )
     print("Initialized models")
     predictor.predict(input_path=args.input)
 
