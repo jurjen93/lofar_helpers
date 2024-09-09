@@ -15,6 +15,5 @@ authors = [
 readme = "README.md"
 
 [tool.setuptools]
-packages = ["cortex"]  # Specify the package(s) you want to install
-package-dir = {"" = "neural_networks"}  # Point to the source directory
+packages = ["cortex"]  # Define the package to be included
 
