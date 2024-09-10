@@ -127,6 +127,10 @@ class FindClosestDir:
             # loop over soltabs (example: phase000, amplitude000, ...)
             for soltab in ss._v_groups.keys():
                 st = ss._f_get_child(soltab)
+
+                st.dir._f_remove()
+                self.h5_out.create_array(st, 'dir', np.array([b'Dir00'], dtype='|S5'))
+
                 for axes in ['val', 'weight']:
                     AXES = st._f_get_child(axes).attrs['AXES']
                     dir_idx = AXES.decode('utf8').split(',').index('dir')
