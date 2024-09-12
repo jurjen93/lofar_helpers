@@ -28,6 +28,7 @@ import warnings
 from argparse import ArgumentParser
 from astropy.coordinates import SkyCoord
 from astropy import units as u
+import ast
 
 warnings.filterwarnings('ignore')
 
@@ -183,7 +184,6 @@ def copy_antennas_from_MS_to_h5(MS, h5, solset):
     ss = T.root._f_get_child(solset)
     ants_h5 = [a.decode('utf8') if type(a) != str else a for a in
                T.root._f_get_child(solset)._f_get_child(list(ss._v_groups.keys())[0]).ant[:]]
-
     # Write antenna table
     if ants_h5 == new_antlist:
         overwrite_table(T, solset, 'antenna', antennas_ms, title=None)
@@ -1546,75 +1546,6 @@ class MergeH5:
 
         return self
 
-    def add_empty_directions(self, add_directions=None):
-        """
-        Add default directions (phase all zeros, amplitude all ones)
-
-        :param add_directions: list with directions
-        """
-
-        if not add_directions:
-            return self
-
-        h5 = h5parm(self.h5name_out, readonly=True)
-        filetemp = self.h5name_out.replace('.h5', '_temph5merger.h5')
-        h5_temp = h5parm(filetemp, readonly=False)
-        solset = h5.getSolset(self.solset)
-        solsettemp = h5_temp.makeSolset(self.solset)
-        if type(add_directions[0]) == list:
-            sources = list([source[1] for source in solset.obj.source[:]]) + add_directions
-        else:
-            sources = list([source[1] for source in solset.obj.source[:]]) + [add_directions]
-        if sys.version_info.major > 2:
-            sources = [(bytes('Dir' + str(n).zfill(2), 'utf-8'), list(ns)) for n, ns in enumerate(sources)]
-        else:
-            sources = [(bytes('Dir' + str(n).zfill(2)), list(ns)) for n, ns in enumerate(sources)]
-        if len(sources) > 0:
-            solsettemp.obj.source.append(sources)
-
-        for st in h5.getSolset(self.solset).getSoltabNames():
-            solutiontable = h5.getSolset(self.solset).getSoltab(st)
-            axes = solutiontable.getValues()[1]
-            values = solutiontable.getValues()[0]
-            axes['dir'] = [ns[0] for ns in sources]
-            dir_index = solutiontable.getAxesNames().index('dir')
-            new_shape = list(values.shape)
-            last_idx = new_shape[dir_index]
-            new_idx = last_idx + len(add_directions) - 1
-            new_shape[dir_index] = new_idx
-
-            if 'phase' in st:
-                values_new = zeros(tuple(new_shape))
-            elif 'amplitude' in st:
-                values_new = ones(tuple(new_shape))
-            else:
-                values_new = zeros(tuple(new_shape))
-
-            if dir_index == 0:
-                values_new[0:last_idx, ...] = values
-            elif dir_index == 1:
-                values_new[:, 0:last_idx, ...] = values
-            elif dir_index == 2:
-                values_new[:, :, 0:last_idx, ...] = values
-            elif dir_index == 3:
-                values_new[:, :, :, 0:last_idx, ...] = values
-            elif dir_index == 4:
-                values_new[:, :, :, :, 0:last_idx, ...] = values
-
-            weights = ones(values_new.shape)
-            solsettemp.makeSoltab(remove_numbers(st), axesNames=list(axes.keys()), axesVals=list(axes.values()),
-                                  vals=values_new,
-                                  weights=weights)
-
-            print('Default directions added for ' + self.solset + '/' + st)
-            print('Shape change: ' + str(values.shape) + ' ---> ' + str(values_new.shape))
-
-        h5.close()
-        h5_temp.close()
-
-        os.system('rm ' + self.h5name_out + ' && mv ' + filetemp + ' ' + self.h5name_out)
-
-        return self
 
     def change_pol(self, single=False, nopol=False):
         """
@@ -2827,6 +2758,12 @@ def running_mean(nparray, avgfactor):
     return (cs[avgfactor:] - cs[:-avgfactor]) / float(avgfactor)
 
 
+def repack(h5):
+    """Repack function"""
+    print(f'Repack {h5}')
+    os.system(f'mv {h5} {h5}.tmp && h5repack {h5}.tmp {h5}')
+
+
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
              lin2circ=False, circ2lin=False, add_directions=None, single_pol=None, no_pol=None, use_solset='sol000',
              filtered_dir=None, add_cs=None, add_ms_stations=None, check_output=None, freq_av=None, time_av=None,
@@ -2872,9 +2809,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             h5_check(h5check)
         return
 
-    print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################'
-          '\n\nMerging the following tables:\n' + '\n'.join(h5_tables) + '\n')
-
     # Make sure that the h5 output file is not in the input list (as that will cause conflicts)
     if h5_out in h5_tables:
         sys.exit('ERROR: output h5 file cannot be in your input h5 files.\n'
@@ -2902,9 +2836,35 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
             else:
                 h5_tables[n] = rot_h5
 
+    # If add direction
+    if add_directions:
+        try:
+            from h5_helpers.make_template_h5 import Template
+        except ImportError:
+            print("Missing h5_helpers.make_template_h5.\nPlease git clone lofar_helpers or pull latest lofar_helpers")
+        if type(add_directions) == list:
+            outcoor = add_directions
+        else:
+            outcoor = ast.literal_eval(add_directions)
+
+        if array(outcoor).ndim==1:
+            T = Template(h5_tables[0], 'add_dir.h5')
+            T.make_template(outcoor)
+            h5_tables += ['add_dir.h5']
+            print(f"Added mock direction add_dir.h5 with coordinates {outcoor}")
+        elif array(outcoor).ndim > 1:
+            for n, dir in enumerate(outcoor):
+                T = Template(h5_tables[0], f'add_dir_{n}.h5')
+                T.make_template(dir)
+                h5_tables += [f'add_dir_{n}.h5']
+                print(f"Added mock direction add_dir_{n}.h5 with coordinates {outcoor}")
+
     #################################################
     #################### MERGING ####################
     #################################################
+
+    print('\n##################################\nSTART MERGE HDF5 TABLES FOR LOFAR\n##################################'
+          '\n\nMerging the following tables:\n' + '\n'.join(h5_tables) + '\n')
 
     # Check if frequencies from h5_tables overlap
     if not freq_concat:
@@ -2953,6 +2913,7 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
                 else:
                     if not 'rotation' in st:
                         merge.create_new_dataset('sol000', st)
+
     if merge.doublefulljones:
         merge.matrix_multiplication()
         merge.create_new_dataset('sol000', 'phase')
@@ -2980,10 +2941,6 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
 
     # If amplitude000 or phase000 are missing --> add a template for these
     merge.add_template()
-
-    # Add mock direction
-    if add_directions:
-        merge.add_empty_directions(add_directions)
 
     # Reorder directions for Python 2
     if sys.version_info.major == 2:
@@ -3049,10 +3006,11 @@ def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, conv
     except:
         pass
 
+    repack(h5_out)
+
     # Check content of h5
     if output_summary:
         h5_check(h5_out)
-
     return
 
 
@@ -3075,7 +3033,7 @@ def parse_input():
     parser.add_argument('--merge_all_in_one', action='store_true', help='Merge all solutions into one direction.')
     parser.add_argument('--lin2circ', action='store_true', help='Transform linear polarization to circular.')
     parser.add_argument('--circ2lin', action='store_true', help='Transform circular polarization to linear.')
-    parser.add_argument('--add_direction', default=None, help='Add direction with amplitude 1 and phase 0 (example: --add_direction [0.73,0.12]).')
+    parser.add_argument('--add_directions', default=None, help='Add direction with amplitude 1 and phase 0 (example: --add_directions [0.73,0.12]).')
     parser.add_argument('--single_pol', action='store_true', default=None, help='Return only a single polarization axis if both polarizations are the same.')
     parser.add_argument('--no_pol', action='store_true', default=None, help='Remove polarization axis if both polarizations are the same.')
     # parser.add_argument('--combine_h5', action='store_true', default=None, help='Merge H5 files with different time axis into 1.')
@@ -3129,12 +3087,6 @@ def parse_input():
             h5tablestemp += glob(h5)
         args.h5_tables = h5tablestemp
 
-    if args.add_direction:
-        args.add_direction = args.add_direction.replace('[', '').replace(']', '').split(',')
-        args.add_direction = [float(args.add_direction[0]), float(args.add_direction[1])]
-        if args.add_direction[0] > pi * 6 or args.add_direction[1] > pi * 6:
-            sys.exit('ERROR: Please give --add_direction values in radian.')
-
     if args.h5_time_freq is not None:
         if args.h5_time_freq.lower() == 'true' or str(args.h5_time_freq) == '1':
             args.h5_time_freq = True
@@ -3166,7 +3118,7 @@ def main():
              merge_all_in_one=args.merge_all_in_one,
              lin2circ=args.lin2circ,
              circ2lin=args.circ2lin,
-             add_directions=args.add_direction,
+             add_directions=args.add_directions,
              single_pol=args.single_pol,
              no_pol=args.no_pol,
              use_solset=args.usesolset,
