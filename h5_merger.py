@@ -2246,29 +2246,20 @@ class PolChange:
         :return: Circular polarized Gain
         """
 
-        RR = (G[..., 0] + G[..., -1])
-        RL = (G[..., 0] - G[..., -1])
-        LR = (G[..., 0] - G[..., -1])
-        LL = (G[..., 0] + G[..., -1])
-
-        if G.shape[-1] == 4:
-            RR += 1j * (G[..., 2] - G[..., 1])
-            RL += 1j * (G[..., 2] + G[..., 1])
-            LR -= 1j * (G[..., 2] + G[..., 1])
-            LL += 1j * (G[..., 1] - G[..., 2])
-
-        RR /= 2
-        RL /= 2
-        LR /= 2
-        LL /= 2
-
         G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
 
-        G_new[..., 0] += RR
-        G_new[..., 1] += RL
-        G_new[..., 2] += LR
-        G_new[..., 3] += LL
+        G_new[..., 0] = (G[..., 0] + G[..., -1])
+        G_new[..., 1] = (G[..., 0] - G[..., -1])
+        G_new[..., 2] = (G[..., 0] - G[..., -1])
+        G_new[..., 3] = (G[..., 0] + G[..., -1])
 
+        if G.shape[-1] == 4:
+            G_new[..., 0] += 1j * (G[..., 2] - G[..., 1])
+            G_new[..., 1] += 1j * (G[..., 2] + G[..., 1])
+            G_new[..., 2] -= 1j * (G[..., 2] + G[..., 1])
+            G_new[..., 3] += 1j * (G[..., 1] - G[..., 2])
+
+        G_new /= 2
         G_new[abs(G_new) < 10 * finfo(float).eps] = 0
 
         return G_new
