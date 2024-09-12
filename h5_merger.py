@@ -18,8 +18,10 @@ from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
-    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose, cumsum, insert, abs, asarray, newaxis, argmin, cos, sin, float32
+    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose, cumsum, insert, abs, asarray, newaxis, argmin, cos, sin, float32, memmap
+import math
 import os
+import psutil
 import re
 from scipy.interpolate import interp1d
 import sys
@@ -2177,31 +2179,32 @@ class PolChange:
 
         :return: Circular polarized Gain
         """
+    
+        MEM_AVAIL = psutil.virtual_memory().available * 0.95
+        G_SHAPE = G.shape[0:-1] + (4,)
+        # Total memory required in bytes.
+        MEM_NEEDED = math.prod(G_SHAPE) * 16
 
-        RR = (G[..., 0] + G[..., -1])
-        RL = (G[..., 0] - G[..., -1])
-        LR = (G[..., 0] - G[..., -1])
-        LL = (G[..., 0] + G[..., -1])
+        # Performance hit for small H5parms, so prefer to stay in RAM.
+        if MEM_NEEDED < MEM_AVAIL:
+            G_new = zeros(G_SHAPE).astype(complex128)
+        else:
+            print("H5parm too large for in-memory conversion. Using memory-mapped approach.")
+            G_new = memmap("tempG_new.dat", dtype=complex128, mode="w+", shape=G_SHAPE)
+
+        G_new[..., 0] = (G[..., 0] + G[..., -1])
+        G_new[..., 1] = (G[..., 0] - G[..., -1])
+        G_new[..., 2] = (G[..., 0] - G[..., -1])
+        G_new[..., 3] = (G[..., 0] + G[..., -1])
 
         if G.shape[-1] == 4:
-            RR += 1j * (G[..., 2] - G[..., 1])
-            RL += 1j * (G[..., 2] + G[..., 1])
-            LR -= 1j * (G[..., 2] + G[..., 1])
-            LL += 1j * (G[..., 1] - G[..., 2])
+            G_new[..., 0] += 1j * (G[..., 2] - G[..., 1])
+            G_new[..., 1] += 1j * (G[..., 2] + G[..., 1])
+            G_new[..., 2] -= 1j * (G[..., 2] + G[..., 1])
+            G_new[..., 3] += 1j * (G[..., 1] - G[..., 2])
 
-        RR /= 2
-        RL /= 2
-        LR /= 2
-        LL /= 2
-
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
-
-        G_new[..., 0] += RR
-        G_new[..., 1] += RL
-        G_new[..., 2] += LR
-        G_new[..., 3] += LL
-
-        G_new = where(abs(G_new) < 10 * finfo(float).eps, 0, G_new)
+        G_new /= 2
+        G_new[abs(G_new) < 10 * finfo(float).eps] = 0
 
         return G_new
 
@@ -2220,30 +2223,31 @@ class PolChange:
         :return: linear polarized Gain
         """
 
-        XX = (G[..., 0] + G[..., -1])
-        XY = 1j * (G[..., 0] - G[..., -1])
-        YX = 1j * (G[..., -1] - G[..., 0])
-        YY = (G[..., 0] + G[..., -1])
+        MEM_AVAIL = psutil.virtual_memory().available * 0.95
+        G_SHAPE = G.shape[0:-1] + (4,)
+        # Total memory required in bytes.
+        MEM_NEEDED = math.prod(G_SHAPE) * 16
+
+        # Performance hit for small H5parms, so prefer to stay in RAM.
+        if MEM_NEEDED < MEM_AVAIL:
+            G_new = zeros(G_SHAPE).astype(complex128)
+        else:
+            print("H5parm too large for in-memory conversion. Using memory-mapped approach.")
+            G_new = memmap("tempG_new.dat", dtype=complex128, mode="w+", shape=G_SHAPE)
+
+        G_new[..., 0] = (G[..., 0] + G[..., -1])
+        G_new[..., 1] = 1j * (G[..., 0] - G[..., -1])
+        G_new[..., 2] = 1j * (G[..., -1] - G[..., 0])
+        G_new[..., 3] = (G[..., 0] + G[..., -1])
 
         if G.shape[-1] == 4:
-            XX += (G[..., 2] + G[..., 1])
-            XY += 1j * (G[..., 2] - G[..., 1])
-            YX += 1j * (G[..., 2] - G[..., 1])
-            YY -= (G[..., 1] + G[..., 2])
+            G_new[..., 0] += (G[..., 2] + G[..., 1])
+            G_new[..., 1] += 1j * (G[..., 2] - G[..., 1])
+            G_new[..., 2] += 1j * (G[..., 2] - G[..., 1])
+            G_new[..., 3] -= (G[..., 1] + G[..., 2])
 
-        XX /= 2
-        XY /= 2
-        YX /= 2
-        YY /= 2
-
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
-
-        G_new[..., 0] += XX
-        G_new[..., 1] += XY
-        G_new[..., 2] += YX
-        G_new[..., 3] += YY
-
-        G_new = where(abs(G_new) < 10 * finfo(float).eps, 0, G_new)
+        G_new /= 2
+        G_new[abs(G_new) < 10 * finfo(float).eps] = 0
 
         return G_new
 
