@@ -2269,7 +2269,7 @@ class PolChange:
         G_new[..., 2] += LR
         G_new[..., 3] += LL
 
-        G_new = where(abs(G_new) < 10 * finfo(float).eps, 0, G_new)
+        G_new[abs(G_new) < 10 * finfo(float).eps] = 0
 
         return G_new
 
