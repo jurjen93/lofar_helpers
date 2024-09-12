@@ -18,7 +18,7 @@ from glob import glob
 from losoto.h5parm import h5parm
 from losoto.lib_operations import reorderAxes
 from numpy import zeros, ones, round, unique, array_equal, append, where, isfinite, complex128, expand_dims, \
-    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose, cumsum, insert, abs, asarray, newaxis, argmin, cos, sin, float32
+    pi, array, all, exp, angle, sort, sum, finfo, take, diff, equal, take, transpose, cumsum, insert, abs, asarray, newaxis, argmin, cos, sin, float32, memmap
 import os
 import re
 from scipy.interpolate import interp1d
@@ -2246,7 +2246,7 @@ class PolChange:
         :return: Circular polarized Gain
         """
 
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
+        G_new = memmap("tempG_new.dat", dtype=complex128, mode="w+", shape=G.shape[0:-1] + (4,))
 
         G_new[..., 0] = (G[..., 0] + G[..., -1])
         G_new[..., 1] = (G[..., 0] - G[..., -1])
