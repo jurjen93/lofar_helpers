@@ -2291,30 +2291,31 @@ class PolChange:
         :return: linear polarized Gain
         """
 
-        XX = (G[..., 0] + G[..., -1])
-        XY = 1j * (G[..., 0] - G[..., -1])
-        YX = 1j * (G[..., -1] - G[..., 0])
-        YY = (G[..., 0] + G[..., -1])
+        MEM_AVAIL = psutil.virtual_memory().available * 0.95
+        G_SHAPE = G.shape[0:-1] + (4,)
+        # Total memory required in bytes.
+        MEM_NEEDED = math.prod(G_SHAPE) * 16
+
+        # Performance hit for small H5parms, so prefer to stay in RAM.
+        if MEM_NEEDED < MEM_AVAIL:
+            G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
+        else:
+            print("H5parm too large for in-memory conversion. Using memory-mapped approach.")
+            G_new = memmap("tempG_new.dat", dtype=complex128, mode="w+", shape=G.shape[0:-1] + (4,))
+
+        G_new[..., 0] = (G[..., 0] + G[..., -1])
+        G_new[..., 1] = 1j * (G[..., 0] - G[..., -1])
+        G_new[..., 2] = 1j * (G[..., -1] - G[..., 0])
+        G_new[..., 3] = (G[..., 0] + G[..., -1])
 
         if G.shape[-1] == 4:
-            XX += (G[..., 2] + G[..., 1])
-            XY += 1j * (G[..., 2] - G[..., 1])
-            YX += 1j * (G[..., 2] - G[..., 1])
-            YY -= (G[..., 1] + G[..., 2])
+            G_new[..., 0] += (G[..., 2] + G[..., 1])
+            G_new[..., 1] += 1j * (G[..., 2] - G[..., 1])
+            G_new[..., 2] += 1j * (G[..., 2] - G[..., 1])
+            G_new[..., 3] -= (G[..., 1] + G[..., 2])
 
-        XX /= 2
-        XY /= 2
-        YX /= 2
-        YY /= 2
-
-        G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
-
-        G_new[..., 0] += XX
-        G_new[..., 1] += XY
-        G_new[..., 2] += YX
-        G_new[..., 3] += YY
-
-        G_new = where(abs(G_new) < 10 * finfo(float).eps, 0, G_new)
+        G_new /= 2
+        G_new[abs(G_new) < 10 * finfo(float).eps] = 0
 
         return G_new
 
