@@ -2255,10 +2255,10 @@ class PolChange:
 
         # Performance hit for small H5parms, so prefer to stay in RAM.
         if MEM_NEEDED < MEM_AVAIL:
-            G_new = zeros(G.shape[0:-1] + (4,)).astype(complex128)
+            G_new = zeros(G_SHAPE).astype(complex128)
         else:
             print("H5parm too large for in-memory conversion. Using memory-mapped approach.")
-            G_new = memmap("tempG_new.dat", dtype=complex128, mode="w+", shape=G.shape[0:-1] + (4,))
+            G_new = memmap("tempG_new.dat", dtype=complex128, mode="w+", shape=G_SHAPE)
 
         G_new[..., 0] = (G[..., 0] + G[..., -1])
         G_new[..., 1] = (G[..., 0] - G[..., -1])
