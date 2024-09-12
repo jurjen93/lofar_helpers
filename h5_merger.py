@@ -1948,7 +1948,8 @@ class MergeH5:
                                 weight_out[:, :, :, m, :] *= newvals[:, :, :, 0, :]
                         elif weight_out.shape[dirind] != newvals.shape[dirind]:
                             sys.exit(
-                                'ERROR: Upsampling of weights because same direction exists multiple times in input h5 (verify and/or remove --propagate_flags)')
+                                'ERROR: Upsampling of weights because same direction exists multiple times in input h5 '
+                                '(verify and update directions or remove --propagate_flags)')
                         else:
                             weight_out *= newvals
 
@@ -2761,7 +2762,7 @@ def running_mean(nparray, avgfactor):
 def repack(h5):
     """Repack function"""
     print(f'Repack {h5}')
-    os.system(f'mv {h5} {h5}.tmp && h5repack {h5}.tmp {h5}')
+    os.system(f'mv {h5} {h5}.tmp && h5repack {h5}.tmp {h5} && rm {h5}.tmp')
 
 
 def merge_h5(h5_out=None, h5_tables=None, ms_files=None, h5_time_freq=None, convert_tec=True, merge_all_in_one=False,
