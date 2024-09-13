@@ -20,172 +20,9 @@ from tqdm import tqdm
 
 from pre_processing_for_ml import FitsDataset
 
+from train_nn import *
+
 PROFILE = False
-
-def init_vit(model_name):
-    assert model_name == 'vit_l_16'
-
-    backbone = models.vit_l_16(weights='ViT_L_16_Weights.IMAGENET1K_SWAG_E2E_V1')
-    for param in backbone.parameters():
-        param.requires_grad_(False)
-
-    # backbone.class_token[:] = 0
-    backbone.class_token.requires_grad_(True)
-
-    hidden_dim = backbone.heads[0].in_features
-
-    del backbone.heads
-
-    return backbone, hidden_dim
-
-def init_cnn(name: str):
-    # use partial to prevent loading all models at once
-    model_map = {
-        'resnet50': partial(models.resnet50, weights="DEFAULT"),
-        'resnet152': partial(models.resnet152, weights="DEFAULT"),
-        'resnext50_32x4d': partial(models.resnext50_32x4d, weights="DEFAULT"),
-        'resnext101_64x4d': partial(models.resnext101_64x4d, weights="DEFAULT"),
-        'efficientnet_v2_l': partial(models.efficientnet_v2_l, weights="DEFAULT"),
-    }
-
-    backbone = model_map[name]()
-
-    feature_extractor = nn.Sequential(*list(backbone.children())[:-1])
-    for param in feature_extractor.parameters():
-        param.requires_grad = False
-    num_out_features = (
-        backbone.fc if name in ('resnet50', 'resnet152', 'resnext50_32x4d', 'resnext101_64x4d')
-        else backbone.classifier[-1]  # efficientnet
-    ).in_features
-
-    return feature_extractor, num_out_features
-
-def get_classifier(dropout_p: float, n_features: int, num_target_classes: int):
-    assert 0 <= dropout_p <= 1
-
-    classifier = nn.Sequential(
-        nn.Flatten(),
-        nn.Dropout1d(p=dropout_p),
-        nn.Linear(n_features, n_features),
-        nn.ReLU(),
-        nn.Linear(n_features, num_target_classes),
-    )
-
-    return classifier
-
-
-@torch.no_grad()
-def normalize_inputs(inputs, mode=0):
-    assert mode in range(3)
-
-    if mode == 0:
-        # Actual op instead of simple return because of debugging reasons
-        means, stds = [0, 0, 0], [1, 1, 1]
-    elif mode == 1:
-        # Inputs are lognormal -> log to make normal
-        means, stds = [-1.55642344, -1.75137082, -2.13795913], [1.25626133, 0.79308821, 0.7116124]
-        inputs = inputs.log()
-    else:
-        # Inputs are lognormal
-        means, stds = [0.35941373, 0.23197646, 0.15068751], [0.28145176, 0.17234328, 0.10769559]
-
-    # Resulting shape of means and stds: [1, 3, 1, 1]
-    means, stds = map(
-        lambda x: torch.tensor(x, device=inputs.device).reshape(1, 3, 1, 1),
-        (means, stds)
-    )
-
-    return (inputs - means) / stds
-
-
-@torch.no_grad()
-def augmentation(inputs):
-    inputs = get_transforms()(inputs)
-    inputs = inputs + 0.01 * torch.randn_like(inputs)
-
-    return inputs
-
-
-
-class ImagenetTransferLearning(nn.Module):
-    def __init__(
-            self,
-            model_name: str = 'resnet50',
-            dropout_p: float = 0.25,
-            use_compile: bool = True
-    ):
-        super().__init__()
-
-        get_classifier_f = partial(get_classifier, dropout_p=dropout_p, num_target_classes=1)
-
-        # For saving in the state dict
-        self.kwargs = {'model_name': model_name, 'dropout_p': dropout_p}
-
-        if model_name == 'vit_l_16':
-            self.vit, num_features = init_vit(model_name)
-            self.vit.eval()
-
-            classifier = get_classifier_f(n_features=num_features)
-            self.vit.heads = classifier
-
-            self.forward = self.vit_forward
-
-        else:
-            self.feature_extractor, num_features = init_cnn(name=model_name)
-            self.feature_extractor.eval()
-
-            self.classifier = get_classifier_f(n_features=num_features)
-
-            self.forward = self.cnn_forward
-
-        if use_compile:
-            self.forward = torch.compile(model=self.forward, mode='reduce-overhead')
-
-    # def compile_forward(self):
-    #     self.forward  = torch.compile(model=self.forward, mode='reduce-overhead')
-
-
-    # @partial(torch.compile, mode='reduce-overhead')
-    def cnn_forward(self, x):
-
-        with torch.no_grad():
-            representations = self.feature_extractor(x)
-        classified = self.classifier(representations)
-        return classified
-
-    # @partial(torch.compile, mode='reduce-overhead')
-    def vit_forward(self, x):
-
-        x = self.vit.forward(x)
-
-        return x
-
-    def step(self, inputs, targets):
-        logits = self(inputs).flatten()
-
-        loss = binary_cross_entropy_with_logits(
-            logits,
-            targets,
-            pos_weight=torch.as_tensor(2.698717948717949)
-        )
-
-        if PROFILE:
-            global profiler
-            profiler.step()
-
-        return logits, loss
-
-    def eval(self):
-        if self.kwargs['model_name'] == 'vit_l_16':
-            self.vit.heads.eval()
-        else:
-            self.classifier.eval()
-
-    def train(self, mode=True):
-        if self.kwargs['model_name'] == 'vit_l_16':
-            self.vit.heads.train(mode)
-        else:
-            self.classifier.train(mode)
 
 def get_dataloaders(dataset_root, batch_size):
     num_workers = min(12, len(os.sched_getaffinity(0)))
@@ -211,78 +48,11 @@ def get_dataloaders(dataset_root, batch_size):
     return loaders
 
 
-def get_logging_dir(logging_root: str, /, **kwargs):
-    # As version string, prefer $SLURM_ARRAY_JOB_ID, then $SLURM_JOB_ID, then 0.
-    version = int(os.getenv('SLURM_ARRAY_JOB_ID', os.getenv('SLURM_JOB_ID', 0)))
-    version_appendix = int(os.getenv('SLURM_ARRAY_TASK_ID', 0))
-    while True:
-        version_dir = "__".join((
-            f"version_{version}_{version_appendix}",
-            *(f"{k}_{v}" for k, v in kwargs.items())
-        ))
-
-        logging_dir = Path(logging_root) / version_dir
-
-        if not logging_dir.exists():
-            break
-        version_appendix += 1
-
-    return str(logging_dir.resolve())
-
-def get_tensorboard_logger(logging_dir):
-    writer = SummaryWriter(log_dir=str(logging_dir))
-
-    # writer.add_hparams()
-
-    return writer
-
-
-def write_metrics(writer, metrics: dict, global_step: int):
-    for metric_name, value in metrics.items():
-        if isinstance(value, tuple):
-            probs, labels = value
-            writer_fn = partial(
-                writer.add_pr_curve, labels=labels, predictions=probs,
-            )
-        else:
-            writer_fn = partial(
-                writer.add_scalar, scalar_value=value
-            )
-
-        writer_fn(tag=metric_name, global_step=global_step)
-
-
-def get_optimizer(parameters: list[torch.Tensor], lr: float):
-    return torch.optim.AdamW(parameters, lr=lr)
-
-
-def merge_metrics(suffix, **kwargs):
-    return {
-        f"{k}/{suffix}": v for k, v in kwargs.items()
-    }
-
-
-@torch.no_grad()
-def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normalize: int, device: torch.device):
-
-    data, labels = (
-        data.to(device, non_blocking=True, memory_format=torch.channels_last),
-        labels.to(device, non_blocking=True, dtype=data.dtype)
-    )
-
-    if resize:
-      data = interpolate(data, size=resize, mode='bilinear', align_corners=False)
-
-    data = normalize_inputs(data, mode=normalize)
-
-    return data, labels
-
 def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: float, resize: int, normalize: int, dropout_p: float, batch_size: int, use_compile: bool, world_size: int):
     torch.set_float32_matmul_precision('high')
     torch.cuda.set_device(local_rank)
     dist.init_process_group("NCCL", rank=rank, world_size=world_size)
-    
-    
+
 
     profiler_kwargs = {}
 
@@ -336,7 +106,7 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
         partial(
             step_f,
             model=model,
-            prepare_data_f=partial(prepare_data, resize=resize, normalize=normalize, device=local_rank),
+            prepare_data_f=partial(prepare_data, resize=resize, normalize=normalize, device=local_rank, mean, std),
             metrics_logger=partial(log_metrics, write_metrics_f=partial(write_metrics, writer=writer) if writer is not None else None)
         )
         for step_f in (train_step, val_step)
@@ -368,20 +138,6 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
     dist.destroy_process_group()
 
 @torch.no_grad()
-def log_metrics(loss, logits, targets, log_suffix, global_step, write_metrics_f):
-    probs = torch.sigmoid(logits)
-    ap = tef.binary_auprc(probs, targets)
-
-    metrics = merge_metrics(
-        bce_loss=loss,
-        au_pr_curve=ap,
-        pr_curve=(probs.to(torch.float32), targets.to(torch.float32)),
-        suffix=log_suffix
-    )
-
-    write_metrics_f(metrics=metrics, global_step=global_step)
-
-@torch.no_grad()
 def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f, rank):
     val_losses, val_logits, val_targets = [], [], []
 
@@ -395,7 +151,7 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f,
             loss = binary_cross_entropy_with_logits(
             logits,
             labels,
-            pos_weight=torch.as_tensor(2.698717948717949)
+            pos_weight=torch.as_tensor(val_dataloader.dataset.label_ratio)
             )
 
         val_losses.append(loss)
@@ -422,12 +178,12 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
         data = augmentation(data)
 
         optimizer.zero_grad(set_to_none=True)
-        with torch.autocast('cuda', dtype=torch.bfloat16, enabled=True):
+        with torch.autocast('cuda', dtype=torch.bfloat16):
             logits = model(data).flatten()
             loss = binary_cross_entropy_with_logits(
             logits,
             labels,
-            pos_weight=torch.as_tensor(2.698717948717949)
+            pos_weight=torch.as_tensor(train_dataloader.dataset.label_ratio)
             )
             mean_loss = loss.mean()
         
@@ -463,94 +219,6 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
 
     return global_step
 
-
-class MultiEpochsDataLoader(torch.utils.data.DataLoader):
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self._DataLoader__initialized = False
-        if self.batch_sampler is None:
-            self.sampler = _RepeatSampler(self.sampler)
-        else:
-            self.batch_sampler = _RepeatSampler(self.batch_sampler)
-        self._DataLoader__initialized = True
-        self.iterator = super().__iter__()
-
-    def __len__(self):
-        return len(self.sampler) if self.batch_sampler is None else len(self.batch_sampler.sampler)
-
-    def __iter__(self):
-        for i in range(len(self)):
-            yield next(self.iterator)
-
-
-class _RepeatSampler(object):
-    """ Sampler that repeats forever.
-
-    Args:
-        sampler (Sampler)
-    """
-
-    def __init__(self, sampler):
-        self.sampler = sampler
-
-    def __iter__(self):
-        while True:
-            yield from iter(self.sampler)
-
-
-@lru_cache(maxsize=1)
-def get_transforms():
-    return v2.Compose([
-        v2.ColorJitter(brightness=.5, hue=.3, saturation=0.1, contrast=0.1),
-        v2.RandomInvert(),
-        v2.RandomEqualize(),
-        v2.RandomVerticalFlip(p=0.5),
-        v2.RandomHorizontalFlip(p=0.5),
-    ])
-
-
-def save_checkpoint(logging_dir, model, optimizer, global_step, **kwargs):
-    old_checkpoints = Path(logging_dir).glob('*.pth')
-    for old_checkpoint in old_checkpoints:
-        Path.unlink(old_checkpoint)
-
-    torch.save(
-        {
-            'model': type(model),
-            'model_state_dict': model.state_dict(),
-            'optimizer': type(optimizer),
-            'optimizer_state_dict': optimizer.state_dict(),
-            'step': global_step,
-            **kwargs
-        },
-        f=(logging_dir + f'/ckpt_step={global_step}.pth')
-    )
-
-def load_checkpoint(ckpt_path):
-
-    ckpt_dict = torch.load(ckpt_path)
-
-    # ugh, this is so ugly, something something hindsight something something 20-20
-    # FIXME: probably should do a pattern match, but this works for now
-    kwargs = str(Path(ckpt_path).parent).split('/')[-1].split('__')
-
-    # strip 'model_' from the name
-    model_name = kwargs[1][6:]
-    lr = float(kwargs[2].split('_')[-1])
-    normalize = int(kwargs[3].split('_')[-1])
-    dropout_p = float(kwargs[4].split('_')[-1])
-
-    model = ckpt_dict['model'](model_name=model_name, dropout_p=dropout_p)
-    model.load_state_dict(ckpt_dict['model_state_dict'])
-
-    # FIXME: add optim class and args to state dict
-    optim = ckpt_dict.get('optimizer', torch.optim.AdamW)(
-        lr=lr,
-        params=model.classifier.parameters()
-    ).load_state_dict(ckpt_dict['optimizer_state_dict'])
-
-    return {'model': model, 'optim': optim, 'normalize': normalize}
 
 def get_argparser():
     """

@@ -390,7 +390,12 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f)
 
         data, labels = prepare_data_f(data, labels)
         with torch.autocast('cuda', dtype=torch.bfloat16):
-            logits, loss = model.step(data, labels, ratio=val_dataloader.dataset.label_ratio)
+            logits = model(data).flatten()
+            loss = binary_cross_entropy_with_logits(
+            logits,
+            labels,
+            pos_weight=torch.as_tensor(val_dataloader.dataset.label_ratio)
+            )
         val_losses.append(loss)
         val_logits.append(logits.clone())
         val_targets.append(labels)
