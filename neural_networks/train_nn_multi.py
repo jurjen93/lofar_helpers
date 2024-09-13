@@ -629,7 +629,6 @@ if __name__ == '__main__':
         os.environ['MASTER_ADDR'] = hostnode
     if "MASTER_PORT" not in os.environ:
         os.environ["MASTER_PORT"] = "29400"
-    
 
     main(**kwargs)
     # mp.spawn(main, args=main_args, nprocs=args.world_size, join=True)

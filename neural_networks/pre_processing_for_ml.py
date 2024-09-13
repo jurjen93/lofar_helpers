@@ -147,7 +147,10 @@ class FitsDataset(Dataset):
         assert len(self.data_paths) > 0
 
         sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.data_paths]))
+        _, counts = np.unique(self.labels, return_counts=True)
+        self.label_ratio = counts[0] / counts[1]
         # print(f'{mode}: using the following sources: {sources}')
+
 
 
     @staticmethod
@@ -161,6 +164,7 @@ class FitsDataset(Dataset):
         image_data = torch.movedim(image_data, -1, 0)
 
         return image_data
+
 
     @lru_cache(maxsize=1)
     def __len__(self):
@@ -179,11 +183,62 @@ class FitsDataset(Dataset):
 
         return image_data, label
 
+    
+def make_histogram(root_dir):
+    root_dir = Path(root_dir)
+    assert root_dir.exists(), f"'{root_dir}' doesn't exist!"
+
+    ext = '.npz'
+    glob_ext = '*' + ext
+
+    classes = {'stop': 0, 'continue': 1}
+    file_paths = []
+    for mode in ['train', 'val']:
+        for folder in (root_dir / (cls + ('' if mode == 'train' else '_val')) for cls in classes):
+            assert folder.exists(), f"root folder doesn't exist, got: '{str(folder.resolve())}'"
+            assert len(list(folder.glob(glob_ext))) > 0, f"no '{ext}' files were found in '{str(folder.resolve())}'"
+
+            # Yes this code is way overengineered. Yes I also derive pleasure from writing it :) - RJS
+            #
+            # Actual documentation:
+            # You want all 'self.x' variables to be non-python objects such as numpy arrays,
+            # otherwise you get memory leaks in the PyTorch dataloader
+        file_paths +=[str(file) for cls, _ in classes.items() for file in (root_dir / (cls + ('' if mode == 'train' else '_val'))).glob(glob_ext)]
+
+    result = np.asarray(list(map(lambda file_path: file_path.split('/')[-1].split('_')[0].split('-')[0], file_paths)))
+    unique, inverse, counts = np.unique(result, return_inverse=True, return_counts=True)
+    print(f'number of unique stations: {len(unique)}')
+    plt.ylabel('Count')
+    plt.xlabel('Number of images per station')
+    plt.hist(counts, bins=len(np.unique(counts)))
+    plt.savefig('image_count_histogram.png')
+
+    plt.hist(inverse, bins=len(unique))
+    plt.ylabel('Number of images')
+    plt.xlabel('Station')
+    plt.savefig('images_per_station.png')
+    
+
+
+
 
 if __name__ == '__main__':
     root = f'/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data'
 
-    transform_data(root)
+    # make_histogram(root)
+    # dataset = FitsDataset(root, mode='val')
+
+    # dataset = FitsDataset(root, mode='train')
+    # imgs, label = dataset[0]
+    # from PIL import Image
+    # plt.imshow(imgs.permute(1, 2, 0).to(torch.float32).numpy())
+    # plt.savefig('test.png')
+
+    # for img, label in dataset:
+    #     print(img.shape)
+    #     exit()
+
+    # transform_data(root)
     # images = np.concatenate([image.flatten() for image, label in Idat])
     # print("creating hist")
     # plt.hist(images)
