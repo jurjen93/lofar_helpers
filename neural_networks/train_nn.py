@@ -73,27 +73,8 @@ def get_classifier(dropout_p: float, n_features: int, num_target_classes: int):
 
 
 @torch.no_grad()
-def normalize_inputs(inputs, mode=0):
-    assert mode in range(3)
-
-    if mode == 0:
-        # Actual op instead of simple return because of debugging reasons
-        means, stds = [0, 0, 0], [1, 1, 1]
-    elif mode == 1:
-        # Inputs are lognormal -> log to make normal
-        means, stds = [-1.55642344, -1.75137082, -2.13795913], [1.25626133, 0.79308821, 0.7116124]
-        inputs = inputs.log()
-    else:
-        # Inputs are lognormal
-        means, stds = [0.35941373, 0.23197646, 0.15068751], [0.28145176, 0.17234328, 0.10769559]
-
-    # Resulting shape of means and stds: [1, 3, 1, 1]
-    means, stds = map(
-        lambda x: torch.tensor(x, device=inputs.device).reshape(1, 3, 1, 1),
-        (means, stds)
-    )
-
-    return (inputs - means) / stds
+def normalize_inputs(inputs, means, stds):
+    return (inputs - means[None, :, None, None].to(inputs.device)) / stds[None, :, None, None].to(inputs.device)
 
 
 @torch.no_grad()
@@ -154,13 +135,13 @@ class ImagenetTransferLearning(nn.Module):
 
         return x
 
-    def step(self, inputs, targets):
+    def step(self, inputs, targets, ratio=1):
         logits = self(inputs).flatten()
 
         loss = binary_cross_entropy_with_logits(
             logits,
             targets,
-            pos_weight=torch.as_tensor(2.698717948717949)
+            pos_weight=torch.as_tensor(ratio)
         )
 
         if PROFILE:
@@ -265,7 +246,7 @@ def merge_metrics(suffix, **kwargs):
 
 
 @torch.no_grad()
-def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normalize: int, device: torch.device):
+def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normalize: int, device: torch.device, mean=torch.tensor, std=torch.tensor):
 
     # FIXME: probably don't need the .clone(), check if we can remove it
     data, labels = (
@@ -276,9 +257,25 @@ def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normaliz
     if resize:
       data = interpolate(data, size=resize, mode='bilinear', align_corners=False)
 
-    data = normalize_inputs(data, mode=normalize)
+    data = normalize_inputs(data, mean, std)
 
     return data, labels
+
+
+def compute_statistics(loader, normalize: int):
+    if not normalize:
+        return torch.asarray([0, 0, 0]), torch.asarray([1, 1, 1])
+    means = []
+    sums_of_squares = []
+    f = torch.log if normalize==2 else lambda x: x
+    for imgs, _ in loader:
+        imgs = f(imgs)
+        means.append(torch.mean(imgs, dim=(0, 2, 3)))
+        sums_of_squares.append((imgs**2).sum(dim=(0, 2, 3)))
+    mean = torch.stack(means).mean(0)
+    sums_of_squares = torch.stack(sums_of_squares).sum(0)
+    variance = (sums_of_squares / (len(loader) * imgs.shape[0] * imgs.shape[2] * imgs.shape[3])) - (mean ** 2)
+    return mean, torch.sqrt(variance)
 
 def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: int, dropout_p: float, batch_size: int, use_compile: bool):
     torch.set_float32_matmul_precision('high')
@@ -320,12 +317,13 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
 
     train_dataloader, val_dataloader = get_dataloaders(dataset_root, batch_size)
 
+    mean, std = compute_statistics(train_dataloader, normalize=normalize)
     logging_interval = 10
 
     train_step_f, val_step_f = (
         partial(
             step_f,
-            prepare_data_f=partial(prepare_data, resize=resize, normalize=normalize, device=device),
+            prepare_data_f=partial(prepare_data, resize=resize, normalize=normalize, device=device, mean=mean, std=std),
             metrics_logger=partial(log_metrics, write_metrics_f=partial(write_metrics, writer=writer))
         )
         for step_f in (train_step, val_step)
@@ -385,7 +383,7 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f)
 
         data, labels = prepare_data_f(data, labels)
         with torch.autocast('cuda', dtype=torch.bfloat16):
-            logits, loss = model.step(data, labels)
+            logits, loss = model.step(data, labels, ratio=val_dataloader.dataset.label_ratio)
         val_losses.append(loss)
         val_logits.append(logits.clone())
         val_targets.append(labels)
@@ -410,7 +408,7 @@ def train_step(model, optimizer, train_dataloader, prepare_data_f, global_step, 
 
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast('cuda', dtype=torch.bfloat16):
-            logits, loss = model.step(data, labels)
+            logits, loss = model.step(data, labels, ratio=train_dataloader.dataset.label_ratio)
             mean_loss = loss.mean()
 
         mean_loss.backward()
