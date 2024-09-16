@@ -17,7 +17,7 @@ inputs:
         separate: true
     - id: selfcal
       type: Directory
-      doc: The h5merger directory.
+      doc: The selfcal directory.
 
 
 outputs:
