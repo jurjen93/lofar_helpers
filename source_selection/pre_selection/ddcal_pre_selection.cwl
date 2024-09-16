@@ -52,8 +52,8 @@ steps:
       in:
         - id: phasediff_h5
           source: get_phasediff/phasediff_h5out
-        - id: h5merger
-          source: h5merger
+        - id: selfcal
+          source: selfcal
       out:
         - phasediff_score_csv
       run: ./steps/get_source_scores.cwl
