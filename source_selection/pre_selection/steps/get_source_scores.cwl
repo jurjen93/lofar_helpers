@@ -15,7 +15,7 @@ inputs:
         position: 1
         itemSeparator: " "
         separate: true
-    - id: h5merger
+    - id: selfcal
       type: Directory
       doc: The h5merger directory.
 
@@ -32,7 +32,7 @@ outputs:
 
 
 arguments:
-  - valueFrom: $( inputs.h5merger.path + '/source_selection/phasediff_output.py' )
+  - valueFrom: $( inputs.selfcal.path + '/source_selection/phasediff_output.py' )
 
 
 requirements:
@@ -42,7 +42,7 @@ requirements:
     listing:
       - entry: $(inputs.phasediff_h5)
         writable: true
-      - entry: $(inputs.h5merger)
+      - entry: $(inputs.selfcal)
 
 hints:
   - class: DockerRequirement
