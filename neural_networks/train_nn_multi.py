@@ -100,13 +100,15 @@ def main(rank: int, local_rank: int, dataset_root: str, model_name: str, lr: flo
 
     train_dataloader, val_dataloader = get_dataloaders(dataset_root, batch_size)
 
+    mean, std = compute_statistics(train_dataloader, normalize=normalize)
+
     logging_interval = 10
 
     train_step_f, val_step_f = (
         partial(
             step_f,
             model=model,
-            prepare_data_f=partial(prepare_data, resize=resize, normalize=normalize, device=local_rank, mean, std),
+            prepare_data_f=partial(prepare_data, resize=resize, normalize=normalize, device=local_rank, mean=mean, mean=std),
             metrics_logger=partial(log_metrics, write_metrics_f=partial(write_metrics, writer=writer) if writer is not None else None)
         )
         for step_f in (train_step, val_step)
