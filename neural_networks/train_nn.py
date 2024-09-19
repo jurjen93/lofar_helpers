@@ -12,6 +12,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
 from torchvision.transforms import v2
 from tqdm import tqdm
+import joblib
 
 import numpy as np
 import random
@@ -20,6 +21,8 @@ from pre_processing_for_ml import FitsDataset
 
 PROFILE = False
 SEED = None
+
+cache = joblib.Memory(location='_cache', verbose=0)
 
 def init_vit(model_name):
     assert model_name == 'vit_l_16'
@@ -162,7 +165,7 @@ class ImagenetTransferLearning(nn.Module):
         else:
             self.classifier.train()
 
-def get_dataloaders(dataset_root, batch_size):
+def get_dataloaders(dataset_root, batch_size, normalize):
     num_workers = min(12, len(os.sched_getaffinity(0)))
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else
@@ -177,7 +180,7 @@ def get_dataloaders(dataset_root, batch_size):
 
     loaders = tuple(
         MultiEpochsDataLoader(
-            dataset=FitsDataset(dataset_root, mode=mode),
+            dataset=FitsDataset(dataset_root, mode=mode, normalize=normalize),
             batch_size=batch_size,
             num_workers=num_workers,
             prefetch_factor=prefetch_factor,
@@ -192,6 +195,27 @@ def get_dataloaders(dataset_root, batch_size):
     )
 
     return loaders
+
+@cache.cache(ignore=['loader'])
+def _compute_statistics(loader, normalize, _):
+    if not normalize:
+        return torch.asarray([0, 0, 0]), torch.asarray([1, 1, 1])
+    means = []
+    sums_of_squares = []
+    f = torch.log if normalize==2 else lambda x: x
+    for i, (imgs, _) in enumerate(loader):
+        imgs = f(imgs)
+        means.append(torch.mean(imgs, dim=(0, 2, 3)))
+        sums_of_squares.append((imgs**2).sum(dim=(0, 2, 3)))
+    mean = torch.stack(means).mean(0)
+    sums_of_squares = torch.stack(sums_of_squares).sum(0)
+    variance = (sums_of_squares / (len(loader) * imgs.shape[0] * imgs.shape[2] * imgs.shape[3])) - (mean ** 2)
+    return mean, torch.sqrt(variance)
+
+
+def compute_statistics(loader, normalize):
+    return _compute_statistics(loader, normalize, loader.dataset.sources)
+
 
 
 def get_logging_dir(logging_root: str, /, **kwargs):
@@ -262,21 +286,6 @@ def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normaliz
     return data, labels
 
 
-def compute_statistics(loader, normalize: int):
-    if not normalize:
-        return torch.asarray([0, 0, 0]), torch.asarray([1, 1, 1])
-    means = []
-    sums_of_squares = []
-    f = torch.log if normalize==2 else lambda x: x
-    for imgs, _ in loader:
-        imgs = f(imgs)
-        means.append(torch.mean(imgs, dim=(0, 2, 3)))
-        sums_of_squares.append((imgs**2).sum(dim=(0, 2, 3)))
-    mean = torch.stack(means).mean(0)
-    sums_of_squares = torch.stack(sums_of_squares).sum(0)
-    variance = (sums_of_squares / (len(loader) * imgs.shape[0] * imgs.shape[2] * imgs.shape[3])) - (mean ** 2)
-    return mean, torch.sqrt(variance)
-
 def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: int, dropout_p: float, batch_size: int, use_compile: bool):
     torch.set_float32_matmul_precision('high')
 
@@ -315,9 +324,10 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
 
     optimizer = get_optimizer([param for param in model.parameters() if param.requires_grad], lr=lr)
 
-    train_dataloader, val_dataloader = get_dataloaders(dataset_root, batch_size)
+    train_dataloader, val_dataloader = get_dataloaders(dataset_root, batch_size, normalize)
 
-    mean, std = compute_statistics(train_dataloader, normalize=normalize)
+    mean, std = compute_statistics(train_dataloader, normalize)
+
     logging_interval = 10
 
     train_step_f, val_step_f = (
@@ -443,6 +453,9 @@ class MultiEpochsDataLoader(torch.utils.data.DataLoader):
     def __iter__(self):
         for i in range(len(self)):
             yield next(self.iterator)
+    
+    def __hash__(self):
+        return hash(self.dataset) + 10000
 
 
 class _RepeatSampler(object):

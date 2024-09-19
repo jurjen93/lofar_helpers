@@ -7,7 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from astropy.io import fits
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, Memory
+import joblib
 from matplotlib.colors import SymLogNorm
 from torch.utils.data import Dataset
 
@@ -111,7 +112,7 @@ def transform_data(root_dir, classes=('continue', 'stop'), modes=('', '_val')):
 
 
 class FitsDataset(Dataset):
-    def __init__(self, root_dir, mode='train'):
+    def __init__(self, root_dir, mode='train', normalize=0):
         """
         Args:
             root_dir (string): Directory with good/bad folders in it.
@@ -145,8 +146,9 @@ class FitsDataset(Dataset):
 
 
         assert len(self.data_paths) > 0
-
-        sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.data_paths]))
+        self.normalize = normalize
+        self.sources = ", ".join(sorted([str(elem).split('/')[-1].strip(ext) for elem in self.data_paths]))
+        self.mode = mode
         _, counts = np.unique(self.labels, return_counts=True)
         self.label_ratio = counts[0] / counts[1]
         # print(f'{mode}: using the following sources: {sources}')
@@ -228,7 +230,10 @@ if __name__ == '__main__':
     # make_histogram(root)
     # dataset = FitsDataset(root, mode='val')
 
-    # dataset = FitsDataset(root, mode='train')
+    # dataset = FitsDataset(root, mode='train', normalize=1)
+    # sources = dataset.sources
+    # hash(dataset)
+    # print(sources)
     # imgs, label = dataset[0]
     # from PIL import Image
     # plt.imshow(imgs.permute(1, 2, 0).to(torch.float32).numpy())
@@ -238,7 +243,7 @@ if __name__ == '__main__':
     #     print(img.shape)
     #     exit()
 
-    # transform_data(root)
+    transform_data(root)
     # images = np.concatenate([image.flatten() for image, label in Idat])
     # print("creating hist")
     # plt.hist(images)
