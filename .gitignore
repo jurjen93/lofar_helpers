@@ -41,3 +41,8 @@ mergemerge.py
 runs/
 out/
 venv/
+.cache/
+
+_cache/
+grid_search/
+public.spider.surfsara.nl/

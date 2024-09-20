@@ -76,7 +76,9 @@ def get_classifier(dropout_p: float, n_features: int, num_target_classes: int):
 
 
 @torch.no_grad()
-def normalize_inputs(inputs, means, stds):
+def normalize_inputs(inputs, means, stds, normalize=1):
+    f = torch.log if normalize == 2 else lambda x: x
+    inputs = f(inputs)
     return (inputs - means[None, :, None, None].to(inputs.device)) / stds[None, :, None, None].to(inputs.device)
 
 
@@ -281,7 +283,8 @@ def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normaliz
     if resize:
       data = interpolate(data, size=resize, mode='bilinear', align_corners=False)
 
-    data = normalize_inputs(data, mean, std)
+    data = normalize_inputs(data, mean, std, normalize)
+    # data = data.expand(-1, 3)
 
     return data, labels
 
@@ -476,7 +479,7 @@ class _RepeatSampler(object):
 @lru_cache(maxsize=1)
 def get_transforms():
     return v2.Compose([
-        v2.ColorJitter(brightness=.5, hue=.3, saturation=0.1, contrast=0.1),
+        v2.ColorJitter(brightness=.5, contrast=0.1),
         v2.RandomInvert(),
         v2.RandomEqualize(),
         v2.RandomVerticalFlip(p=0.5),
