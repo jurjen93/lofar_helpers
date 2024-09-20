@@ -75,20 +75,14 @@ def normalize_fits(image_data: np.ndarray):
 
     # Pre-processing
     rms = get_rms(image_data)
-    norm = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms * 50000, base=10)
+    norm_f = SymLogNorm(linthresh=rms * 2, linscale=2, vmin=-rms, vmax=rms * 50000, base=10)
 
-    image_data = norm(image_data)
-    image_data = np.clip(image_data - image_data.min(), a_min=0, a_max=1)
+    image_data = norm_f(image_data)
 
-    # make RGB image
-    # cmap = plt.get_cmap('RdBu_r')
-    # image_data = cmap(image_data)
-    # image_data = np.delete(image_data, 3, 2)
-    # # print(image_data.shape)
-    # image_data = -image_data + 1  # make the peak exist at zero
+    image_data = image_data - image_data.min()
+    image_data = np.clip(image_data, a_min=0, a_max=1)
 
-
-    return image_data[:, :, np.newaxis]
+    return image_data[..., None]
 
 
 def transform_data(root_dir, classes=('continue', 'stop'), modes=('', '_val')):
@@ -226,7 +220,8 @@ def make_histogram(root_dir):
 
 
 if __name__ == '__main__':
-    root = f'public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data'
+    root = f'/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data'
+    transform_data(root)
 
     # make_histogram(root)
     # dataset = FitsDataset(root, mode='val')
@@ -244,7 +239,6 @@ if __name__ == '__main__':
     #     print(img.shape)
     #     exit()
 
-    # transform_data(root)
     # images = np.concatenate([image.flatten() for image, label in Idat])
     # print("creating hist")
     # plt.hist(images)

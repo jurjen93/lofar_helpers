@@ -77,9 +77,14 @@ def get_classifier(dropout_p: float, n_features: int, num_target_classes: int):
 
 @torch.no_grad()
 def normalize_inputs(inputs, means, stds, normalize=1):
-    f = torch.log if normalize == 2 else lambda x: x
-    inputs = f(inputs)
-    return (inputs - means[None, :, None, None].to(inputs.device)) / stds[None, :, None, None].to(inputs.device)
+    if normalize == 2:
+        inputs = torch.log(inputs)
+
+    return (
+        (inputs - means[None, :, None, None].to(inputs.device))
+        / stds[None, :, None, None].to(inputs.device)
+    )
+
 
 
 @torch.no_grad()
@@ -168,7 +173,8 @@ class ImagenetTransferLearning(nn.Module):
             self.classifier.train()
 
 def get_dataloaders(dataset_root, batch_size, normalize):
-    num_workers = min(12, len(os.sched_getaffinity(0)))
+    # num_workers = min(12, len(os.sched_getaffinity(0)))
+    num_workers = 0
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else
         (None, False)
@@ -204,11 +210,12 @@ def _compute_statistics(loader, normalize, _):
         return torch.asarray([0, 0, 0]), torch.asarray([1, 1, 1])
     means = []
     sums_of_squares = []
-    f = torch.log if normalize==2 else lambda x: x
+    f = torch.log if normalize == 2 else lambda x: x
     for i, (imgs, _) in enumerate(loader):
         imgs = f(imgs)
         means.append(torch.mean(imgs, dim=(0, 2, 3)))
         sums_of_squares.append((imgs**2).sum(dim=(0, 2, 3)))
+
     mean = torch.stack(means).mean(0)
     sums_of_squares = torch.stack(sums_of_squares).sum(0)
     variance = (sums_of_squares / (len(loader) * imgs.shape[0] * imgs.shape[2] * imgs.shape[3])) - (mean ** 2)
@@ -272,12 +279,11 @@ def merge_metrics(suffix, **kwargs):
 
 
 @torch.no_grad()
-def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normalize: int, device: torch.device, mean=torch.tensor, std=torch.tensor):
+def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normalize: int, device: torch.device, mean:torch.Tensor, std: torch.Tensor):
 
-    # FIXME: probably don't need the .clone(), check if we can remove it
     data, labels = (
-        data.clone().to(device, non_blocking=True, memory_format=torch.channels_last),
-        labels.clone().to(device, non_blocking=True, dtype=data.dtype)
+        data.to(device, non_blocking=True, memory_format=torch.channels_last),
+        labels.to(device, non_blocking=True, dtype=data.dtype)
     )
 
     if resize:
@@ -291,6 +297,7 @@ def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normaliz
 
 def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: int, dropout_p: float, batch_size: int, use_compile: bool):
     torch.set_float32_matmul_precision('high')
+    torch.backends.cudnn.benchmark = True
 
     profiler_kwargs = {}
 
@@ -362,6 +369,7 @@ def main(dataset_root: str, model_name: str, lr: float, resize: int, normalize: 
             best_results['targets'] = targets.clone()
             checkpoint_saver(global_step=global_step)
             best_val_loss = val_loss
+
         with torch.no_grad():
             log_metrics(loss=best_val_loss, logits=best_results['logits'], targets=best_results['targets'], global_step=global_step, log_suffix='validation_best', write_metrics_f=partial(write_metrics, writer=writer))
 
@@ -405,6 +413,7 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f)
         val_losses.append(loss)
         val_logits.append(logits.clone())
         val_targets.append(labels)
+
     losses, logits, targets = map(torch.concatenate, (val_losses, val_logits, val_targets))
 
     mean_loss = losses.mean()
@@ -479,9 +488,6 @@ class _RepeatSampler(object):
 @lru_cache(maxsize=1)
 def get_transforms():
     return v2.Compose([
-        v2.ColorJitter(brightness=.5, contrast=0.1),
-        v2.RandomInvert(),
-        v2.RandomEqualize(),
         v2.RandomVerticalFlip(p=0.5),
         v2.RandomHorizontalFlip(p=0.5),
     ])
@@ -539,14 +545,13 @@ def get_argparser():
     # Add arguments
     parser.add_argument('dataset_root', type=Path)
     parser.add_argument('--lr', type=float, help='Learning rate for the model.', default=1e-4)
-    parser.add_argument('--batch_size', type=int, help='Batch size', default=12)
+    parser.add_argument('--batch_size', type=int, help='Batch size', default=32)
     parser.add_argument('--model_name', type=str, help='The model to use.', default='resnet50',
                         choices=['resnet50', 'resnet152', 'resnext50_32x4d', 'resnext101_64x4d', 'efficientnet_v2_l', 'vit_l_16'])
     parser.add_argument('--normalize', type=int, help='Whether to do normalization', default=0, choices=[0, 1, 2])
     parser.add_argument('--dropout_p', type=float, help='Dropout probability', default=0.25)
     parser.add_argument('--resize', type=int, default=0, help="size to resize to. Will be set to 512 for ViT.")
-    parser.add_argument('--use_compile', action='store', type=int, default=1)
-    parser.add_argument('--no_compile', dest='use_compile', action='store_false')
+    parser.add_argument('--use_compile', action='store_true')
     parser.add_argument('--profile', action='store_true', help="[DISABLED] profile the training and validation loop")
     parser.add_argument('-d', '--deterministic', action='store_true', help="use deterministic training", default=False)
 
