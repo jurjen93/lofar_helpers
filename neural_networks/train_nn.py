@@ -173,8 +173,8 @@ class ImagenetTransferLearning(nn.Module):
             self.classifier.train()
 
 def get_dataloaders(dataset_root, batch_size, normalize):
-    # num_workers = min(12, len(os.sched_getaffinity(0)))
-    num_workers = 0
+    num_workers = min(12, len(os.sched_getaffinity(0)))
+    #num_workers = 0
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else
         (None, False)
