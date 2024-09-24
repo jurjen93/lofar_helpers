@@ -89,7 +89,8 @@ def normalize_inputs(inputs, means, stds, normalize=1):
 @torch.no_grad()
 def augmentation(inputs):
     inputs = get_transforms()(inputs)
-    inputs = inputs + 0.01 * torch.randn_like(inputs)
+    b, _, h, w = inputs.shape
+    inputs = inputs + 0.01 * torch.randn((b, 1, h, w), device=inputs.device, dtype=inputs.dtype)
 
     return inputs
 
@@ -289,7 +290,7 @@ def prepare_data(data: torch.Tensor, labels: torch.Tensor, resize: int, normaliz
       data = interpolate(data, size=resize, mode='bilinear', align_corners=False)
 
     data = normalize_inputs(data, mean, std, normalize)
-    # data = data.expand(-1, 3)
+    data = data.repeat(1, 3, 1, 1)
 
     return data, labels
 
