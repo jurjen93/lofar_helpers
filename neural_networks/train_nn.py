@@ -79,7 +79,6 @@ def get_classifier(dropout_p: float, n_features: int, num_target_classes: int):
 def normalize_inputs(inputs, means, stds, normalize=1):
     if normalize == 2:
         inputs = torch.log(inputs)
-
     return (
         (inputs - means[None, :, None, None].to(inputs.device))
         / stds[None, :, None, None].to(inputs.device)
@@ -207,7 +206,7 @@ def get_dataloaders(dataset_root, batch_size, normalize):
 @cache.cache(ignore=['loader'])
 def _compute_statistics(loader, normalize, _):
     if not normalize:
-        return torch.asarray([0, 0, 0]), torch.asarray([1, 1, 1])
+        return torch.asarray([0]), torch.asarray([1])
     means = []
     sums_of_squares = []
     f = torch.log if normalize == 2 else lambda x: x
