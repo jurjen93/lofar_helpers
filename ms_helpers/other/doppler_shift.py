@@ -1,38 +1,44 @@
-from astropy.coordinates import SkyCoord, EarthLocation, AltAz
+from casacore.tables import table
+from astropy.coordinates import SkyCoord, EarthLocation
 from astropy.time import Time
 import astropy.units as u
 from scipy.constants import c
 
-# Define the observing frequency
-observing_frequency = 140 * u.MHz
+def calculate_doppler_shifts(ms_path, instrument="LOFAR"):
+    """
+    Calculate Doppler shifts for an MS.
 
-# Define the location of the observatory (example: Very Large Array)
-observatory_location = EarthLocation.of_site('LOFAR')
+    Parameters:
+    - ms_path (str): Path to the MS file.
+    - instrument (str): Instrument name.
 
-# Define the source coordinates
-source = SkyCoord(ra=-2.04639855*u.rad, dec=0.95905842*u.rad, frame='icrs')
+    Returns:
+    - result: Doppler shift in kHz
+    """
 
-for t in ['2018-11-26', '2020-05-24', '2020-11-14', '2021-5-13']:
-    print(t)
+    # Get observation time
+    with table(ms_path+"::POINTING", ack=False) as ms:
+        obs_time_seconds = ms.getcol('TIME_ORIGIN')[0]  # Extract observation times in seconds
+        ra, dec = ms.getcol("DIRECTION")[0][0]
 
-    # Define the observation times
-    time = Time(t)
+    # Convert seconds to MJD
+    obs_time_mjd = obs_time_seconds / 86400.0
+    time = Time(obs_time_mjd, format='mjd', scale='utc')
 
-    # Calculate the AltAz frame for the observation times
-    altaz = AltAz(location=observatory_location, obstime=time)
+    # Get ref frequency
+    with table(ms_path+"::SPECTRAL_WINDOW", ack=False) as ms:
+        observing_frequency = ms.getcol("REF_FREQUENCY")[0] * u.Hz
 
-    # Transform the source coordinates to the AltAz frame
-    altaz_coord = source.transform_to(altaz)
+    # Define the location of the observatory
+    observatory_location = EarthLocation.of_site(instrument)
+
+    # Define the source coordinates
+    source = SkyCoord(ra=ra * u.rad, dec=dec * u.rad, frame='icrs')
 
     # Calculate the radial velocity due to Earth's motion
-    rv = altaz_coord.radial_velocity_correction()
+    rv = source.radial_velocity_correction(obstime=time, location=observatory_location).to(u.m / u.s)
 
-    # Calculate the Doppler shift for each observation
-    doppler_shift = observing_frequency * (rv / c / u.m*u.s)
+    # Calculate the Doppler shift for the observation
+    doppler_shift = observing_frequency * (rv / c)
 
-    print(f"Doppler shift for observation 1: {doppler_shift.to(u.kHz)}")
-
-    # Adjust the observed frequencies before stacking
-    adjusted_frequency = observing_frequency + doppler_shift
-
-    print(f"Adjusted frequency for observation 1: {adjusted_frequency.to(u.MHz)}")
+    return doppler_shift.to(u.kHz)
