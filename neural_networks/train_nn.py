@@ -38,6 +38,7 @@ def init_vit(model_name):
     hidden_dim = backbone.heads[0].in_features
 
     del backbone.heads
+    backbone.eval()
     return backbone, hidden_dim
 
 
@@ -48,10 +49,11 @@ def init_dino(model_name):
     backbone.cls_token.requires_grad_(True)
 
     hidden_dim = backbone.cls_token.shape[-1]
+    backbone.eval()
     return backbone, hidden_dim
 
 
-def init_lift_conv(conv):
+def init_first_conv(conv):
     kernel_size = conv.kernel_size
     stride = conv.stride
     padding = conv.padding
@@ -82,16 +84,17 @@ def init_cnn(name: str, lift="stack"):
     feature_extractor = nn.Sequential(*list(backbone.children())[:-1])
     for param in feature_extractor.parameters():
         param.requires_grad_(False)
+    feature_extractor.eval()
 
     if lift == "reinit_first":
         if name in ("resnet50", "resnet152", "resnext50_32x4d", "resnext101_64x4d"):
             conv = feature_extractor[0]
-            new_conv = init_lift_conv(conv)
+            new_conv = init_first_conv(conv)
             feature_extractor[0] = new_conv
             del conv
         elif name == "efficientnet_v2_l":
             conv = feature_extractor[0][0][0]
-            new_conv = init_lift_conv(conv)
+            new_conv = init_first_conv(conv)
             feature_extractor[0][0][0] = new_conv
             del conv
 
@@ -149,7 +152,12 @@ class ImagenetTransferLearning(nn.Module):
         )
 
         # For saving in the state dict
-        self.kwargs = {"model_name": model_name, "dropout_p": dropout_p}
+        self.kwargs = {
+            "model_name": model_name,
+            "dropout_p": dropout_p,
+            "use_compile": use_compile,
+            "lift": lift,
+        }
 
         if lift == "stack":
             self.lift = partial(torch.repeat_interleave, repeats=3, dim=1)
@@ -169,13 +177,11 @@ class ImagenetTransferLearning(nn.Module):
 
         elif model_name == "dino_v2":
             self.feature_extractor, num_features = init_dino(model_name)
-            self.feature_extractor.eval()
             self.classifier = get_classifier_f(n_features=num_features)
             self.forward = self.dino_forward
 
         else:
             self.feature_extractor, num_features = init_cnn(name=model_name, lift=lift)
-            self.feature_extractor.eval()
 
             self.classifier = get_classifier_f(n_features=num_features)
 
