@@ -9,8 +9,9 @@ set -e
 
 cd ~/projects/lofar_helpers/neural_networks
 
-source venv/bin/activate
+
 module load 2023
+source venv/bin/activate
 
 # Read the parameter file
 PARAM_FILE=parameters.txt
