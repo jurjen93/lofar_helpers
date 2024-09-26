@@ -43,17 +43,7 @@ def init_vit(model_name):
     return backbone, hidden_dim
 
 
-def init_dino_old(model_name):
-    backbone = torch.hub.load("facebookresearch/dinov2", "dinov2_vitl14_reg")
-    for param in backbone.parameters():
-        param.requires_grad_(False)
-    backbone.cls_token.requires_grad_(True)
-
-    hidden_dim = backbone.cls_token.shape[-1]
-    return backbone, hidden_dim
-
-
-def init_dino(model_name, get_classifier_f, use_lora):
+def init_dino(model_name, get_classifier_f, use_lora, rank=16, alpha=16):
 
     backbone = torch.hub.load("facebookresearch/dinov2", model_name)
     hidden_dim = backbone.cls_token.shape[-1]
@@ -62,8 +52,9 @@ def init_dino(model_name, get_classifier_f, use_lora):
     dino_lora = DINOV2FeatureExtractor(
         encoder=backbone,
         decoder=classifier,
-        r=3,
+        r=rank,
         use_lora=use_lora,
+        alpha=alpha,
     )
 
     return dino_lora, hidden_dim
@@ -160,6 +151,8 @@ class ImagenetTransferLearning(nn.Module):
         use_compile: bool = True,
         lift: str = "stack",
         use_lora: bool = False,
+        alpha=16,
+        rank=16,
     ):
         super().__init__()
 
@@ -173,6 +166,7 @@ class ImagenetTransferLearning(nn.Module):
             "dropout_p": dropout_p,
             "use_compile": use_compile,
             "lift": lift,
+            "use_lora": use_lora,
         }
 
         if lift == "stack":
@@ -193,7 +187,7 @@ class ImagenetTransferLearning(nn.Module):
 
         elif "dinov2" in model_name:
             self.dino, num_features = init_dino(
-                model_name, get_classifier_f, use_lora=use_lora
+                model_name, get_classifier_f, use_lora=use_lora, alpha=alpha, rank=rank
             )
             # self.classifier = get_classifier_f(n_features=num_features)
             self.forward = self.dino_forward
@@ -377,6 +371,9 @@ def main(
     stochastic_smoothing: bool,
     lift: str,
     use_lora: bool,
+    rank=16,
+    alpha=16,
+    log_path="runs",
 ):
     torch.set_float32_matmul_precision("high")
     torch.backends.cudnn.benchmark = True
@@ -396,7 +393,7 @@ def main(
         # profiler.start()
 
     logging_dir = get_logging_dir(
-        str(Path.cwd() / "grid_search"),
+        str(Path.cwd() / log_path),
         # kwargs
         model=model_name,
         lr=lr,
@@ -406,6 +403,9 @@ def main(
         label_smoothing=label_smoothing,
         stochastic_smoothing=stochastic_smoothing,
         use_lora=use_lora,
+        resize=resize,
+        rank=rank,
+        alpha=alpha,
     )
 
     writer = get_tensorboard_logger(logging_dir)
@@ -418,6 +418,8 @@ def main(
         use_compile=use_compile,
         lift=lift,
         use_lora=use_lora,
+        alpha=alpha,
+        rank=rank,
     )
 
     # noinspection PyArgumentList
@@ -475,7 +477,7 @@ def main(
 
     best_results = {}
 
-    n_epochs = 250
+    n_epochs = 120
     for epoch in range(n_epochs):
 
         global_step = train_step_f(global_step=global_step, model=model)
@@ -794,6 +796,17 @@ def get_argparser():
         help="Whether to use LoRA if applicable.",
     )
 
+    parser.add_argument("--rank", type=int, default=16, help="rank of LoRA")
+
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=None,
+        help="LoRA alpha scaling. Defaults to rank value if not set",
+    )
+
+    parser.add_argument("--log_path", type=str, default="runs")
+
     return parser.parse_args()
 
 
@@ -812,15 +825,18 @@ def sanity_check_args(parsed_args):
         print("Setting resize to 512 since vit_16_l is being used")
         parsed_args.resize = 512
     if "dinov2" in parsed_args.model_name and parsed_args.resize == 0:
-        resize = 504
+        resize = 560
         print(f"\n#######\nSetting resize to {resize} \n######\n")
         parsed_args.resize = resize
 
-    if parsed_args.use_lora and not "dino_v2" in parsed_args.model_name:
+    if parsed_args.use_lora and not "dinov2" in parsed_args.model_name:
         warnings.warn(
             "Warning: LoRA is only supported for Dino V2 models. Ignoring setting....\n",
             UserWarning,
         )
+
+    if parsed_args.alpha is None:
+        parsed_args.alpha = parsed_args.rank
 
     assert parsed_args.resize % 14 == 0 or parsed_args.model_name != "dino_v2"
 

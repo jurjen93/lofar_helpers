@@ -22,7 +22,21 @@ SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID:=1}
 PARAMS=$(sed -n "${SLURM_ARRAY_TASK_ID}p" $PARAM_FILE)
 
 # Parse the parameters
-read model lr normalize dropout_p batch_size <<< $PARAMS
+read model lr normalize dropout_p batch_size use_lora label_smoothing stochastic_smoothing <<< $PARAMS
+
+if [ "$use_lora" -eq 1 ]; then
+    LORA_ARG="--use_lora"
+else
+    LORA_ARG=""
+fi
+
+if [ "$stochastic_smoothing" -eq 1 ]; then
+    STOCHASTIC_SMOOTHING="--stochastic_smoothing"
+else
+    STOCHASTIC_SMOOTHING=""
+fi
+
+DATA_TRAINDATA_PATH="public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/"
 
 # Execute your Python script with the given parameters
-python train_nn.py $DATA_TRAINDATA_PATH --model $model --lr $lr --normalize $normalize --dropout_p $dropout_p --batch_size $batch_size
+python train_nn.py $DATA_TRAINDATA_PATH --model $model --lr $lr --normalize $normalize --dropout_p $dropout_p --batch_size $batch_size --log_path grid_search_2 --label_smoothing $label_smoothing $LORA_ARG $STOCHASTIC_SMOOTHING
