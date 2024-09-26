@@ -173,8 +173,8 @@ class ImagenetTransferLearning(nn.Module):
             self.classifier.train()
 
 def get_dataloaders(dataset_root, batch_size, normalize):
-    # num_workers = min(12, len(os.sched_getaffinity(0)))
-    num_workers = 0
+    num_workers = min(12, len(os.sched_getaffinity(0)))
+    # num_workers = 0
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else
         (None, False)
@@ -527,13 +527,13 @@ def load_checkpoint(ckpt_path):
     model = ckpt_dict['model'](model_name=model_name, dropout_p=dropout_p)
     model.load_state_dict(ckpt_dict['model_state_dict'])
 
-    # FIXME: add optim class and args to state dict
-    optim = ckpt_dict.get('optimizer', torch.optim.AdamW)(
-        lr=lr,
-        params=model.classifier.parameters()
-    ).load_state_dict(ckpt_dict['optimizer_state_dict'])
+    # # FIXME: add optim class and args to state dict
+    # optim = ckpt_dict.get('optimizer', torch.optim.AdamW)(
+    #     lr=lr,
+    #     params=model.classifier.parameters()
+    # ).load_state_dict(ckpt_dict['optimizer_state_dict'])
 
-    return {'model': model, 'optim': optim, 'normalize': normalize}
+    return {'model': model, 'normalize': normalize}
 
 def get_argparser():
     """
