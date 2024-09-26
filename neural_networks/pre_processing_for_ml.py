@@ -281,12 +281,11 @@ def make_histogram(root_dir):
 
 
 if __name__ == "__main__":
-    root = f"/dev/shm/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data"
-    # transform_data(root)
+    root = f"public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data"
+    transform_data(root)
 
     # make_histogram(root)
-    dataset = FitsDataset(root, mode="val")
-    dataset.compute_statistics(normalize=1)
+    # dataset.compute_statistics(normalize=1)
 
     # dataset = FitsDataset(root, mode='train', normalize=1)
     # sources = dataset.sources
