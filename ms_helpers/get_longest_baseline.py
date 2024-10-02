@@ -14,7 +14,8 @@ def parse_args():
     """
 
     parser = ArgumentParser(description='Longest baseline length')
-    parser.add_argument('ms', help='MS', required=True)
+    parser.add_argument('ms', help='MS')
+    parser.add_argument('--min_dist', default=1500, type=float, help='Minimal distance in km')
     return parser.parse_args()
 
 
@@ -37,7 +38,7 @@ def main():
     longest_baseline_antennas = None
 
     # Calculate all possible baselines and track the longest
-    print("Baselines beyond 1500 km:")
+    print(f"Baselines beyond {args.min_dist} km:")
     n_antennas = len(antenna_positions)
     for i in range(n_antennas):
         for j in range(i + 1, n_antennas):
@@ -45,7 +46,7 @@ def main():
             if distance > longest_baseline:
                 longest_baseline = distance
                 longest_baseline_antennas = (antenna_names[i], antenna_names[j])
-            if round(distance/1000, 2)>1500:
+            if round(distance/1000, 2)>args.min_dist:
                 print(f"{round(distance/1000, 2)} km between {antenna_names[i]} and {antenna_names[j]}")
 
     # Output the longest baseline and the antennas forming it
