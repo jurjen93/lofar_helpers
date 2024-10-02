@@ -2,6 +2,7 @@ import argparse
 import os
 from functools import partial, lru_cache
 from pathlib import Path
+import warnings
 
 import torch
 import torcheval.metrics.functional as tef
@@ -18,6 +19,7 @@ import numpy as np
 import random
 
 from pre_processing_for_ml import FitsDataset
+from dino_model import DINOV2FeatureExtractor
 
 PROFILE = False
 SEED = None
@@ -38,35 +40,24 @@ def init_vit(model_name):
     hidden_dim = backbone.heads[0].in_features
 
     del backbone.heads
-    backbone.eval()
     return backbone, hidden_dim
 
 
-def init_dino(model_name):
-    backbone = torch.hub.load("facebookresearch/dinov2", "dinov2_vitl14_reg")
-    for param in backbone.parameters():
-        param.requires_grad_(False)
-    backbone.cls_token.requires_grad_(True)
+def init_dino(model_name, get_classifier_f, use_lora, rank=16, alpha=16):
 
+    backbone = torch.hub.load("facebookresearch/dinov2", model_name)
     hidden_dim = backbone.cls_token.shape[-1]
-    backbone.eval()
-    return backbone, hidden_dim
+    classifier = get_classifier_f(n_features=hidden_dim)
 
-
-def init_first_conv(conv):
-    kernel_size = conv.kernel_size
-    stride = conv.stride
-    padding = conv.padding
-    bias = conv.bias
-    out_channels = conv.out_channels
-    return nn.Conv2d(
-        in_channels=1,
-        out_channels=out_channels,
-        kernel_size=kernel_size,
-        stride=stride,
-        padding=padding,
-        bias=bias,
+    dino_lora = DINOV2FeatureExtractor(
+        encoder=backbone,
+        decoder=classifier,
+        r=rank,
+        use_lora=use_lora,
+        alpha=alpha,
     )
+
+    return dino_lora, hidden_dim
 
 
 def init_cnn(name: str, lift="stack"):
@@ -84,7 +75,6 @@ def init_cnn(name: str, lift="stack"):
     feature_extractor = nn.Sequential(*list(backbone.children())[:-1])
     for param in feature_extractor.parameters():
         param.requires_grad_(False)
-    feature_extractor.eval()
 
     if lift == "reinit_first":
         if name in ("resnet50", "resnet152", "resnext50_32x4d", "resnext101_64x4d"):
@@ -104,6 +94,22 @@ def init_cnn(name: str, lift="stack"):
         else backbone.classifier[-1]  # efficientnet
     ).in_features
     return feature_extractor, num_out_features
+
+
+def init_first_conv(conv):
+    kernel_size = conv.kernel_size
+    stride = conv.stride
+    padding = conv.padding
+    bias = conv.bias
+    out_channels = conv.out_channels
+    return nn.Conv2d(
+        in_channels=1,
+        out_channels=out_channels,
+        kernel_size=kernel_size,
+        stride=stride,
+        padding=padding,
+        bias=bias,
+    )
 
 
 def get_classifier(dropout_p: float, n_features: int, num_target_classes: int):
@@ -143,7 +149,10 @@ class ImagenetTransferLearning(nn.Module):
         model_name: str = "resnet50",
         dropout_p: float = 0.25,
         use_compile: bool = True,
-        lift="stack",
+        lift: str = "stack",
+        use_lora: bool = False,
+        alpha=16,
+        rank=16,
     ):
         super().__init__()
 
@@ -157,6 +166,7 @@ class ImagenetTransferLearning(nn.Module):
             "dropout_p": dropout_p,
             "use_compile": use_compile,
             "lift": lift,
+            "use_lora": use_lora,
         }
 
         if lift == "stack":
@@ -175,13 +185,16 @@ class ImagenetTransferLearning(nn.Module):
 
             self.forward = self.vit_forward
 
-        elif model_name == "dino_v2":
-            self.feature_extractor, num_features = init_dino(model_name)
-            self.classifier = get_classifier_f(n_features=num_features)
+        elif "dinov2" in model_name:
+            self.dino, num_features = init_dino(
+                model_name, get_classifier_f, use_lora=use_lora, alpha=alpha, rank=rank
+            )
+            # self.classifier = get_classifier_f(n_features=num_features)
             self.forward = self.dino_forward
 
         else:
             self.feature_extractor, num_features = init_cnn(name=model_name, lift=lift)
+            self.feature_extractor.eval()
 
             self.classifier = get_classifier_f(n_features=num_features)
 
@@ -205,7 +218,8 @@ class ImagenetTransferLearning(nn.Module):
         return x
 
     def dino_forward(self, x):
-        return self.cnn_forward(x)
+        x = self.lift(x)
+        return self.dino(x)
 
     def step(self, inputs, targets, ratio=1):
         logits = self(inputs).flatten()
@@ -223,19 +237,23 @@ class ImagenetTransferLearning(nn.Module):
     def eval(self):
         if self.kwargs["model_name"] == "vit_l_16":
             self.vit.heads.eval()
+        elif "dinov2" in self.kwargs["model_name"]:
+            self.dino.eval()
         else:
             self.classifier.eval()
 
     def train(self):
         if self.kwargs["model_name"] == "vit_l_16":
             self.vit.heads.train()
+        elif "dinov2" in self.kwargs["model_name"]:
+            self.dino.train()
         else:
             self.classifier.train()
 
 
 def get_dataloaders(dataset_root, batch_size):
     num_workers = min(12, len(os.sched_getaffinity(0)))
-    # num_workers = 0
+
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else (None, False)
     )
@@ -352,6 +370,10 @@ def main(
     label_smoothing: float,
     stochastic_smoothing: bool,
     lift: str,
+    use_lora: bool,
+    rank=16,
+    alpha=16,
+    log_path="runs",
 ):
     torch.set_float32_matmul_precision("high")
     torch.backends.cudnn.benchmark = True
@@ -371,13 +393,19 @@ def main(
         # profiler.start()
 
     logging_dir = get_logging_dir(
-        str(Path.cwd() / "grid_search"),
+        str(Path.cwd() / log_path),
         # kwargs
         model=model_name,
         lr=lr,
         normalize=normalize,
         dropout_p=dropout_p,
         use_compile=use_compile,
+        label_smoothing=label_smoothing,
+        stochastic_smoothing=stochastic_smoothing,
+        use_lora=use_lora,
+        resize=resize,
+        rank=rank,
+        alpha=alpha,
     )
 
     writer = get_tensorboard_logger(logging_dir)
@@ -385,7 +413,13 @@ def main(
     device = torch.device("cuda")
 
     model: nn.Module = ImagenetTransferLearning(
-        model_name=model_name, dropout_p=dropout_p, use_compile=use_compile, lift=lift
+        model_name=model_name,
+        dropout_p=dropout_p,
+        use_compile=use_compile,
+        lift=lift,
+        use_lora=use_lora,
+        alpha=alpha,
+        rank=rank,
     )
 
     # noinspection PyArgumentList
@@ -443,7 +477,7 @@ def main(
 
     best_results = {}
 
-    n_epochs = 250
+    n_epochs = 120
     for epoch in range(n_epochs):
 
         global_step = train_step_f(global_step=global_step, model=model)
@@ -660,10 +694,14 @@ def load_checkpoint(ckpt_path):
     model = ckpt_dict["model"](model_name=model_name, dropout_p=dropout_p)
     model.load_state_dict(ckpt_dict["model_state_dict"])
 
-    # FIXME: add optim class and args to state dict
-    optim = ckpt_dict.get("optimizer", torch.optim.AdamW)(
-        lr=lr, params=model.classifier.parameters()
-    ).load_state_dict(ckpt_dict["optimizer_state_dict"])
+    try:
+        # FIXME: add optim class and args to state dict
+        optim = ckpt_dict.get("optimizer", torch.optim.AdamW)(
+            lr=lr, params=model.classifier.parameters()
+        ).load_state_dict(ckpt_dict["optimizer_state_dict"])
+    except e:
+        print(f"Could not load optim due to {e}; skipping.")
+        optim = None
 
     return {"model": model, "optim": optim, "normalize": normalize}
 
@@ -695,7 +733,14 @@ def get_argparser():
             "resnext101_64x4d",
             "efficientnet_v2_l",
             "vit_l_16",
-            "dino_v2",
+            "dinov2_vits14",
+            "dinov2_vitb14",
+            "dinov2_vitl14",
+            "dinov2_vitg14",
+            "dinov2_vits14_reg",
+            "dinov2_vitb14_reg",
+            "dinov2_vitl14_reg",
+            "dinov2_vitg14_reg",
         ],
     )
     parser.add_argument(
@@ -749,6 +794,23 @@ def get_argparser():
         help="How to lift single channel to 3 channels. Stacking stacks the single channel thrice. Conv adds a 1x1 convolution layer before the model. reinit_first re-initialises the first layer if applicable.",
     )
 
+    parser.add_argument(
+        "--use_lora",
+        action="store_true",
+        help="Whether to use LoRA if applicable.",
+    )
+
+    parser.add_argument("--rank", type=int, default=16, help="rank of LoRA")
+
+    parser.add_argument(
+        "--alpha",
+        type=float,
+        default=None,
+        help="LoRA alpha scaling. Defaults to rank value if not set",
+    )
+
+    parser.add_argument("--log_path", type=str, default="runs")
+
     return parser.parse_args()
 
 
@@ -766,10 +828,20 @@ def sanity_check_args(parsed_args):
     if parsed_args.model_name == "vit_l_16" and parsed_args.resize != 512:
         print("Setting resize to 512 since vit_16_l is being used")
         parsed_args.resize = 512
-    if parsed_args.model_name == "dino_v2" and parsed_args.resize == 0:
-        resize = 504
+    if "dinov2" in parsed_args.model_name and parsed_args.resize == 0:
+        resize = 560
         print(f"\n#######\nSetting resize to {resize} \n######\n")
         parsed_args.resize = resize
+
+    if parsed_args.use_lora and not "dinov2" in parsed_args.model_name:
+        warnings.warn(
+            "Warning: LoRA is only supported for Dino V2 models. Ignoring setting....\n",
+            UserWarning,
+        )
+
+    if parsed_args.alpha is None:
+        parsed_args.alpha = parsed_args.rank
+
     assert parsed_args.resize % 14 == 0 or parsed_args.model_name != "dino_v2"
 
     return parsed_args

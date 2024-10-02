@@ -1,72 +1,46 @@
-resnext101_64x4d 1e-04 0 0.1 64
-resnext101_64x4d 1e-03 0 0.1 64
-resnext101_64x4d 1e-04 0 0.25 64
-resnext101_64x4d 1e-03 0 0.25 64
-resnext101_64x4d 1e-04 0 0.4 64
-resnext101_64x4d 1e-03 0 0.4 64
-resnext101_64x4d 1e-05 0 0.4 64
-resnext101_64x4d 1e-05 0 0.25 64
-resnext101_64x4d 1e-05 0 0.1 64
-resnext101_64x4d 1e-04 0 0.1 32
-resnext101_64x4d 1e-03 0 0.1 32
-resnext101_64x4d 1e-04 0 0.25 32
-resnext101_64x4d 1e-03 0 0.25 32
-resnext101_64x4d 1e-04 0 0.4 32
-resnext101_64x4d 1e-03 0 0.4 32
-resnext101_64x4d 1e-05 0 0.4 32
-resnext101_64x4d 1e-05 0 0.25 32
-resnext101_64x4d 1e-05 0 0.1 32
-efficientnet_v2_l 1e-04 0 0.1 64
-efficientnet_v2_l 1e-03 0 0.1 64
-efficientnet_v2_l 1e-04 0 0.25 64
-efficientnet_v2_l 1e-03 0 0.25 64
-efficientnet_v2_l 1e-04 0 0.4 64
-efficientnet_v2_l 1e-03 0 0.4 64
-efficientnet_v2_l 1e-05 0 0.4 64
-efficientnet_v2_l 1e-05 0 0.25 64
-efficientnet_v2_l 1e-05 0 0.1 64
-efficientnet_v2_l 1e-04 0 0.1 32
-efficientnet_v2_l 1e-03 0 0.1 32
-efficientnet_v2_l 1e-04 0 0.25 32
-efficientnet_v2_l 1e-03 0 0.25 32
-efficientnet_v2_l 1e-04 0 0.4 32
-efficientnet_v2_l 1e-03 0 0.4 32
-efficientnet_v2_l 1e-05 0 0.4 32
-efficientnet_v2_l 1e-05 0 0.25 32
-efficientnet_v2_l 1e-05 0 0.1 32
-vit_l_16 1e-04 0 0.1 64
-vit_l_16 1e-03 0 0.1 64
-vit_l_16 1e-04 0 0.25 64
-vit_l_16 1e-03 0 0.25 64
-vit_l_16 1e-04 0 0.4 64
-vit_l_16 1e-03 0 0.4 64
-vit_l_16 1e-05 0 0.4 64
-vit_l_16 1e-05 0 0.25 64
-vit_l_16 1e-05 0 0.1 64
-vit_l_16 1e-04 0 0.1 32
-vit_l_16 1e-03 0 0.1 32
-vit_l_16 1e-04 0 0.25 32
-vit_l_16 1e-03 0 0.25 32
-vit_l_16 1e-04 0 0.4 32
-vit_l_16 1e-03 0 0.4 32
-vit_l_16 1e-05 0 0.4 32
-vit_l_16 1e-05 0 0.25 32
-vit_l_16 1e-05 0 0.1 32
-resnext50_32x4d 1e-04 0 0.1 64
-resnext50_32x4d 1e-03 0 0.1 64
-resnext50_32x4d 1e-04 0 0.25 64
-resnext50_32x4d 1e-03 0 0.25 64
-resnext50_32x4d 1e-04 0 0.4 64
-resnext50_32x4d 1e-03 0 0.4 64
-resnext50_32x4d 1e-05 0 0.4 64
-resnext50_32x4d 1e-05 0 0.25 64
-resnext50_32x4d 1e-05 0 0.1 64
-resnext50_32x4d 1e-04 0 0.1 32
-resnext50_32x4d 1e-03 0 0.1 32
-resnext50_32x4d 1e-04 0 0.25 32
-resnext50_32x4d 1e-03 0 0.25 32
-resnext50_32x4d 1e-04 0 0.4 32
-resnext50_32x4d 1e-03 0 0.4 32
-resnext50_32x4d 1e-05 0 0.4 32
-resnext50_32x4d 1e-05 0 0.25 32
-resnext50_32x4d 1e-05 0 0.1 32
+efficientnet_v2_l 1e-04 0 0.25 32 0 0 0
+efficientnet_v2_l 1e-04 1 0.25 32 0 0 0
+efficientnet_v2_l 1e-04 2 0.25 32 0 0 0
+dinov2_vitl14_reg 1e-04 0 0.25 32 0 0 0
+dinov2_vitl14_reg 1e-04 1 0.25 32 0 0 0
+dinov2_vitl14_reg 1e-04 0 0.25 32 1 0 0
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0 0
+efficientnet_v2_l 1e-04 0 0.25 32 0 0.1 1
+efficientnet_v2_l 1e-04 1 0.25 32 0 0.1 1
+efficientnet_v2_l 1e-04 2 0.25 32 0 0.1 1
+dinov2_vitl14_reg 1e-04 0 0.25 32 0 0.1 1
+dinov2_vitl14_reg 1e-04 1 0.25 32 0 0.1 1
+dinov2_vitl14_reg 1e-04 0 0.25 32 1 0.1 1
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0.1 1
+efficientnet_v2_l 1e-04 0 0.25 32 0 0.1 1
+efficientnet_v2_l 1e-04 1 0.25 32 0 0.1 1
+efficientnet_v2_l 1e-04 2 0.25 32 0 0.1 1
+dinov2_vitl14_reg 1e-04 0 0.25 32 0 0.1 1
+dinov2_vitl14_reg 1e-04 1 0.25 32 0 0.1 1
+dinov2_vitl14_reg 1e-04 0 0.25 32 1 0.1 1
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0.1 1
+efficientnet_v2_l 1e-04 0 0.25 32 0 0.2 0
+efficientnet_v2_l 1e-04 1 0.25 32 0 0.2 0
+efficientnet_v2_l 1e-04 2 0.25 32 0 0.2 0
+dinov2_vitl14_reg 1e-04 0 0.25 32 0 0.2 0
+dinov2_vitl14_reg 1e-04 1 0.25 32 0 0.2 0
+dinov2_vitl14_reg 1e-04 0 0.25 32 1 0.2 0
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0.2 0
+efficientnet_v2_l 1e-04 0 0.25 32 0 0.1 0
+efficientnet_v2_l 1e-04 1 0.25 32 0 0.1 0
+efficientnet_v2_l 1e-04 2 0.25 32 0 0.1 0
+dinov2_vitl14_reg 1e-04 0 0.25 32 0 0.1 0
+dinov2_vitl14_reg 1e-04 1 0.25 32 0 0.1 0
+dinov2_vitl14_reg 1e-04 0 0.25 32 1 0.1 0
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0.1 0
+
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0.2 1 3 1 560
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0.1 1 16 16 560
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0.1 1 16 16 784
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0.2 1 16 16 560
+dinov2_vitl14_reg 1e-04 1 0.25 32 1 0.2 1 16 16 784
+
+
+
+
+
