@@ -1,18 +1,19 @@
-import numpy as np
-import sys
 import os
-import casacore.tables as ct
+import random
+import re
+import shutil
+import sys
+from argparse import ArgumentParser
+from glob import glob
+from itertools import repeat
+
+import numpy as np
+import pandas as pd
 import pyregion
+import tables
 from astropy.io import fits
 from astropy.wcs import WCS
-from glob import glob
-import tables
-from itertools import repeat
-import re
-import pandas as pd
-from argparse import ArgumentParser
-import random
-import shutil
+import casacore.tables as ct
 
 
 def add_trailing_zeros(s, digitsize=4):
@@ -99,6 +100,7 @@ def parse_history(ms, hist_item):
             return item
     print('WARNING:' + hist_item + ' not found')
     return None
+
 
 def make_utf8(inp):
     """
@@ -430,57 +432,56 @@ class SubtractWSClean:
 
         for ms in self.mslist:
             print('Subtract ' + ms)
-            ts = ct.table(ms, readonly=False, ack=False)
-            colnames = ts.colnames()
+            with ct.table(ms, readonly=False, ack=False) as ts:
+                colnames = ts.colnames()
 
-            if "MODEL_DATA" not in colnames:
-                sys.exit(
-                    f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
+                if "MODEL_DATA" not in colnames:
+                    sys.exit(
+                        f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
 
-            if not self.onlyprint:
-                if out_column not in colnames:
-                    # get column description from DATA
-                    desc = ts.getcoldesc('DATA')
-                    # create output column
-                    print('Create ' + out_column)
-                    desc['name'] = out_column
-                    # create template for output column
-                    ts.addcols(desc)
+                if not self.onlyprint:
+                    if out_column not in colnames:
+                        # get column description from DATA
+                        desc = ts.getcoldesc('DATA')
+                        # create output column
+                        print('Create ' + out_column)
+                        desc['name'] = out_column
+                        # create template for output column
+                        ts.addcols(desc)
 
+                    else:
+                        print(out_column, ' already exists')
+
+                # get number of rows
+                nrows = ts.nrows()
+
+                # make sure every slice has the same size
+                best_slice = get_largest_divider(nrows, 1000)
+
+                if self.inverse:
+                    sign = '+'
                 else:
-                    print(out_column, ' already exists')
+                    sign = '-'
 
-            # get number of rows
-            nrows = ts.nrows()
+                if 'SUBTRACT_DATA' in colnames:
+                    colmn = 'SUBTRACT_DATA'
+                elif 'CORRECTED_DATA' in colnames:
+                    colmn = 'CORRECTED_DATA'
+                else:
+                    colmn = 'DATA'
 
-            # make sure every slice has the same size
-            best_slice = get_largest_divider(nrows, 1000)
+                for c in range(0, nrows, best_slice):
 
-            if self.inverse:
-                sign = '+'
-            else:
-                sign = '-'
+                    if c == 0:
+                        print(f'Output --> {colmn} {sign} MODEL_DATA')
 
-            if 'SUBTRACT_DATA' in colnames:
-                colmn = 'SUBTRACT_DATA'
-            elif 'CORRECTED_DATA' in colnames:
-                colmn = 'CORRECTED_DATA'
-            else:
-                colmn = 'DATA'
+                    if not self.onlyprint:
+                        data = ts.getcol(colmn, startrow=c, nrow=best_slice)
 
-            for c in range(0, nrows, best_slice):
-
-                if c == 0:
-                    print(f'Output --> {colmn} {sign} MODEL_DATA')
-
-                if not self.onlyprint:
-                    data = ts.getcol(colmn, startrow=c, nrow=best_slice)
-
-                if not self.onlyprint:
-                    model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
-                    ts.putcol(out_column, data - model if not self.inverse else data + model, startrow=c, nrow=best_slice)
-            ts.removecols(['MODEL_DATA'])
-            ts.close()
+                    if not self.onlyprint:
+                        model = ts.getcol('MODEL_DATA', startrow=c, nrow=best_slice)
+                        ts.putcol(out_column, data - model if not self.inverse else data + model, startrow=c, nrow=best_slice)
+                ts.removecols(['MODEL_DATA'])
 
         return self
 

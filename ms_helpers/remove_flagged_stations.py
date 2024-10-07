@@ -20,7 +20,7 @@ def remove_flagged_antennas(msin: str = None, msout: str = None, overwrite: bool
 
     # Set name for output if not given
     if msout is None:
-        msout = f"flagged_{msin}"
+        msout = f"flagged_{msin.split('/')[-1]}"
 
     # Read antenna names from Measurement Set
     with table(f"{msin}::ANTENNA", ack=False) as ants:
