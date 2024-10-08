@@ -582,6 +582,7 @@ class SubtractWSClean:
             command += ['ps.type=phaseshifter',
                         'ps.phasecenter=' + phasecenter]
 
+        # For facet subtraction we can take some shortcuts and get major speed improvements
         if speedup_facet_subtract:
             # 2) AVERAGING
             if freqavg is not None or timeres is not None:
@@ -628,6 +629,7 @@ class SubtractWSClean:
                             ac_count += 1
                     T.close()
 
+        # Most accurate version, but more expensive than the --speedup_facet_subtract approach
         else:
             # 2) APPLY BEAM
             if applybeam:
