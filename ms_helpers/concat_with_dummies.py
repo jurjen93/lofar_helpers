@@ -184,8 +184,16 @@ def make_parset(mss, concat_name, data_column, time_avg, freq_avg, time_res, fre
     for dir, ms in ms_dict.items():
 
         if concat_name is None:
-            concatname = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
-                           replace('mstargetphase','')+'.concat.ms').replace('..', '.').split('/')[-1]
+
+            # Special case
+            matchf = re.search(r'facet_\d{2}-', ms[0].split('/')[-1])
+            matchL = re.search(r'L\d{6}', ms[0].split('/')[-1])
+            if matchf is not None and matchL is not None:
+                concatname = matchf.group()+matchL.group()+'.ms'
+
+            else:
+                concatname = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
+                               replace('mstargetphase','')+'.concat.ms').replace('..', '.').split('/')[-1]
             parsetname = case_insensitive_replace(concatname, '.concat.ms', '.parset')
 
         else:
