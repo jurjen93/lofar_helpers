@@ -44,5 +44,5 @@ venv/
 .cache/
 
 _cache/
-grid_search/
+grid_search*/
 public.spider.surfsara.nl/
