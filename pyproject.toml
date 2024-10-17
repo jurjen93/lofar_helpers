@@ -20,6 +20,3 @@ subtract_with_wsclean = "subtract.subtract_with_wsclean:main"
 
 [tool.setuptools]
 packages = ["ds9_helpers", "fits_helpers", "h5_helpers", "ms_helpers", "subtract"]
-
-[tool.setuptools.packages.find]
-where = "."
