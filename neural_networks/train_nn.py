@@ -24,8 +24,6 @@ from dino_model import DINOV2FeatureExtractor
 PROFILE = False
 SEED = None
 
-cache = joblib.Memory(location="_cache", verbose=0)
-
 
 def init_vit(model_name):
     assert model_name == "vit_l_16"
@@ -458,8 +456,7 @@ def main(
         train_dataloader=train_dataloader,
         optimizer=optimizer,
         logging_interval=logging_interval,
-        label_smoothing=label_smoothing,
-        stochastic_smoothing=stochastic_smoothing,
+        smoothing_fn=partial(label_smoother, stochastic=stochastic_smoothing, smoothing_factor=label_smoothing),
     )
     val_step_f = partial(val_step_f, val_dataloader=val_dataloader)
 
@@ -558,6 +555,13 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f)
     return mean_loss, logits, targets
 
 
+def label_smoother(labels: torch.tensor, smoothing_factor: float = 0.1, stochastic: bool = True):
+    smoothing_factor = smoothing_factor - (
+    torch.rand_like(labels) * smoothing_factor * stochastic
+    )
+    smoothed_label = (1 - smoothing_factor) * labels + 0.5 * smoothing_factor
+    return smoothed_label
+
 def train_step(
     model,
     optimizer,
@@ -566,8 +570,7 @@ def train_step(
     global_step,
     logging_interval,
     metrics_logger,
-    label_smoothing=0,
-    stochastic_smoothing=False,
+    smoothing_fn,
 ):
     # print("training")
     model.train()
@@ -578,11 +581,7 @@ def train_step(
         global_step += 1
 
         data, labels = prepare_data_f(data, labels)
-        # Stochastic smoothing factor
-        smoothing_factor = label_smoothing - (
-            torch.rand_like(labels) * label_smoothing * stochastic_smoothing
-        )
-        smoothed_label = (1 - smoothing_factor) * labels + 0.5 * smoothing_factor
+        smoothed_label = smoothing_fn(labels)
         data = augmentation(data)
 
         optimizer.zero_grad(set_to_none=True)

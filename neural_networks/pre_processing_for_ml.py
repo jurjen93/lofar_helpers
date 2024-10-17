@@ -11,9 +11,6 @@ from joblib import Parallel, delayed, Memory
 import joblib
 from matplotlib.colors import SymLogNorm
 from torch.utils.data import Dataset
-from concurrent.futures import ThreadPoolExecutor, as_completed
-
-cache = joblib.Memory(location="_cache", verbose=0)
 
 
 def get_rms(data: np.ndarray, maskSup=1e-7):
@@ -95,7 +92,7 @@ def transform_data(root_dir, classes=("continue", "stop"), modes=("", "_val")):
     def process_fits(fits_path):
         with fits.open(fits_path) as hdul:
             image_data = hdul[0].data
-
+        # assert image_data.shape[2] == 2048, (image_data.shape, image_data.shape[2], fits_path)
         transformed = normalize_fits(image_data)
 
         np.savez_compressed(
@@ -110,7 +107,6 @@ def transform_data(root_dir, classes=("continue", "stop"), modes=("", "_val")):
         for cls, mode in itertools.product(classes, modes)
         for fits_path in (root_dir / (cls + mode)).glob("*.fits")
     )
-
 
 class FitsDataset(Dataset):
     def __init__(self, root_dir, mode="train"):
@@ -129,6 +125,8 @@ class FitsDataset(Dataset):
 
         ext = ".npz"
         glob_ext = "*" + ext
+
+        self.root_dir = root_dir
 
         for folder in (
             root_dir / (cls + ("" if mode == "train" else "_val")) for cls in classes
@@ -170,16 +168,18 @@ class FitsDataset(Dataset):
         # print(f'{mode}: using the following sources: {sources}')
 
     def compute_statistics(self, normalize):
-        self.mean, self.std = FitsDataset._compute_statistics(self, normalize)
+        cache = Memory(location=self.root_dir / '_cache')
+        cached_compute = cache.cache(FitsDataset._compute_statistics)
+        self.mean, self.std = cached_compute(self, normalize)
         return self.mean, self.std
 
     @staticmethod
-    @cache.cache()
     def _compute_statistics(loader, normalize, verbose=True):
-        if not normalize:
-            return torch.asarray([0]), torch.asarray([1])
         if verbose:
             print("Computing dataset statistics")
+        if not normalize:
+            return torch.asarray([0]), torch.asarray([1])
+
         means = []
         sums_of_squares = []
         f = (lambda x: torch.log(x + 1e-10)) if normalize == 2 else lambda x: x
@@ -281,7 +281,7 @@ def make_histogram(root_dir):
 
 
 if __name__ == "__main__":
-    root = f"public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data"
+    root = f"/scratch-shared/CORTEX/public.spider.surfsara.nl/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data"
     transform_data(root)
 
     # make_histogram(root)
