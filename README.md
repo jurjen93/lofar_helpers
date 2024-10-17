@@ -9,9 +9,10 @@ I have tried to write them such they can be used for more general use-cases as w
 Some of these scripts have been integrated in data reduction pipelines as well.
 You are free to use the scripts for your own work.
 
-Clone the repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git``` \
-Or install with: ```pip install -v git+https://github.com/jurjen93/lofar_helpers.git``` \
-Installing gives you the following command line functionalities:
+Clone the repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git```
+
+Or install with: ```pip install -v git+https://github.com/jurjen93/lofar_helpers.git```
+This gives you the following command line functionalities:
 - split_polygon_facets
 - crop_nan_boundaries
 - cut_fits_with_region
