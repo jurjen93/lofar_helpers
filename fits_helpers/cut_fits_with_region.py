@@ -12,8 +12,8 @@ def parse_args():
     :return: parsed arguments
     """
     parser = ArgumentParser(description='Cut fits file with region file')
-    parser.add_argument('--fits_input', help='fits input file', required=True, type=str)
-    parser.add_argument('--fits_output', help='fits output file', required=True, type=str)
+    parser.add_argument('fits_input', help='fits input file', type=str)
+    parser.add_argument('--output_name', help='fits output file', type=str)
     parser.add_argument('--region', help='region file', required=True, type=str)
     return parser.parse_args()
 
@@ -24,7 +24,9 @@ def main():
 
     fitsfile = args.fits_input
     regionfile = args.region
-    outputfits = args.fits_output
+    outputfits = args.output_name
+    if outputfits is None:
+        outputfits = fitsfile
 
     hdu = fits.open(fitsfile)
 

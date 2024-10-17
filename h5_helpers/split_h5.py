@@ -1,3 +1,7 @@
+"""
+Split out multi-dir h5
+"""
+
 import tables
 import numpy as np
 import shutil

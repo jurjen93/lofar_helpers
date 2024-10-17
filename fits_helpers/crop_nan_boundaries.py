@@ -43,14 +43,18 @@ def parse_args():
     :return: parsed arguments
     """
     parser = ArgumentParser(description='Crop fits file with nan boundaries')
-    parser.add_argument('--fits_input', help='fits input file', required=True, type=str)
-    parser.add_argument('--fits_output', help='fits output file', required=True, type=str)
+    parser.add_argument('fits_in', help='fits input file', type=str)
+    parser.add_argument('--output_name', help='fits output file', type=str)
     return parser.parse_args()
 
 def main():
     """ Main function"""
     args = parse_args()
-    crop_nan_boundaries(args.fits_input, args.fits_output)
+    if args.output_name is None:
+        outname = args.fits_in
+    else:
+        outname = args.output_name
+    crop_nan_boundaries(args.fits_in, outname)
 
 if __name__ == '__main__':
     main()

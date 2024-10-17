@@ -24,3 +24,7 @@ def force_close(h5):
             h.close()
             return
     sys.stderr.write(h5 + ' not found\n')
+
+
+if __name__ == '__main__':
+    force_close_all()
