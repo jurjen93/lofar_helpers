@@ -1,3 +1,6 @@
+#package
+build
+lofar_helpers.egg-info
 # csv files
 *.csv
 #text files

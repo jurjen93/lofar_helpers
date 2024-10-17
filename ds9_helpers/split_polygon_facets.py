@@ -120,7 +120,7 @@ def point_in_polygon(point, poly_reg):
 def parse_args():
     """Argument parser"""
 
-    parser = ArgumentParser(description='Split facet file with multiple polygons into multiple files per facet (Values standard in degrees)')
+    parser = ArgumentParser(description='Split multi-facet region file with polygon regions out into multiple region files')
     parser.add_argument('--reg', help='region file', type=str, required=True)
     parser.add_argument('--h5', help='h5 file to write directions from', type=str, required=True)
     parser.add_argument('--extra_boundary', help='make polygons with extra boundaries', type=float, default=0.)

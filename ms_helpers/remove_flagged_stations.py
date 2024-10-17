@@ -72,7 +72,7 @@ def parse_args():
     Parse input arguments
     """
 
-    parser = ArgumentParser(description='MS stacking')
+    parser = ArgumentParser(description='Remove stations from the MS that are fully flagged')
     parser.add_argument('msin', type=str, help='Input Measurement Set')
     parser.add_argument('--msout', type=str, default=None, help='Output Measurement Set')
     parser.add_argument('--overwrite', action='store_true', help='Overwrite input Measurement Set')

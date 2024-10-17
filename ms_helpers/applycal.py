@@ -100,7 +100,7 @@ class ApplyCal:
 def parse_args():
     """Argument parser"""
 
-    parser = ArgumentParser(description='Applycal on MS with H5')
+    parser = ArgumentParser(description='Apply h5parm on MeasurementSet')
     parser.add_argument('msin', nargs='+', type=str, help='input measurement set')
     parser.add_argument('--msout', type=str, default='.', help='output measurement set')
     parser.add_argument('--h5', type=str, help='h5 calibration', required=True)
