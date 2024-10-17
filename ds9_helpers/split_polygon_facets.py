@@ -143,9 +143,9 @@ def main():
     H.close()
 
     #TODO: dangerous! Convert to degrees
-    if np.all(np.abs(dirs)<2*np.pi):
-        dirs %= (2*np.pi)
-        dirs *= 360/(2*np.pi)
+    if np.all(np.abs(dirs) < 2 * np.pi):
+        # Converting radians to degrees
+        dirs = np.degrees(dirs)
 
     f = open('polygon_info.csv', 'w')
     writer = csv.writer(f)

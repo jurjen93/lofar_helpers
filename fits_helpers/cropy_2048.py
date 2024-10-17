@@ -1,5 +1,10 @@
+"""
+Crop image to 2048x2048 (for neural network)
+"""
+
 from astropy.io import fits
 import numpy as np
+from argparse import ArgumentParser
 
 
 def crop_fits_image(input_filename, output_filename, center=None):
@@ -55,3 +60,22 @@ def crop_fits_image(input_filename, output_filename, center=None):
         # Write the cropped image to the output file
         hdu = fits.PrimaryHDU(data=np.array([[cropped_data]]), header=header)
         hdu.writeto(output_filename, overwrite=True)
+
+
+def parse_args():
+    """
+    Command line argument parser
+    :return: parsed arguments
+    """
+    parser = ArgumentParser(description='Crop image to 2048x2048')
+    parser.add_argument('--fits_input', help='fits input file', required=True, type=str)
+    parser.add_argument('--fits_output', help='fits output file', required=True, type=str)
+    return parser.parse_args()
+
+def main():
+    """ Main function"""
+    args = parse_args()
+    crop_fits_image(args.fits_input, args.fits_output)
+
+if __name__ == '__main__':
+    main()
