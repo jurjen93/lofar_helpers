@@ -36,7 +36,7 @@ warnings.filterwarnings('ignore')
 
 __all__ = ['merge_h5', 'output_check', 'move_source_in_sourcetable', 'h5_check']
 
-diagdiag_math = """
+diagdiag_math = r"""
 Diagonal times Diagonal
 -------------------------------------------------
 
@@ -47,7 +47,7 @@ Diagonal times Diagonal
 -------------------------------------------------
  """
 
-diagfull_math = """
+diagfull_math = r"""
 Diagonal times Fulljones
 -------------------------------------------------
 
@@ -58,7 +58,7 @@ Diagonal times Fulljones
 -------------------------------------------------
  """
 
-fulldiag_math = """
+fulldiag_math = r"""
  Fulljones times Diagonal
 -------------------------------------------------
 
@@ -69,7 +69,7 @@ fulldiag_math = """
 -------------------------------------------------
 """
 
-doublefulljones_math = """
+doublefulljones_math = r"""
  Fulljones times Fulljones
 -------------------------------------------------
 
@@ -80,7 +80,7 @@ doublefulljones_math = """
 -------------------------------------------------
 """
 
-lin2circ_math = """
+lin2circ_math = r"""
 Convert linear polarization to circular polarization
 -----------------------------
 RR = XX - iXY + iYX + YY
@@ -90,7 +90,7 @@ LL = XX + iXY - iYX + YY
 -----------------------------
 """
 
-circ2lin_math = """
+circ2lin_math = r"""
 Convert circular polarization to linear polarization
 -----------------------------
 XX = RR + RL + LR + LL
@@ -230,32 +230,6 @@ def find_closest_indices(arr1, arr2):
     return closest_indices
 
 
-def take_numpy_axis(numpy_array, axis, idx):
-    """
-    Take specific axis from multidimensional array
-
-    :param numpy_array: numpy array
-    :param axis: axis
-    :param idx: indices
-
-    :return numpy array
-    """
-
-    if axis == 0:
-        return numpy_array[idx, ...]
-    elif axis == 1:
-        return numpy_array[:, idx, ...]
-    elif axis == 2:
-        return numpy_array[:, :, idx, ...]
-    elif axis == 3:
-        return numpy_array[:, :, :, idx, ...]
-    elif axis == 4:
-        return numpy_array[:, :, :, :, idx, ...]
-    else:
-        sys.exit('ERROR: typical index number does not exceed 4, but you asked for ' + str(axis) +
-                 '\nOr this script is outdated or you made a mistake.')
-
-
 def has_integer(input):
     """
     Check if string has integer
@@ -306,6 +280,36 @@ def coordinate_distance(c1, c2):
         c2 = SkyCoord(c2[0], c2[1], unit='degree', frame='icrs')
     return c1.separation(c2).to(u.degree).value
 
+
+def get_double_slice(values, idx: list = None, axes: list = None):
+    """
+    Get double slices
+
+    :param values: numpy array
+    :param idx: list of indices
+    :param axes: list of axes corresponding to indices
+
+    return slice
+    """
+
+    ax1, ax2 = axes
+    id1, id2 = idx
+    l = list([slice(None)] * ax1 + [id1] + [slice(None)] * (len(values.shape) - ax1 - 1))
+    l[ax2] = id2
+    return tuple(l)
+
+
+def get_slices(values, id: int = None, axis: int = None):
+    """
+    Get slice
+
+    :param values: numpy array
+    :param id: ID from axis
+    :param axis: axis corresponding to given id
+
+    :return: slice
+    """
+    return tuple([slice(None)] * axis + [id] + [slice(None)] * (len(values.shape) - axis - 1))
 
 
 class MergeH5:
@@ -577,38 +581,12 @@ class MergeH5:
         shape[self.axes_current.index(ax_name)] = len(axes_new)
         values_tmp = zeros(shape)
         if 'pol' in self.axes_current and 'amplitude' in soltab:
-            if self.axes_current.index('pol') == 0:
-                values_tmp[-1, ...] = 1
-                values_tmp[0, ...] = 1
-            elif self.axes_current.index('pol') == 1:
-                values_tmp[:, -1, ...] = 1
-                values_tmp[:, 0, ...] = 1
-            elif self.axes_current.index('pol') == 2:
-                values_tmp[:, :, -1, ...] = 1
-                values_tmp[:, :, 0, ...] = 1
-            elif self.axes_current.index('pol') == 3:
-                values_tmp[:, :, :, -1, ...] = 1
-                values_tmp[:, :, :, 0, ...] = 1
-            elif self.axes_current.index('pol') == 4:
-                values_tmp[:, :, :, :, -1, ...] = 1
-                values_tmp[:, :, :, :, 0, ...] = 1
+            values_tmp[get_slices(values_tmp, -1, self.axes_current.index('pol'))] = 1
+            values_tmp[get_slices(values_tmp, 0, self.axes_current.index('pol'))] = 1
 
         idx = find_closest_indices(axes, axes_new)
 
-        if self.axes_current.index(ax_name) == 0:
-            values_tmp[idx, ...] = values[:]
-
-        elif self.axes_current.index(ax_name) == 1:
-            values_tmp[:, idx, ...] = values[:]
-
-        elif self.axes_current.index(ax_name) == 2:
-            values_tmp[:, :, idx, ...] = values[:]
-
-        elif self.axes_current.index(ax_name) == 3:
-            values_tmp[:, :, :, idx, ...] = values[:]
-
-        elif self.axes_current.index(ax_name) == 4:
-            values_tmp[:, :, :, :, idx, ...] = values[:]
+        values_tmp[get_slices(values_tmp, idx, self.axes_current.index(ax_name))] = values[:]
 
         return values_tmp
 
@@ -1723,41 +1701,14 @@ class MergeH5:
                     for idx, antenna in enumerate(new_antlist):
                         if antenna in h5_antlist:
                             idx_h5 = h5_antlist.index(antenna)
-                            if antenna_index == 0:
-                                ms_values[idx, ...] += h5_values[idx_h5, ...]
-                            elif antenna_index == 1:
-                                ms_values[:, idx, ...] += h5_values[:, idx_h5, ...]
-                            elif antenna_index == 2:
-                                ms_values[:, :, idx, ...] += h5_values[:, :, idx_h5, ...]
-                            elif antenna_index == 3:
-                                ms_values[:, :, :, idx, ...] += h5_values[:, :, :, idx_h5, ...]
-                            elif antenna_index == 4:
-                                ms_values[:, :, :, :, idx, ...] += h5_values[:, :, :, :, idx_h5, ...]
+                            ms_values[get_slices(ms_values, idx, antenna_index)] += h5_values[get_slices(h5_values, idx_h5, antenna_index)]
                         elif 'CS' in antenna and superstation:  # core stations
-                            if antenna_index == 0:
-                                ms_values[idx, ...] += h5_values[superstation_index, ...]
-                            elif antenna_index == 1:
-                                ms_values[:, idx, ...] += h5_values[:, superstation_index, ...]
-                            elif antenna_index == 2:
-                                ms_values[:, :, idx, ...] += h5_values[:, :, superstation_index, ...]
-                            elif antenna_index == 3:
-                                ms_values[:, :, :, idx, ...] += h5_values[:, :, :, superstation_index, ...]
-                            elif antenna_index == 4:
-                                ms_values[:, :, :, :, idx, ...] += h5_values[:, :, :, :, superstation_index, ...]
+                            ms_values[get_slices(ms_values, idx, antenna_index)] += h5_values[get_slices(h5_values, superstation_index, antenna_index)]
                         elif antenna not in h5_antlist and ('amplitude' in soltab or axes == 'weight') \
                                 and 'RS' not in antenna and 'CS' not in antenna:
                             if axes == 'val':
                                 print('Add ' + antenna + ' to output H5 from MS')
-                            if antenna_index == 0:
-                                ms_values[idx, ...] = 1
-                            elif antenna_index == 1:
-                                ms_values[:, idx, ...] = 1
-                            elif antenna_index == 2:
-                                ms_values[:, :, idx, ...] = 1
-                            elif antenna_index == 3:
-                                ms_values[:, :, :, idx, ...] = 1
-                            elif antenna_index == 4:
-                                ms_values[:, :, :, :, idx, ...] = 1
+                            ms_values[get_slices(ms_values, idx, antenna_index)] = 1
 
                     valtype = str(st._f_get_child(axes).dtype)
                     if '16' in valtype:
@@ -1800,47 +1751,6 @@ class MergeH5:
 
         return self
 
-    # def flag_stations(self):
-    #     """
-    #     Propagate flagged station input to output.
-    #     """
-    #
-    #     H = tables.open_file(self.h5name_out, 'r+')
-    #     for input_h5 in self.h5_tables:
-    #         T = tables.open_file(input_h5)
-    #         for solset in T.root._v_groups.keys():
-    #             ss = T.root._f_get_child(solset)
-    #             for soltab in ss._v_groups.keys():
-    #                 st = ss._f_get_child(soltab)
-    #                 weight = st.weight
-    #                 antennas_in = list(st.ant[:])
-    #                 axes = make_utf8(weight.attrs['AXES']).split(',')
-    #                 if 'tec' in soltab:
-    #                     soltab = 'phase' + soltab[-3:]
-    #                 axes_output = make_utf8(
-    #                     H.root._f_get_child(solset)._f_get_child(soltab).weight.attrs['AXES']).split(',')
-    #                 ant_index = axes.index('ant')
-    #                 weight = reorderAxes(weight, axes, [i for i in axes_output if i in axes])
-    #                 for a in range(weight.shape[ant_index]):
-    #                     antenna = antennas_in[a]
-    #                     if sum(take(weight, [a], ant_index)) == 0.:
-    #                         if soltab in list(H.root._f_get_child(solset)._v_groups.keys()):
-    #                             st_out = H.root._f_get_child(solset)._f_get_child(soltab)
-    #                             if antenna in list(st_out.ant[:]):
-    #                                 if ant_index == 0:
-    #                                     st_out.weight[a, ...] = 0.
-    #                                 elif ant_index == 1:
-    #                                     st_out.weight[:, a, ...] = 0.
-    #                                 elif ant_index == 2:
-    #                                     st_out.weight[:, :, a, ...] = 0.
-    #                                 elif ant_index == 3:
-    #                                     st_out.weight[:, :, :, a, ...] = 0.
-    #                                 elif ant_index == 4:
-    #                                     st_out.weight[:, :, :, :, a, ...] = 0.
-    #
-    #         T.close()
-    #     H.close()
-    #     return self
 
     def add_weights(self):
         """
