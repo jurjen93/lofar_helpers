@@ -10,8 +10,16 @@ Some of these scripts have been integrated in data reduction pipelines as well.
 You are free to use the scripts for your own work.
 
 Clone the repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git``` \
-If you are only interested in ```h5_merger.py```, use:\
-```wget "https://raw.githubusercontent.com/jurjen93/lofar_helpers/master/h5_merger.py"```
+Or install with: ```pip install -v git+https://github.com/jurjen93/lofar_helpers.git``` \
+Installing gives you the following command line functionalities:
+- split_polygon_facets
+- crop_nan_boundaries
+- cut_fits_with_region
+- close_h5
+- concat_with_dummies
+- remove_flagged_stations
+- applycal
+- subtract_with_wsclean
 
 #### Contact
 Let me know if you have any issues or suggestions for improvements.

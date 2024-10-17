@@ -749,7 +749,7 @@ def parse_args():
     """
     Command line argument parser
     """
-    parser = ArgumentParser(description='Subtract region with WSClean')
+    parser = ArgumentParser(description='Subtract or predict region with WSClean')
     parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
     parser.add_argument('--region', type=str, help='region file')
     parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)')
