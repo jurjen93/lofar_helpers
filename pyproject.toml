@@ -20,3 +20,6 @@ subtract_with_wsclean = "subtract.subtract_with_wsclean:main"
 
 [tool.setuptools]
 packages = ["ds9_helpers", "fits_helpers", "h5_helpers", "ms_helpers", "subtract"]
+
+# Treat split_polygon_facets.py as a standalone module
+py_modules = ["split_h5","overwrite_table"]
