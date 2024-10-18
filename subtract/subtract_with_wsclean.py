@@ -424,7 +424,6 @@ class SubtractWSClean:
         """
 
         for ms in self.mslist:
-            print('Subtract ' + ms)
             with table(ms, readonly=False, ack=False) as ts:
                 colnames = ts.colnames()
 
@@ -432,32 +431,28 @@ class SubtractWSClean:
                     sys.exit(
                         f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
 
-                if out_column not in colnames:
-                    # get column description from DATA
-                    desc = ts.getcoldesc('DATA')
-                    # create output column
-                    print('Create ' + out_column)
-                    desc['name'] = out_column
-                    # create template for output column
-                    ts.addcols(desc)
-
-                else:
-                    print(out_column, ' already exists')
-
-
-            if self.inverse:
-                sign = '+'
+            if out_column not in colnames:
+                # Creating the column with DP3 ensures we can directly compress the data
+                os.system(f"DP3 msin={ms} msout=. msout.datacolumn={out_column} steps=[] msout.storagemanager=dysco")
             else:
-                sign = '-'
+                print(out_column, ' already exists')
 
             if 'SUBTRACT_DATA' in colnames:
                 colmn = 'SUBTRACT_DATA'
             else:
                 colmn = 'DATA'
 
-            print(f'Output --> {colmn} {sign} MODEL_DATA')
+            if self.inverse:
+                sign = '+'
+            else:
+                sign = '-'
 
+            print(f'Subtracting --> {colmn} {sign} MODEL_DATA for {ms}')
+
+            # subtraction or addition
             taql(f"UPDATE {ms} SET {out_column}={colmn}{sign}MODEL_DATA")
+
+            # remove MODEL_DATA to save memory
             taql(f"ALTER TABLE {ms} DROP COLUMN MODEL_DATA")
 
         return self
