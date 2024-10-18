@@ -16,6 +16,32 @@ from astropy.wcs import WCS
 from casacore.tables import table, taql
 
 
+def fast_copy(filein, dest):
+    """
+    Args:
+        filein: file in
+        dest: out destination
+    """
+    available_cores = os.cpu_count()
+
+    # Prepare the destination path
+    if os.path.isdir(filein):
+        if os.path.exists(dest):
+            dest = os.path.join(dest, os.path.basename(filein))
+
+        cmd = f"mkdir -p {dest} && "
+
+        # Copy files in parallel using the available cores
+        cmd += f"find {filein} -type f | parallel -j {available_cores} cp -rp {{}} {dest}"
+
+        # Run the final command
+        os.system(cmd)
+
+    else:
+        # regular copy
+        os.system(f'cp {filein} {dest}')
+
+
 def add_trailing_zeros(s, digitsize=4):
     """
      Repeat the zero character and add it to front
@@ -844,11 +870,11 @@ def main():
         runpath = absolute_path+'/'+hasfolder
 
         # mkdir and copy files
-        command = [f'mkdir -p {runpath}',
-                   f'cp *-model*.fits {runpath}']
+        os.system(f'mkdir -p {runpath}')
+        for dataset in args.mslist: fast_copy(dataset, runpath)
+        command = [f'cp *-model*.fits {runpath}']
         if args.region is not None:
             command += [f'cp {args.region} {runpath}']
-        command += [f'rsync -a --no-perms {dataset} {runpath}' for dataset in args.mslist]
         # when running with scratch + toil, the next commands are to clean up the tmp* files
         command += ['rm *-model*.fits', f'rm -rf {args.model_image_folder}']
         command += [f'rm -rf {dataset}' for dataset in args.mslist]
@@ -927,7 +953,7 @@ def main():
 
         if args.scratch_toil:
             # copy averaged MS back to output folder
-            for ms in msout: os.system(f'cp -r {ms} {outpath}/{dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}')
+            for ms in msout: fast_copy(ms, f'{outpath}/{dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}')
             # clean up scratch directory (for big MS)
             os.system(f'cp *.log {outpath} && rm -rf *.ms')
             os.chdir(outpath)
@@ -935,7 +961,7 @@ def main():
         print(f'DONE: See output --> {dirname.replace("Dir","facet_")}-*.ms')
     elif args.scratch_toil:
         # copy back the subtracted MS to the output path
-        for ms in subpred.mslist: os.system(f'cp -r {ms} {outpath}')
+        for ms in subpred.mslist: fast_copy(ms, outpath)
         os.system(f'cp *.log {outpath}')
         os.chdir(outpath)
     else:
