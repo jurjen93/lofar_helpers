@@ -927,7 +927,7 @@ def main():
 
         if args.scratch_toil:
             # copy averaged MS back to output folder
-            for ms in msout: os.system(f'rsync -a --no-perms {outpath}/{dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}')
+            for ms in msout: os.system(f'cp -r {ms} {outpath}/{dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}')
             # clean up scratch directory (for big MS)
             os.system(f'cp *.log {outpath} && rm -rf *.ms')
             os.chdir(outpath)
