@@ -28,6 +28,10 @@ def fast_copy(filein, dest):
 
     # Prepare the destination path
     if os.path.isdir(filein):
+        os.system(f'cp -r {filein} {dest}')
+        return
+
+        #TODO: Figure out how to do below for MS
         if os.path.exists(dest):
             dest = os.path.join(dest, os.path.basename(filein))
 
