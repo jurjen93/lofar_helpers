@@ -851,7 +851,7 @@ def main():
         command += [f'rsync -a --no-perms {dataset} {runpath}' for dataset in args.mslist]
         # when running with scratch + toil, the next commands are to clean up the tmp* files
         command += ['rm *-model*.fits', f'rm -rf {args.model_image_folder}']
-        # command += [f'rm -rf {dataset}' for dataset in args.mslist]
+        command += [f'rm -rf {dataset}' for dataset in args.mslist]
         os.system('&&'.join(command))
         outpath = os.getcwd()
         os.chdir(runpath)
@@ -935,7 +935,7 @@ def main():
         print(f'DONE: See output --> {dirname.replace("Dir","facet_")}-*.ms')
     elif args.scratch_toil:
         # copy back the subtracted MS to the output path
-        for ms in subpred.mslist: os.system(f'rsync -a --no-perms {ms} {outpath}')
+        for ms in subpred.mslist: os.system(f'cp -r {ms} {outpath}')
         os.system(f'cp *.log {outpath}')
         os.chdir(outpath)
     else:
