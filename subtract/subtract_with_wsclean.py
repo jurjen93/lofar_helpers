@@ -18,6 +18,8 @@ from casacore.tables import table, taql
 
 def fast_copy(filein, dest):
     """
+    Fast copy of folders
+
     Args:
         filein: file in
         dest: out destination
@@ -889,7 +891,7 @@ def main():
 
     # set subtract object
     subpred = SubtractWSClean(mslist=args.mslist if not args.scratch_toil else [ms.split('/')[-1] for ms in args.mslist],
-                             region=args.region if not args.scratch_toil else args.region.split('/')[-1],
+                             region=args.region if not args.scratch_toil or args.region is None else args.region.split('/')[-1],
                              localnorth=not args.no_local_north,
                              inverse=args.inverse)
 
