@@ -146,6 +146,7 @@ def main():
     if np.all(np.abs(dirs) < 2 * np.pi):
         # Converting radians to degrees
         dirs = np.degrees(dirs)
+        dirs[:,0]=np.mod(dirs[:,0], 360)
 
     f = open('polygon_info.csv', 'w')
     writer = csv.writer(f)
