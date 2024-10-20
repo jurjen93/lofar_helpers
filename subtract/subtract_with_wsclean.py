@@ -883,7 +883,8 @@ def main():
             command += [f'cp {args.region} {runpath}']
         # when running with scratch + toil, the next commands are to clean up the tmp* files
         command += ['rm *-model*.fits', f'rm -rf {args.model_image_folder}']
-        command += [f'rm -rf {dataset}' for dataset in args.mslist]
+        if not args.applybeam and not args.applycal:
+            command += [f'rm -rf {dataset}' for dataset in args.mslist]
         os.system('&&'.join(command))
         outpath = os.getcwd()
         os.chdir(runpath)
