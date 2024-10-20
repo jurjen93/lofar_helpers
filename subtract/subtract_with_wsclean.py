@@ -968,10 +968,11 @@ def main():
         print(f'DONE: See output --> {dirname.replace("Dir","facet_")}-*.ms')
     elif args.scratch_toil:
         # copy back the subtracted MS to the output path
-        for ms in subpred.mslist: fast_copy(ms, outpath)
+        for ms in subpred.mslist: fast_copy(ms, f'{outpath}/subfov_{ms.split("/")[-1]}')
         os.system(f'cp *.log {outpath}')
         os.chdir(outpath)
     else:
+        for ms in subpred.mslist: os.system(f'mv {ms} subfov_{ms.split("/")[-1]}')
         print(f"DONE: Output is SUBTRACT_DATA column in input MS")
 
 
