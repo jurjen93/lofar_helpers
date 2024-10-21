@@ -18,8 +18,8 @@ import joblib
 import numpy as np
 import random
 
-from .pre_processing_for_ml import FitsDataset
-from .dino_model import DINOV2FeatureExtractor
+from pre_processing_for_ml import FitsDataset
+from dino_model import DINOV2FeatureExtractor
 
 PROFILE = False
 SEED = None
