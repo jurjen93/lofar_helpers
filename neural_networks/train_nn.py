@@ -456,7 +456,11 @@ def main(
         train_dataloader=train_dataloader,
         optimizer=optimizer,
         logging_interval=logging_interval,
-        smoothing_fn=partial(label_smoother, stochastic=stochastic_smoothing, smoothing_factor=label_smoothing),
+        smoothing_fn=partial(
+            label_smoother,
+            stochastic=stochastic_smoothing,
+            smoothing_factor=label_smoothing,
+        ),
     )
     val_step_f = partial(val_step_f, val_dataloader=val_dataloader)
 
@@ -467,6 +471,16 @@ def main(
         optimizer=optimizer,
         normalize=normalize,
         batch_size=batch_size,
+        use_compile=use_compile,
+        label_smoothing=label_smoothing,
+        stochastic_smoothing=stochastic_smoothing,
+        lift=lift,
+        use_lora=use_lora,
+        rank=rank,
+        alpha=alpha,
+        resize=resize,
+        lr=lr,
+        dropout_p=dropout_p,
     )
 
     best_val_loss = torch.inf
@@ -555,12 +569,15 @@ def val_step(model, val_dataloader, global_step, metrics_logger, prepare_data_f)
     return mean_loss, logits, targets
 
 
-def label_smoother(labels: torch.tensor, smoothing_factor: float = 0.1, stochastic: bool = True):
+def label_smoother(
+    labels: torch.tensor, smoothing_factor: float = 0.1, stochastic: bool = True
+):
     smoothing_factor = smoothing_factor - (
-    torch.rand_like(labels) * smoothing_factor * stochastic
+        torch.rand_like(labels) * smoothing_factor * stochastic
     )
     smoothed_label = (1 - smoothing_factor) * labels + 0.5 * smoothing_factor
     return smoothed_label
+
 
 def train_step(
     model,
@@ -676,13 +693,23 @@ def save_checkpoint(logging_dir, model, optimizer, global_step, **kwargs):
     )
 
 
-def load_checkpoint(ckpt_path):
-
-    ckpt_dict = torch.load(ckpt_path, weights_only=False)
+def load_checkpoint(ckpt_path, device="gpu"):
+    if os.path.isfile(ckpt_path):
+        ckpt_dict = torch.load(ckpt_path, weights_only=False, map_location=device)
+    else:
+        files = os.listdir(ckpt_path)
+        possible_checkpoints = list(filter(lambda x: x.endswith(".pth"), files))
+        if len(possible_checkpoints) != 1:
+            raise ValueError(
+                f"Too many checkpoint files in the given checkpoint directory. Please specify the model you want to load directly."
+            )
+        ckpt_path = f"{ckpt_path}/{possible_checkpoints[0]}"
+        ckpt_dict = torch.load(ckpt_path, weights_only=False, map_location=device)
 
     # ugh, this is so ugly, something something hindsight something something 20-20
     # FIXME: probably should do a pattern match, but this works for now
     kwargs = str(Path(ckpt_path).parent).split("/")[-1].split("__")
+    print(ckpt_dict.keys())
 
     # strip 'model_' from the name
     model_name = kwargs[1][6:]
@@ -698,7 +725,7 @@ def load_checkpoint(ckpt_path):
         optim = ckpt_dict.get("optimizer", torch.optim.AdamW)(
             lr=lr, params=model.classifier.parameters()
         ).load_state_dict(ckpt_dict["optimizer_state_dict"])
-    except e:
+    except Exception as e:
         print(f"Could not load optim due to {e}; skipping.")
         optim = None
 
