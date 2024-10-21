@@ -18,8 +18,8 @@ import joblib
 import numpy as np
 import random
 
-from pre_processing_for_ml import FitsDataset
-from dino_model import DINOV2FeatureExtractor
+from .pre_processing_for_ml import FitsDataset
+from .dino_model import DINOV2FeatureExtractor
 
 PROFILE = False
 SEED = None
@@ -469,18 +469,21 @@ def main(
         logging_dir=logging_dir,
         model=model,
         optimizer=optimizer,
-        normalize=normalize,
-        batch_size=batch_size,
-        use_compile=use_compile,
-        label_smoothing=label_smoothing,
-        stochastic_smoothing=stochastic_smoothing,
-        lift=lift,
-        use_lora=use_lora,
-        rank=rank,
-        alpha=alpha,
-        resize=resize,
-        lr=lr,
-        dropout_p=dropout_p,
+        args={
+            "normalize": normalize,
+            "batch_size": batch_size,
+            "use_compile": use_compile,
+            "label_smoothing": label_smoothing,
+            "stochastic_smoothing": stochastic_smoothing,
+            "lift": lift,
+            "use_lora": use_lora,
+            "rank": rank,
+            "alpha": alpha,
+            "resize": resize,
+            "lr": lr,
+            "dropout_p": dropout_p,
+            "model_name": model_name,
+        },
     )
 
     best_val_loss = torch.inf
@@ -706,18 +709,12 @@ def load_checkpoint(ckpt_path, device="gpu"):
         ckpt_path = f"{ckpt_path}/{possible_checkpoints[0]}"
         ckpt_dict = torch.load(ckpt_path, weights_only=False, map_location=device)
 
-    # ugh, this is so ugly, something something hindsight something something 20-20
-    # FIXME: probably should do a pattern match, but this works for now
-    kwargs = str(Path(ckpt_path).parent).split("/")[-1].split("__")
-    print(ckpt_dict.keys())
-
     # strip 'model_' from the name
-    model_name = kwargs[1][6:]
-    lr = float(kwargs[2].split("_")[-1])
-    normalize = int(kwargs[3].split("_")[-1])
-    dropout_p = float(kwargs[4].split("_")[-1])
+    model_name = ckpt_dict["args"]["model_name"]
+    lr = ckpt_dict["args"]["lr"]
+    dropout_p = ckpt_dict["args"]["dropout_p"]
 
-    model = ckpt_dict["model"](model_name=model_name, dropout_p=dropout_p)
+    model = ckpt_dict["model"](model_name=model_name, dropout_p=dropout_p).to(device)
     model.load_state_dict(ckpt_dict["model_state_dict"])
 
     try:
@@ -729,7 +726,7 @@ def load_checkpoint(ckpt_path, device="gpu"):
         print(f"Could not load optim due to {e}; skipping.")
         optim = None
 
-    return {"model": model, "optim": optim, "normalize": normalize}
+    return {"model": model, "optim": optim, "args": ckpt_dict["args"]}
 
 
 def get_argparser():

@@ -2,13 +2,15 @@ import argparse
 import functools
 
 import torch
+from torch.nn.functional import interpolate
+import os
 
 from cortexchange.architecture import Architecture
 import __main__
 from astropy.io import fits
 
-from .train_nn import ImagenetTransferLearning, load_checkpoint  # noqa
-from .pre_processing_for_ml import normalize_fits
+from train_nn import ImagenetTransferLearning, load_checkpoint  # noqa
+from pre_processing_for_ml import normalize_fits
 
 setattr(__main__, "ImagenetTransferLearning", ImagenetTransferLearning)
 
@@ -30,7 +32,7 @@ class TransferLearning(Architecture):
     ):
         super().__init__(model_name, device)
 
-        self.dtype = torch.float32
+        self.dtype = torch.bfloat16
 
         self.model = self.model.to(self.dtype)
         self.model.eval()
@@ -39,7 +41,16 @@ class TransferLearning(Architecture):
         self.variational_dropout = variational_dropout
 
     def load_checkpoint(self, path) -> torch.nn.Module:
-        model, _, _, resize = load_checkpoint(path, self.device).values()
+        # To avoid errors on CPU
+        if "gpu" not in self.device and self.device != "cuda":
+            os.environ["XFORMERS_DISABLED"] = "1"
+        (
+            model,
+            _,
+            args,
+        ) = load_checkpoint(path, self.device).values()
+        self.resize = args["resize"]
+        self.lift = args["lift"]
         return model
 
     @functools.lru_cache(maxsize=1)
@@ -47,19 +58,24 @@ class TransferLearning(Architecture):
         input_data: torch.Tensor = torch.from_numpy(process_fits(input_path))
         input_data = input_data.to(self.dtype)
         input_data = input_data.swapdims(0, 2).unsqueeze(0)
+        if self.resize != 0:
+            input_data = interpolate(
+                input_data, size=self.resize, mode="bilinear", align_corners=False
+            )
+        input_data = input_data.to(self.device)
         return input_data
 
     @torch.no_grad()
     def predict(self, data: torch.Tensor):
         with torch.autocast(dtype=self.dtype, device_type=self.device):
             if self.variational_dropout > 0:
-                self.model.feature_extractor.eval()
-                self.model.classifier.train()
+                self.model.train()
+                # self.model.classifier.train()
 
             predictions = torch.concat(
                 [
                     torch.sigmoid(self.model(data)).clone()
-                    for _ in range(self.variational_dropout)
+                    for _ in range(max(self.variational_dropout, 1))
                 ],
                 dim=1,
             )
@@ -75,6 +91,6 @@ class TransferLearning(Architecture):
         parser.add_argument(
             "--variational_dropout",
             type=int,
-            default=None,
+            default=0,
             help="Optional: Amount of times to run the model to obtain a variational estimate of the stdev",
         )
