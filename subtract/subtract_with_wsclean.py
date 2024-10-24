@@ -958,15 +958,14 @@ def main():
                        concat=args.concat, applybeam=args.applybeam, speedup_facet_subtract=args.speedup_facet_subtract,
                        applycal_h5=applycalh5 if not args.scratch_toil else applycalh5.split('/')[-1], dirname=dirname)
 
-        if args.scratch_toil:
+        if args.scratch_toil and args.forwidefield:
             # copy averaged MS back to output folder
             for ms in msout: fast_copy(ms, f'{outpath}/{dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}')
             # clean up scratch directory (for big MS)
             os.system(f'cp *.log {outpath} && rm -rf *.ms')
             os.chdir(outpath)
-            print(f'DONE: See output --> {dirname.replace("Dir","facet_")}-*.ms')
 
-        else:
+        elif args.forwidefield:
             for ms in msout: os.system(f"mv {ms} {dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}")
 
     elif args.scratch_toil:
@@ -976,7 +975,6 @@ def main():
         os.chdir(outpath)
     else:
         for ms in subpred.mslist: os.system(f'mv {ms} subfov_{ms.split("/")[-1]}')
-        print(f"DONE: Output is SUBTRACT_DATA column in input MS")
 
 if __name__ == "__main__":
     main()
