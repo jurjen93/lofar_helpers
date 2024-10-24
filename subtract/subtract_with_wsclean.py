@@ -964,8 +964,11 @@ def main():
             # clean up scratch directory (for big MS)
             os.system(f'cp *.log {outpath} && rm -rf *.ms')
             os.chdir(outpath)
-
             print(f'DONE: See output --> {dirname.replace("Dir","facet_")}-*.ms')
+
+        else:
+            for ms in msout: os.system(f"mv {ms} {dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}")
+
     elif args.scratch_toil:
         # copy back the subtracted MS to the output path
         for ms in subpred.mslist: fast_copy(ms, f'{outpath}/subfov_{ms.split("/")[-1]}')
@@ -974,7 +977,6 @@ def main():
     else:
         for ms in subpred.mslist: os.system(f'mv {ms} subfov_{ms.split("/")[-1]}')
         print(f"DONE: Output is SUBTRACT_DATA column in input MS")
-
 
 if __name__ == "__main__":
     main()
