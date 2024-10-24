@@ -965,7 +965,7 @@ def main():
             os.system(f'cp *.log {outpath} && rm -rf *.ms')
             os.chdir(outpath)
 
-        print(f'DONE: See output --> {dirname.replace("Dir","facet_")}-*.ms')
+            print(f'DONE: See output --> {dirname.replace("Dir","facet_")}-*.ms')
     elif args.scratch_toil:
         # copy back the subtracted MS to the output path
         for ms in subpred.mslist: fast_copy(ms, f'{outpath}/subfov_{ms.split("/")[-1]}')
