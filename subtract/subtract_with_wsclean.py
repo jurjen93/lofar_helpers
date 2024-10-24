@@ -966,7 +966,7 @@ def main():
             os.chdir(outpath)
 
         elif args.forwidefield:
-            for ms in msout: os.system(f"mv {ms} {dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}")
+            for ms in msout: os.system(f"mv {ms} {dirname.replace('Dir','facet_')}-{ms.split('/')[-1]}")
 
     elif args.scratch_toil:
         # copy back the subtracted MS to the output path
