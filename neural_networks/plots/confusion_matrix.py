@@ -50,7 +50,7 @@ def get_statistics(data_root, mode):
 
 @torch.no_grad()
 def get_confusion_matrix(
-    predictor, dataloader, mean, std, thresholds=[0.2, 0.3, 0.4, 0.5]
+    model_name, predictor, dataloader, mean, std, thresholds=[0.2, 0.3, 0.4, 0.5]
 ):
     confusion_matrices = np.zeros((len(thresholds), 2, 2))
     thresholds = torch.tensor(thresholds)
@@ -62,7 +62,8 @@ def get_confusion_matrix(
             confusion_matrices[i] += confusion_matrix(
                 label, preds_thres[:, i], labels=[0, 1]
             )
-
+    savedir = model_name.split("/")[-1]
+    os.makedirs(savedir, exist_ok=True)
     for i, conf_matrix in enumerate(confusion_matrices):
 
         disp = ConfusionMatrixDisplay(
@@ -70,13 +71,14 @@ def get_confusion_matrix(
             conf_matrix / np.sum(conf_matrix, axis=1, keepdims=True),
             display_labels=["continue", "stop"],
         )
+        print(conf_matrix)
         disp.plot()
 
-        plt.savefig(f"confusion_thres_{thresholds[i]:.3f}.png")
+        plt.savefig(f"{savedir}/confusion_thres_{thresholds[i]:.3f}.png")
 
 
 if __name__ == "__main__":
-    model_name = "surf/dinov2_09814"
+    model_name = "surf/dinov2_09739_rotations"
     architecture_name = "surf/TransferLearning"
     predictor = load_model(architecture_name, model_name)
     if hasattr(predictor, "args") and "dataset_mean" in predictor.args:
@@ -92,4 +94,4 @@ if __name__ == "__main__":
         mode="val",
         batch_size=32,
     )
-    get_confusion_matrix(predictor, dataloader, mean, std)
+    get_confusion_matrix(model_name, predictor, dataloader, mean, std)
