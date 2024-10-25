@@ -58,6 +58,21 @@ efficientnet_v2_l 1e-05 1 0.1 32 0.2 1 0 16 16 0
 efficientnet_v2_l 1e-05 1 0.1 32 0.1 1 0 16 16 0
 efficientnet_v2_l 1e-05 1 0.1 32 0.1 0 0 16 16 0
 
+dinov2_vitl14_reg 1e-04 1 0.25 32 0.1 0 0 16 16 560 conv 0
+dinov2_vitl14_reg 1e-04 1 0.1 32 0.1 0 0 16 16 560 conv 0
+dinov2_vitl14_reg 1e-04 1 0.25 32 0.1 0 0 16 16 560 conv 1
+dinov2_vitl14_reg 1e-04 1 0.1 32 0.1 0 0 16 16 560 conv 1
+dinov2_vitl14_reg 1e-04 1 0.25 32 0.1 0 0 16 16 560 stack 0
+dinov2_vitl14_reg 1e-04 1 0.1 32 0.1 0 0 16 16 560 stack 0
+efficientnet_v2_l 1e-04 1 0.1 32 0.2 0 0 16 16 0 stack 0
+dinov2_vitl14_reg 1e-04 1 0.25 32 0.1 0 0 16 16 560 stack 1
+dinov2_vitl14_reg 1e-04 1 0.1 32 0.1 0 0 16 16 560 stack 1
+efficientnet_v2_l 1e-04 1 0.1 32 0.2 0 0 16 16 0 stack 1
+dinov2_vitl14_reg 1e-04 1 0.25 32 0.1 0 1 16 16 560 conv 0
+dinov2_vitl14_reg 1e-04 1 0.1 32 0.1 0 1 16 16 560 conv 0
+dinov2_vitl14_reg 1e-04 1 0.25 32 0.1 0 1 16 16 560 conv 1
+dinov2_vitl14_reg 1e-04 1 0.1 32 0.1 0 1 16 16 560 conv 1
+
 
 
 

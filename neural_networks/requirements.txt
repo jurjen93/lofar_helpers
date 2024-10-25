@@ -1,9 +1,14 @@
 matplotlib
-torch
+torch>=2.1.2
 torchvision
 torcheval
 tqdm
 matplotlib
 joblib
-astropy
+astropy>6.0.0
+xformers
+tensorboard
+dino-finetune @ git+https://github.com/sara-nl/dinov2-finetune.git
+scikit-learn
+
 
