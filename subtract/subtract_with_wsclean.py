@@ -549,7 +549,7 @@ class SubtractWSClean:
         predict_cmd.write('\n'.join(command))
         predict_cmd.close()
 
-        os.system(' '.join(command) + ' > log_predict.log')
+        os.system(' '.join(command) + ' > predict.log')
 
         return self
 
