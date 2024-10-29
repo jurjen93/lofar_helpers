@@ -13,7 +13,6 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
 from torchvision.transforms import v2
 from tqdm import tqdm
-import joblib
 
 import numpy as np
 import random
@@ -134,8 +133,8 @@ def normalize_inputs(inputs, means, stds, normalize=1):
 
 
 @torch.no_grad()
-def augmentation(inputs):
-    inputs = get_transforms()(inputs)
+def augmentation(inputs, flip_augmentations=False):
+    inputs = get_transforms(flip_augmentations=flip_augmentations)(inputs)
     inputs = inputs + 0.01 * torch.randn_like(inputs)
 
     return inputs
@@ -369,9 +368,11 @@ def main(
     stochastic_smoothing: bool,
     lift: str,
     use_lora: bool,
-    rank=16,
-    alpha=16,
-    log_path="runs",
+    rank: int = 16,
+    alpha: float = 16,
+    log_path: Path = "runs",
+    epochs: int = 120,
+    flip_augmentations: bool = False,
 ):
     torch.set_float32_matmul_precision("high")
     torch.backends.cudnn.benchmark = True
@@ -404,6 +405,8 @@ def main(
         resize=resize,
         rank=rank,
         alpha=alpha,
+        lift=lift,
+        flip_augmentations=flip_augmentations,
     )
 
     writer = get_tensorboard_logger(logging_dir)
@@ -461,6 +464,7 @@ def main(
             stochastic=stochastic_smoothing,
             smoothing_factor=label_smoothing,
         ),
+        augmentation_fn=partial(augmentation, flip_augmentations=flip_augmentations),
     )
     val_step_f = partial(val_step_f, val_dataloader=val_dataloader)
 
@@ -483,6 +487,9 @@ def main(
             "lr": lr,
             "dropout_p": dropout_p,
             "model_name": model_name,
+            "flip_augmentations": flip_augmentations,
+            "dataset_mean": mean,
+            "dataset_std": std,
         },
     )
 
@@ -491,7 +498,7 @@ def main(
 
     best_results = {}
 
-    n_epochs = 120
+    n_epochs = epochs
     for epoch in range(n_epochs):
 
         global_step = train_step_f(global_step=global_step, model=model)
@@ -591,6 +598,7 @@ def train_step(
     logging_interval,
     metrics_logger,
     smoothing_fn,
+    augmentation_fn,
 ):
     # print("training")
     model.train()
@@ -602,7 +610,7 @@ def train_step(
 
         data, labels = prepare_data_f(data, labels)
         smoothed_label = smoothing_fn(labels)
-        data = augmentation(data)
+        data = augmentation_fn(data)
 
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -668,11 +676,29 @@ class _RepeatSampler(object):
             yield from iter(self.sampler)
 
 
+import torchvision.transforms.functional as TF
+from torchvision.transforms.functional import InterpolationMode
+
+
+class Rotate90Transform:
+    def __init__(self, angles=[0, 90, 180, 270]):
+        self.angles = angles
+
+    def __call__(self, x):
+        angle = np.random.choice(self.angles)
+        return v2.functional.rotate(x, int(angle), InterpolationMode.BILINEAR)
+
+
 @lru_cache(maxsize=1)
-def get_transforms():
+def get_transforms(flip_augmentations=False):
+
     return v2.Compose(
         [
-            v2.RandomVerticalFlip(p=0.5),
+            (
+                Rotate90Transform()
+                if not flip_augmentations
+                else v2.RandomVerticalFlip(p=0.5)
+            ),
             v2.RandomHorizontalFlip(p=0.5),
         ]
     )
@@ -698,7 +724,7 @@ def save_checkpoint(logging_dir, model, optimizer, global_step, **kwargs):
 
 def load_checkpoint(ckpt_path, device="gpu"):
     if os.path.isfile(ckpt_path):
-        ckpt_dict = torch.load(ckpt_path, weights_only=False, map_location=device)
+        ckpt_dict = torch.load(ckpt_path, weights_only=False)
     else:
         files = os.listdir(ckpt_path)
         possible_checkpoints = list(filter(lambda x: x.endswith(".pth"), files))
@@ -707,7 +733,7 @@ def load_checkpoint(ckpt_path, device="gpu"):
                 f"Too many checkpoint files in the given checkpoint directory. Please specify the model you want to load directly."
             )
         ckpt_path = f"{ckpt_path}/{possible_checkpoints[0]}"
-        ckpt_dict = torch.load(ckpt_path, weights_only=False, map_location=device)
+        ckpt_dict = torch.load(ckpt_path, weights_only=False)
 
     # strip 'model_' from the name
     model_name = ckpt_dict["args"]["model_name"]
@@ -782,6 +808,12 @@ def get_argparser():
         default=0,
         help="size to resize to. Will be set to 512 for ViT.",
     )
+    parser.add_argument(
+        "--epochs",
+        type=int,
+        default=120,
+        help="number of epochs",
+    )
     parser.add_argument("--use_compile", action="store_true")
     parser.add_argument(
         "--profile",
@@ -830,6 +862,12 @@ def get_argparser():
         type=float,
         default=None,
         help="LoRA alpha scaling. Defaults to rank value if not set",
+    )
+
+    parser.add_argument(
+        "--flip_augmentations",
+        action="store_true",
+        help="Uses double flip augmentations instead of rotate + flip",
     )
 
     parser.add_argument("--log_path", type=str, default="runs")

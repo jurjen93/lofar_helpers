@@ -9,8 +9,12 @@ from cortexchange.architecture import Architecture
 import __main__
 from astropy.io import fits
 
-from train_nn import ImagenetTransferLearning, load_checkpoint  # noqa
-from pre_processing_for_ml import normalize_fits
+from .train_nn import (
+    ImagenetTransferLearning,
+    load_checkpoint,
+    normalize_inputs,
+)  # noqa
+from .pre_processing_for_ml import normalize_fits
 
 setattr(__main__, "ImagenetTransferLearning", ImagenetTransferLearning)
 
@@ -28,7 +32,7 @@ class TransferLearning(Architecture):
         model_name: str = None,
         device: str = None,
         variational_dropout: int = 0,
-        **kwargs
+        **kwargs,
     ):
         super().__init__(model_name, device)
 
@@ -47,10 +51,10 @@ class TransferLearning(Architecture):
         (
             model,
             _,
-            args,
+            self.args,
         ) = load_checkpoint(path, self.device).values()
-        self.resize = args["resize"]
-        self.lift = args["lift"]
+        self.resize = self.args["resize"]
+        self.lift = self.args["lift"]
         return model
 
     @functools.lru_cache(maxsize=1)
@@ -58,19 +62,26 @@ class TransferLearning(Architecture):
         input_data: torch.Tensor = torch.from_numpy(process_fits(input_path))
         input_data = input_data.to(self.dtype)
         input_data = input_data.swapdims(0, 2).unsqueeze(0)
+        return self.prepare_batch(input_data)
+
+    def prepare_batch(self, batch: torch.Tensor, mean=None, std=None) -> torch.Tensor:
+        batch = batch.to(self.dtype).to(self.device)
         if self.resize != 0:
-            input_data = interpolate(
-                input_data, size=self.resize, mode="bilinear", align_corners=False
+            batch = interpolate(
+                batch, size=self.resize, mode="bilinear", align_corners=False
             )
-        input_data = input_data.to(self.device)
-        return input_data
+        if mean is None:
+            mean = self.mean
+        if std is None:
+            std = self.std
+        batch = normalize_inputs(batch, mean, std, normalize=1)
+        return batch
 
     @torch.no_grad()
     def predict(self, data: torch.Tensor):
         with torch.autocast(dtype=self.dtype, device_type=self.device):
             if self.variational_dropout > 0:
                 self.model.train()
-                # self.model.classifier.train()
 
             predictions = torch.concat(
                 [
@@ -80,8 +91,8 @@ class TransferLearning(Architecture):
                 dim=1,
             )
 
-            mean = predictions.mean()
-            std = predictions.std()
+            mean = predictions.mean(dim=1)
+            std = predictions.std(dim=1)
 
         print(mean, std)
         return mean, std
