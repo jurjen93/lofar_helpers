@@ -1830,7 +1830,7 @@ class MergeH5:
                                 elif weight_out.shape[dirind] != newvals.shape[dirind]:
                                     sys.exit(
                                         'ERROR: Upsampling of weights because same direction exists multiple times in input h5 '
-                                        '(verify and update directions or remove --propagate_flags)')
+                                        '(verify and/or update directions or add --no_weight_prop)')
                                 else:
                                     weight_out *= newvals
 
