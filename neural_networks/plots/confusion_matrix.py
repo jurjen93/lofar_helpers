@@ -176,7 +176,9 @@ if __name__ == "__main__":
     architecture_name = "surf/TransferLearning"
     # Set Device here
     DEVICE = "cuda"
+    # Thresholds to consider for classification
     thresholds = [0.2, 0.3, 0.4, 0.5]
+    # Change to directory of files. Should have subfolders 'continue_val' and 'stop_val'
     data_root = "/scratch-shared/CORTEX/public.spider.surfsara.nl/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data"
     # Uses cached confusion matrix for testing the plotting functionalities
     if model_name == "surf/dinov2_09739_rotations" and TESTING:
