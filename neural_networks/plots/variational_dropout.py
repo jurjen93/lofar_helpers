@@ -11,7 +11,7 @@ import numpy as np
 import torch
 from functools import lru_cache
 from torch.utils.data import Dataset, DataLoader
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
+from sklearn.metrics import precision_recall_curve
 from astropy.io import fits
 
 
@@ -111,34 +111,44 @@ def load_model(architecture_name, model_name, device="cpu"):
 
 
 @torch.no_grad()
-def get_confusion_matrix(predictor, dataloader, mean, std, thresholds):
-    conf_matrix_dict = {thres: np.zeros((2, 2)) for thres in thresholds}
-    thresholds_tensor = torch.tensor(thresholds)
+def get_dropout_output(predictor, dataloader, mean, std, vi_iters_list):
+    labels = []
+    vi_dict = {vi_iters: {"std": [], "pred": []} for vi_iters in vi_iters_list}
     for i, (img, label) in enumerate(dataloader):
         data = predictor.prepare_batch(img, mean=mean, std=std)
-        pred = torch.sigmoid(predictor.model(data)).to("cpu")
-        preds_thres = pred >= thresholds_tensor
-        for i, thres in enumerate(thresholds):
-            conf_matrix_dict[thres] += confusion_matrix(
-                label, preds_thres[:, i], labels=[0, 1]
-            )
+        labels += label.numpy().tolist()
+        for vi_iters in vi_iters_list:
 
-    return conf_matrix_dict
+            predictor.variational_dropout = vi_iters
+            pred, stds = predictor.predict(data.clone())
+            vi_dict[vi_iters]["pred"] += pred.cpu().to(torch.float32).numpy().tolist()
+            vi_dict[vi_iters]["std"] += stds.cpu().to(torch.float32).numpy().tolist()
+    labels = np.asarray(labels)
+    for vi_iters in vi_iters_list:
+        vi_dict[vi_iters]["pred"] = torch.asarray(vi_dict[vi_iters]["pred"])
+        vi_dict[vi_iters]["std"] = torch.asarray(vi_dict[vi_iters]["std"])
+    return vi_dict, labels
 
 
-def plot_conf_matrices(savedir, conf_matrix_dict, thresholds):
+def plot_pr_curves(savedir, vi_dict, labels):
     os.makedirs(savedir, exist_ok=True)
-    for thres, conf_matrix in conf_matrix_dict.items():
-
-        disp = ConfusionMatrixDisplay(
-            # Normalization
-            conf_matrix / np.sum(conf_matrix, axis=1, keepdims=True),
-            display_labels=["stop", "continue"],
+    for vi_iter, pred_dict in vi_dict.items():
+        preds = pred_dict["pred"]
+        # Reverse labels to compute pr curve for predicting "stop"
+        precision, recall, thresholds = precision_recall_curve(
+            -np.asarray(labels) + 1, -np.asarray(preds) + 1
         )
-        # print(conf_matrix)
-        disp.plot()
 
-        plt.savefig(f"{savedir}/confusion_thres_{thres:.3f}.png")
+        plt.plot(recall, precision, label=f"VI Iters: {vi_iter}")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title("PR Curves for varying Variational Inference iteration counts")
+    plt.legend()
+    plt.grid(True, linestyle="--", alpha=0.7)
+
+    plt.tight_layout()
+    plt.savefig(f"{savedir}/precision_recall_curves.png", dpi=300)
+    plt.clf()
 
 
 def process_fits(fits_path):
@@ -176,15 +186,15 @@ if __name__ == "__main__":
     # Set Device here
     DEVICE = "cuda"
     # Thresholds to consider for classification
-    thresholds = [0.2, 0.3, 0.4, 0.5]
+    vi_iters_list = [0, 1, 2, 4, 8, 16, 32]
     # Change to directory of files. Should have subfolders 'continue_val' and 'stop_val'
     data_root = "/scratch-shared/CORTEX/public.spider.surfsara.nl/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data"
     # Uses cached confusion matrix for testing the plotting functionalities
     savedir = model_name.split("/")[-1]
-    dict_fname = f"{savedir}/conf_matrix.npydict"
-    print(Path(dict_fname).exists(), dict_fname)
+    dict_fname = f"{savedir}/pr_curve_dict.npydict"
     if Path(dict_fname).exists() and TESTING:
-        conf_matrix_dict = np.load(dict_fname, allow_pickle=True)[()]
+        pr_dict = np.load(dict_fname, allow_pickle=True)[()]
+        vi_dict, labels = pr_dict["vi_dict"], pr_dict["labels"]
     else:
 
         dataloader = get_dataloader(data_root, mode="val")
@@ -193,12 +203,11 @@ if __name__ == "__main__":
 
         mean, std = predictor.args["dataset_mean"], predictor.args["dataset_std"]
 
-        conf_matrix_dict = get_confusion_matrix(
-            predictor, dataloader, mean, std, thresholds
+        vi_dict, labels = get_dropout_output(
+            predictor, dataloader, mean, std, vi_iters_list
         )
+        os.makedirs(savedir, exist_ok=True)
         with open(dict_fname, "wb") as f:
-            np.save(f, conf_matrix_dict)
+            np.save(f, {"vi_dict": vi_dict, "labels": labels})
 
-    print(conf_matrix_dict)
-
-    plot_conf_matrices(savedir, conf_matrix_dict, thresholds)
+    plot_pr_curves(savedir, vi_dict, labels)
