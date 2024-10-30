@@ -82,6 +82,8 @@ class TransferLearning(Architecture):
         with torch.autocast(dtype=self.dtype, device_type=self.device):
             if self.variational_dropout > 0:
                 self.model.train()
+            else:
+                self.model.eval()
 
             predictions = torch.concat(
                 [

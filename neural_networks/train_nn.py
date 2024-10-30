@@ -13,6 +13,8 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import models
 from torchvision.transforms import v2
 from tqdm import tqdm
+import torchvision.transforms.functional as TF
+from torchvision.transforms.functional import InterpolationMode
 
 import numpy as np
 import random
@@ -235,7 +237,10 @@ class ImagenetTransferLearning(nn.Module):
         if self.kwargs["model_name"] == "vit_l_16":
             self.vit.heads.eval()
         elif "dinov2" in self.kwargs["model_name"]:
-            self.dino.eval()
+            if self.kwargs["use_lora"]:
+                self.dino.eval()
+            else:
+                self.dino.decoder.eval()
         else:
             self.classifier.eval()
 
@@ -243,7 +248,10 @@ class ImagenetTransferLearning(nn.Module):
         if self.kwargs["model_name"] == "vit_l_16":
             self.vit.heads.train()
         elif "dinov2" in self.kwargs["model_name"]:
-            self.dino.train()
+            if self.kwargs["use_lora"]:
+                self.dino.train()
+            else:
+                self.dino.decoder.train()
         else:
             self.classifier.train()
 
@@ -676,10 +684,6 @@ class _RepeatSampler(object):
             yield from iter(self.sampler)
 
 
-import torchvision.transforms.functional as TF
-from torchvision.transforms.functional import InterpolationMode
-
-
 class Rotate90Transform:
     def __init__(self, angles=[0, 90, 180, 270]):
         self.angles = angles
@@ -722,7 +726,7 @@ def save_checkpoint(logging_dir, model, optimizer, global_step, **kwargs):
     )
 
 
-def load_checkpoint(ckpt_path, device="gpu"):
+def load_checkpoint(ckpt_path, device="cuda"):
     if os.path.isfile(ckpt_path):
         ckpt_dict = torch.load(ckpt_path, weights_only=False)
     else:

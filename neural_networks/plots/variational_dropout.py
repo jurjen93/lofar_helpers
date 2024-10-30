@@ -13,6 +13,7 @@ from functools import lru_cache
 from torch.utils.data import Dataset, DataLoader
 from sklearn.metrics import precision_recall_curve
 from astropy.io import fits
+import torcheval.metrics.functional as tef
 
 
 class RawFitsDataset(Dataset):
@@ -113,33 +114,41 @@ def load_model(architecture_name, model_name, device="cpu"):
 @torch.no_grad()
 def get_dropout_output(predictor, dataloader, mean, std, vi_iters_list):
     labels = []
-    vi_dict = {vi_iters: {"std": [], "pred": []} for vi_iters in vi_iters_list}
-    for i, (img, label) in enumerate(dataloader):
-        data = predictor.prepare_batch(img, mean=mean, std=std)
-        labels += label.numpy().tolist()
-        for vi_iters in vi_iters_list:
+    vi_dict = {
+        vi_iters: {"std": [], "pred": [], "labels": []} for vi_iters in vi_iters_list
+    }
+    for i, vi_iters in enumerate(vi_iters_list):
+        for img, label in dataloader:
+            data = predictor.prepare_batch(img, mean=mean, std=std)
+            if not i:
+                labels += label.numpy().tolist()
 
             predictor.variational_dropout = vi_iters
             pred, stds = predictor.predict(data.clone())
             vi_dict[vi_iters]["pred"] += pred.cpu().to(torch.float32).numpy().tolist()
             vi_dict[vi_iters]["std"] += stds.cpu().to(torch.float32).numpy().tolist()
-    labels = np.asarray(labels)
-    for vi_iters in vi_iters_list:
         vi_dict[vi_iters]["pred"] = torch.asarray(vi_dict[vi_iters]["pred"])
         vi_dict[vi_iters]["std"] = torch.asarray(vi_dict[vi_iters]["std"])
-    return vi_dict, labels
+        vi_dict[vi_iters]["labels"] = torch.asarray(labels)
+    return vi_dict
 
 
-def plot_pr_curves(savedir, vi_dict, labels):
+def plot_pr_curves(savedir, vi_dict, vi_iters_list):
     os.makedirs(savedir, exist_ok=True)
-    for vi_iter, pred_dict in vi_dict.items():
-        preds = pred_dict["pred"]
+    # for vi_iter, pred_dict in vi_dict.items():
+    for vi_iter in sorted(vi_iters_list):
+        pred_dict = vi_dict[vi_iter]
+        preds, labels = pred_dict["pred"], pred_dict["labels"]
         # Reverse labels to compute pr curve for predicting "stop"
         precision, recall, thresholds = precision_recall_curve(
-            -np.asarray(labels) + 1, -np.asarray(preds) + 1
+            np.asarray(labels), np.asarray(preds)
         )
+        auprc = tef.binary_auprc(torch.asarray(preds), torch.asarray(labels))
+        print(f"auprc vi_iters {vi_iter}", auprc)
 
-        plt.plot(recall, precision, label=f"VI Iters: {vi_iter}")
+        plt.plot(
+            recall, precision, label=f"VI Iters: {vi_iter} auprc: {auprc.item():.3f}"
+        )
     plt.xlabel("Recall")
     plt.ylabel("Precision")
     plt.title("PR Curves for varying Variational Inference iteration counts")
@@ -147,6 +156,7 @@ def plot_pr_curves(savedir, vi_dict, labels):
     plt.grid(True, linestyle="--", alpha=0.7)
 
     plt.tight_layout()
+    plt.ylim(0, 1)
     plt.savefig(f"{savedir}/precision_recall_curves.png", dpi=300)
     plt.clf()
 
@@ -168,7 +178,7 @@ def get_dataloader(data_root, mode="val", batch_size=32):
     dataloader = DataLoader(
         dataset,
         batch_size=32,
-        shuffle=True,
+        shuffle=False,
         num_workers=num_workers,
         persistent_workers=persistent_workers,
         prefetch_factor=prefetch_factor,
@@ -181,21 +191,27 @@ def get_dataloader(data_root, mode="val", batch_size=32):
 if __name__ == "__main__":
     # Latest model
     model_name = "surf/dinov2_09739_rotations"
+    # model_name = "surf/dinov2_097_rotations_dropout_01"
     TESTING = True
     architecture_name = "surf/TransferLearning"
     # Set Device here
     DEVICE = "cuda"
     # Thresholds to consider for classification
-    vi_iters_list = [0, 1, 2, 4, 8, 16, 32]
+    vi_iters_list = [0, 1, 2, 4, 8, 16, 32, 64, 128]
+    # vi_iters_list = [0]
     # Change to directory of files. Should have subfolders 'continue_val' and 'stop_val'
     data_root = "/scratch-shared/CORTEX/public.spider.surfsara.nl/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data"
-    # Uses cached confusion matrix for testing the plotting functionalities
+    # Uses cached results for testing the plotting functionalities
     savedir = model_name.split("/")[-1]
     dict_fname = f"{savedir}/pr_curve_dict.npydict"
+    VI_DICT, LABELS = None, None
+    # Load cached results
     if Path(dict_fname).exists() and TESTING:
-        pr_dict = np.load(dict_fname, allow_pickle=True)[()]
-        vi_dict, labels = pr_dict["vi_dict"], pr_dict["labels"]
-    else:
+        VI_DICT = np.load(dict_fname, allow_pickle=True)[()]
+        existing_vi_iters = list(VI_DICT.keys())
+        vi_iters_list = list(set(vi_iters_list) - set(existing_vi_iters))
+
+    if vi_iters_list != []:
 
         dataloader = get_dataloader(data_root, mode="val")
 
@@ -203,11 +219,15 @@ if __name__ == "__main__":
 
         mean, std = predictor.args["dataset_mean"], predictor.args["dataset_std"]
 
-        vi_dict, labels = get_dropout_output(
-            predictor, dataloader, mean, std, vi_iters_list
-        )
+        vi_dict = get_dropout_output(predictor, dataloader, mean, std, vi_iters_list)
+        # Add new results to cached results and save
+        if VI_DICT is not None:
+            VI_DICT = vi_dict | VI_DICT
+        else:
+            VI_DICT = vi_dict
+
         os.makedirs(savedir, exist_ok=True)
         with open(dict_fname, "wb") as f:
-            np.save(f, {"vi_dict": vi_dict, "labels": labels})
+            np.save(f, VI_DICT)
 
-    plot_pr_curves(savedir, vi_dict, labels)
+    plot_pr_curves(savedir, VI_DICT, vi_iters_list)
