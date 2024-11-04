@@ -108,6 +108,7 @@ def transform_data(root_dir, classes=("continue", "stop"), modes=("", "_val")):
         for fits_path in (root_dir / (cls + mode)).glob("*.fits")
     )
 
+
 class FitsDataset(Dataset):
     def __init__(self, root_dir, mode="train"):
         """
@@ -168,7 +169,7 @@ class FitsDataset(Dataset):
         # print(f'{mode}: using the following sources: {sources}')
 
     def compute_statistics(self, normalize):
-        cache = Memory(location=self.root_dir / '_cache')
+        cache = Memory(location=self.root_dir / "_cache")
         cached_compute = cache.cache(FitsDataset._compute_statistics)
         self.mean, self.std = cached_compute(self, normalize)
         return self.mean, self.std

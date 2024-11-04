@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=cortex_grid_search
-#SBATCH -p gpu_h100
+#SBATCH -p gpu
 #SBATCH -t 08:00:00
 #SBATCH --gpus 1
 #SBATCH --output=out/multi_cortex%A_%a.out
@@ -52,7 +52,11 @@ else
     EPOCHS="120"
 fi
 
+DATA_INPUT_PATH="/scratch-shared/CORTEX/"
+# find $DATA_INPUT_PATH -name '*npz' | xargs -n 1 -P 18 -i rsync -R {} '/dev/shm/'
+
 DATA_TRAINDATA_PATH="/scratch-shared/CORTEX/public.spider.surfsara.nl/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/"
+
 
 # Execute your Python script with the given parameters
 echo  $DATA_TRAINDATA_PATH --model $model --lr $lr --normalize $normalize --dropout_p $dropout_p --batch_size $batch_size --log_path grid_search_2 --label_smoothing $label_smoothing --rank $rank --resize $resize --alpha $alpha  $LORA_ARG $STOCHASTIC_SMOOTHING -d --epochs $EPOCHS --lift $lift $FLIP_AUGMENTATIONS 

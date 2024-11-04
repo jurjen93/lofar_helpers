@@ -113,6 +113,7 @@ def init_first_conv(conv):
 
 def get_classifier(dropout_p: float, n_features: int, num_target_classes: int):
     assert 0 <= dropout_p <= 1
+    print(n_features)
 
     classifier = nn.Sequential(
         nn.Flatten(),
@@ -800,7 +801,7 @@ def get_argparser():
         "--normalize",
         type=int,
         help="Whether to do normalization",
-        default=0,
+        default=1,
         choices=[0, 1, 2],
     )
     parser.add_argument(
