@@ -2943,8 +2943,16 @@ def parse_input():
     elif ' ' in args.h5_tables:
         args.h5_tables = args.h5_tables[0].split()
 
-    if type(args.h5_tables) == str:
-        args.h5_tables = glob(args.h5_tables)
+
+    if type(args.h5_tables) == str or len(args.h5_tables) == 1:
+        if len(args.h5_tables) == 1:
+            args.h5_tables = args.h5_tables[0]
+        if ' ' not in args.h5_tables:
+            args.h5_tables = glob(args.h5_tables)
+        else:
+            args.h5_tables = args.h5_tables.split()
+        if len(args.h5_tables) == 0:
+            sys.exit(f"ERROR: parsing of input h5s failed")
     elif type(args.h5_tables) == list and len(args.h5_tables) == 1:
         args.h5_tables = glob(args.h5_tables[0])
     elif type(args.h5_tables) == list:
