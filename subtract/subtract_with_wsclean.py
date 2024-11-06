@@ -110,17 +110,6 @@ def get_largest_divider(inp, max=1000):
     sys.exit("ERROR: code should not arrive here.")
 
 
-def isfloat(num):
-    """
-    Check if value is a float
-    """
-    try:
-        float(num)
-        return True
-    except ValueError:
-        return False
-
-
 def parse_history(ms, hist_item):
     """
     Grep specific history item from MS
@@ -170,7 +159,7 @@ def get_time_preavg_factor(ms: str = None):
             print("WARNING: " + ms + " time has been pre-averaged with factor " + str(
                 factor) + ". This might cause stronger time smearing effects in your final image.")
         return factor
-    elif isfloat(avg_num):
+    elif type(avg_num)==float:
         factor = float(avg_num)
         print("WARNING: parsed factor in " + ms + " is not a digit but a float")
         return factor
