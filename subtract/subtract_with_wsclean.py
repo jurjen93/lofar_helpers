@@ -1,3 +1,7 @@
+"""Subtraction script, developed for de Jong et al. (2024) --> https://arxiv.org/pdf/2407.13247"""
+
+__author__ = "Jurjen de Jong"
+
 import os
 import random
 import re
@@ -451,7 +455,8 @@ class SubtractWSClean:
     def subtract_col(self, out_column: str = None):
 
         """
-        Subtract column in Measurement Set
+        Subtract column in MeasurementSet
+
         :param out_column: out column name
         """
 
@@ -491,7 +496,7 @@ class SubtractWSClean:
 
     def predict(self, h5parm: str = None, facet_regions: str = None):
         """
-        Predict image
+        Predict image by reading history from model images
 
         :param h5parm: h5 solutions (optional)
         :param facet_regions: facet regions (if h5 solutions given)
@@ -751,28 +756,27 @@ def parse_args():
     Command line argument parser
     """
     parser = ArgumentParser(description='Subtract or predict region with WSClean')
-    parser.add_argument('--mslist', nargs='+', help='measurement sets', required=True)
-    parser.add_argument('--region', type=str, help='region file')
-    parser.add_argument('--output_name', type=str, help='name of output files (default is model image name)')
-    parser.add_argument('--model_image_folder', type=str, help='folder where model images are stored (if not given script takes model images from run folder)')
-    parser.add_argument('--model_images', nargs='+', help='instead of --model_image_folder, you can also specify the model images to use')
-    parser.add_argument('--no_local_north', action='store_true', help='do not move box to local north')
-    parser.add_argument('--use_region_cube', action='store_true', help='use region cube')
-    parser.add_argument('--h5parm_predict', type=str, help='h5 solution file')
-    parser.add_argument('--facets_predict', type=str, help='facet region file for prediction')
-    parser.add_argument('--phasecenter', type=str, help='phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
-    parser.add_argument('--freqavg', type=str, help='frequency averaging')
-    parser.add_argument('--timeres', type=str, help='time resolution averaging in seconds')
-    parser.add_argument('--concat', action='store_true', help='concat MS')
-    parser.add_argument('--applybeam', action='store_true', help='apply beam in phaseshift center or center of field')
-    parser.add_argument('--applycal', action='store_true', help='applycal after subtraction and phaseshifting')
-    parser.add_argument('--applycal_h5', type=str, help='applycal solution file')
-    parser.add_argument('--forwidefield', action='store_true', help='will search for the polygon_info.csv file to extract information from')
-    parser.add_argument('--skip_predict', action='store_true', help='skip predict and do only subtract')
-    parser.add_argument('--even_time_avg', action='store_true', help='(only if --forwidefield) only allow even time averaging (in case of stacking nights with different averaging)')
-    parser.add_argument('--inverse', action='store_true', help='instead of subtracting, you predict and add model data from a single facet')
+    parser.add_argument('--mslist', nargs='+', help='MeasurementSet(s)', required=True)
+    parser.add_argument('--facets_predict', type=str, help='Multi-facet region file for prediction')
+    parser.add_argument('--h5parm_predict', type=str, help='Multi-dir h5 solution file corresponding to --facets_predict')
+    parser.add_argument('--region', type=str, help='Region file to mask for subtraction or predict back to data when --inverse')
+    parser.add_argument('--model_image_folder', type=str, help='Directory with model images (if not given model images from run are selected)')
+    parser.add_argument('--model_images', nargs='+', help='Instead of --model_image_folder, you can also specify the model images to use')
+    parser.add_argument('--no_local_north', action='store_true', help='Do not move box to local north')
+    parser.add_argument('--use_region_cube', action='store_true', help='Use region cube')
+    parser.add_argument('--phasecenter', type=str, help='Phaseshift to given point (example: --phaseshift 16h06m07.61855,55d21m35.4166)')
+    parser.add_argument('--freqavg', type=str, help='Frequency averaging')
+    parser.add_argument('--timeres', type=str, help='Time resolution averaging in seconds')
+    parser.add_argument('--concat', action='store_true', help='Concat MeasurementSets')
+    parser.add_argument('--applybeam', action='store_true', help='Apply beam in phaseshift center or center of field')
+    parser.add_argument('--applycal', action='store_true', help='Applycal solutions from facet after subtraction and phaseshifting')
+    parser.add_argument('--applycal_h5', type=str, help='Applycal solution file')
+    parser.add_argument('--forwidefield', action='store_true', help='Will search for the polygon_info.csv file to extract information from')
+    parser.add_argument('--skip_predict', action='store_true', help='Skip predict and do only subtract')
+    parser.add_argument('--even_time_avg', action='store_true', help='Only allow even time averaging (in case of combining observations with different averaging factors) and --forwidefield')
+    parser.add_argument('--inverse', action='store_true', help='Instead of subtracting, you predict and add model data from a single facet')
     parser.add_argument('--scratch_toil', action='store_true', help='Experts only: Run on scratch when using toil')
-    parser.add_argument('--speedup_facet_subtract', action='store_true', help='DP3 speedup for facet subtraction')
+    parser.add_argument('--speedup_facet_subtract', action='store_true', help='DP3 speedup for facet subtraction by performing averaging earlier (may introduce accuracy issues)')
 
     return parser.parse_args()
 
@@ -805,13 +809,6 @@ def main():
         elif args.model_images is not None:
             for model in args.model_images:
                 os.system('cp ' + model + ' .')
-
-        # rename model images
-        if args.output_name is not None:
-            model_images = glob('*-model*.fits')
-            oldname = model_images[0].split("-")[0]
-            for model in model_images:
-                os.system('mv ' + model + ' ' + model.replace(oldname, args.output_name.replace('-', '_')))
 
     # --forwidefield --> will read averaging and phasecenter from polygon_info.csv
     if args.forwidefield:
