@@ -367,7 +367,7 @@ class SubtractWSClean:
     def flat_model_image(fitsfile: str = None):
         """
         Flatten a fits file so that it becomes a 2D image. Return new header and data
-        (taken from sub-sources-outside-region.py)
+        (taken from sub_sources_outside_region.py)
         """
         hdu = fits.open(fitsfile)
         naxis = hdu[0].header['NAXIS']
@@ -459,7 +459,8 @@ class SubtractWSClean:
 
             if out_column not in colnames:
                 # Creating the column with DP3 ensures we can directly compress the data
-                os.system(f"DP3 msin={ms} msout=. msout.datacolumn={out_column} steps=[] msout.storagemanager=dysco")
+                os.system(f"DP3 msin={ms} msout=. msout.datacolumn={out_column} steps=[] msout.storagemanager=dysco"
+                          f"msout.storagemanager.databitrate=6 msout.storagemanager.weightbitrate=6")
             else:
                 print(out_column, ' already exists')
 
@@ -569,7 +570,9 @@ class SubtractWSClean:
                    'msin.missingdata=True',
                    'msin.datacolumn=SUBTRACT_DATA' if not self.inverse else 'msin.datacolumn=DATA',
                    'msin.orderms=False',
-                   'msout.storagemanager=dysco']
+                   'msout.storagemanager=dysco',
+                   'msout.storagemanager.databitrate=6',
+                   'msout.storagemanager.weightbitrate=6']
 
         # 1) PHASESHIFT
         if phaseshift is not None:

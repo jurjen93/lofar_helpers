@@ -1,9 +1,5 @@
 """
 Code to crossmatch catalogues
-
-Note that this code is in some parts of the main function hardcoded as it was used for crossmatching
-4 catalogues obtained after reducing data from ELAIS-N1 with LOFAR.
-So, feel free to adapt and use it for your own purposes.
 """
 
 from astropy.coordinates import SkyCoord
