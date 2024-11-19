@@ -33,8 +33,8 @@ def main():
     header = hdu[0].header
 
     r = pyregion.open(regionfile).as_imagecoord(header=header)
-    mask = r.get_mask(hdu=hdu[0], shape=(header["NAXIS1"], header["NAXIS2"])).astype(int)
-    imagedata = hdu[0].data.reshape(header["NAXIS1"], header["NAXIS2"])
+    mask = r.get_mask(hdu=hdu[0], shape=(header["NAXIS2"], header["NAXIS1"])).astype(int)
+    imagedata = hdu[0].data.reshape(header["NAXIS2"], header["NAXIS1"])
     imagedata *= mask
     imagedata[imagedata == 0] = nan
 
