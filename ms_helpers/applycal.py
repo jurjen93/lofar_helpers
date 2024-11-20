@@ -34,14 +34,18 @@ class ApplyCal:
 
         steps = []
 
-        steps.append('beam_dir')
-        T = tables.open_file(h5)
-        dir = (T.root.sol000.source[:]['dir'][0] * 360 / 2 / pi) % 360  # convert to degree
-        self.cmd += ['beam_dir.type=applybeam', f'beam_dir.direction=[{round(dir[0], 5)}deg,{round(dir[1], 5)}deg]',
-                     'beam_dir.updateweights=True']
-        T.close()
+        poldim_num = self.poldim_num(h5)
 
-        if self.isfulljones(h5):
+        # non-scalar
+        if poldim_num>1:
+            steps.append('beam_dir')
+            with tables.open_file(h5) as T:
+                dir = (T.root.sol000.source[:]['dir'][0] * 360 / 2 / pi) % 360  # convert to degree
+                self.cmd += ['beam_dir.type=applybeam', f'beam_dir.direction=[{round(dir[0], 5)}deg,{round(dir[1], 5)}deg]',
+                             'beam_dir.updateweights=True']
+
+        # fulljones
+        if poldim_num==4:
             steps.append('ac')
             self.cmd += ['ac.type=applycal',
                          'ac.parmdb=' + h5,
@@ -52,36 +56,36 @@ class ApplyCal:
         # add non-fulljones solutions apply
         else:
             ac_count = 0
-            T = tables.open_file(h5)
-            for corr in T.root.sol000._v_groups.keys():
-                self.cmd += [f'ac{ac_count}.type=applycal',
-                             f'ac{ac_count}.parmdb={h5}',
-                             f'ac{ac_count}.correction={corr}']
-                steps.append(f'ac{ac_count}')
-                ac_count += 1
-            T.close()
+            with tables.open_file(h5) as T:
+                for corr in T.root.sol000._v_groups.keys():
+                    self.cmd += [f'ac{ac_count}.type=applycal',
+                                 f'ac{ac_count}.parmdb={h5}',
+                                 f'ac{ac_count}.correction={corr}']
+                    steps.append(f'ac{ac_count}')
+                    ac_count += 1
 
-        # this step inverts the beam at the infield and corrects beam at phase center
-        steps.append('beam_center')
-        self.cmd += ['beam_center.type=applybeam', 'beam_center.direction=[]',
-                     'beam_center.updateweights=True']
+        # non-scalar
+        if poldim_num>1:
+            # this step inverts the beam at the infield and corrects beam at phase center
+            steps.append('beam_center')
+            self.cmd += ['beam_center.type=applybeam', 'beam_center.direction=[]',
+                         'beam_center.updateweights=True']
+
         self.cmd += ['steps=' + str(steps).replace(" ", "").replace("\'", "")]
 
     @staticmethod
-    def isfulljones(h5: str = None):
+    def poldim_num(h5: str = None):
         """
         Verify if file is fulljones
 
         :param h5: h5 file
         """
-        T = tables.open_file(h5)
-        soltab = list(T.root.sol000._v_groups.keys())[0]
-        if 'pol' in T.root.sol000._f_get_child(soltab).val.attrs["AXES"].decode('utf8'):
-            if T.root.sol000._f_get_child(soltab).pol[:].shape[0] == 4:
-                T.close()
-                return True
-        T.close()
-        return False
+        with tables.open_file(h5) as T:
+            soltab = list(T.root.sol000._v_groups.keys())[0]
+            if 'pol' in T.root.sol000._f_get_child(soltab).val.attrs["AXES"].decode('utf8'):
+                return T.root.sol000._f_get_child(soltab).pol[:].shape[0]
+            else:
+                return 0
 
     def print_cmd(self):
         """Print DP3 command"""
@@ -121,7 +125,7 @@ def main():
         for ms in args.msin:
             Ac = ApplyCal(msin=ms, h5=args.h5, msincol=args.colin, msoutcol=args.colout, msout='applycal_' + ms)
     Ac.print_cmd()
-    Ac.run()
+    # Ac.run()
 
 
 if __name__ == '__main__':
