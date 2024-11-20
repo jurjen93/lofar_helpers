@@ -151,8 +151,9 @@ class ImagenetTransferLearning(nn.Module):
         use_compile: bool = True,
         lift: str = "stack",
         use_lora: bool = False,
-        alpha=16,
-        rank=16,
+        alpha: float = 16.0,
+        rank: int = 16,
+        tune_pos_embed: bool = False,
     ):
         super().__init__()
 
@@ -167,6 +168,9 @@ class ImagenetTransferLearning(nn.Module):
             "use_compile": use_compile,
             "lift": lift,
             "use_lora": use_lora,
+            "rank": rank,
+            "alpha": alpha,
+            "tune_pos_embed": tune_pos_embed,
         }
 
         if lift == "stack":
@@ -242,6 +246,7 @@ class ImagenetTransferLearning(nn.Module):
                 self.dino.eval()
             else:
                 self.dino.decoder.eval()
+            self.dino.encoder.pos_embed.requires_grad = False
         else:
             self.classifier.eval()
 
@@ -253,12 +258,14 @@ class ImagenetTransferLearning(nn.Module):
                 self.dino.train()
             else:
                 self.dino.decoder.train()
+            # Finetune learnable pos_embedding
+            self.dino.encoder.pos_embed.requires_grad = self.kwargs["tune_pos_embed"]
         else:
             self.classifier.train()
 
 
 def get_dataloaders(dataset_root, batch_size):
-    num_workers = min(12, len(os.sched_getaffinity(0)))
+    num_workers = min(18, len(os.sched_getaffinity(0)))
 
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else (None, False)
@@ -382,6 +389,7 @@ def main(
     log_path: Path = "runs",
     epochs: int = 120,
     flip_augmentations: bool = False,
+    tune_pos_embed: bool = False,
 ):
     torch.set_float32_matmul_precision("high")
     torch.backends.cudnn.benchmark = True
@@ -430,6 +438,7 @@ def main(
         use_lora=use_lora,
         alpha=alpha,
         rank=rank,
+        tune_pos_embed=tune_pos_embed,
     )
 
     # noinspection PyArgumentList
@@ -499,6 +508,16 @@ def main(
             "flip_augmentations": flip_augmentations,
             "dataset_mean": mean,
             "dataset_std": std,
+        },
+        model_args={
+            "model_name": model_name,
+            "use_compile": use_compile,
+            "lift": lift,
+            "use_lora": use_lora,
+            "rank": rank,
+            "alpha": alpha,
+            "dropout_p": dropout_p,
+            "tune_pos_embed": tune_pos_embed,
         },
     )
 
@@ -742,12 +761,26 @@ def load_checkpoint(ckpt_path, device="cuda"):
 
     # strip 'model_' from the name
     model_name = ckpt_dict["args"]["model_name"]
-    lr = ckpt_dict["args"]["lr"]
-    dropout_p = ckpt_dict["args"]["dropout_p"]
+    if "model_args" in ckpt_dict["args"]:
+        model = ckpt_dict["model"](**ckpt_dict["model_args"]).to(device)
+    else:
+        dropout_p = ckpt_dict["args"]["dropout_p"]
+        use_lora = ckpt_dict["args"]["use_lora"]
+        rank = ckpt_dict["args"]["rank"]
+        alpha = ckpt_dict["args"]["alpha"]
+        lift = ckpt_dict["args"]["lift"]
+        model_name = ckpt_dict["args"]["model_name"]
 
-    model = ckpt_dict["model"](model_name=model_name, dropout_p=dropout_p).to(device)
+        model = ckpt_dict["model"](
+            model_name=model_name,
+            dropout_p=dropout_p,
+            use_lora=use_lora,
+            lift=lift,
+            alpha=alpha,
+            rank=rank,
+        ).to(device)
     model.load_state_dict(ckpt_dict["model_state_dict"])
-
+    lr = ckpt_dict["args"]["lr"]
     try:
         # FIXME: add optim class and args to state dict
         optim = ckpt_dict.get("optimizer", torch.optim.AdamW)(
@@ -858,6 +891,12 @@ def get_argparser():
         "--use_lora",
         action="store_true",
         help="Whether to use LoRA if applicable.",
+    )
+
+    parser.add_argument(
+        "--tune_pos_embed",
+        action="store_true",
+        help="Whether to fine-tune the positional embedding if applicable",
     )
 
     parser.add_argument("--rank", type=int, default=16, help="rank of LoRA")

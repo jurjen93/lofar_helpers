@@ -23,8 +23,14 @@ python pre_processing_for_ml.py <path-to-fits-dir>
 ```
 
 ## (Optional) Copy files to /dev/shm for fast dataloading
+Copy data
 ```shell
 find <path-to-fits-dir> -type f -name "*.npz" | xargs -n 1 -P 8 -i rsync -R {} /dev/shm
+```
+Copy cached dataset statistics
+```shell
+find <path-to-fits-dir> -type d -name "_cache" | xargs -n 1 -P 8 -I {} rsync -aR {}/ /dev/shm
+
 ```
 
 ## Run neural network training

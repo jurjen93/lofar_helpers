@@ -71,9 +71,9 @@ class TransferLearning(Architecture):
                 batch, size=self.resize, mode="bilinear", align_corners=False
             )
         if mean is None:
-            mean = self.mean
+            mean = self.args["dataset_mean"]
         if std is None:
-            std = self.std
+            std = self.args["dataset_std"]
         batch = normalize_inputs(batch, mean, std, normalize=1)
         return batch
 
