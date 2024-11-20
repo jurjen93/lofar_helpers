@@ -424,6 +424,7 @@ def main(
         alpha=alpha,
         lift=lift,
         flip_augmentations=flip_augmentations,
+        tune_pos_embed=tune_pos_embed,
     )
 
     writer = get_tensorboard_logger(logging_dir)
