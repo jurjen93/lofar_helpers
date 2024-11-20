@@ -125,7 +125,7 @@ def main():
         for ms in args.msin:
             Ac = ApplyCal(msin=ms, h5=args.h5, msincol=args.colin, msoutcol=args.colout, msout='applycal_' + ms)
     Ac.print_cmd()
-    # Ac.run()
+    Ac.run()
 
 
 if __name__ == '__main__':
