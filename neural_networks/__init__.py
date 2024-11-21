@@ -16,7 +16,7 @@ from .train_nn import (
 )  # noqa
 from .pre_processing_for_ml import normalize_fits
 
-setattr(__main__, "ImagenetTransferLearning", ImagenetTransferLearning)
+setattr(__main__, "TransferLearning", ImagenetTransferLearning)
 
 
 def process_fits(fits_path):
