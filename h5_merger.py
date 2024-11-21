@@ -1772,8 +1772,8 @@ class MergeH5:
                             if self.merge_all_in_one:
                                 m = 0
 
-                            newvals = self._interp_along_axis(weight, st2.time[:], st.time[:], axes_new.index('time'), fill_value=1.).astype(float32)
-                            newvals = self._interp_along_axis(newvals, st2.freq[:], st.freq[:], axes_new.index('freq'), fill_value=1.).astype(float32)
+                            newvals = self._interp_along_axis(weight, st2.time[:], st.time[:], axes_new.index('time'), fill_value=0).astype(float32)
+                            newvals = self._interp_along_axis(newvals, st2.freq[:], st.freq[:], axes_new.index('freq'), fill_value=0).astype(float32)
 
                             if weight.shape[-2] != 1 and len(weight.shape) == 5:
                                 print("Merge multi-dir weights")
