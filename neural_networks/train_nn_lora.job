@@ -1,0 +1,63 @@
+#!/bin/bash
+#SBATCH --job-name=cortex_grid_search
+#SBATCH -p gpu
+#SBATCH -t 08:00:00
+#SBATCH --gpus 1
+#SBATCH --output=out/multi_cortex%A_%a.out
+
+set -e
+
+cd ~/projects/lofar_helpers/neural_networks
+
+
+module load 2023
+source ../../lofar_venv/bin/activate
+
+# Read the parameter file
+PARAM_FILE=parameters.txt
+
+# Set default value for SLURM_ARRAY_TASK_ID
+SLURM_ARRAY_TASK_ID=${SLURM_ARRAY_TASK_ID:=1}
+# Extract the specific line corresponding to the SLURM_ARRAY_TASK_ID
+PARAMS=$(sed -n "${SLURM_ARRAY_TASK_ID}p" $PARAM_FILE)
+
+# Parse the parameters
+read model lr normalize dropout_p batch_size label_smoothing stochastic_smoothing use_lora rank alpha resize lift flip_augmentations <<< $PARAMS
+
+if [ "$use_lora" -eq 1 ]; then
+    LORA_ARG="--use_lora"
+else
+    LORA_ARG=""
+fi
+
+if [ "$stochastic_smoothing" -eq 1 ]; then
+    STOCHASTIC_SMOOTHING="--stochastic_smoothing"
+else
+    STOCHASTIC_SMOOTHING=""
+fi
+
+if [ "$flip_augmentations" -eq 1 ]; then
+    FLIP_AUGMENTATIONS="--flip_augmentations"
+else
+    FLIP_AUGMENTATIONS=""
+fi
+
+# Scale up by 1e6 to convert to integers for comparison
+scaled_lr=$(echo "$lr * 1000000" | awk '{printf("%d", $1)}')
+scaled_threshold=$(echo "4e-05 * 1000000" | awk '{printf("%d", $1)}')
+
+if [ "$scaled_lr" -le "$scaled_threshold" ]; then
+    EPOCHS="250"
+else
+    EPOCHS="120"
+fi
+
+DATA_INPUT_PATH="/scratch-shared/CORTEX/"
+# find $DATA_INPUT_PATH -name '*npz' | xargs -n 1 -P 18 -i rsync -R {} '/dev/shm/'
+
+DATA_TRAINDATA_PATH="/scratch-shared/CORTEX/public.spider.surfsara.nl/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/"
+
+
+# Execute your Python script with the given parameters
+echo  $DATA_TRAINDATA_PATH --model $model --lr $lr --normalize $normalize --dropout_p $dropout_p --batch_size $batch_size --log_path grid_search_lora --label_smoothing $label_smoothing --rank $rank --resize $resize --alpha $alpha  $LORA_ARG $STOCHASTIC_SMOOTHING -d --epochs $EPOCHS --lift $lift $FLIP_AUGMENTATIONS 
+python train_nn.py $DATA_TRAINDATA_PATH --model $model --lr $lr --normalize $normalize --dropout_p $dropout_p --batch_size $batch_size --log_path grid_search_lora --label_smoothing $label_smoothing --rank $rank --resize $resize --alpha $alpha  $LORA_ARG $STOCHASTIC_SMOOTHING -d --epochs $EPOCHS --lift $lift $FLIP_AUGMENTATIONS 

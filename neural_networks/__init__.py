@@ -16,7 +16,7 @@ from .train_nn import (
 )  # noqa
 from .pre_processing_for_ml import normalize_fits
 
-setattr(__main__, "ImagenetTransferLearning", ImagenetTransferLearning)
+setattr(__main__, "TransferLearning", ImagenetTransferLearning)
 
 
 def process_fits(fits_path):
@@ -71,9 +71,9 @@ class TransferLearning(Architecture):
                 batch, size=self.resize, mode="bilinear", align_corners=False
             )
         if mean is None:
-            mean = self.mean
+            mean = self.args["dataset_mean"]
         if std is None:
-            std = self.std
+            std = self.args["dataset_std"]
         batch = normalize_inputs(batch, mean, std, normalize=1)
         return batch
 

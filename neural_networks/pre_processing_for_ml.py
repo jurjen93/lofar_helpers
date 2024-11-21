@@ -92,12 +92,15 @@ def transform_data(root_dir, classes=("continue", "stop"), modes=("", "_val")):
     def process_fits(fits_path):
         with fits.open(fits_path) as hdul:
             image_data = hdul[0].data
-        # assert image_data.shape[2] == 2048, (image_data.shape, image_data.shape[2], fits_path)
-        transformed = normalize_fits(image_data)
+        if image_data.shape[2] == 2048:
+            transformed = normalize_fits(image_data)
 
-        np.savez_compressed(
-            fits_path.with_suffix(".npz"), transformed.astype(np.float32)
-        )
+            np.savez_compressed(
+                fits_path.with_suffix(".npz"), transformed.astype(np.float32)
+            )
+        else:
+            print(f"Skipping {fits_path}. Improper image size {image_data.shape}")
+        # print(fits_path)
 
     root_dir = Path(root_dir)
     assert root_dir.exists()
@@ -174,6 +177,13 @@ class FitsDataset(Dataset):
         self.mean, self.std = cached_compute(self, normalize)
         return self.mean, self.std
 
+    # For caching
+    def __reduce__(self):
+        return (
+            self.__class__,
+            (self.labels, self.mode, self.label_ratio, self.sources),
+        )
+
     @staticmethod
     def _compute_statistics(loader, normalize, verbose=True):
         if verbose:
@@ -218,7 +228,6 @@ class FitsDataset(Dataset):
 
         npy_path = self.data_paths[idx]
         label = self.labels[idx]
-
         image_data = np.load(npy_path)["arr_0"]  # there is always only one array
 
         # Pre-processing
@@ -288,7 +297,7 @@ if __name__ == "__main__":
     # make_histogram(root)
     # dataset.compute_statistics(normalize=1)
 
-    # dataset = FitsDataset(root, mode='train', normalize=1)
+    # dataset = FitsDataset(root, mode="train")
     # sources = dataset.sources
     # hash(dataset)
     # print(sources)
@@ -298,8 +307,8 @@ if __name__ == "__main__":
     # plt.savefig('test.png')
 
     # for img, label in dataset:
-    #     print(img.shape)
-    #     exit()
+    #     if img.shape[2] != 2048:
+    #         exit()
 
     # images = np.concatenate([image.flatten() for image, label in Idat])
     # print("creating hist")

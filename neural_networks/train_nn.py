@@ -136,8 +136,8 @@ def normalize_inputs(inputs, means, stds, normalize=1):
 
 
 @torch.no_grad()
-def augmentation(inputs, flip_augmentations=False):
-    inputs = get_transforms(flip_augmentations=flip_augmentations)(inputs)
+def augmentation(inputs):
+    inputs = get_transforms()(inputs)
     inputs = inputs + 0.01 * torch.randn_like(inputs)
 
     return inputs
@@ -151,8 +151,9 @@ class ImagenetTransferLearning(nn.Module):
         use_compile: bool = True,
         lift: str = "stack",
         use_lora: bool = False,
-        alpha=16,
-        rank=16,
+        alpha: float = 16.0,
+        rank: int = 16,
+        pos_embed: bool = False,
     ):
         super().__init__()
 
@@ -167,6 +168,9 @@ class ImagenetTransferLearning(nn.Module):
             "use_compile": use_compile,
             "lift": lift,
             "use_lora": use_lora,
+            "rank": rank,
+            "alpha": alpha,
+            "pos_embed": pos_embed,
         }
 
         if lift == "stack":
@@ -190,6 +194,13 @@ class ImagenetTransferLearning(nn.Module):
                 model_name, get_classifier_f, use_lora=use_lora, alpha=alpha, rank=rank
             )
             # self.classifier = get_classifier_f(n_features=num_features)
+            if "zeros" in self.kwargs["pos_embed"]:
+                self.dino.encoder.pos_embed[:, 1:, :] = torch.zeros_like(
+                    self.dino.encoder.pos_embed[:, 1:, :]
+                )
+            self.dino.encoder.pos_embed.requires_grad = (
+                True if "fine-tune" in self.kwargs["pos_embed"] else False
+            )
             self.forward = self.dino_forward
 
         else:
@@ -253,12 +264,14 @@ class ImagenetTransferLearning(nn.Module):
                 self.dino.train()
             else:
                 self.dino.decoder.train()
+            # Finetune learnable pos_embedding
+
         else:
             self.classifier.train()
 
 
 def get_dataloaders(dataset_root, batch_size):
-    num_workers = min(12, len(os.sched_getaffinity(0)))
+    num_workers = min(18, len(os.sched_getaffinity(0)))
 
     prefetch_factor, persistent_workers = (
         (2, True) if num_workers > 0 else (None, False)
@@ -381,7 +394,7 @@ def main(
     alpha: float = 16,
     log_path: Path = "runs",
     epochs: int = 120,
-    flip_augmentations: bool = False,
+    pos_embed: str = "pre-trained",
 ):
     torch.set_float32_matmul_precision("high")
     torch.backends.cudnn.benchmark = True
@@ -415,7 +428,7 @@ def main(
         rank=rank,
         alpha=alpha,
         lift=lift,
-        flip_augmentations=flip_augmentations,
+        pos_embed=pos_embed,
     )
 
     writer = get_tensorboard_logger(logging_dir)
@@ -430,6 +443,7 @@ def main(
         use_lora=use_lora,
         alpha=alpha,
         rank=rank,
+        pos_embed=pos_embed,
     )
 
     # noinspection PyArgumentList
@@ -473,7 +487,6 @@ def main(
             stochastic=stochastic_smoothing,
             smoothing_factor=label_smoothing,
         ),
-        augmentation_fn=partial(augmentation, flip_augmentations=flip_augmentations),
     )
     val_step_f = partial(val_step_f, val_dataloader=val_dataloader)
 
@@ -496,9 +509,18 @@ def main(
             "lr": lr,
             "dropout_p": dropout_p,
             "model_name": model_name,
-            "flip_augmentations": flip_augmentations,
             "dataset_mean": mean,
             "dataset_std": std,
+        },
+        model_args={
+            "model_name": model_name,
+            "use_compile": use_compile,
+            "lift": lift,
+            "use_lora": use_lora,
+            "rank": rank,
+            "alpha": alpha,
+            "dropout_p": dropout_p,
+            "pos_embed": pos_embed,
         },
     )
 
@@ -607,7 +629,6 @@ def train_step(
     logging_interval,
     metrics_logger,
     smoothing_fn,
-    augmentation_fn,
 ):
     # print("training")
     model.train()
@@ -616,10 +637,9 @@ def train_step(
         enumerate(train_dataloader), desc="Training", total=len(train_dataloader)
     ):
         global_step += 1
-
         data, labels = prepare_data_f(data, labels)
         smoothed_label = smoothing_fn(labels)
-        data = augmentation_fn(data)
+        data = augmentation(data)
 
         optimizer.zero_grad(set_to_none=True)
         with torch.autocast("cuda", dtype=torch.bfloat16):
@@ -695,15 +715,11 @@ class Rotate90Transform:
 
 
 @lru_cache(maxsize=1)
-def get_transforms(flip_augmentations=False):
+def get_transforms():
 
     return v2.Compose(
         [
-            (
-                Rotate90Transform()
-                if not flip_augmentations
-                else v2.RandomVerticalFlip(p=0.5)
-            ),
+            (Rotate90Transform()),
             v2.RandomHorizontalFlip(p=0.5),
         ]
     )
@@ -742,12 +758,26 @@ def load_checkpoint(ckpt_path, device="cuda"):
 
     # strip 'model_' from the name
     model_name = ckpt_dict["args"]["model_name"]
-    lr = ckpt_dict["args"]["lr"]
-    dropout_p = ckpt_dict["args"]["dropout_p"]
+    if "model_args" in ckpt_dict["args"]:
+        model = ckpt_dict["model"](**ckpt_dict["model_args"]).to(device)
+    else:
+        dropout_p = ckpt_dict["args"]["dropout_p"]
+        use_lora = ckpt_dict["args"]["use_lora"]
+        rank = ckpt_dict["args"]["rank"]
+        alpha = ckpt_dict["args"]["alpha"]
+        lift = ckpt_dict["args"]["lift"]
+        model_name = ckpt_dict["args"]["model_name"]
 
-    model = ckpt_dict["model"](model_name=model_name, dropout_p=dropout_p).to(device)
+        model = ckpt_dict["model"](
+            model_name=model_name,
+            dropout_p=dropout_p,
+            use_lora=use_lora,
+            lift=lift,
+            alpha=alpha,
+            rank=rank,
+        ).to(device)
     model.load_state_dict(ckpt_dict["model_state_dict"])
-
+    lr = ckpt_dict["args"]["lr"]
     try:
         # FIXME: add optim class and args to state dict
         optim = ckpt_dict.get("optimizer", torch.optim.AdamW)(
@@ -860,6 +890,14 @@ def get_argparser():
         help="Whether to use LoRA if applicable.",
     )
 
+    parser.add_argument(
+        "--pos_embed",
+        type=str,
+        default="pre-trained",
+        choices=["pre-trained", "fine-tune", "zeros", "zeros-fine-tune"],
+        help="How to handle positional embeddings",
+    )
+
     parser.add_argument("--rank", type=int, default=16, help="rank of LoRA")
 
     parser.add_argument(
@@ -867,12 +905,6 @@ def get_argparser():
         type=float,
         default=None,
         help="LoRA alpha scaling. Defaults to rank value if not set",
-    )
-
-    parser.add_argument(
-        "--flip_augmentations",
-        action="store_true",
-        help="Uses double flip augmentations instead of rotate + flip",
     )
 
     parser.add_argument("--log_path", type=str, default="runs")
