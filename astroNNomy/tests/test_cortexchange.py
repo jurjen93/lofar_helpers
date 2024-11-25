@@ -11,7 +11,7 @@ init_downloader(
 from cortexchange.architecture import get_architecture, Architecture
 
 TransferLearning: type(Architecture) = get_architecture("surf/TransferLearning")
-model = TransferLearning(device="cpu", model_name="surf/efficientnet_october_09535")
+model = TransferLearning(device="cpu", model_name="surf/dinov2_october_09902_lora")
 
 # torch_tensor = model.prepare_data(
 #     "ILTJ160454.72+555949.7_selfcal/selfcal_007-MFS-image.fits"

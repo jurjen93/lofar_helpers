@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "astroNNomy"
+requires-python = ">=3.10"
+dynamic = ["version", "dependencies"]
+
+description = "Neural Network training library for LOFAR"
+authors = [
+  {name = "Robert Jan Schlimbach", email = "robert-jan.schlimbach@surf.nl" },
+  {name = "Lars Veefkind", email = "lars.veefkind@surf.nl" },
+  {name = "Jurjen de Jong", email = "jurjendejong@strw.leidenuniv.nl" },
+  {name = "Duncan Kampert", email = "duncan.kampert@surf.nl" },
+]
+readme = "README.md"
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
