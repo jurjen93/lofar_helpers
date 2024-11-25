@@ -1,18 +1,11 @@
-from collections import defaultdict
-from pickle import Pickler
-import sys
 import os
 
-import tensorboard
+import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import precision_recall_curve
-import matplotlib.pyplot as plt
 
-sys.path.append('..') # yes this is mega ugly, but otherwise I need to restructure the whole project... 
-
-from inference import dataset_inference_vi, is_file
-from train_nn import ImagenetTransferLearning
-from pre_processing_for_ml import FitsDataset
+from astronnomy.inference import dataset_inference_vi
+from astronnomy.pre_processing_for_ml import FitsDataset
 
 DATASET_ROOT = '/dev/shm/scratch-shared/CORTEX/public.spider.surfsara.nl/project/lofarvwf/jdejong/CORTEX/calibrator_selection_robertjan/cnn_data/'
 CHECKPOINT = '../grid_search/version_7944362_0__model_efficientnet_v2_l__lr_0.0001__normalize_0__dropout_p_0.25__use_compile_True/ckpt_step=1643.pth'

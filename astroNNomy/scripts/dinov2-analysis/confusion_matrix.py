@@ -5,7 +5,7 @@ import os
 
 SCRIPT_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(os.path.dirname(SCRIPT_DIR))
-from pre_processing_for_ml import normalize_fits
+from astronnomy.pre_processing_for_ml import normalize_fits
 import matplotlib.pyplot as plt
 import numpy as np
 import torch

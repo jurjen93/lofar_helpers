@@ -1,15 +1,15 @@
 import argparse
 import os
 from functools import partial
-from typing import Callable, Any, Sequence
+from typing import Any
 
 import matplotlib.image
 import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from train_nn import ImagenetTransferLearning, load_checkpoint
 from pre_processing_for_ml import FitsDataset
+from .training.train_nn import load_checkpoint
 
 
 def variational_dropout(model, batch, variational_iters: int):
