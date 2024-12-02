@@ -39,7 +39,7 @@ def main():
                    f'msout=flagged_{ms.split("/")[-1]}',
                    'steps=[flag]',
                    'flag.type=preflagger',
-                   f'flag.flag1.baseline={args.ant}']
+                   f'flag.baseline={args.ant}']
         if args.freqrange is not None or args.timerange is not None:
             expr += 'flag1'
         # frequency flagging

@@ -460,7 +460,7 @@ class SubtractWSClean:
             if out_column not in colnames:
                 # Creating the column with DP3 ensures we can directly compress the data
                 os.system(f"DP3 msin={ms} msout=. msout.datacolumn={out_column} steps=[] msout.storagemanager=dysco"
-                          f"msout.storagemanager.databitrate=6 msout.storagemanager.weightbitrate=6")
+                          f"msout.storagemanager.databitrate=8 msout.storagemanager.weightbitrate=10")
             else:
                 print(out_column, ' already exists')
 
@@ -571,8 +571,8 @@ class SubtractWSClean:
                    'msin.datacolumn=SUBTRACT_DATA' if not self.inverse else 'msin.datacolumn=DATA',
                    'msin.orderms=False',
                    'msout.storagemanager=dysco',
-                   'msout.storagemanager.databitrate=6',
-                   'msout.storagemanager.weightbitrate=6']
+                   'msout.storagemanager.databitrate=8',
+                   'msout.storagemanager.weightbitrate=10']
 
         # 1) PHASESHIFT
         if phaseshift is not None:

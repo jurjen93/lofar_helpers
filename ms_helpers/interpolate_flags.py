@@ -7,7 +7,7 @@ Strategy:
     2) interpolate the new flags to the output measurement set (higher freq/time resolution dataset)
 
 Usage:
-    python interpolate_flags.py --msin dataset_lowres.ms dataset_original.ms
+    python interpolate_flags.py --interpolate_from_ms dataset_lowres.ms dataset_original.ms
 
     dataset_lowres.ms --> a dataset with a lower time/freq resolution which originates from dataset_original.ms
     dataset_original.ms --> the original dataset
@@ -180,10 +180,10 @@ def parse_args():
     """
 
     parser = ArgumentParser(description='Flag data from a lower freq/time resolution to a higher one')
-    parser.add_argument('--msin', help='MS input from where to interpolate')
+    parser.add_argument('--interpolate_from_ms', help='MS input from where to interpolate')
     parser.add_argument('--backup_flags', action='store_true', default=None, help='Make backup of flags')
     parser.add_argument('--skip_flagging', action='store_true', default=None, help='Skip flagging')
-    parser.add_argument('msout', nargs='+', help='MS output from where to apply new interpolated flags')
+    parser.add_argument('msin', nargs='+', help='MS to apply interpolation on')
 
     return parser.parse_args()
 
@@ -197,10 +197,10 @@ def main():
 
     # run aoflagger on the input MS
     if not args.skip_flagging:
-        runaoflagger(args.msin)
+        runaoflagger(args.interpolate_from_ms)
 
     # interpolate flags
-    for ms in args.msout:
+    for ms in args.msin:
         print(f'Interpolate to {ms}')
         interpolate_flags(args.msin, ms, args.backup_flags)
 
