@@ -1684,12 +1684,11 @@ class MergeH5:
                                 ms_values[get_slices(ms_values, idx, antenna_index)] += h5_values[get_slices(h5_values, idx_h5, antenna_index)]
                             elif 'CS' in antenna and superstation:  # core stations
                                 ms_values[get_slices(ms_values, idx, antenna_index)] += h5_values[get_slices(h5_values, superstation_index, antenna_index)]
-                            elif antenna not in h5_antlist and ('amplitude' in soltab or axes == 'weight') \
-                                    and 'RS' not in antenna and 'CS' not in antenna:
+                            elif antenna not in h5_antlist and ('amplitude' in soltab or axes == 'weight'):
                                 if axes == 'val':
                                     print('Add ' + antenna + ' to output H5 from MS')
                                 ms_values[get_slices(ms_values, idx, antenna_index)] = 1
-                                if pol_index is not None and axes != 'weight':
+                                if pol_index is not None and axes != 'weight' and shape[pol_index]==4:
                                     ms_values[get_double_slice(ms_values, [idx, 1], [antenna_index, pol_index])] = 0
                                     ms_values[get_double_slice(ms_values, [idx, 2], [antenna_index, pol_index])] = 0
 
