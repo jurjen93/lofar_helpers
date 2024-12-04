@@ -1638,8 +1638,15 @@ class MergeH5:
                 for soltab in ss._v_groups.keys():
                     print(soltab)
                     st = ss._f_get_child(soltab)
-                    attrsaxes = st.val.attrs['AXES']
-                    antenna_index = attrsaxes.decode('utf8').split(',').index('ant')
+                    AXES = st.val.attrs['AXES']
+                    attrsaxes = AXES.decode('utf8').split(',')
+                    antenna_index = attrsaxes.index('ant')
+
+                    if 'pol' in attrsaxes:
+                        pol_index = attrsaxes.index('pol')
+                    else:
+                        pol_index = None
+
                     h5_antlist = [v.decode('utf8') for v in list(st.ant[:])]
 
                     if keep_h5_interstations:  # keep international stations if these are not in MS
@@ -1682,6 +1689,10 @@ class MergeH5:
                                 if axes == 'val':
                                     print('Add ' + antenna + ' to output H5 from MS')
                                 ms_values[get_slices(ms_values, idx, antenna_index)] = 1
+                                if pol_index is not None and axes != 'weight':
+                                    ms_values[get_double_slice(ms_values, [idx, 1], [antenna_index, pol_index])] = 0
+                                    ms_values[get_double_slice(ms_values, [idx, 2], [antenna_index, pol_index])] = 0
+
 
                         valtype = str(st._f_get_child(axes).dtype)
                         if '16' in valtype:
@@ -1695,7 +1706,7 @@ class MergeH5:
 
                         st._f_get_child(axes)._f_remove()
                         H.create_array(st, axes, ms_values.astype(valtype), atom=atomtype)
-                        st._f_get_child(axes).attrs['AXES'] = attrsaxes
+                        st._f_get_child(axes).attrs['AXES'] = AXES
                     print('Value shape after --> ' + str(st.val.shape))
 
         return self
@@ -2912,7 +2923,7 @@ def parse_input():
     parser.add_argument('--no_antenna_crash', action='store_true', default=None, help='Do not check if antennas are in h5.')
     parser.add_argument('--output_summary', action='store_true', default=None, help='Give output summary.')
     parser.add_argument('--check_output', action='store_true', default=None, help='Check if the output has all the correct output information.')
-    parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables over different frequency bands --> same as old "freq_concat" setting')
+    parser.add_argument('--merge_diff_freq', action='store_true', default=None, help='Merging tables over different frequency bands --> same as "freq_concat" setting')
     parser.add_argument('--time_concat', action='store_true', default=None, help='Merging tables over different time slots (ensuring correct interpolation)')
     parser.add_argument('--freq_concat', action='store_true', default=None, help='Merging tables over different frequency bands (ensuring correct interpolation) --> same as old "merge_diff_freq" setting')
     parser.add_argument('--min_distance', type=float, help='(ONLY PYTHON 3) Minimal coordinate distance between sources for merging directions (in degrees). If smaller, directions will be merged together.', default=0.)
