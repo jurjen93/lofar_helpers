@@ -113,9 +113,8 @@ def interpolate_flags(flagged_ms, ms, make_backup_flags):
         interpolated flags
     """
 
-    ants = table(flagged_ms + "::ANTENNA", ack=False)
-    baselines = np.c_[make_ant_pairs(ants.nrows(), 1)]
-    ants.close()
+    with table(flagged_ms + "::ANTENNA", ack=False) as ants:
+        baselines = np.c_[make_ant_pairs(ants.nrows(), 1)]
 
     t1 = table(flagged_ms, ack=False)
     t2 = table(ms, ack=False, readonly=False)
@@ -124,14 +123,12 @@ def interpolate_flags(flagged_ms, ms, make_backup_flags):
         np.save(ms+'.flags.npy', t2.getcol("FLAG"))
 
     # Get freq axis first table
-    t = table(flagged_ms+'::SPECTRAL_WINDOW', ack=False)
-    freq_flagged_axis = t.getcol("CHAN_FREQ")[0]
-    t.close()
+    with table(flagged_ms+'::SPECTRAL_WINDOW', ack=False) as t:
+        freq_flagged_axis = t.getcol("CHAN_FREQ")[0]
 
     # Get freq axis second table
-    t = table(ms+'::SPECTRAL_WINDOW', ack=False)
-    freq_axis = t.getcol("CHAN_FREQ")[0]
-    t.close()
+    with table(ms+'::SPECTRAL_WINDOW', ack=False) as t:
+        freq_axis = t.getcol("CHAN_FREQ")[0]
 
     # Loop over baselines
     for n, baseline in enumerate(baselines):
@@ -202,7 +199,7 @@ def main():
     # interpolate flags
     for ms in args.msin:
         print(f'Interpolate to {ms}')
-        interpolate_flags(args.msin, ms, args.backup_flags)
+        interpolate_flags(args.interpolate_from_ms, ms, args.backup_flags)
 
 
 if __name__ == '__main__':
