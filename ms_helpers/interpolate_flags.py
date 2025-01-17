@@ -137,10 +137,10 @@ def interpolate_flags(flagged_ms, ms, make_backup_flags):
         sub2 = t2.query(f"ANTENNA1={baseline[0]} AND ANTENNA2={baseline[1]}")
 
         time_flagged_axis = sub1.getcol("TIME")
-        data_flagged = np.take(sub1.getcol('FLAG'), indices=0, axis=-1).astype(int)
+        data_flagged = np.take(sub1.getcol('FLAG'), indices=0, axis=-1).astype(np.uint8)
 
         time_axis = sub2.getcol("TIME")
-        data = np.take(sub2.getcol('FLAG'), indices=0, axis=-1).astype(int)
+        data = np.take(sub2.getcol('FLAG'), indices=0, axis=-1).astype(np.uint8)
 
         # Create the grid for interpolation
         grid_x, grid_y = np.meshgrid(freq_flagged_axis, time_flagged_axis)
@@ -156,7 +156,7 @@ def interpolate_flags(flagged_ms, ms, make_backup_flags):
         new_flags = griddata(points, values, (interp_grid_x, interp_grid_y), method='nearest')
 
         # Reshape the data to match the original data shape
-        new_flags = new_flags.reshape(time_axis.size, freq_axis.size)
+        new_flags = np.array(new_flags.reshape(time_axis.size, freq_axis.size), dtype=np.uint8)
 
         # Apply the new flags to the data
         data += new_flags
