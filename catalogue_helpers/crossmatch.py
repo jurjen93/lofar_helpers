@@ -6,13 +6,7 @@ from astropy.coordinates import SkyCoord
 from astropy import units as u
 from astropy.table import Table
 from astropy.coordinates import match_coordinates_sky
-import matplotlib.pyplot as plt
-import warnings
 
-plt.style.use('science')
-
-# Disable all warnings temporarily
-warnings.filterwarnings("ignore")
 
 def find_matches(cat1, cat2, separation_asec):
     """
