@@ -494,7 +494,7 @@ class SubtractWSClean:
 
         f = fits.open(self.model_images[0])
         comparse = str(f[0].header['HISTORY']).replace('\n', '').split()
-        command = ['wsclean', '-predict', f'-name {self.model_images[0].split("-")[0]}', '-mem 50',
+        command = ['wsclean', '-predict', f'-name {re.sub(r"(-\d{4})?-model(-pb|-fpb)?\.fits$", "", self.model_images[0])}', '-mem 50',
                    '-parallel-gridding 2']
 
         for n, argument in enumerate(comparse):
