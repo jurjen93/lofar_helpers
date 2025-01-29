@@ -770,7 +770,7 @@ def parse_args():
     parser.add_argument('--skip_predict', action='store_true', help='Skip predict and do only subtract')
     parser.add_argument('--even_time_avg', action='store_true', help='Only allow even time averaging (in case of combining observations with different averaging factors) and --forwidefield')
     parser.add_argument('--inverse', action='store_true', help='Instead of subtracting, you predict and add model data from a single facet')
-    parser.add_argument('--scratch_toil', action='store_true', help='Experts only: Run on scratch when using toil')
+    parser.add_argument('--copy_to_local_scratch', action='store_true', help='Copy data to local scratch, typically used for running with Toil on a distributed cluster without a shared scratch disk.')
     parser.add_argument('--speedup_facet_subtract', action='store_true', help='DP3 speedup for facet subtraction by performing averaging earlier (may introduce accuracy issues)')
 
     return parser.parse_args()
