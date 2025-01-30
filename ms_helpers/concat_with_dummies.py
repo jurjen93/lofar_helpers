@@ -206,13 +206,14 @@ def parse_args():
     parser.add_argument('--remove_flagged_station', action='store_true', help='Remove flagged station (save output)')
     parser.add_argument('--make_only_parset', action='store_true', help='Make only parset')
     parser.add_argument('--only_basename', action='store_true', help='Return only basename of msin')
+    parser.add_argument('--bitrate', type=int, help='Number of bits per float used for columns containing visibilities. Can be set to zero to compress weights only.')
 
     return parser.parse_args()
 
 
 def make_parset(mss: list = None, concat_name: str = None, data_column: str = None,
                 time_avg: int= None, freq_avg: int = None, time_res=None, freq_res=None, phase_center: str = None,
-                only_basename: bool = None, remove_flagged_station: bool = None):
+                only_basename: bool = None, remove_flagged_station: bool = None, bitrate: int = None):
     """
     Make parset for DP3
 
@@ -279,7 +280,8 @@ def make_parset(mss: list = None, concat_name: str = None, data_column: str = No
             f"msin.missingdata=True\n"
             f"msin.orderms=False\n"
             f"msout.storagemanager=dysco\n"
-            f"msout.writefullresflag=False"
+            f"msout.writefullresflag=False\n"
+            f"msout.storagemanager.databitrate={bitrate}"
         )
         steps = []
 
@@ -339,7 +341,8 @@ def main():
     args = parse_args()
     parsets = make_parset(args.msin, args.msout, args.data_column,
                 args.time_avg, args.freq_avg, args.time_res,
-                args.freq_res, args.phase_center, args.only_basename, args.remove_flagged_station)
+                args.freq_res, args.phase_center, args.only_basename,
+                          args.remove_flagged_station, args.bitrate)
     if not args.make_only_parset:
         for parset in parsets:
             os.system('DP3 ' + parset)
