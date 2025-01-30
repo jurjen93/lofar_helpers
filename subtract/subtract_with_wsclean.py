@@ -851,7 +851,7 @@ def main():
         timeres = args.timeres
         dirname = None
 
-    if args.scratch_toil:
+    if args.copy_to_local_scratch:
         hashvalue = random.getrandbits(128)
         hasfolder = "%032x" % hashvalue
         hasfolder = hasfolder[0:10]
@@ -878,8 +878,8 @@ def main():
 
 
     # set subtract object
-    subpred = SubtractWSClean(mslist=args.mslist if not args.scratch_toil else [ms.split('/')[-1] for ms in args.mslist],
-                             region=args.region if not args.scratch_toil or args.region is None else args.region.split('/')[-1],
+    subpred = SubtractWSClean(mslist=args.mslist if not args.copy_to_local_scratch else [ms.split('/')[-1] for ms in args.mslist],
+                             region=args.region if not args.copy_to_local_scratch or args.region is None else args.region.split('/')[-1],
                              localnorth=not args.no_local_north,
                              inverse=args.inverse)
 
@@ -893,24 +893,24 @@ def main():
         if args.region is not None:
             subpred.mask_region(region_cube=args.use_region_cube)
 
-        if args.scratch_toil:
+        if args.copy_to_local_scratch:
             os.system(f'cp {outpath}/{args.h5parm_predict.split("/")[-1]} {runpath}')
 
         if args.inverse:
-            faceth5 = split_facet_h5(h5parm=args.h5parm_predict if not args.scratch_toil else args.h5parm_predict.split('/')[-1],
+            faceth5 = split_facet_h5(h5parm=args.h5parm_predict if not args.copy_to_local_scratch else args.h5parm_predict.split('/')[-1],
                                             dirname=dirname)
             # predict with 1 facet
             print('############## PREDICT ##############')
             subpred.predict(h5parm=faceth5,
-                           facet_regions=args.region if not args.scratch_toil else args.region.split('/')[-1])
+                           facet_regions=args.region if not args.copy_to_local_scratch else args.region.split('/')[-1])
 
         else:
             # predict with multiple facets
             print('############## PREDICT ##############')
-            if args.scratch_toil:
+            if args.copy_to_local_scratch:
                 os.system(f'cp {outpath}/{args.facets_predict.split("/")[-1]} {runpath}')
-            subpred.predict(h5parm=args.h5parm_predict if not args.scratch_toil else args.h5parm_predict.split('/')[-1],
-                           facet_regions=args.facets_predict if not args.scratch_toil else args.facets_predict.split('/')[-1])
+            subpred.predict(h5parm=args.h5parm_predict if not args.copy_to_local_scratch else args.h5parm_predict.split('/')[-1],
+                           facet_regions=args.facets_predict if not args.copy_to_local_scratch else args.facets_predict.split('/')[-1])
 
     # subtract or add (if inverse=True)
     print('############## SUBTRACT ##############')
@@ -933,15 +933,15 @@ def main():
         else:
             applycalh5 = None
 
-        if args.scratch_toil:
+        if args.copy_to_local_scratch:
             os.system(f'cp {outpath}/{applycalh5.split("/")[-1]} {runpath}')
 
         # run DP3
         msout = subpred.run_DP3(phaseshift=phasecenter, freqavg=freqavg, timeres=timeres,
                        concat=args.concat, applybeam=args.applybeam, speedup_facet_subtract=args.speedup_facet_subtract,
-                       applycal_h5=applycalh5 if not args.scratch_toil else applycalh5.split('/')[-1], dirname=dirname)
+                       applycal_h5=applycalh5 if not args.copy_to_local_scratch else applycalh5.split('/')[-1], dirname=dirname)
 
-        if args.scratch_toil and args.forwidefield:
+        if args.copy_to_local_scratch and args.forwidefield:
             # copy averaged MS back to output folder
             for ms in msout: fast_copy(ms, f'{outpath}/{dirname.replace("Dir","facet_")}-{ms.split("/")[-1]}')
             # clean up scratch directory (for big MS)
@@ -951,7 +951,7 @@ def main():
         elif args.forwidefield:
             for ms in msout: os.system(f"mv {ms} {dirname.replace('Dir','facet_')}-{ms.split('/')[-1]}")
 
-    elif args.scratch_toil:
+    elif args.copy_to_local_scratch:
         # copy back the subtracted MS to the output path
         for ms in subpred.mslist: fast_copy(ms, f'{outpath}/subfov_{ms.split("/")[-1]}')
         os.system(f'cp *.log {outpath}')
