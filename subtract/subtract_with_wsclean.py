@@ -254,16 +254,11 @@ class SubtractWSClean:
         self.mslist = mslist
 
         # wsclean model image
-        model_images = glob('*-model*.fits')
-        hdu = fits.open(model_images[0])
+        self.model_images = next((glob(p) for p in ['*-????-model-fpb.fits', '*-????-model-pb.fits', '*-????-model.fits'] if glob(p)), None)
+        hdu = fits.open(self.model_images[0])
         self.imshape = (hdu[0].header['NAXIS1'], hdu[0].header['NAXIS2'])
 
-        if len(glob('*-????-model-pb.fits')) >= 1:
-            self.model_images = glob('*-????-model-pb.fits')
-        elif len(glob('*-????-model.fits')) >= 1:
-            self.model_images = glob('*-????-model.fits')
-        elif len(glob('*-model*.fits')) >= 1:
-            self.model_images = glob('*-model*.fits')
+
         f = fits.open(self.model_images[0])
         history = str(f[0].header['HISTORY']).replace('\n', '').split()
         if '-taper-gaussian' in history:
@@ -288,14 +283,26 @@ class SubtractWSClean:
         Delete model images that do not match with MS
         """
 
+        def rename_and_resort(pattern):
+            """
+            Rename and resort model images --> remove trailing zeros when only 1 model image, otherwise renumber model images
+            """
+            files = sorted(glob(pattern))
+            if len(files) > 1:
+                for n, modim in enumerate(files):
+                    new_name = re.sub(r'\d{4}', add_trailing_zeros(str(n), 4), modim)
+                    os.system(f'mv {modim} {new_name}')
+            elif len(files) == 1:
+                new_name = re.sub(r'\-\d{4}', '', files[0])
+                os.system(f'mv {files[0]} {new_name}')
+
         freqs = []
         for ms in self.mslist:
             with table(ms + "::SPECTRAL_WINDOW", ack=False) as t:
                 freqs += list(t.getcol("CHAN_FREQ")[0])
         self.fmax_ms = max(freqs)
         self.fmin_ms = min(freqs)
-        model_images = glob('*-model*.fits')
-        for modim in model_images:
+        for modim in self.model_images:
             fts = fits.open(modim)[0]
             fdelt, fcent = fts.header['CDELT3'] / 2, fts.header['CRVAL3']
             fmin, fmax = fcent - fdelt, fcent + fdelt
@@ -305,30 +312,11 @@ class SubtractWSClean:
             else:
                 print(modim + ' overlaps with MS bandwidth --> KEEP')
 
-        # rename and resort model images --> remove trailing zeros when only 1 model image, otherwise renumber model images
-        if len(glob('*-????-model.fits')) > 1:
-            for n, modim in enumerate(sorted(glob('*-????-model.fits'))):
-                os.system('mv ' + modim + ' ' + re.sub(r'\d{4}', add_trailing_zeros(str(n), 4), modim))
-        elif len(glob('*-????-model.fits')) == 1:
-            for n, modim in enumerate(sorted(glob('*-????-model.fits'))):
-                os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-????-model.fits')[0]))
-        if len(glob('*-????-model-pb.fits')) > 1:
-            for n, modim in enumerate(sorted(glob('*-????-model-pb.fits'))):
-                os.system('mv ' + modim + ' ' + re.sub(r'\d{4}', add_trailing_zeros(str(n), 4), modim))
-        elif len(glob('*-????-model-pb.fits')) == 1:
-            for n, modim in enumerate(sorted(glob('*-????-model-pb.fits'))):
-                os.system('mv ' + modim + ' ' + re.sub(r'\-\d{4}', '', glob('*-????-model-pb.fits')[0]))
-
-        # select correct model images
-        if len(glob('*-????-model-pb.fits')) >= 1:
-            self.model_images = glob('*-????-model-pb.fits')
-        elif len(glob('*-????-model.fits')) >= 1:
-            self.model_images = glob('*-????-model.fits')
-        elif len(glob('*-model-pb.fits')) >= 1:
-            self.model_images = glob('*-model-pb.fits')
-        elif len(glob('*-model.fits')) >= 1:
-            self.model_images = glob('*-model.fits')
-        else:
+        model_patterns = ['*-????-model-fpb.fits', '*-????-model-pb.fits', '*-????-model.fits',
+                          '*-model-fpb.fits', '*-model-pb.fits', '*-model.fits']
+        for model_pattern in model_patterns[0:3]: rename_and_resort(model_pattern)
+        self.model_images = next((glob(p) for p in model_patterns if glob(p)), None)
+        if not self.model_images:
             sys.exit("ERROR: No model images found.")
 
         return self
@@ -746,6 +734,24 @@ class SubtractWSClean:
         return msout
 
 
+def copy_model_images(model_image_folder):
+    """Copy model images from model_image_folder"""
+    patterns = [
+        '/*-model-fpb.fits',
+        '/*-model-pb.fits',
+        '/*-model.fits'
+    ]
+
+    for pattern in patterns:
+        files = glob.glob(model_image_folder + pattern)
+        if len(files) > 1:
+            for file in files:
+                shutil.copy(file, '.')
+            return  # Exit after the first successful copy
+
+    sys.exit(f"ERROR: missing model images in folder {model_image_folder}")
+
+
 def parse_args():
     """
     Command line argument parser
@@ -755,7 +761,7 @@ def parse_args():
     parser.add_argument('--facets_predict', type=str, help='Multi-facet region file for prediction')
     parser.add_argument('--h5parm_predict', type=str, help='Multi-dir h5 solution file corresponding to --facets_predict')
     parser.add_argument('--region', type=str, help='Region file to mask for subtraction or predict back to data when --inverse')
-    parser.add_argument('--model_image_folder', type=str, help='Directory with model images (if not given model images from run are selected)')
+    parser.add_argument('--model_image_folder', type=str, help='Directory with model images (if not given model images from run are selected)', required=True)
     parser.add_argument('--model_images', nargs='+', help='Instead of --model_image_folder, you can also specify the model images to use')
     parser.add_argument('--no_local_north', action='store_true', help='Do not move box to local north')
     parser.add_argument('--use_region_cube', action='store_true', help='Use region cube')
@@ -784,39 +790,24 @@ def main():
     args = parse_args()
 
     if not args.skip_predict:
-
-        # copy model images from model_image_folder
-        if args.model_image_folder is not None:
-            if len(glob(args.model_image_folder + '/*-????-model-pb.fits')) > 1:
-                os.system('cp ' + args.model_image_folder + '/*-????-model-pb.fits .')
-                if len(glob(args.model_image_folder + '/*-????-model.fits')) > 1:
-                    os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
-            elif len(glob(args.model_image_folder + '/*-????-model.fits')) > 1:
-                os.system('cp ' + args.model_image_folder + '/*-????-model.fits .')
-            elif len(glob(args.model_image_folder + '/*-model-pb.fits')) > 1:
-                os.system('cp ' + args.model_image_folder + '/*-model-pb.fits .')
-                if len(glob(args.model_image_folder + '/*-model.fits')) > 1:
-                    os.system('cp ' + args.model_image_folder + '/*-model.fits .')
-            elif len(glob(args.model_image_folder + '/*-model.fits')) > 1:
-                os.system('cp ' + args.model_image_folder + '/*-model.fits .')
-            else:
-                sys.exit("ERROR: missing model images in folder " + args.model_image_folder)
-        elif args.model_images is not None:
-            for model in args.model_images:
-                os.system('cp ' + model + ' .')
+        copy_model_images(args.model_image_folder)
 
     # --forwidefield --> will read averaging and phasecenter from polygon_info.csv
     if args.forwidefield:
-        if os.path.isfile('polygon_info.csv'):
-            polygon_info = pd.read_csv('polygon_info.csv')
-        elif os.path.isfile('../polygon_info.csv'):
-            polygon_info = pd.read_csv('../polygon_info.csv')
-        elif os.path.isfile('../../polygon_info.csv'):
-            polygon_info = pd.read_csv('../../polygon_info.csv')
-        elif os.path.isfile('../../../polygon_info.csv'):
-            polygon_info = pd.read_csv('../../../polygon_info.csv')
+        search_paths = [
+            'polygon_info.csv',
+            '../polygon_info.csv',
+            '../../polygon_info.csv',
+            '../../../polygon_info.csv'
+        ]
+
+        # Find and read the file
+        for path in search_paths:
+            if os.path.isfile(path):
+                polygon_info = pd.read_csv(path)
+                break
         else:
-            sys.exit('ERROR: using --forwidefield option needs polygon_info.csv file to read polygon information from')
+            sys.exit('ERROR: using --forwidefield option requires polygon_info.csv to read polygon information from')
 
         with table(args.mslist[0] + "::SPECTRAL_WINDOW", ack=False) as t:
             channum = len(t.getcol("CHAN_FREQ")[0])
@@ -873,7 +864,7 @@ def main():
         command = [f'cp *-model*.fits {runpath}']
         if args.region is not None:
             command += [f'cp {args.region} {runpath}']
-        # when running with scratch + toil, the next commands are to clean up the tmp* files
+        # when running with --copy_to_local_scratch, the next commands are to clean up the tmp* files
         command += ['rm *-model*.fits', f'rm -rf {args.model_image_folder}']
         if not args.applybeam and not args.applycal:
             command += [f'rm -rf {dataset}' for dataset in args.mslist]
