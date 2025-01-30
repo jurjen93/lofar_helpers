@@ -187,31 +187,6 @@ def remove_flagged_antennas(msin: str = None):
         return f'\nfilter.type=filter\nfilter.remove=true\nfilter.baseline=!{ants_to_filter}'
 
 
-
-def parse_args():
-    """
-    Parse input arguments
-    """
-
-    parser = argparse.ArgumentParser(description='Concatenate MeasurementSets or generate corresponding parset files. '
-                                                 'This script takes into account frequency gaps.')
-    parser.add_argument('--msin', nargs='+', help='Measurement set')
-    parser.add_argument('--msout', help='Concat name', type=str, default=None)
-    parser.add_argument('--data_column', help='Data column', type=str, default='DATA')
-    parser.add_argument('--phase_center', help='Phase shift to new center', type=str)
-    parser.add_argument('--time_avg', help='Time averaging factor', type=int)
-    parser.add_argument('--freq_avg', help='Frequency averaging factor', type=int)
-    parser.add_argument('--time_res', help='Time resolution (in seconds)', type=int)
-    parser.add_argument('--freq_res', help='Frequency resolution', type=str)
-    parser.add_argument('--remove_flagged_station', action='store_true', help='Remove flagged station (save output)')
-    parser.add_argument('--make_only_parset', action='store_true', help='Make only parset')
-    parser.add_argument('--only_basename', action='store_true', help='Return only basename of msin')
-    parser.add_argument('--bitrate', type=int, help='Number of bits per float used for columns containing visibilities. '
-                                                    'Can be set to zero to compress weights only.', default=10)
-
-    return parser.parse_args()
-
-
 def make_parset(mss: list = None, concat_name: str = None, data_column: str = None,
                 time_avg: int= None, freq_avg: int = None, time_res=None, freq_res=None, phase_center: str = None,
                 only_basename: bool = None, remove_flagged_station: bool = None, bitrate: int = None):
@@ -332,6 +307,30 @@ def make_parset(mss: list = None, concat_name: str = None, data_column: str = No
         parsets.append(parsetname)
 
     return parsets
+
+
+def parse_args():
+    """
+    Parse input arguments
+    """
+
+    parser = argparse.ArgumentParser(description='Concatenate MeasurementSets or generate corresponding parset files. '
+                                                 'This script takes into account frequency gaps.')
+    parser.add_argument('--msin', nargs='+', help='Measurement set')
+    parser.add_argument('--msout', help='Concat name', type=str, default=None)
+    parser.add_argument('--data_column', help='Data column', type=str, default='DATA')
+    parser.add_argument('--phase_center', help='Phase shift to new center', type=str)
+    parser.add_argument('--time_avg', help='Time averaging factor', type=int)
+    parser.add_argument('--freq_avg', help='Frequency averaging factor', type=int)
+    parser.add_argument('--time_res', help='Time resolution (in seconds)', type=int)
+    parser.add_argument('--freq_res', help='Frequency resolution', type=str)
+    parser.add_argument('--remove_flagged_station', action='store_true', help='Remove flagged station (save output)')
+    parser.add_argument('--make_only_parset', action='store_true', help='Make only parset')
+    parser.add_argument('--only_basename', action='store_true', help='Return only basename of msin')
+    parser.add_argument('--bitrate', type=int, help='Number of bits per float used for columns containing visibilities. '
+                                                    'Can be set to zero to compress weights only.', default=10)
+
+    return parser.parse_args()
 
 
 def main():
