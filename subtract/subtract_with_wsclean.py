@@ -743,7 +743,7 @@ def copy_model_images(model_image_folder):
     ]
 
     for pattern in patterns:
-        files = glob.glob(model_image_folder + pattern)
+        files = glob(model_image_folder + pattern)
         if len(files) > 1:
             for file in files:
                 shutil.copy(file, '.')
