@@ -206,7 +206,7 @@ def parse_args():
     parser.add_argument('--remove_flagged_station', action='store_true', help='Remove flagged station (save output)')
     parser.add_argument('--make_only_parset', action='store_true', help='Make only parset')
     parser.add_argument('--only_basename', action='store_true', help='Return only basename of msin')
-    parser.add_argument('--bitrate', type=int, help='Number of bits per float used for columns containing visibilities. Can be set to zero to compress weights only.')
+    parser.add_argument('--bitrate', type=int, help='Number of bits per float used for columns containing visibilities. Can be set to zero to compress weights only.', default=10)
 
     return parser.parse_args()
 
