@@ -438,6 +438,7 @@ class SubtractWSClean:
         """
 
         for ms in self.mslist:
+            unlink(ms)
             with table(ms, readonly=False, ack=False) as ts:
                 colnames = ts.colnames()
 
