@@ -872,9 +872,9 @@ def main():
         outpath = os.getcwd()
         os.chdir(runpath)
 
-        # replace symlinks with data to correct
-        for ms in args.mslist:
-            unlink(ms.split('/')[-1])
+    # replace symlinks with data to correct
+    for ms in args.mslist:
+        unlink(ms.split('/')[-1])
 
 
     # set subtract object
