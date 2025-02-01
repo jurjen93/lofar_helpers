@@ -828,6 +828,7 @@ def parse_args():
     parser.add_argument('--inverse', action='store_true', help='Instead of subtracting, you predict and add model data from a single facet')
     parser.add_argument('--copy_to_local_scratch', action='store_true', help='Copy data to local scratch, typically used for running with Toil on a distributed cluster without a shared scratch disk.')
     parser.add_argument('--speedup_facet_subtract', action='store_true', help='DP3 speedup for facet subtraction by performing averaging earlier (may introduce accuracy issues)')
+    parser.add_argument('--cleanup_input_ms', action='store_true', help='Cleanup input MeasurementSet (be sure that these are copies!)')
 
     return parser.parse_args()
 
@@ -999,6 +1000,9 @@ def main():
 
         elif args.forwidefield:
             for ms in msout: os.system(f"mv {ms} {dirname.replace('Dir','facet_')}-{ms.split('/')[-1]}")
+            if args.cleanup_input_ms:
+                for ms in args.mslist: os.system(f"rm -rf {ms}")
+
 
     elif args.copy_to_local_scratch:
         # copy back the subtracted MS to the output path
