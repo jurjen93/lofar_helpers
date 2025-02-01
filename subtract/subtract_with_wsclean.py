@@ -438,7 +438,6 @@ class SubtractWSClean:
         """
 
         for ms in self.mslist:
-            unlink(ms)
             with table(ms, readonly=False, ack=False) as ts:
                 colnames = ts.colnames()
 
@@ -873,10 +872,9 @@ def main():
         outpath = os.getcwd()
         os.chdir(runpath)
 
-    # replace symlinks with data to correct
-    for ms in args.mslist:
-        unlink(ms.split('/')[-1])
-
+        # replace symlinks with data to correct
+        for ms in args.mslist:
+            unlink(ms.split('/')[-1])
 
     # set subtract object
     subpred = SubtractWSClean(mslist=args.mslist if not args.copy_to_local_scratch else [ms.split('/')[-1] for ms in args.mslist],
