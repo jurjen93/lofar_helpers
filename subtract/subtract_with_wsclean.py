@@ -95,6 +95,55 @@ def unlink(symlink_path):
         print(f"Error: {e} - Could not replace the symlink with data.")
 
 
+def is_dysco_compressed(ms):
+    """
+    Check if MS is dysco compressed
+
+    :param:
+        - ms: measurement set
+    """
+
+    with table(ms, readonly=True, ack=False) as t:
+        return t.getdesc()["DATA"]['dataManagerGroup'] == 'DyscoData'
+
+
+def compress(ms):
+    """
+    running DP3 to apply dysco compression
+
+    :param:
+        - ms: measurement set
+    """
+
+    if not is_dysco_compressed(ms):
+
+        print('Apply Dysco compression')
+
+        cmd = (f"DP3 msin={ms} msout={ms}.tmp msout.overwrite=true msout.storagemanager=dysco "
+               f"msout.storagemanager.databitrate=12 msout.storagemanager.weightbitrate=12")
+
+        steps = []
+
+        steps = str(steps).replace("'", "").replace(' ','')
+        cmd += f' steps={steps}'
+
+        os.system(cmd+' > /dev/null 2>&1')
+
+        try:
+            t = table(f"{ms}.tmp", ack=False) # test if exists
+            t.close()
+        except RuntimeError:
+            exit(f"ERROR: dysco compression failed (please check {ms})")
+
+        shutil.rmtree(ms)
+        shutil.move(f"{ms}.tmp", ms)
+
+        print('----------')
+        return ms
+
+    else:
+        return ms
+
 def get_largest_divider(inp, max=1000):
     """
     Get largest divider
@@ -438,8 +487,8 @@ class SubtractWSClean:
         """
 
         for ms in self.mslist:
-            with table(ms, readonly=False, ack=False) as ts:
-                colnames = ts.colnames()
+            with table(ms, readonly=False, ack=False) as t:
+                colnames = t.colnames()
 
                 if "MODEL_DATA" not in colnames:
                     sys.exit(
@@ -467,8 +516,9 @@ class SubtractWSClean:
             # subtraction or addition
             taql(f"UPDATE {ms} SET {out_column}={colmn}{sign}MODEL_DATA")
 
-            # remove MODEL_DATA to save memory
-            taql(f"ALTER TABLE {ms} DROP COLUMN MODEL_DATA")
+            # remove MODEL_DATA to save memory (better than using taql to keep compression)
+            with table(ms, readonly=False, ack=False) as t:
+                t.removecols(['MODEL_DATA'])
 
         return self
 
