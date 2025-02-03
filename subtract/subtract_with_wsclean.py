@@ -929,6 +929,8 @@ def main():
         if args.region is not None:
             command += [f'cp {args.region} {runpath}']
         # when running with --copy_to_local_scratch, the next commands are to clean up the tmp* files
+        for model in glob("*-model*.fits"):
+            unlink(model)
         command += ['rm *-model*.fits', f'rm -rf {args.model_image_folder}']
         if not args.applybeam and not args.applycal:
             command += [f'rm -rf {dataset}' for dataset in args.mslist]
@@ -939,8 +941,7 @@ def main():
         # replace symlinks with data to correct
         for ms in args.mslist:
             unlink(ms.split('/')[-1])
-        for model in glob("*-model*.fits"):
-            unlink(model)
+
 
     # set subtract object
     subpred = SubtractWSClean(mslist=args.mslist if not args.copy_to_local_scratch else [ms.split('/')[-1] for ms in args.mslist],
