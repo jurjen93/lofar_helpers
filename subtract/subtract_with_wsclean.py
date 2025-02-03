@@ -939,6 +939,8 @@ def main():
         # replace symlinks with data to correct
         for ms in args.mslist:
             unlink(ms.split('/')[-1])
+        for model in glob("*-model*.fits"):
+            unlink(model)
 
     # set subtract object
     subpred = SubtractWSClean(mslist=args.mslist if not args.copy_to_local_scratch else [ms.split('/')[-1] for ms in args.mslist],
