@@ -270,6 +270,12 @@ def split_facet_h5(h5parm: str = None, dirname: str = None):
         outh5.root.sol000.amplitude000.val.attrs['AXES'] = bytes(axes, 'utf-8')
         outh5.root.sol000.amplitude000.weight.attrs['AXES'] = bytes(axes, 'utf-8')
 
+    # Repack h5 to make size smaller
+    try:
+        repack(outputh5)
+    except:
+        pass
+
     return outputh5
 
 
@@ -783,6 +789,12 @@ class SubtractWSClean:
                 msout.append(mso)
 
         return msout
+
+
+def repack(h5):
+    """Repack function"""
+    print(f'Repack {h5}')
+    os.system(f'mv {h5} {h5}.tmp && h5repack {h5}.tmp {h5} && rm {h5}.tmp')
 
 
 def copy_model_images(model_image_folder):
