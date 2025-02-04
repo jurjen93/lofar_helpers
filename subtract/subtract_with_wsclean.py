@@ -10,6 +10,7 @@ import sys
 from argparse import ArgumentParser
 from glob import glob
 from itertools import repeat
+from sys import stdout
 
 import numpy as np
 import pandas as pd
@@ -18,6 +19,37 @@ import tables
 from astropy.io import fits
 from astropy.wcs import WCS
 from casacore.tables import table, taql
+import numba
+
+
+def print_progress_bar(index, total, bar_length=50):
+    """
+    Prints a progress bar to the console.
+
+    :param:
+        - index: the current index (0-based) in the iteration.
+        - total: the total number of indices.
+        - bar_length: the character length of the progress bar (default 50).
+    """
+
+    percent_complete = (index + 1) / total
+    filled_length = int(bar_length * percent_complete)
+    bar = "█" * filled_length + '-' * (bar_length - filled_length)
+    stdout.write(f'\rProgress: |{bar}| {percent_complete * 100:.1f}% Complete')
+    stdout.flush()  # Important to ensure the progress bar is updated in place
+
+    # Print a new line on completion
+    if index == total - 1:
+        print()
+
+
+@numba.njit(parallel=True)
+def subtract_arrays(arr1, arr2):
+    """Subtract two large numpy arrays using Numba."""
+    result = np.empty_like(arr1)
+    for i in numba.prange(arr1.shape[0]):
+        result[i] = arr1[i] - arr2[i]
+    return result
 
 
 def fast_copy(filein, dest):
@@ -296,7 +328,7 @@ def isfulljones(h5: str = None):
 
 
 class SubtractWSClean:
-    def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, inverse: bool = False):
+    def __init__(self, mslist: list = None, region: str = None, localnorth: bool = True, inverse: bool = False, logpath: str = '.'):
         """
         Subtract image with WSClean
 
@@ -332,6 +364,7 @@ class SubtractWSClean:
             self.region = pyregion.open(region)
 
         self.inverse = inverse
+        self.logpath = logpath
 
     def clean_model_images(self):
         """
@@ -465,7 +498,6 @@ class SubtractWSClean:
 
             print('Mask ' + fits_model)
 
-
             with fits.open(fits_model) as hdu:
 
                 b = not self.inverse
@@ -484,7 +516,7 @@ class SubtractWSClean:
 
         return self
 
-    def subtract_col(self, out_column: str = None):
+    def subtract(self):
 
         """
         Subtract column in MeasurementSet
@@ -493,38 +525,25 @@ class SubtractWSClean:
         """
 
         for ms in self.mslist:
-            with table(ms, readonly=False, ack=False) as t:
+            with table(ms, ack=False) as t:
                 colnames = t.colnames()
 
                 if "MODEL_DATA" not in colnames:
-                    sys.exit(
-                        f"ERROR: MODEL_DATA does not exist in {ms}.\nThis is most likely due to a failed predict step.")
-
-            if out_column not in colnames:
-                # Creating the column with DP3 ensures we can directly compress the data
-                os.system(f"DP3 msin={ms} msout=. msout.datacolumn={out_column} steps=[] msout.storagemanager=dysco"
-                          f"msout.storagemanager.databitrate=8 msout.storagemanager.weightbitrate=10")
-            else:
-                print(out_column, ' already exists')
-
-            if 'SUBTRACT_DATA' in colnames:
-                colmn = 'SUBTRACT_DATA'
-            else:
-                colmn = 'DATA'
+                    sys.exit(f"ERROR: MODEL_DATA does not exist in {ms}."
+                             f"\nThis is most likely due to a failed predict step.")
 
             if self.inverse:
-                sign = '+'
+                sign, manip = '+', 'Adding'
             else:
-                sign = '-'
+                sign, manip = '-', 'Subtracting'
 
-            print(f'Subtracting --> {colmn} {sign} MODEL_DATA for {ms}')
+            print(f'{manip} --> DATA{sign}MODEL_DATA for {ms}')
 
-            # subtraction or addition
-            taql(f"UPDATE {ms} SET {out_column}={colmn}{sign}MODEL_DATA")
+            taql(f"UPDATE {ms} SET DATA=DATA{sign}MODEL_DATA")
 
-            # remove MODEL_DATA to save memory (better than using taql to keep compression)
-            with table(ms, readonly=False, ack=False) as t:
-                t.removecols(['MODEL_DATA'])
+            # Save memory
+            os.system(f"DP3 msin={ms} msout={ms}.tmp steps=[] msout.storagemanager=dysco msout.storagemanager.databitrate=8 "
+                      f"&& rm -rf {ms} && mv {ms}.tmp {ms}")
 
         return self
 
@@ -591,7 +610,7 @@ class SubtractWSClean:
         predict_cmd.write('\n'.join(command))
         predict_cmd.close()
 
-        os.system(' '.join(command) + ' > predict.log')
+        os.system(' '.join(command) + f' > {self.logpath}/predict.log')
 
         return self
 
@@ -615,7 +634,7 @@ class SubtractWSClean:
 
         command = ['DP3',
                    'msin.missingdata=True',
-                   'msin.datacolumn=SUBTRACT_DATA' if not self.inverse else 'msin.datacolumn=DATA',
+                   'msin.datacolumn=DATA',
                    'msin.orderms=False',
                    'msout.storagemanager=dysco',
                    'msout.storagemanager.databitrate=8',
@@ -771,7 +790,7 @@ class SubtractWSClean:
 
             print(f"Make subtract_concat.ms")
 
-            os.system(' '.join(command) + " > dp3.subtract.log")
+            os.system(' '.join(command) + f" > {self.logpath}/dp3.subtract.log")
         else:
             msout = []
             for n, ms in enumerate(self.mslist):
@@ -811,6 +830,8 @@ def copy_model_images(model_image_folder):
             for file in files:
                 shutil.copy(file, '.')
             return  # Exit after the first successful copy
+
+    for m in glob("*model*.fits"): unlink(m)
 
     sys.exit(f"ERROR: missing model images in folder {model_image_folder}")
 
@@ -929,9 +950,7 @@ def main():
         if args.region is not None:
             command += [f'cp {args.region} {runpath}']
         # when running with --copy_to_local_scratch, the next commands are to clean up the tmp* files
-        for model in glob("*-model*.fits"):
-            unlink(model)
-        command += ['rm *-model*.fits', f'rm -rf {args.model_image_folder}']
+        command += ['rm *-model*.fits']
         if not args.applybeam and not args.applycal:
             command += [f'rm -rf {dataset}' for dataset in args.mslist]
         os.system('&&'.join(command))
@@ -941,13 +960,15 @@ def main():
         # replace symlinks with data to correct
         for ms in args.mslist:
             unlink(ms.split('/')[-1])
-
+    else:
+        outpath = '.'
 
     # set subtract object
     subpred = SubtractWSClean(mslist=args.mslist if not args.copy_to_local_scratch else [ms.split('/')[-1] for ms in args.mslist],
                              region=args.region if not args.copy_to_local_scratch or args.region is None else args.region.split('/')[-1],
                              localnorth=not args.no_local_north,
-                             inverse=args.inverse)
+                             inverse=args.inverse,
+                             logpath = outpath)
 
     if not args.skip_predict:
 
@@ -980,7 +1001,7 @@ def main():
 
     # subtract or add (if inverse=True)
     print('############## SUBTRACT ##############')
-    subpred.subtract_col(out_column='SUBTRACT_DATA' if not args.inverse else "DATA")
+    subpred.subtract()
 
     # DP3 steps
     if args.phasecenter is not None or \
