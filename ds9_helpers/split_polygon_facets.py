@@ -99,7 +99,7 @@ def point_in_polygon(point, poly_reg):
         width = distance([max_ra, min_dec], [min_ra, min_dec])
         height = distance([min_ra, min_dec], [min_ra, max_dec])
 
-        # calculate averaging based on extended area (larger than 2.5) to extend averaging without too much additional smearing
+        # calculate averaging based on extended area (larger than 2.5) to extend averaging without additional smearing
         avg = int(max(2.7/max(width, height),0))
 
         print(c_x, c_y, max(width, height), avg)

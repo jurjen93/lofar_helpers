@@ -145,7 +145,7 @@ def compress(ms):
     else:
         return ms
 
-def get_largest_divider(inp, max=1000):
+def get_largest_divider(inp, integer):
     """
     Get largest divider
 
@@ -154,7 +154,7 @@ def get_largest_divider(inp, max=1000):
 
     :return: largest divider from inp bound by max
     """
-    for r in range(max)[::-1]:
+    for r in range(max+1)[::-1]:
         if inp % r == 0:
             return r
     sys.exit("ERROR: code should not arrive here.")
@@ -617,7 +617,7 @@ class SubtractWSClean:
             command += ['ps.type=phaseshifter',
                         'ps.phasecenter=' + phasecenter]
 
-        # For facet subtraction we can do first averaging before applying beam and solutions (saves compute time)
+        # First averaging before applying beam and solutions (saves compute time), in particular for scalar solutions
         if speedup_facet_subtract:
             # 2) AVERAGING
             if freqavg is not None or timeres is not None:
@@ -635,18 +635,8 @@ class SubtractWSClean:
             if applybeam:
                 steps.append('beam1')
                 command += ['beam1.type=applybeam',
-                            'beam1.updateweights=True']
-                if applycal_h5 is not None and phaseshift is not None and dirname is not None:
-                    H = tables.open_file(applycal_h5)
-                    sources = H.root.sol000.source[:]
-                    H.close()
-                    dirs = [make_utf8(dir) for dir in sources['name']]
-                    dir_idx = dirs.index(dirname)
-                    ra, dec = sources['dir'][dir_idx]
-                    dir = str(f"[{round(ra,5)},{round(dec,5)}]")
-                    command += ['beam1.direction='+dir]
-                else:
-                    command += ['beam1.direction=[]']
+                            'beam1.updateweights=True',
+                            'beam1.direction=[]']
 
             # 4) APPLYCAL
             if applycal_h5 is not None:
@@ -674,12 +664,6 @@ class SubtractWSClean:
                             ac_count += 1
                     T.close()
 
-            # 5) APPLY BEAM (OPTIONAL IF APPLY BEAM USED FOR APPLYCAL)
-            if applybeam and applycal_h5 is not None and phaseshift is not None and dirname is not None:
-                steps.append('beam2')
-                command += ['beam2.type=applybeam',
-                            'beam2.updateweights=True',
-                            'beam2.direction=[]']
 
         # Most accurate version, but more expensive than the --speedup_facet_subtract approach
         else:
@@ -830,7 +814,7 @@ def parse_args():
     parser.add_argument('--even_time_avg', action='store_true', help='Only allow even time averaging (in case of combining observations with different averaging factors) and --forwidefield')
     parser.add_argument('--inverse', action='store_true', help='Instead of subtracting the predicted MODEL_DATA, the MODEL_DATA is added (if you want to predict back data).')
     parser.add_argument('--copy_to_local_scratch', action='store_true', help='Copy data to local scratch, typically used for running with Toil on a distributed cluster without a shared scratch disk.')
-    parser.add_argument('--speedup_facet_subtract', action='store_true', help='DP3 speedup for facet subtraction by performing averaging earlier when applying Stokes I solutions.')
+    parser.add_argument('--speedup_facet_subtract', action='store_true', help='DP3 speedup for facet subtraction by performing averaging before beam correction when using scalar corrections.')
     parser.add_argument('--cleanup_input_ms', action='store_true', help='Cleanup input MeasurementSets (be sure that these are copies of your original input!)')
 
     return parser.parse_args()
@@ -883,7 +867,7 @@ def main():
         avg = int(polygon['avg'].values[0])
 
         # take only averaging factors that are channum%avg==0
-        freqavg = get_largest_divider(channum, avg + 1)
+        freqavg = get_largest_divider(channum, avg)
 
         try:
             # if there is pre averaging done on the ms, we need to take this into account
