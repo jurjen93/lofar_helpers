@@ -154,7 +154,7 @@ def get_largest_divider(inp, integer):
 
     :return: largest divider from inp bound by max
     """
-    for r in range(max+1)[::-1]:
+    for r in range(integer+1)[::-1]:
         if inp % r == 0:
             return r
     sys.exit("ERROR: code should not arrive here.")
