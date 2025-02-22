@@ -189,7 +189,7 @@ def remove_flagged_antennas(msin: str = None):
 
 def make_parset(mss: list = None, concat_name: str = None, data_column: str = None,
                 time_avg: int= None, freq_avg: int = None, time_res=None, freq_res=None, phase_center: str = None,
-                only_basename: bool = None, remove_flagged_station: bool = None, bitrate: int = None):
+                apply_beam: bool = False, only_basename: bool = None, remove_flagged_station: bool = None, bitrate: int = None):
     """
     Make parset for DP3
 
@@ -201,6 +201,7 @@ def make_parset(mss: list = None, concat_name: str = None, data_column: str = No
     :param time_res: time resolution
     :param freq_res: frequency resolution
     :param phase_center: phase center
+    :apply_beam: apply beam in centre
     :param only_basename: return only basename
     :param remove_flagged_station: remove station when fully flagged
 
@@ -225,9 +226,11 @@ def make_parset(mss: list = None, concat_name: str = None, data_column: str = No
                         matchL = t.getcol("LOFAR_FILENAME")[0].split("_")[0]
                     except RuntimeError:
                         matchL = None
+            else:
+                matchL = matchL.group()
 
             if matchf is not None and matchL is not None:
-                concatname = matchf.group()+matchL.group()+'.concat.ms'
+                concatname = matchf.group()+matchL+'.concat.ms'
 
             else:
                 concatname = ('_'.join([i for i in ms[0].split('_') if 'mhz' not in i.lower()]).
@@ -261,17 +264,20 @@ def make_parset(mss: list = None, concat_name: str = None, data_column: str = No
         )
         steps = []
 
+        # Phase centre
         if phase_center is not None:
             steps.append('ps')
             parset += (f'\nps.type=phaseshifter'
                        f'\nps.phasecenter={phase_center}')
 
-            # Apply beam
+        # Apply beam
+        if phase_center is not None or apply_beam:
             steps.append('beam')
             parset += ('\nbeam.type=applybeam'
                        '\nbeam.updateweights=True'
                        '\nbeam.direction=[]')
 
+        # Time/Freq averaging
         if time_avg is not None or freq_avg is not None or freq_res is not None or time_res is not None:
             steps.append('avg')
             parset += '\navg.type=averager'
@@ -324,7 +330,8 @@ def parse_args():
     parser.add_argument('--freq_avg', help='Frequency averaging factor', type=int)
     parser.add_argument('--time_res', help='Time resolution (in seconds)', type=int)
     parser.add_argument('--freq_res', help='Frequency resolution', type=str)
-    parser.add_argument('--remove_flagged_station', action='store_true', help='Remove flagged station (save output)')
+    parser.add_argument('--apply_beam', action='store_true', help='Apply beam in centre')
+    parser.add_argument('--remove_flagged_station', action='store_true', help='Reduce data volume by removing fully flaged stations')
     parser.add_argument('--make_only_parset', action='store_true', help='Make only parset')
     parser.add_argument('--only_basename', action='store_true', help='Return only basename of msin')
     parser.add_argument('--bitrate', type=int, help='Number of bits per float used for columns containing visibilities. '
@@ -341,7 +348,7 @@ def main():
     args = parse_args()
     parsets = make_parset(args.msin, args.msout, args.data_column,
                 args.time_avg, args.freq_avg, args.time_res,
-                args.freq_res, args.phase_center, args.only_basename,
+                args.freq_res, args.phase_center, args.apply_beam, args.only_basename,
                           args.remove_flagged_station, args.bitrate)
     if not args.make_only_parset:
         for parset in parsets:
