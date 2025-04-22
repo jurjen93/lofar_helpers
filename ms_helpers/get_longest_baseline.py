@@ -51,7 +51,7 @@ def main():
 
     # Output the longest baseline and the antennas forming it
     print(f"\nLongest Baseline: {round(longest_baseline/1000, 2)} km")
-    print(f"Formed by antennas: {longest_baseline_antennas[0]} and {longest_baseline_antennas[1]}")
+    print(f"Given by antennas: {longest_baseline_antennas[0]} and {longest_baseline_antennas[1]}")
 
 
 if __name__ == '__main__':

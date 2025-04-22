@@ -100,10 +100,10 @@ def fill_freq_gaps(input: list = None, make_dummies: bool = None, output_name: s
             dummy_idx = set(
                 (np.ndarray.flatten(np.argwhere(chan_diff > 0)) / len(chan_diff) * len(mslist)).round(0).astype(int))
             n = 0
-            for idx in dummy_idx:
+            for idx in sorted(list(dummy_idx)):
                 if make_dummies:
                     for k in range(int(num_missing[idx-1])):
-                        print('dummy_' + str(n) + ' between ' + str(mslist[idx - 1]) + ' and ' + str(mslist[idx+n]))
+                        print('dummy_' + str(n) + ' between ' + str(mslist[idx + n - 1]) + ' and ' + str(mslist[idx+n]))
                         mslist.insert(idx+n, 'dummy_' + str(n))
                         n += 1
                 else:

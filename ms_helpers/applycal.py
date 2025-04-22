@@ -7,8 +7,6 @@ import tables
 from subprocess import call
 from argparse import ArgumentParser
 from numpy import pi
-import sys
-
 
 class ApplyCal:
     def __init__(self, msin: str = None, h5: str = None, msincol: str = "DATA", msoutcol: str = "CORRECTED_DATA",
