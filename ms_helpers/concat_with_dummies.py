@@ -259,7 +259,6 @@ def make_parset(mss: list = None, concat_name: str = None, data_column: str = No
             f"msin.missingdata=True\n"
             f"msin.orderms=False\n"
             f"msout.storagemanager=dysco\n"
-            f"msout.writefullresflag=False\n"
             f"msout.storagemanager.databitrate={bitrate}"
         )
         steps = []
