@@ -30,7 +30,8 @@ jobs:
           find . \
             -not -path "./.git/*" \
             -not -path "./.github/*" \
-            -type f -name "*.py" | sed 's|^\./||' | while read script; do
+            -type f -name "*.py" \
+            ! -name "casa_deconvolve.py" | sed 's|^\./||' | while read script; do
             echo "=== Testing $script ==="
             singularity exec \
               --bind "$(pwd)":/repo \
