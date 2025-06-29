@@ -11,7 +11,7 @@ Install with: ```pip install -v git+https://github.com/jurjen93/lofar_helpers.gi
 This gives you the following command line functions:
 - ```split_polygon_facets```
 - ```crop_nan_boundaries```
-- ```cut_fits_with_region```
+- ```cut_fits_with_region```[requirements.txt](requirements.txt)
 - ```close_h5```
 - ```concat_with_dummies```
 - ```remove_flagged_stations```
