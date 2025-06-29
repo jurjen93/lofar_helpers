@@ -1,0 +1,39 @@
+name: Test lofar_helpers
+
+on:
+  pull_request:  # Run on any PR
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Disable Microsoft Repo
+        run: |
+          sudo sed -i 's/^deb/#deb/' /etc/apt/sources.list.d/microsoft-prod.list
+          sudo apt-get update
+
+      - name: Install Singularity
+        run: |
+          sudo apt-get install -y singularity-container
+
+      - name: Download flocs Singularity
+        run: |
+          singularity pull flocs.sif \
+          https://public.spider.surfsara.nl/project/lofarvwf/fsweijen/containers/flocs_ci.sif
+
+      - name: Run --help on all Python scripts
+        run: |
+          for dir in lofar_helpers scripts another_dir; do
+            find "$dir" -type f -name "*.py"
+          done | sed 's|^||' | while read script; do
+            echo "=== Testing $script ==="
+            singularity exec \
+              --bind "$(pwd)":/repo \
+              --pwd /repo \
+              flocs.sif \
+              python "$script" --help
+          done
