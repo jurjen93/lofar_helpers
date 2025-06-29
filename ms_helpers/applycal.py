@@ -13,7 +13,7 @@ __author__ = "Jurjen de Jong"
 
 class ApplyCal:
     def __init__(self, msin: str = None, h5s: str = None, msincol: str = "DATA", msoutcol: str = "CORRECTED_DATA",
-                 msout: str = '.', dysco: bool = True):
+                 msout: str = '.', bitrate: int = 10):
         """
         Apply calibration solutions
 
@@ -22,7 +22,7 @@ class ApplyCal:
         :param msincol: input column
         :param msoutcol: output column
         :param msout: output measurement set
-        :param dysco: compress with dysco
+        :param bitrate: data bitrate
         """
 
         self.cmd = ['DP3', 'msin=' + abspath(msin)]
@@ -30,8 +30,8 @@ class ApplyCal:
         self.cmd += ['msin.datacolumn=' + msincol]
         if msout == '.':
             self.cmd += ['msout.datacolumn=' + msoutcol]
-        if dysco:
-            self.cmd += ['msout.storagemanager=dysco']
+        if bitrate>0:
+            self.cmd += [f'msout.storagemanager=dysco msout.storagemanager.databitrate={bitrate}']
 
         steps = []
 
@@ -115,7 +115,8 @@ def parse_args():
     parser.add_argument('--h5', nargs='+', type=str, help='h5parm calibration solution files', required=True)
     parser.add_argument('--colin', type=str, default='DATA', help='Input column name')
     parser.add_argument('--colout', type=str, default="CORRECTED_DATA", help='Output column name')
-
+    parser.add_argument('--bitrate', type=int, help='Number of bits per float used for columns containing visibilities. '
+                                                    'Can be set to zero to compress weights only.', default=10)
     return parser.parse_args()
 
 
@@ -125,10 +126,10 @@ def main():
     args = parse_args()
 
     if len(args.msin) == 1:
-        Ac = ApplyCal(msin=args.msin[0], h5s=args.h5, msincol=args.colin, msoutcol=args.colout, msout=args.msout)
+        Ac = ApplyCal(msin=args.msin[0], h5s=args.h5, msincol=args.colin, msoutcol=args.colout, msout=args.msout, bitrate=args.bitrate)
     elif len(args.h5)==1:
         for ms in args.msin:
-            Ac = ApplyCal(msin=ms, h5s=args.h5, msincol=args.colin, msoutcol=args.colout, msout='applycal_' + basename(ms))
+            Ac = ApplyCal(msin=ms, h5s=args.h5, msincol=args.colin, msoutcol=args.colout, msout='applycal_' + basename(ms), bitrate=args.bitrate)
     else:
         exit("ERROR: cannot give multiple MeasurementSets and multiple h5parms.")
     Ac.print_cmd()
