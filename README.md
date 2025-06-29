@@ -20,6 +20,10 @@ This gives you the following command line functions:
 
 Use ```--help``` to get more details about the functionalities.
 
+#### Dependencies
+The scripts in this repository depend on typical LOFAR and astronomy software, such as DP3, astropy, WSClean and more.
+If you have not installed those, it is strongly advised to download the latest FLoCs singularity image: https://tikk3r.github.io/flocs/
+
 #### Contact
 Let me know if you have any issues or suggestions for improvements.
 You can contact me on: jurjendejong(AT)strw.leidenuniv.nl
