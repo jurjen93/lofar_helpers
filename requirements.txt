@@ -1,0 +1,7 @@
+python-casacore
+astropy
+scipy
+numpy
+scikit-learn
+tables
+numba
