@@ -12,7 +12,7 @@ from numpy import mean, sqrt
 import os
 
 # path to fits files
-PATH='.'
+PATH= '..'
 
 def calc_conv_beam(fwhm_orig_major, fwhm_orig_minor, fwhm_new_major, fwhm_new_minor):
     """
