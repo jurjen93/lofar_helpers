@@ -1,28 +1,31 @@
-"""
-Apply solutions by taking into account beam order corrections towards the direction of the solution file
-and back to the phase center of the input measurement set.
-"""
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 import tables
 from subprocess import call
 from argparse import ArgumentParser
 from numpy import pi
+from sys import exit
+from os.path import abspath, basename
+
+__author__ = "Jurjen de Jong"
+
 
 class ApplyCal:
-    def __init__(self, msin: str = None, h5: str = None, msincol: str = "DATA", msoutcol: str = "CORRECTED_DATA",
+    def __init__(self, msin: str = None, h5s: str = None, msincol: str = "DATA", msoutcol: str = "CORRECTED_DATA",
                  msout: str = '.', dysco: bool = True):
         """
         Apply calibration solutions
 
         :param msin: input measurement set
-        :param h5: solution file to apply
+        :param h5s: solution file(s) to apply
         :param msincol: input column
         :param msoutcol: output column
         :param msout: output measurement set
         :param dysco: compress with dysco
         """
 
-        self.cmd = ['DP3', 'msin=' + msin]
+        self.cmd = ['DP3', 'msin=' + abspath(msin)]
         self.cmd += ['msout=' + msout]
         self.cmd += ['msin.datacolumn=' + msincol]
         if msout == '.':
@@ -32,42 +35,46 @@ class ApplyCal:
 
         steps = []
 
-        poldim_num = self.poldim_num(h5)
+        for n, h5 in enumerate(h5s):
 
-        # non-scalar
-        if poldim_num>1:
-            steps.append('beam_dir')
-            with tables.open_file(h5) as T:
-                dir = (T.root.sol000.source[:]['dir'][0] * 360 / 2 / pi) % 360  # convert to degree
-                self.cmd += ['beam_dir.type=applybeam', f'beam_dir.direction=[{round(dir[0], 5)}deg,{round(dir[1], 5)}deg]',
-                             'beam_dir.updateweights=True']
+            h5 = abspath(h5)
 
-        # fulljones
-        if poldim_num==4:
-            steps.append('ac')
-            self.cmd += ['ac.type=applycal',
-                         'ac.parmdb=' + h5,
-                         'ac.correction=fulljones',
-                         'ac.soltab=[amplitude000,phase000]',
-                         'ac.updateweights=True']
+            poldim_num = self.poldim_num(h5)
 
-        # add non-fulljones solutions apply
-        else:
-            ac_count = 0
-            with tables.open_file(h5) as T:
-                for corr in T.root.sol000._v_groups.keys():
-                    self.cmd += [f'ac{ac_count}.type=applycal',
-                                 f'ac{ac_count}.parmdb={h5}',
-                                 f'ac{ac_count}.correction={corr}']
-                    steps.append(f'ac{ac_count}')
-                    ac_count += 1
+            # non-scalar
+            if poldim_num>1:
+                steps.append(f'beam_dir_{n}')
+                with tables.open_file(h5) as T:
+                    dir = (T.root.sol000.source[:]['dir'][0] * 360 / 2 / pi) % 360  # convert to degree
+                    self.cmd += [f'beam_dir_{n}.type=applybeam', f'beam_dir_{n}.direction=[{round(dir[0], 5)}deg,{round(dir[1], 5)}deg]',
+                                 f'beam_dir_{n}.updateweights=True']
 
-        # non-scalar
-        if poldim_num>1:
-            # this step inverts the beam at the infield and corrects beam at phase center
-            steps.append('beam_center')
-            self.cmd += ['beam_center.type=applybeam', 'beam_center.direction=[]',
-                         'beam_center.updateweights=True']
+            # fulljones
+            if poldim_num==4:
+                steps.append(f'ac_{n}')
+                self.cmd += [f'ac_{n}.type=applycal',
+                             f'ac_{n}.parmdb=' + h5,
+                             f'ac_{n}.correction=fulljones',
+                             f'ac_{n}.soltab=[amplitude000,phase000]',
+                             f'ac_{n}.updateweights=True']
+
+            # add non-fulljones solutions apply
+            else:
+                ac_count = 0
+                with tables.open_file(h5) as T:
+                    for corr in T.root.sol000._v_groups.keys():
+                        self.cmd += [f'ac{ac_count}_{n}.type=applycal',
+                                     f'ac{ac_count}_{n}.parmdb={h5}',
+                                     f'ac{ac_count}_{n}.correction={corr}']
+                        steps.append(f'ac{ac_count}_{n}')
+                        ac_count += 1
+
+            # non-scalar
+            if poldim_num>1:
+                # this step inverts the beam at the infield and corrects beam at phase center
+                steps.append(f'beam_center_{n}')
+                self.cmd += [f'beam_center_{n}.type=applybeam', f'beam_center_{n}.direction=[]',
+                             f'beam_center_{n}.updateweights=True']
 
         self.cmd += ['steps=' + str(steps).replace(" ", "").replace("\'", "")]
 
@@ -102,12 +109,12 @@ class ApplyCal:
 def parse_args():
     """Argument parser"""
 
-    parser = ArgumentParser(description='Apply h5parm on MeasurementSet')
-    parser.add_argument('msin', nargs='+', type=str, help='input measurement set')
-    parser.add_argument('--msout', type=str, default='.', help='output measurement set')
-    parser.add_argument('--h5', type=str, help='h5 calibration', required=True)
-    parser.add_argument('--colin', type=str, default='DATA', help='input column name')
-    parser.add_argument('--colout', type=str, default=None, help='output column name')
+    parser = ArgumentParser(description='Apply calibration solutions by taking into account beam order corrections.')
+    parser.add_argument('msin', nargs='+', type=str, help='Input MeasurementSet(s)')
+    parser.add_argument('--msout', type=str, default='.', help='Output MeasurementSet')
+    parser.add_argument('--h5', nargs='+', type=str, help='h5parm calibration solution files', required=True)
+    parser.add_argument('--colin', type=str, default='DATA', help='Input column name')
+    parser.add_argument('--colout', type=str, default="CORRECTED_DATA", help='Output column name')
 
     return parser.parse_args()
 
@@ -118,10 +125,12 @@ def main():
     args = parse_args()
 
     if len(args.msin) == 1:
-        Ac = ApplyCal(msin=args.msin[0], h5=args.h5, msincol=args.colin, msoutcol=args.colout, msout=args.msout)
-    else:
+        Ac = ApplyCal(msin=args.msin[0], h5s=args.h5, msincol=args.colin, msoutcol=args.colout, msout=args.msout)
+    elif len(args.h5)==1:
         for ms in args.msin:
-            Ac = ApplyCal(msin=ms, h5=args.h5, msincol=args.colin, msoutcol=args.colout, msout='applycal_' + ms)
+            Ac = ApplyCal(msin=ms, h5s=args.h5, msincol=args.colin, msoutcol=args.colout, msout='applycal_' + basename(ms))
+    else:
+        exit("ERROR: cannot give multiple MeasurementSets and multiple h5parms.")
     Ac.print_cmd()
     Ac.run()
 

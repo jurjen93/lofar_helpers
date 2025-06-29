@@ -5,22 +5,22 @@ These scripts were developed for reducing LOFAR data for the following studies:
 - Producing the deepest sub-arcsecond wide-field image of ELAIS-N1: https://arxiv.org/pdf/2407.13247v1
 
 Although the scripts were developed for specific purposes, 
-I have tried to write them such they can be used for more general use-cases as well.
+I have tried to write them such that they can be used for more general use-cases as well.
 Some of these scripts have been integrated in data reduction pipelines as well.
 You are free to use the scripts for your own work.
 
-Clone the repo with: ```git clone https://github.com/jurjen93/lofar_helpers.git```
+Install with: ```pip install -v git+https://github.com/jurjen93/lofar_helpers.git```
+This gives you the following command line functions:
+- ```split_polygon_facets```
+- ```crop_nan_boundaries```
+- ```cut_fits_with_region```
+- ```close_h5```
+- ```concat_with_dummies```
+- ```remove_flagged_stations```
+- `applycal`
+- `subtract_with_wsclean`
 
-Or install with: ```pip install -v git+https://github.com/jurjen93/lofar_helpers.git```
-This gives you the following command line functionalities:
-- split_polygon_facets
-- crop_nan_boundaries
-- cut_fits_with_region
-- close_h5
-- concat_with_dummies
-- remove_flagged_stations
-- applycal
-- subtract_with_wsclean
+Use ```--help``` to get more details about the functionalities.
 
 #### Contact
 Let me know if you have any issues or suggestions for improvements.

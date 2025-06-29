@@ -1,8 +1,11 @@
-import tables
-import os
-import numpy as np
 from argparse import ArgumentParser
 import ast
+import os
+
+import numpy as np
+import tables
+
+__author__ = "Jurjen de Jong"
 
 
 class Template:

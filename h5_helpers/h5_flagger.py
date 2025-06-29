@@ -1,8 +1,11 @@
-import tables
-import numpy as np
 from argparse import ArgumentParser
-from sys import exit
 import re
+from sys import exit
+
+import numpy as np
+import tables
+
+__author__ = "Jurjen de Jong"
 
 
 def parse_args():

@@ -1,10 +1,15 @@
+"""Crop NaN values boundaries in FITS file"""
+
 import numpy as np
-from astropy.io import fits
 from argparse import ArgumentParser
+from astropy.io import fits
+
+__author__ = "Jurjen de Jong"
+
 
 def crop_nan_boundaries(fits_in, fits_out):
     """
-    Crop nan boundaries
+    Crop NaN boundaries
 
     input:
         - fits_in: input fits file
@@ -37,6 +42,7 @@ def crop_nan_boundaries(fits_in, fits_out):
     hdu = fits.PrimaryHDU(cropped_image, header=header)
     hdu.writeto(fits_out, overwrite=True)
 
+
 def parse_args():
     """
     Command line argument parser
@@ -47,6 +53,7 @@ def parse_args():
     parser.add_argument('--output_name', help='fits output file', type=str)
     return parser.parse_args()
 
+
 def main():
     """ Main function"""
     args = parse_args()
@@ -55,6 +62,7 @@ def main():
     else:
         outname = args.output_name
     crop_nan_boundaries(args.fits_in, outname)
+
 
 if __name__ == '__main__':
     main()

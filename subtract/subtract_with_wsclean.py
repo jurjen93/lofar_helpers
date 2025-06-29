@@ -10,7 +10,6 @@ import sys
 from argparse import ArgumentParser
 from glob import glob
 from itertools import repeat
-from sys import stdout
 
 import numpy as np
 import pandas as pd

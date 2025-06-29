@@ -1,9 +1,12 @@
-from casacore.tables import table
-import numpy as np
-import os
-from shutil import rmtree, move
 from argparse import ArgumentParser
+import os
+from shutil import move, rmtree
 from sys import exit
+
+import numpy as np
+from casacore.tables import table
+
+__author__ = "Jurjen de Jong"
 
 
 def remove_flagged_antennas(msin: str = None, msout: str = None, overwrite: bool = False):

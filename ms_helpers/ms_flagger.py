@@ -1,6 +1,8 @@
 from argparse import ArgumentParser
 import os
 
+__author__ = "Jurjen de Jong"
+
 
 def parse_args():
     """

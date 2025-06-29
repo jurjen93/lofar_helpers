@@ -2,11 +2,14 @@
 Split out multi-dir h5
 """
 
-import tables
-import numpy as np
-import shutil
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from os import system as commandline
+import shutil
+
+import numpy as np
+import tables
+
+__author__ = "Jurjen de Jong"
 
 
 def split_h5_idx(multi_dir_h5, h5_out_name, idx):

@@ -1,5 +1,5 @@
 """
-With this script you can flag data with a specific freq/time resolution and interpolate the flags to a dataset (or datasets) with another freq/time resolution.
+Flag data with a specific freq/time resolution and interpolate the flags to a dataset (or datasets) with another freq/time resolution.
 Make sure that all datasets have the same antennas with same antenna indices and originate from the same observation.
 
 Strategy:
@@ -15,12 +15,15 @@ Usage:
     NOTE: when interpolating to multiple datasets, that the first dataset always the dataset is to run aoflagger on.
 """
 
-from casacore.tables import table
-import numpy as np
+__author__ = "Jurjen de Jong"
+
 from argparse import ArgumentParser
 from subprocess import call
-from scipy.interpolate import griddata
 from sys import stdout
+
+from casacore.tables import table
+import numpy as np
+from scipy.interpolate import griddata
 
 
 def run(command):

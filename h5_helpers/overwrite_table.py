@@ -2,6 +2,9 @@ import numpy as np
 import tables
 import sys
 
+__author__ = "Jurjen de Jong"
+
+
 def overwrite_table(h5, table, new_arr):
     """
     Overwrite h5 source or antenna table

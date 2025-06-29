@@ -1,8 +1,12 @@
-import tables
-import os
-import numpy as np
 from argparse import ArgumentParser
+import os
+
+import numpy as np
 from scipy.constants import speed_of_light
+import tables
+
+__author__ = "Jurjen de Jong"
+
 
 circ2lin_math = """
 -----------------------------

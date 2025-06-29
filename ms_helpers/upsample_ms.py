@@ -1,10 +1,13 @@
 from argparse import ArgumentParser
-import numpy as np
-from casacore.tables import table
-from numba import njit, set_num_threads, prange
-from joblib import Parallel, delayed
 import os
 from sys import stdout
+
+from casacore.tables import table
+from joblib import Parallel, delayed
+from numba import njit, prange, set_num_threads
+import numpy as np
+
+__author__ = "Jurjen de Jong"
 
 set_num_threads(max(os.cpu_count()-1, 1))
 

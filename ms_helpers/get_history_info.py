@@ -3,6 +3,7 @@
 import os
 import re
 
+__author__ = "Jurjen de Jong"
 
 def isfloat(num):
     """

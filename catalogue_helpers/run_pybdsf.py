@@ -1,13 +1,12 @@
 """
 This script runs pybdsf on a fits file image to extract sources and components.
-
-This has been used for catalogue reduction of the ELAIS-N1 field.
-Feel free to adapt to your own needs. (Watch out for hardcoded parameters or paths)
-
 """
 
 import bdsf
 import argparse
+
+__author__ = "Jurjen de Jong"
+
 
 def run_pybdsf(fitsfile, rmsbox, frequency):
     """

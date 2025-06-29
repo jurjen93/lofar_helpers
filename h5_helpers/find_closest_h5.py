@@ -1,10 +1,13 @@
-import tables
-import os
-from astropy.coordinates import SkyCoord
-import numpy as np
-import sys
 from argparse import ArgumentParser
+import os
+import sys
+
+from astropy.coordinates import SkyCoord
 from casacore.tables import table
+import numpy as np
+import tables
+
+__author__ = "Jurjen de Jong"
 
 
 class FindClosestDir:

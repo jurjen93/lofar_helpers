@@ -1,6 +1,9 @@
-from casacore.tables import table
-import numpy as np
 from argparse import ArgumentParser
+
+import numpy as np
+from casacore.tables import table
+
+__author__ = "Jurjen de Jong"
 
 
 def euclidean_distance(pos1, pos2):

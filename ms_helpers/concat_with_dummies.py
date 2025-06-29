@@ -345,10 +345,8 @@ def main():
     """
 
     args = parse_args()
-    parsets = make_parset(args.msin, args.msout, args.data_column,
-                args.time_avg, args.freq_avg, args.time_res,
-                args.freq_res, args.phase_center, args.apply_beam, args.only_basename,
-                          args.remove_flagged_station, args.bitrate)
+    parsets = make_parset(args.msin, args.msout, args.data_column, args.time_avg, args.freq_avg, args.time_res, args.freq_res,
+                          args.phase_center, args.apply_beam, args.only_basename, args.remove_flagged_station, args.bitrate)
     if not args.make_only_parset:
         for parset in parsets:
             os.system('DP3 ' + parset)

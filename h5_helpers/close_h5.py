@@ -1,6 +1,9 @@
 import tables
 import sys
 
+__author__ = "Jurjen de Jong"
+
+
 def list_opened():
     """List current open HDF5 files"""
     h5s = tables.file._open_files.filenames

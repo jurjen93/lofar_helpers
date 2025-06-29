@@ -1,6 +1,5 @@
 """
 Split a ds9 region file with multiple polygons into separate polygon region files.
-You need this if you want to make images of individual facets instead of full facet-imaging in wsclean.
 The script also returns a polygon_info.csv containing the center of the polygon and the calibrator source direction with a polygon area
 and an estimate for how many times you can average based on the measurement sets from a 2.5x2.5 degree wide-field (for long-baselines)
 
@@ -14,14 +13,16 @@ IMPORTANT: The script assumes that the polygons and h5 solutions are sorted in t
 are in degrees!
 """
 
-
-from shapely import geometry
-import numpy as np
-import tables
-from glob import glob
-import csv
 from argparse import ArgumentParser
+import csv
+from glob import glob
+
 from astropy.coordinates import SkyCoord
+import numpy as np
+from shapely import geometry
+import tables
+
+__author__ = "Jurjen de Jong"
 
 
 def make_utf8(inp):
@@ -112,7 +113,7 @@ def point_in_polygon(point, poly_reg):
 def parse_args():
     """Argument parser"""
 
-    parser = ArgumentParser(description='Split multi-facet region file with polygon regions out into multiple region files')
+    parser = ArgumentParser(description='Split multi-facet region file with polygon regions out into multiple region files.')
     parser.add_argument('--reg', help='region file', type=str, required=True)
     parser.add_argument('--h5', help='h5 file to write directions from', type=str, required=True)
     parser.add_argument('--extra_boundary', help='make polygons with extra boundaries', type=float, default=0.01)
