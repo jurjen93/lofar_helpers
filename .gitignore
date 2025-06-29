@@ -4,6 +4,7 @@ lofar_helpers.egg-info
 # csv files
 *.csv
 #text files
+!requirements.txt
 *.txt
 # notebooks
 *.ipynb
