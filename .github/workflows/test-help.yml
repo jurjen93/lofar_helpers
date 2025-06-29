@@ -27,9 +27,11 @@ jobs:
 
       - name: Run --help on all Python scripts
         run: |
-          for dir in lofar_helpers scripts another_dir; do
-            find "$dir" -type f -name "*.py"
-          done | sed 's|^||' | while read script; do
+          find . \
+            -not -path "./.git/*" \
+            -not -path "./.github/*" \
+            -type f -name "*.py" \
+            ! -name "casa_deconvolve.py" | sed 's|^\./||' | while read script; do
             echo "=== Testing $script ==="
             singularity exec \
               --bind "$(pwd)":/repo \
@@ -37,3 +39,4 @@ jobs:
               flocs.sif \
               python "$script" --help
           done
+
