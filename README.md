@@ -9,14 +9,11 @@ You are free to use the scripts for your own work.
 
 Install with: ```pip install -v git+https://github.com/jurjen93/lofar_helpers.git``` \
 This gives you the following command line functions:
-- ```split_polygon_facets```
-- ```crop_nan_boundaries```
-- ```cut_fits_with_region```[requirements.txt](requirements.txt)
-- ```close_h5```
-- ```concat_with_dummies```
-- ```remove_flagged_stations```
-- `applycal`
-- `subtract_with_wsclean`
+- ```split_polygon_facets``` -> Split a ds9 region file with multiple polygons into individual region files for each polygon.
+- ```cut_fits_with_region``` -> Cut a FITS file with a ds9 region file.
+- ```concat_with_dummies``` -> Concatenate MeasurementSets using dummies for missing frequency bands.
+- ```remove_flagged_stations``` -> Remove 100% flagged stations from the MeasurementSet
+- `applycal` -> Perform an applycal with DP3, taking into account corrections for beam directions
 
 Use ```--help``` to get more details about the functionalities.
 
