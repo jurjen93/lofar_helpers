@@ -65,6 +65,9 @@ def main():
         except:
             detection_image = None
 
+    print(f"Science image: {args.fits}")
+    print(f"Detection image: {detection_image}")
+
     run_pybdsf(args.fits, args.rmsbox, detection_image)
 
 
