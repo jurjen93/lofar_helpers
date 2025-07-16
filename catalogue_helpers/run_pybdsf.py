@@ -61,7 +61,7 @@ def main():
         detection_image = args.detection_images
     else:
         try:
-            detection_image = glob(args.detection_images.replace("-pb",""))[0]
+            detection_image = glob(args.fits.replace("-pb",""))[0]
         except:
             detection_image = None
 
