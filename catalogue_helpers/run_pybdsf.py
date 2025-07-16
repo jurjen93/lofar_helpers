@@ -4,11 +4,12 @@ This script runs pybdsf on a fits file image to extract sources and components.
 
 import bdsf
 import argparse
+from glob import glob
 
 __author__ = "Jurjen de Jong"
 
 
-def run_pybdsf(fitsfile, rmsbox, frequency):
+def run_pybdsf(fitsfile, rmsbox, detection_image):
     """
     Run pybdsf
 
@@ -20,14 +21,16 @@ def run_pybdsf(fitsfile, rmsbox, frequency):
 
     prefix = fitsfile.replace('.fits', '')
     img = bdsf.process_image(fitsfile,
-                             thresh_isl=3,
-                             thresh_pix=5,
+                             thresh_isl=3.0,
+                             thresh_pix=5.0,
                              atrous_do=True,
                              rms_box=(int(rmsbox), int(rmsbox // 8)),
                              rms_box_bright=(int(rmsbox//3), int(rmsbox//12)),
                              adaptive_rms_box=True,
                              group_tol=10.0,
-                             frequency=frequency)  # , rms_map=True, rms_box = (160,40))
+                             advanced_opts=True,
+                             detection_image=detection_image,
+                             group_by_isl=True)  # , rms_map=True, rms_box = (160,40))
 
     img.write_catalog(clobber=True, outfile=prefix + '_source_catalog.fits', format='fits', catalog_type='srl')
     img.write_catalog(clobber=True, outfile=prefix + '_gaussian_catalog.fits', format='fits', catalog_type='gaul')
@@ -42,9 +45,9 @@ def parse_args():
     """
 
     parser = argparse.ArgumentParser(description='Source detection')
-    parser.add_argument('--rmsbox', type=int, help='rms box pybdsf', default=120)
-    parser.add_argument('--frequency', help='frequency')
-    parser.add_argument('fits', help='fits files')
+    parser.add_argument('--rmsbox', type=int, help='RMS box pybdsf', default=120)
+    parser.add_argument('--detection_image', type=int, help='Use alternative (for instance non-pb) image for detection', default=None)
+    parser.add_argument('fits', help='FITS image')
     return parser.parse_args()
 
 
@@ -54,7 +57,15 @@ def main():
     """
 
     args = parse_args()
-    run_pybdsf(args.fits, args.rmsbox, args.frequency)
+    if args.detection_image is not None:
+        detection_image = args.detection_images
+    else:
+        try:
+            detection_image = glob(args.detection_images.replace("-pb",""))[0]
+        except:
+            detection_image = None
+
+    run_pybdsf(args.fits, args.rmsbox, detection_image)
 
 
 if __name__ == '__main__':
