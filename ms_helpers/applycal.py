@@ -56,7 +56,8 @@ class ApplyCal:
                              f'ac_{n}.parmdb=' + h5,
                              f'ac_{n}.correction=fulljones',
                              f'ac_{n}.soltab=[amplitude000,phase000]',
-                             f'ac_{n}.updateweights=True']
+                             f'ac_{n}.updateweights=True',
+                             f'ac_{n}.missingantennabehavior=unit']
 
             # add non-fulljones solutions apply
             else:
@@ -65,7 +66,9 @@ class ApplyCal:
                     for corr in T.root.sol000._v_groups.keys():
                         self.cmd += [f'ac{ac_count}_{n}.type=applycal',
                                      f'ac{ac_count}_{n}.parmdb={h5}',
-                                     f'ac{ac_count}_{n}.correction={corr}']
+                                     f'ac{ac_count}_{n}.correction={corr}',
+                                     f'ac{ac_count}_{n}.missingantennabehavior=unit',
+                                     f'ac{ac_count}_{n}.updateweights=True']
                         steps.append(f'ac{ac_count}_{n}')
                         ac_count += 1
 
