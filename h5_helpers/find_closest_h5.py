@@ -192,10 +192,10 @@ def parse_args():
     :return: parsed arguments
     """
 
-    parser = ArgumentParser()
+    parser = ArgumentParser(description='Returns a h5parm which corresponds to the nearest direction from a multi-direction h5parm.')
     parser.add_argument('--h5_in', help='Input h5parm', required=True)
     parser.add_argument('--msin', help='MS to get phase center from', nargs="+")
-    parser.add_argument('--directions', nargs='+', help='directions to find the closest h5_in direction to (Example: (0.1, 0.2) (1.2, 3.1) (3.5, 1.2)', default=None)
+    parser.add_argument('--directions', nargs='+', help='Directions to find the closest h5_in direction to (Example: (0.1, 0.2) (1.2, 3.1) (3.5, 1.2)', default=None)
     parser.add_argument('--outcoor', help='Output coordinates from msin, directions, h5_in (only touch this if you know what you are doing)', type=str, default='h5_in')
 
     return parser.parse_args()
