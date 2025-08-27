@@ -113,7 +113,7 @@ def parse_args():
     """Argument parser"""
 
     parser = ArgumentParser(description='Apply calibration solutions by taking into account beam order corrections.')
-    parser.add_argument('msin', nargs='+', type=str, help='Input MeasurementSet(s)')
+    parser.add_argument('--msin', nargs='+', type=str, help='Input MeasurementSet(s)')
     parser.add_argument('--msout', type=str, default='.', help='Output MeasurementSet')
     parser.add_argument('--h5', nargs='+', type=str, help='h5parm calibration solution files', required=True)
     parser.add_argument('--colin', type=str, default='DATA', help='Input column name')
