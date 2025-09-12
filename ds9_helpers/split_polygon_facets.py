@@ -116,7 +116,7 @@ def parse_args():
     parser = ArgumentParser(description='Split multi-facet region file with polygon regions out into multiple region files.')
     parser.add_argument('--reg', help='region file', type=str, required=True)
     parser.add_argument('--h5', help='h5 file to write directions from', type=str, required=True)
-    parser.add_argument('--extra_boundary', help='make polygons with extra boundaries', type=float, default=0.01)
+    parser.add_argument('--extra_boundary', help='make polygons with extra boundaries', type=float, default=0.001)
     return parser.parse_args()
 
 
