@@ -92,19 +92,19 @@ def point_in_polygon(point, poly_reg):
     poly_geo = geometry.Polygon(tuple(zip(polyp[0::2], polyp[1::2])))
     point_geo = geometry.Point(point)
     if poly_geo.contains(point_geo):
-        c_x, c_y = poly_geo.centroid.x, poly_geo.centroid.y
-        bounds = poly_geo.bounds  # Returns (minx, miny, maxx, maxy)
-
         # Extract coordinates of the bounding box
+        bounds = poly_geo.bounds
         min_ra, min_dec, max_ra, max_dec = bounds
+        bbox_cx = (min_ra + max_ra) / 2
+        bbox_cy = (min_dec + max_dec) / 2
         width = distance([max_ra, min_dec], [min_ra, min_dec])
         height = distance([min_ra, min_dec], [min_ra, max_dec])
 
         # calculate averaging based on extended area (larger than 2.5) to extend averaging without additional smearing
-        avg = int(max(2.7/max(width, height),0))
+        avg = int(max(2.5/max(width, height),0))
 
-        print(c_x, c_y, max(width, height), avg)
-        return poly_geo.contains(point_geo), max(width, height), [c_x, c_y], avg
+        print(bbox_cx, bbox_cy, max(width, height), avg)
+        return poly_geo.contains(point_geo), max(width, height), [bbox_cx, bbox_cy], avg
 
     else:
         return False, None, None, None
