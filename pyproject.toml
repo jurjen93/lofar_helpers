@@ -15,7 +15,6 @@ concat_with_dummies = "ms_helpers.concat_with_dummies:main"
 remove_flagged_stations = "ms_helpers.remove_flagged_stations:main"
 applycal = "ms_helpers.applycal:main"
 find_closest_h5 = "h5_helpers.find_closest_h5:main"
-subtract_with_wsclean = "subtract.subtract_with_wsclean:main"
 
 [tool.setuptools]
-packages = ["ds9_helpers", "fits_helpers", "h5_helpers", "ms_helpers", "subtract"]
+packages = ["ds9_helpers", "fits_helpers", "h5_helpers", "ms_helpers"]

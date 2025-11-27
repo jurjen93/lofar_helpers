@@ -780,7 +780,7 @@ def copy_model_images(model_image_folder):
         files = glob(model_image_folder + pattern)
         if len(files) > 1:
             for file in files:
-                shutil.copy(file, '.')
+                shutil.copy(file, '')
             return  # Exit after the first successful copy
 
     for m in glob("*model*.fits"): unlink(m)
