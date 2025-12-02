@@ -1,11 +1,11 @@
 ## LOFAR helper scripts
 
 These scripts were developed for reducing LOFAR data in the following peer-reviewed publications:
-- Study of the bridge between galaxy clusters A399 and A401: https://arxiv.org/abs/2209.13930
-- Producing the deepest sub-arcsecond wide-field image of ELAIS-N1: https://arxiv.org/pdf/2407.13247v1
+- Study of the bridge between galaxy clusters A399 and A401 (de Jong et al. 2022): https://arxiv.org/abs/2209.13930
+- Producing the deepest sub-arcsecond wide-field image of ELAIS-N1 (de Jong et al. 2024): https://arxiv.org/pdf/2407.13247v1
+- Improvements for the LOFAR-VLBI pipeline (de Jong et al. 2025): https://arxiv.org/pdf/2508.12115
 
-Some of these scripts have been integrated in the LOFAR-VLBI pipeline: https://github.com/LOFAR-VLBI \
-You are free to use the scripts for your own work.
+Some of these scripts have been integrated in PILOT: https://github.com/LOFAR-VLBI/pilot \
 
 Install with: ```pip install -v git+https://github.com/jurjen93/lofar_helpers.git``` \
 This gives you the following command line functions:
@@ -15,16 +15,14 @@ This gives you the following command line functions:
 - ```remove_flagged_stations``` -> Remove 100% flagged stations from the MeasurementSet
 - `applycal` -> Perform an applycal with DP3, taking into account corrections for beam directions
 
-Use ```--help``` to get more details about the functionalities.
 
 #### Dependencies
-The scripts in this repository depend on typical LOFAR and astronomy software, such as DP3, astropy, WSClean and more.
-If you have not installed those, it is strongly advised to download the latest FLoCs singularity image: https://tikk3r.github.io/flocs/
+The scripts in this repository depend on standard LOFAR and astronomy software, such as DP3, astropy, WSClean and more.
+It is strongly advised to download the latest FLoCs singularity image: https://tikk3r.github.io/flocs/
 
 #### Contact
 Let me know if you have any issues or suggestions for improvements.
 You can contact me on: jurjendejong(AT)strw.leidenuniv.nl
 
-
 #### Acknowledgments
-This repository is part of the project CORTEX (NWA.1160.18.316) of the research programme NWA-ORC which is (partly) financed by the Dutch Research Council (NWO). 
+This repository has been developed with support from the CORTEX project (NWA.1160.18.316), part of the research programme NWA-ORC which is (partly) financed by the Dutch Research Council (NWO). 
