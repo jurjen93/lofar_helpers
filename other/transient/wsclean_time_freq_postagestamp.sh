@@ -5,23 +5,7 @@
 MS=$1
 CHANNELS=$2
 TIME_INTERVALS=$3
-PHASE_CENTER=$4
-
-# ---- Run DP3 ---- #
-
-DP3 \
-msin=${MS} \
-msout=postage_stamp_${MS} \
-phaseshift.type=phaseshift \
-phaseshift.phasecenter=${PHASE_CENTER} \
-avg.type=averager \
-avg.timeresolution=32 \
-avg.freqresolution=390.72kHz \
-steps=[phaseshift,beam,avg] \
-msout.storagemanager=dysco \
-beam.direction=[] \
-beam.updateweights=True \
-beam.type=applybeam
+SIZE=$4
 
 # ---- Run WSClean ---- #
 
@@ -29,12 +13,13 @@ echo "Running WSClean with:"
 echo "  MS          = $MS"
 echo "  Channels    = $CHANNELS"
 echo "  Intervals   = $INTERVALS"
+echo "  Image size  = $SIZE x $SIZE"
 echo "------------------------------------------------------------"
 
 wsclean \
 -no-update-model-required \
 -minuv-l 1500.0 \
--size 1024 1024 \
+-size $SIZE $SIZE \
 -reorder \
 -weight briggs -1.5 \
 -parallel-reordering 4 \
@@ -55,7 +40,7 @@ wsclean \
 -nmiter 9 \
 -niter 15000 \
 -intervals-out ${TIME_INTERVALS} \
-postage_stamp_${MS}
+${MS}
 
 echo "------------------------------------------------------------"
 echo "Imaging complete."
