@@ -1,3 +1,5 @@
+<a href="https://doi.org/10.5281/zenodo.18721259"><img src="https://zenodo.org/badge/DOI/10.5281/zenodo.18721259.svg" alt="DOI"></a>
+
 ## LOFAR helper scripts
 
 These scripts were developed for reducing LOFAR data in the following peer-reviewed publications:
