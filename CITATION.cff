@@ -1,12 +1,17 @@
-cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
+abstract: <p>These scripts were developed for reducing LOFAR data</p>
 authors:
-  - family-names: de Jong
-    given-names: Jurjen
-    orcid: https://orcid.org/0000-0001-6876-8719
-title: "lofar_helpers"
-version: 2.0.0
+- affiliation: Leiden University
+  family-names: Jurjen de Jong
+cff-version: 1.2.0
+date-released: '2026-02-21'
+doi: 10.5281/zenodo.18721259
 identifiers:
-  - type: doi
-    value: 10.5281/zenodo.18721259
-date-released: 2026-02-21
+- type: swh
+  value: swh:1:dir:4c03b54722121edcdc886cb35559eb5b06332f36;origin=https://doi.org/10.5281/zenodo.18721258;visit=swh:1:snp:c6cd394ad33781335b724ae588b16171bd07e3b4;anchor=swh:1:rel:9950ceb15d03cdb07bfe30001c923cb4f2656449;path=jurjen93-lofar_helpers-9c4c1b5
+license:
+- cc-by-4.0
+message: If you use this software, please cite it using the metadata from this file.
+repository-code: https://github.com/jurjen93/lofar_helpers/tree/v2.0.0
+title: 'jurjen93/lofar_helpers: lofar_helpers'
+type: software
+version: v2.0.0
