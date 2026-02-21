@@ -38,4 +38,5 @@ def crossmatch_itself(catalog, min_sep=0.15):
     coords = SkyCoord(ra=catalog['RA'], dec=catalog['DEC'], unit=(u.deg, u.deg))
     idx_catalog, separation, _ = match_coordinates_sky(coords, coords, nthneighbor=2)
     nearest_neighbour = separation<min_sep*u.arcsec
-    print(catalog[nearest_neighbour]['Cat_id'])
+
+    return catalog[nearest_neighbour]
