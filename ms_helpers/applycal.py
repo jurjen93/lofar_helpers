@@ -7,6 +7,7 @@ from argparse import ArgumentParser
 from numpy import pi
 from sys import exit
 from os.path import abspath, basename
+from os import cpu_count, getenv
 
 __author__ = "Jurjen de Jong"
 
@@ -80,6 +81,10 @@ class ApplyCal:
                              f'beam_center_{n}.updateweights=True']
 
         self.cmd += ['steps=' + str(steps).replace(" ", "").replace("\'", "")]
+
+        # Set CPUs
+        ncpu = min(int(getenv("SLURM_CPUS_PER_TASK", cpu_count())), 16)
+        self.cmd += [f'numthreads={ncpu}']
 
     @staticmethod
     def poldim_num(h5: str = None):

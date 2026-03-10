@@ -4,7 +4,7 @@
 __author__ = "Jurjen de Jong"
 
 import argparse
-import os
+from os import cpu_count, getenv, system
 import re
 import sys
 from glob import glob
@@ -187,6 +187,11 @@ def remove_flagged_antennas(msin: str = None):
         return f'\nfilter.type=filter\nfilter.remove=true\nfilter.baseline=!{ants_to_filter}'
 
 
+def get_cpus():
+    """Get number of CPUs available"""
+    return min(int(getenv("SLURM_CPUS_PER_TASK", cpu_count())), 16)
+
+
 def make_parset(mss: list = None, concat_name: str = None, data_column: str = None,
                 time_avg: int= None, freq_avg: int = None, time_res=None, freq_res=None, phase_center: str = None,
                 apply_beam: bool = False, only_basename: bool = None, remove_flagged_station: bool = None, bitrate: int = None):
@@ -259,7 +264,8 @@ def make_parset(mss: list = None, concat_name: str = None, data_column: str = No
             f"msin.missingdata=True\n"
             f"msin.orderms=False\n"
             f"msout.storagemanager=dysco\n"
-            f"msout.storagemanager.databitrate={bitrate}"
+            f"msout.storagemanager.databitrate={bitrate}\n"
+            f"numthreads={get_cpus()}"
         )
         steps = []
 
@@ -349,7 +355,7 @@ def main():
                           args.phase_center, args.apply_beam, args.only_basename, args.remove_flagged_station, args.bitrate)
     if not args.make_only_parset:
         for parset in parsets:
-            os.system('DP3 ' + parset)
+            system('DP3 ' + parset)
 
 
 if __name__ == '__main__':

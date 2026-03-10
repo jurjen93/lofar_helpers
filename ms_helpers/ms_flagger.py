@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-import os
+from os import cpu_count, getenv, system
 
 __author__ = "Jurjen de Jong"
 
@@ -55,9 +55,12 @@ def main():
 
         command += [f'flag.expr="{expr}"']
 
+        # Set CPUs
+        ncpu = min(int(getenv("SLURM_CPUS_PER_TASK", cpu_count())), 16)
+        command += [f'numthreads={ncpu}']
 
         print(' '.join(command))
-        os.system(' '.join(command))
+        system(' '.join(command))
 
 
 if __name__ == '__main__':

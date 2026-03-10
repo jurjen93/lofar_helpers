@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-import os
+from os import cpu_count, getenv, system
 from shutil import move, rmtree
 from sys import exit
 
@@ -58,11 +58,14 @@ def remove_flagged_antennas(msin: str = None, msout: str = None, overwrite: bool
     ants_to_filter = ','.join([ants_names[idx] for idx in fully_flagged_antennas])
     print(f"Filtering fully flagged antennas: {ants_to_filter}")
 
+    # Set CPUs
+    ncpu = min(int(getenv("SLURM_CPUS_PER_TASK", cpu_count())), 16)
+
     # Run DP3
     dp3_cmd = f'DP3 msin={msin} msout={msout} msout.storagemanager=dysco steps=[filter] \
-    filter.type=filter filter.remove=true filter.baseline=!{ants_to_filter}'
+    filter.type=filter filter.remove=true filter.baseline=!{ants_to_filter} numthreads={ncpu}'
 
-    os.system(dp3_cmd)
+    system(dp3_cmd)
 
     # Overwrite input
     if overwrite:

@@ -24,7 +24,6 @@ def get_rms(image_data):
     :return: rms (noise measure)
     """
 
-    from past.utils import old_div
 
     maskSup = 1e-7
     m = image_data[np.abs(image_data) > maskSup]
@@ -35,9 +34,9 @@ def get_rms(image_data):
     for _ in range(10):
         ind = np.where(np.abs(m - med) < rmsold * cut)[0]
         rms = np.std(m[ind])
-        if np.abs(old_div((rms - rmsold), rmsold)) < diff: break
+        if np.abs(np.divide((rms - rmsold), rmsold)) < diff: break
         rmsold = rms
-    print(f'Noise : {str(round(rms * 1000, 4))} {u.mJy / u.beam}')
+    print(f'Noise : {str(round(rms * 1_000_000, 4))} microJy/beam')
     return rms
 
 
