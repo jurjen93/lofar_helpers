@@ -264,8 +264,7 @@ def make_parset(mss: list = None, concat_name: str = None, data_column: str = No
             f"msin.missingdata=True\n"
             f"msin.orderms=False\n"
             f"msout.storagemanager=dysco\n"
-            f"msout.storagemanager.databitrate={bitrate}\n"
-            f"numthreads={get_cpus()}"
+            f"msout.storagemanager.databitrate={bitrate}"
         )
         steps = []
 
@@ -355,7 +354,7 @@ def main():
                           args.phase_center, args.apply_beam, args.only_basename, args.remove_flagged_station, args.bitrate)
     if not args.make_only_parset:
         for parset in parsets:
-            system('DP3 ' + parset)
+            system(f'DP3 numthreads={get_cpus()} ' + parset)
 
 
 if __name__ == '__main__':
