@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lofar_helpers"
-version = "2.0.0"
+version = "2.0.1"
 description = "LOFAR helper scripts and tools"
 dependencies = ["numpy","tables","losoto","shapely","python-casacore","pyregion","astropy","pandas"]
 
@@ -15,6 +15,7 @@ concat_with_dummies = "ms_helpers.concat_with_dummies:main"
 remove_flagged_stations = "ms_helpers.remove_flagged_stations:main"
 applycal = "ms_helpers.applycal:main"
 find_closest_h5 = "h5_helpers.find_closest_h5:main"
+cwl_provenance = "pilot_helpers.provenance:main"
 
 [tool.setuptools]
 packages = ["ds9_helpers", "fits_helpers", "h5_helpers", "ms_helpers"]
