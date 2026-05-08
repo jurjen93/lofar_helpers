@@ -15,7 +15,7 @@ concat_with_dummies = "ms_helpers.concat_with_dummies:main"
 remove_flagged_stations = "ms_helpers.remove_flagged_stations:main"
 applycal = "ms_helpers.applycal:main"
 find_closest_h5 = "h5_helpers.find_closest_h5:main"
-cwl_provenance = "pilot_helpers.provenance:main"
+cwl_provenance = "pilot_fair_helpers.provenance:main"
 
 [tool.setuptools]
-packages = ["ds9_helpers", "fits_helpers", "h5_helpers", "ms_helpers"]
+packages = ["ds9_helpers", "fits_helpers", "h5_helpers", "ms_helpers", "pilot_fair_helpers"]
