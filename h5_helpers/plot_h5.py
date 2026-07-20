@@ -25,16 +25,15 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
     """
 
     # Set the dimensions of the grid
-    rows = len(h5s)
+    rows = len(names)
     cols = len(stations)
 
     # Create a figure and a set of subplots
     fig, axs = plt.subplots(rows, cols, figsize=(int(2*cols*2), int(2*rows)))  # figsize is adjustable to your needs
 
     # Iterate over each subplot to customize
-    for i, h5 in enumerate(h5s):
-        print(h5, i)
-        t = tables.open_file(h5)
+    t = tables.open_file(h5s[0])
+    for i, name in enumerate(names):
         freqs = t.root.sol000._f_get_child(soltab).freq[:]
         time = t.root.sol000._f_get_child(soltab).time[:]
 
@@ -50,11 +49,7 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
             pass
 
         try:
-            idx = 0
-            if names is not None:
-                if 'RL' in names[i]:
-                    idx = 1
-            vals = np.take(vals, indices=[idx], axis=axes.index('pol'))
+            vals = np.take(vals, indices=[i], axis=axes.index('pol'))
         except ValueError:
             pass
 
@@ -72,12 +67,16 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
 
             if 'phase' in soltab:
                 vals_im = wrap_phase(vals_im-ref)
-                # vals_im = wrap_phase(vals_im)
                 vmin, vmax = -np.pi, np.pi
             else:
-                vmin, vmax = 0, 2
+                vmin, vmax = 0, 1.5
                 vals_im = vals_im
-            im = axs[i, j].imshow(vals_im.T, aspect='auto', origin='lower', vmin=vmin, vmax=vmax, cmap='RdBu_r')
+
+            if 'phase' in soltab:
+                cmap = 'RdBu_r'
+            else:
+                cmap = 'Blues'
+            im = axs[i, j].imshow(vals_im.T, aspect='auto', origin='lower', vmin=vmin, vmax=vmax, cmap=cmap)
 
             if i == 0:
                 axs[i, j].set_title(make_utf8(station), size=26)
@@ -123,7 +122,7 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
         cbar.set_ticks(ticks=[-3.1415, -1.57075, 0, 1.57075, 3.1415], labels=['$-\pi$', '$-\pi$/2', '0', '$\pi$/2', '$\pi$'],
                        size=25)
     else:
-        cbar.set_ticks([0, 0.5, 1, 1.5, 2], labels=['0', '0.5', '1', '1.5', '$\geq 2$'], size=22)
+        cbar.set_ticks([0, 0.5, 1, 1.5], labels=['0', '0.5', '1', '$\geq 1.5$'], size=22)
 
 
     if 'phase' in soltab:
@@ -138,58 +137,13 @@ def make_plot(h5s, stations, soltab, names=None, outputname=None):
     plt.savefig(outputname, dpi=200)
 
 def main():
-    stations = [b'CS002HBA1\n(Dutch core)', b'RS208HBA\n(Dutch remote)', b'DE604HBA\n(Germany)', b'PL611HBA\n(Poland)', b'IE613HBA\n(Ireland)']
-    h5s = ['/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarcomplexgain4_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarcomplexgain6_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/merged_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/merged_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5']
-    names = ['scalarcomplexgain 1 (RR)',
-             'fulljones (RR)', 'scalarcomplexgain 2 (RR)', 'merged solutions (RR)', 'fulljones (RL)',
-             'merged solutions (RL)']
+    stations = [b'CS002HBA0\n(Dutch core)', b'RS208HBA\n(Dutch remote)', b'DE604HBA\n(Germany)', b'SE607HBA\n(Sweden)', b'PL612HBA\n(Poland)']
+    h5s = ['../merged_selfcalcycle011_linearfulljones_ILTJ174713.89+653235.8_delaycal.ms.copy.avg.h5']
+    names = ['XX', 'XY', 'YX', 'YY']
 
     make_plot(h5s, stations, 'amplitude000', names, 'delay_amplitude_solutions.png')
-
-    stations = [b'CS002HBA1\n(Dutch core)', b'RS208HBA\n(Dutch remote)', b'DE604HBA\n(Germany)', b'PL611HBA\n(Poland)', b'IE613HBA\n(Ireland)']
-    h5s = ['/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarphasediff0_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarphase1_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarphase2_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarphase3_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarcomplexgain4_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/scalarcomplexgain6_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/merged_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/fulljones5_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/delayselfcal_new/merged_skyselfcalcyle000_L686962_120_168MHz_averaged.ms.avg.h5']
-    names = ['scalarphasediff (RR-LL)', 'scalarphase 1 (RR)', 'scalarphase 2 (RR)', 'scalarphase 3 (RR)',
-             'scalarcomplexgain 1 (RR)',
-             'fulljones (RR)', 'scalarcomplexgain 2 (RR)', 'merged solutions (RR)', 'fulljones (RL)',
-             'merged solutions (RL)']
-
     make_plot(h5s, stations, 'phase000', names, 'delay_phase_solutions.png')
 
-    stations = [b'RS208HBA\n(Dutch remote)', b'RS503HBA\n(Dutch remote)', b'DE604HBA\n(Germany)', b'PL611HBA\n(Poland)', b'IE613HBA\n(Ireland)']
-    h5s = ['/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/new_ddcal/allselfcals/P35307/merged_selfcalcyle011_flagged_L686962_P35307.ms.copy.phaseup.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/new_ddcal/allselfcals/P22459/merged_selfcalcyle011_flagged_L686962_P22459.ms.copy.phaseup.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/new_ddcal/allselfcals/P19951/merged_selfcalcyle011_flagged_L686962_P19951.ms.copy.phaseup.h5']
-
-    names = None
-
-    make_plot(h5s, stations, 'phase000', names, 'dd1_phase_solutions.png')
-    make_plot(h5s, stations, 'amplitude000', names, 'dd1_amplitude_solutions.png')
-
-    stations = [b'CS032HBA0\n(Dutch core)', b'CS103HBA0\n(Dutch core)', b'RS208HBA\n(Dutch remote)', b'RS307HBA\n(Dutch remote)', b'RS509HBA\n(Dutch remote)']
-    h5s = ['/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/imaging/split_facets2/facet_0/1.2imaging/selfcaloutput/merged_selfcalcyle009_concat_L68.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/imaging/split_facets2/facet_29/1.2imaging/selfcaloutput/merged_selfcalcyle009_concat_L68.ms.avg.h5',
-           '/project/lofarvwf/Share/jdejong/output/ELAIS/ALL_L/imaging/split_facets2/facet_26/1.2imaging/selfcaloutput/merged_selfcalcyle009_concat_L68.ms.avg.h5']
-    # names = ['merged solutions 1',
-    #          'merged solutions 4',
-    #          'merged solutions 7',
-    #          'merged solutions 10']
-
-    make_plot(h5s, stations, 'phase000', names, 'dd_dutch1_phase_solutions.png')
-    make_plot(h5s, stations, 'amplitude000', names, 'dd_dutch1_amplitude_solutions.png')
 
 
 
