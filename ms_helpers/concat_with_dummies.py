@@ -354,7 +354,7 @@ def main():
                           args.phase_center, args.apply_beam, args.only_basename, args.remove_flagged_station, args.bitrate)
     if not args.make_only_parset:
         for parset in parsets:
-            system(f'DP3 numthreads={get_cpus()} ' + parset)
+            system(f'DP3 {parset} numthreads={get_cpus()}')
 
 
 if __name__ == '__main__':
