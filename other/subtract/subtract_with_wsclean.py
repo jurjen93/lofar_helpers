@@ -524,7 +524,7 @@ class SubtractWSClean:
         """
 
         f = fits.open(self.model_images[0])
-        comparse = str(f[0].header['HISTORY']).replace('\n', '').split()
+        comparse = "".join([" " + f if f.startswith("-") else f for f in str(f[0].header["HISTORY"]).split("\n")]).split()
         prefix_name = re.sub(r"(-\d{4})?-model(-pb|-fpb)?\.fits$", "", self.model_images[0])
         command = ['wsclean',
                    '-predict',
